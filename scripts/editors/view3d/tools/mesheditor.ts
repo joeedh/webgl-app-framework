@@ -21,8 +21,8 @@ import {UniformTriRemesher} from '../../../mesh/mesh_remesh.js'
 import type {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api.js'
 import type {Scene} from '../../../scene/scene.js'
 import type {ViewContext} from '../../../core/context.js'
-import {View3D} from '../view3d.js'
-import { StructReader } from '../../../path.ux/scripts/util/nstructjs.js'
+import type {View3D} from '../view3d.js'
+import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
 
 export class MeshEditor extends MeshToolBase {
   drawflag = 0

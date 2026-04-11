@@ -4,9 +4,9 @@ import {Icons} from '../editors/icon_enum.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {NodeFlags} from '../core/graph.js'
 import {Texture} from '../webgl/webgl.js'
-import {FBO} from '../webgl/fbo.js'
-import {OptionalIf} from '../util/optionalIf.js'
-import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import {FBO} from '../webgl/fbo'
+import type {OptionalIf} from '../util/optionalIf.js'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export enum ImageFlags {
   SELECT = 1,
@@ -60,7 +60,7 @@ ImageBlock {
   gpuHasData: boolean
   gl: OptionalIf<WebGL2RenderingContext, OPT['dead']> = undefined as unknown as WebGL2RenderingContext
   glType: number
-  glTex: any
+  glTex?: Texture
   glRegen: boolean
   _drawFBO: FBO | undefined
   _tex2: any
@@ -129,7 +129,7 @@ ImageBlock {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.finish()
 
-    fbo.setTexColor(gl, temp)
+    fbo.setTexColor(gl, temp!)
     gl.bindTexture(gl.TEXTURE_2D, null)
 
     return this
@@ -391,7 +391,7 @@ ImageBlock {
   destroy(): void {
     if (this.glTex) {
       try {
-        this.glTex.destroy(this.gl)
+        this.glTex.destroy(this.gl!)
       } catch (error) {
         util.print_stack(error as Error)
       }

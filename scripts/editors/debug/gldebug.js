@@ -1,6 +1,6 @@
 import {FBO} from '../../webgl/fbo'
 import {getShader} from '../../webgl'
-import {getWebGL} from '../view3d/view3d'
+//import {getWebGL} from '../view3d/view3d'
 
 export let DisplayShader = {
   vertex: `#version 300 es
@@ -327,7 +327,7 @@ export function getFBODebug(gl) {
 }
 
 window.gldebug_sample = () => {
-  let gl = getWebGL()
+  let gl = window._gl// getWebGL()
 
   if (gl._debug) {
     gl._debug.saveDrawBuffer()

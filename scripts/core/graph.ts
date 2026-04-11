@@ -2,8 +2,8 @@ import {Container, DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} 
 
 import '../util/polyfill.d.ts'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import {ViewContext} from './context'
-import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api.js'
+import type {ViewContext} from './context'
+import type {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api.js'
 
 export class GraphCycleError extends Error {}
 
@@ -234,7 +234,7 @@ graph.NodeSocketType {
 
   graphDestory(): void {}
 
-  graphDataLink(ownerBlock: any, getblock: (id: any) => any, getblock_addUser: (id: any) => any): void {}
+  graphDataLink(ownerBlock: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {}
 
   //e.g. EnumProperty's enumeration definitions
   onFileLoad(templateInstance: any) {
@@ -504,7 +504,7 @@ export class Node<
   graph_ui_size: Vector2
   graph_ui_flag: number
   graph_id: number
-  graph_graph?: Graph<any>
+  graph_graph?: Graph<any, any>
   icon: number = -1
 
   static STRUCT = nstructjs.inlineRegister(
@@ -1105,7 +1105,7 @@ graph.CallbackNode {
 
 export type GenericNode<ExecContextType> = Node<INodeSocketSet, INodeSocketSet, ExecContextType>
 
-export class NodeSelectedSet<ExecContextType> extends Set {
+export class NodeSelectedSet<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> extends Set<NodeBase> {
   /* We don't support hidden nodes yet, for
    * now just return this set.
    */
@@ -1114,13 +1114,13 @@ export class NodeSelectedSet<ExecContextType> extends Set {
   }
 }
 
-export class GraphNodes<ExecContextType> extends Array {
-  graph: Graph<ExecContextType>
-  active?: GenericNode<ExecContextType>
-  highlight?: GenericNode<ExecContextType>
-  selected: NodeSelectedSet<ExecContextType>
+export class GraphNodes<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> extends Array<NodeBase> {
+  graph: Graph<ExecContextType, NodeBase>
+  active?: NodeBase
+  highlight?: NodeBase
+  selected: NodeSelectedSet<ExecContextType, NodeBase>
 
-  constructor(graph: Graph<ExecContextType>, list?: Iterable<GenericNode<ExecContextType>>) {
+  constructor(graph: Graph<ExecContextType, NodeBase>, list?: Iterable<NodeBase>) {
     super()
     this.graph = graph
     this.selected = new NodeSelectedSet()
@@ -1135,7 +1135,7 @@ export class GraphNodes<ExecContextType> extends Array {
     this.highlight = undefined
   }
 
-  replace(olditem: GenericNode<ExecContextType>, newitem: GenericNode<ExecContextType>) {
+  replace(olditem: NodeBase, newitem: NodeBase) {
     const i = this.indexOf(olditem)
     if (i >= 0) {
       this[i] = newitem
@@ -1147,13 +1147,13 @@ export class GraphNodes<ExecContextType> extends Array {
     return this
   }
 
-  setSelect<NodeType extends Node<any, any>>(node: NodeType, state = false): void {
+  setSelect<NodeType extends NodeBase>(node: NodeType, state = false): void {
     if (state) {
       node.graph_flag |= GraphFlags.SELECT
-      this.selected.add(node as unknown as GenericNode<ExecContextType>)
+      this.selected.add(node )
     } else {
       node.graph_flag &= ~GraphFlags.SELECT
-      this.selected.delete(node as unknown as GenericNode<ExecContextType>)
+      this.selected.delete(node)
     }
   }
 
@@ -1163,8 +1163,8 @@ export class GraphNodes<ExecContextType> extends Array {
    a convention in shader networks is that the active "output" node is the first one found in the list.
    this way users can click different output nodes to preview different subnetworks in real time.
    */
-  pushToFront<NodeType extends Node<any, any>>(frontNode: NodeType) {
-    const node = frontNode as unknown as GenericNode<ExecContextType>
+  pushToFront<NodeType extends NodeBase>(frontNode: NodeType) {
+    const node = frontNode
     let i = this.indexOf(node)
 
     if (i < 0) {
@@ -1186,7 +1186,7 @@ export class GraphNodes<ExecContextType> extends Array {
   }
 }
 
-export class Graph<ExecContextType> {
+export class Graph<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -1198,14 +1198,14 @@ graph.Graph {
 
   updateGen = 0
   onFlagResort?: (graph: this) => void
-  nodes: GraphNodes<ExecContextType>
+  nodes: GraphNodes<ExecContextType, NodeBase>
   graph_flag: number
   max_cycle_steps: number
   cycle_stop_threshold: number
   graph_idgen: util.IDGen
-  node_idmap: Map<number, GenericNode<ExecContextType>>
+  node_idmap: Map<number, NodeBase>
   sock_idmap: Map<number, NodeSocketType>
-  sortlist: Array<GenericNode<ExecContextType>>
+  sortlist: Array<NodeBase>
 
   constructor() {
     /**unfortunately we can't use normal event callbacks (or the graph itself)
@@ -1221,7 +1221,7 @@ graph.Graph {
 
     this.onFlagResort = undefined
 
-    this.nodes = new GraphNodes(this)
+    this.nodes = new GraphNodes<ExecContextType, NodeBase>(this)
     this.sortlist = []
     this.graph_flag = 0
     this.max_cycle_steps = 64
@@ -1384,7 +1384,7 @@ graph.Graph {
       n.graph_flag &= ~(NodeFlags.SORT_TAG | NodeFlags.CYCLE_TAG)
     }
 
-    const dosort = (n: GenericNode<ExecContextType>) => {
+    const dosort = (n: NodeBase) => {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn('Warning: graph cycle detected!')
         this.graph_flag |= GraphFlags.CYCLIC
@@ -1404,7 +1404,7 @@ graph.Graph {
         const s1 = n.inputs[k]
 
         for (const s2 of s1.edges) {
-          const n2 = s2.node
+          const n2 = s2.node as NodeBase
 
           if (!(n2.graph_flag & NodeFlags.SORT_TAG)) {
             dosort(n2)
@@ -1418,7 +1418,7 @@ graph.Graph {
     }
 
     for (const n of nodes) {
-      dosort(n)
+      dosort(n as NodeBase)
     }
 
     //we may not have caught all cycle cases
@@ -1605,7 +1605,7 @@ graph.Graph {
     return ok
   }
 
-  add(node: Node) {
+  add(node: NodeBase) {
     if (node.graph_id !== -1) {
       console.warn('Warning, tried to add same node twice', node.graph_id, node)
       return
@@ -1689,7 +1689,7 @@ graph.Graph {
     for (const n of this.nodes) {
       for (const s of n.allsockets) {
         for (let i = 0; i < s.edges.length; i++) {
-          s.edges[i] = sock_idmap.get(s.edges[i] as unknown as number)
+          s.edges[i] = sock_idmap.get(s.edges[i] as unknown as number)!
 
           if (!s.edges[i]) {
             //probably a connection to a zombie node, which aren't saved?
@@ -1744,7 +1744,7 @@ graph.Graph {
   }
 
   //substitute proxy with original node
-  relinkProxyOwner<NodeType extends GenericNode<ExecContextType>>(n: NodeType): void {
+  relinkProxyOwner<NodeType extends NodeBase>(n: NodeType): void {
     //console.warn("relinkProxyOwner", n.name);
 
     type InputSet = typeof n.inputs
@@ -1923,7 +1923,7 @@ graph.Graph {
 
       //replace nodes with proxies, for nodes who request it
       if (n.graph_flag & NodeFlags.SAVE_PROXY) {
-        n = ProxyNode.fromNode(n)
+        n = ProxyNode.fromNode(n) as unknown as NodeBase
       }
 
       ret.push(n)

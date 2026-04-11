@@ -1,19 +1,10 @@
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
 import * as util from '../util/util.js'
-import * as math from '../util/math.js'
 import {MeshOp} from './mesh_ops_base'
-import {
-  ToolOp,
-  FloatProperty,
-  IntProperty,
-  EnumProperty,
-  FlagProperty,
-  BoolProperty,
-} from '../path.ux/scripts/pathux.js'
-import {vertexSmooth} from './mesh_utils'
+import {ToolOp} from '../path.ux/scripts/pathux.js'
 import {getArrayTemp, MAX_FACE_VERTS, MeshFlags, MeshTypes} from './mesh_base'
 import {Edge, EID, Element, Face, LogContext, Loop, Mesh, Vertex} from './mesh'
-import {ToolContext} from '../core/context'
+import type {ToolContext} from '../core/context'
 
 export function splitEdgeLoops_pre(
   mesh: Mesh,

@@ -5,9 +5,8 @@ import {BVH, BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js'
 import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {applyTriangulation} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
-import {GridBase} from '../../../mesh/mesh_grids.js'
-import {SceneObject} from '../../../sceneobject/sceneobject.js'
-import { ViewContext } from '../../../core/context.js'
+import type {GridBase} from '../../../mesh/mesh_grids.js'
+import type {ViewContext} from '../../../core/context.js'
 
 export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: WeakSet<any>, lctx?: LogContext): void {
   let count = 0

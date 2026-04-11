@@ -68,4 +68,5 @@ export class AbstractGraphClass {
   }
 }
 /** Always instantiate this for each subclass*/
+/** @type {any[]} */
 AbstractGraphClass.NodeTypes = []

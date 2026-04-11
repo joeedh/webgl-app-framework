@@ -58,7 +58,7 @@ import {
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap} from './pbvh_base'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PaintToolModeBase} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
@@ -71,8 +71,7 @@ import {tetSolve} from '../../../tet/tet_deform.js'
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
-import {BVHToolMode} from './pbvh.js'
-import {ViewContext} from '../../../core/context.js'
+import type {ViewContext} from '../../../core/context.js'
 
 //grab data field definition
 const GEID = 0
@@ -8002,7 +8001,7 @@ export class PaintOp extends PaintOpBase<
 
     const ret = super.modalEnd(was_cancelled)
 
-    if (ctx.toolmode instanceof BVHToolMode) {
+    if (ctx.toolmode instanceof PaintToolModeBase) {
       //stop custom radius drawing for brush circle
       ctx.toolmode._radius = undefined
     }

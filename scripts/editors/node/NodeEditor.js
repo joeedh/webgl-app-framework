@@ -18,7 +18,6 @@ import {SelOneToolModes} from '../view3d/selectmode.js'
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
 import {layoutNode} from '../../core/graph_spatial.js'
-import {getContextArea} from '../editor_base.ts'
 import {ModalFlags} from '../../core/modalflags.js'
 import {Icons} from '../icon_enum.js'
 

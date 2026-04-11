@@ -1,8 +1,6 @@
 import {clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js'
 import {UIBase, nstructjs, util} from '../path.ux/scripts/pathux.js'
 
-import * as customdata from './customdata'
-
 export const REUSE_EIDS = true
 
 export const DEBUG_DUPLICATE_FACES = false
@@ -357,10 +355,10 @@ export function reallocArrayTemp<type>(arr: type[], newSize: number): type[] {
   return result
 }
 
-import type {CustomDataElem} from './customdata.ts'
+import type {CustomDataElem, AttrRef} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
 import type {Edge, Element, Face, Handle, Loop, Vertex} from './mesh_types'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export class CDElemArray extends Array<CustomDataElem> {
   static STRUCT = nstructjs.inlineRegister(
@@ -387,7 +385,7 @@ mesh.CDElemArray {
     return this
   }
 
-  get<type extends CustomDataElem<any, type>>(attr: CDRef<type> | customdata.AttrRef<type>): type {
+  get<type extends CustomDataElem<any, type>>(attr: CDRef<type> | AttrRef<type>): type {
     const idx = typeof attr === 'number' ? attr : attr.i
     return this[idx] as unknown as type
   }

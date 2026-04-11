@@ -2032,15 +2032,17 @@ export type IShaderDef = {
   uniforms: IUniformsBlock
 }
 
-export function loadShader(gl: WebGL2RenderingContext, sdef: IShaderDef) {
-  const shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes)
-
-  shader.init(gl)
+export function initShader(gl: WebGL2RenderingContext, program: ShaderProgram, sdef: IShaderDef) {
+  program.init(gl)
 
   for (const k in sdef.uniforms) {
-    shader.uniforms[k] = sdef.uniforms[k]
+    program.uniforms[k] = sdef.uniforms[k]
   }
+}
 
+export function loadShader(gl: WebGL2RenderingContext, sdef: IShaderDef) {
+  const shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes)
+  initShader(gl, shader, sdef)
   return shader
 }
 

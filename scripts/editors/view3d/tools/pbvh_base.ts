@@ -1,3 +1,12 @@
+import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
+import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js'
+import {CameraModes} from '../view3d_base.js'
+import type {ToolContext, ViewContext} from '../../../core/context.js'
+import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
+import {WidgetFlags} from '../widgets/widgets.js'
+import {ToolMode} from '../view3d_toolmode.js'
+import type {View3D} from '../view3d.js'
+
 import {
   Curve1DProperty,
   EnumProperty,
@@ -19,7 +28,14 @@ import {
   IndexRange,
 } from '../../../path.ux/scripts/pathux.js'
 
-import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings} from '../../../brush/brush'
+import {
+  BrushFlags,
+  SculptBrush,
+  SculptTools,
+  BrushSpacingModes,
+  DynTopoSettings,
+  PaintToolSlot,
+} from '../../../brush/brush'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
@@ -467,7 +483,7 @@ export class SetBrushRadius extends ToolOp<
   }
 
   static canRun(ctx: any): boolean {
-    return ctx.toolmode?.constructor.name === 'BVHToolMode'
+    return ctx.toolmode instanceof PaintToolModeBase
   }
 
   static tooldef(): any {
@@ -485,8 +501,8 @@ export class SetBrushRadius extends ToolOp<
   static invoke(ctx: ViewContext, args: any) {
     const tool = super.invoke(ctx, args) as SetBrushRadius
 
-    const toolmode = ctx.toolmode as unknown as BVHToolMode
-    if (toolmode?.constructor.name !== 'BVHToolMode') {
+    const toolmode = ctx.toolmode as PaintToolModeBase
+    if (!(toolmode instanceof PaintToolModeBase)) {
       return tool
     }
 
@@ -547,16 +563,15 @@ export class SetBrushRadius extends ToolOp<
     this.makeTempLine(this.cent_mpos, this.mpos, 'rgba(25,25,25,0.25)')
 
     const toolmode = ctx.toolmode
-    if (toolmode?.constructor.name === 'BVHToolMode') {
-      const bvhToolMode = toolmode as BVHToolMode
-      bvhToolMode.mpos.load(this.cent_mpos)
+    if (toolmode instanceof PaintToolModeBase) {
+      toolmode.mpos.load(this.cent_mpos)
     }
 
     const ratio = l1 / l2
     let radius: number
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      const bvhtool = ctx.scene.toolmode_namemap.bvh as BVHToolMode
+      const bvhtool = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase
       if (bvhtool) {
         radius = bvhtool.sharedBrushRadius
       } else {
@@ -575,16 +590,16 @@ export class SetBrushRadius extends ToolOp<
     this.exec(ctx)
   }
 
-  on_pointerup(e: any): void {
+  on_pointerup(e: PointerEvent): void {
     this.modalEnd(false)
   }
 
-  exec(ctx: any): void {
+  exec(ctx: ToolContext): void {
     const brush = ctx.datalib.get(this.inputs.brush.getValue())
 
     if (brush) {
       if (brush.flag & BrushFlags.SHARED_SIZE) {
-        const toolmode = ctx.scene.toolmode_namemap.bvh
+        const toolmode = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase
 
         if (toolmode) {
           toolmode.sharedBrushRadius = this.inputs.radius.getValue()
@@ -595,7 +610,7 @@ export class SetBrushRadius extends ToolOp<
     }
   }
 
-  undoPre(ctx: any): void {
+  undoPre(ctx: ToolContext): void {
     const brush = ctx.datalib.get(this.inputs.brush.getValue())
 
     this._undo = {}
@@ -606,20 +621,20 @@ export class SetBrushRadius extends ToolOp<
     }
   }
 
-  undo(ctx: any): void {
+  undo(ctx: ToolContext): void {
     const undo = this._undo
 
     if (!undo.brushref) {
       return
     }
 
-    const brush = ctx.datalib.get(undo.brushref)
+    const brush = ctx.datalib.get<SculptBrush>(undo.brushref)
     if (!brush) {
       return
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      const toolmode = ctx.scene.toolmode_namemap.bvh
+      const toolmode = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase | undefined
 
       if (toolmode) {
         toolmode.sharedBrushRadius = undo.radius
@@ -629,7 +644,7 @@ export class SetBrushRadius extends ToolOp<
     }
   }
 
-  on_keydown(e: any): void {
+  on_keydown(e: KeyboardEvent): void {
     switch (e.keyCode) {
       case keymap['Escape']:
       case keymap['Enter']:
@@ -703,15 +718,106 @@ export function calcConcaveLayer(mesh: any): void {
   }
 
   for (const v of mesh.verts) {
+    //
   }
 }
 
-import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
-import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js'
-import {CameraModes} from '../view3d_base.js'
-import type {ToolContext, ViewContext} from '../../../core/context.js'
-import {BVHToolMode} from './pbvh'
-import { StructReader } from '../../../path.ux/scripts/util/nstructjs.js'
+export abstract class PaintToolModeBase extends ToolMode {
+  mdown = false
+  float = 0
+  lastFaceSet: number
+  editDisplaced: boolean
+  drawDispDisField: boolean
+  reprojectCustomData: boolean
+  sharedBrushRadius: number
+  gridEditDepth: number
+  enableMaxEditDepth: boolean
+  dynTopo: any
+  mpos: Vector2
+  _radius: number | undefined
+  debugSphere: Vector3
+  drawFlat: boolean
+  drawMask: boolean
+  _last_cd_mask: number
+  tool: number
+  slots: any
+  _brush_lines: any[]
+  drawColPatches: boolean
+  symmetryAxes: number
+  drawBVH: boolean
+  drawCavityMap: boolean
+  drawNodeIds: boolean
+  drawWireframe: boolean
+  drawValidEdges: boolean
+  _last_bvh_key: string
+  _last_hqed: string
+  view3d: View3D
+  _last_enable_mres: string | undefined
+  _last_draw_key: string | undefined
+
+  constructor(manager: any) {
+    super(manager)
+
+    this.lastFaceSet = 1
+
+    this.editDisplaced = false
+    this.drawDispDisField = false
+    this.reprojectCustomData = false
+
+    this.sharedBrushRadius = 55
+
+    this.gridEditDepth = 2
+    this.enableMaxEditDepth = false
+
+    this.dynTopo = new DynTopoSettings()
+    //this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
+
+    this.mpos = new Vector2()
+    this._radius = undefined
+
+    this.debugSphere = new Vector3()
+
+    this.drawFlat = false
+    this.drawMask = true
+    this._last_cd_mask = -1
+
+    this.flag |= WidgetFlags.ALL_EVENTS
+
+    this.tool = SculptTools.CLAY
+    this.slots = {}
+
+    this._brush_lines = []
+
+    for (const k in SculptTools) {
+      const tool = SculptTools[k]
+      this.slots[tool] = new PaintToolSlot(tool as unknown as SculptTools)
+    }
+
+    this.drawColPatches = false
+    this.symmetryAxes = 1
+    this.drawBVH = false
+    this.drawCavityMap = false
+    this.drawNodeIds = false
+    this.drawWireframe = false
+    this.drawValidEdges = true
+
+    this._last_bvh_key = ''
+    this._last_hqed = ''
+
+    this.view3d = manager !== undefined ? manager.view3d : undefined
+  }
+
+  getBrush(tool: number = this.tool): any {
+    if (!this.ctx) {
+      return undefined
+    }
+
+    return this.slots[tool].resolveBrush(this.ctx)
+  }
+
+  abstract drawBrush(view3d: View3D): void
+  abstract getBVH(mesh: Mesh, useGrids?: boolean): BVH
+}
 
 export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   {
@@ -1087,7 +1193,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     const view3d = ctx.view3d
     const brush = this.inputs.brush.getValue()
 
-    if (toolmode instanceof BVHToolMode) {
+    if (toolmode instanceof PaintToolModeBase) {
       //the pbvh toolmode is responsible for drawing brush circle,
       //make sure it has up to date info for that
       toolmode.mpos[0] = x
@@ -1178,7 +1284,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     const toolmode = ctx.toolmode
     const view3d = ctx.view3d
 
-    if (toolmode instanceof BVHToolMode) {
+    if (toolmode instanceof PaintToolModeBase) {
       toolmode._radius = radius
     }
 

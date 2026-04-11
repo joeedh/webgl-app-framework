@@ -1338,6 +1338,7 @@ export class RenderBuffer {
 
 export class Texture {
   texture?: WebGLTexture
+  textureSlot?: number
   target: number
   createParams: {
     target?: number

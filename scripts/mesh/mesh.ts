@@ -58,7 +58,7 @@ import {SelMask} from '../editors/view3d/selectmode.js'
 import {BVH, BVHSettings} from '../util/bvh.js'
 import {drawMeshElements, genRenderMesh} from './mesh_draw.js'
 import {GridBase} from './mesh_grids.js'
-import {UVWrangler} from './unwrapping.js'
+import type {UVWrangler} from './unwrapping.js'
 import {setMeshClass, triangulateFace} from './mesh_tess.js'
 import {
   checkDispLayers,
@@ -68,16 +68,15 @@ import {
   onFileLoadDispVert,
   updateDispLayers,
 } from './mesh_displacement'
-import {IGridConstructor} from './mesh_grids.js'
+import type {IGridConstructor} from './mesh_grids.js'
 import type {View3D} from '../editors/view3d/view3d'
-//import type {View3D} from '../editors/view3d/view3d'
 import type {SceneObject} from '../sceneobject/sceneobject'
 //import {Utf8DecodeWorker} from '../extern/jszip/jszip'
-import {ToolContext} from '../core/context'
-import {Material} from '../core/material'
-import {IUniformsBlock, ShaderProgram} from '../webgl/webgl'
+import type {ToolContext} from '../core/context'
+import type {Material} from '../core/material'
+import type {IUniformsBlock, ShaderProgram} from '../webgl/webgl'
 import type {Scene} from '../scene/scene'
-import {StructReader} from '../path.ux/scripts/util/nstructjs'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -4794,65 +4793,6 @@ mesh.Mesh {
 
     this._fancyMeshes = {}
     this.smesh = this.wmesh = undefined
-  }
-
-  getUVWrangler(check = true, checkUvs = false) {
-    let update: boolean = !this.uvWrangler || !!(this.recalc & RecalcFlags.UVWRANGLER)
-
-    if (!check && this.uvWrangler) {
-      return this.uvWrangler
-    }
-
-    if (this._last_wr_loophash === undefined) {
-      checkUvs = true
-    }
-
-    const cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
-
-    let key = '' + this.loops.length + ':' + this.edges.length + ':' + this.faces.length
-    key += ':' + this.verts.length + ':' + cd_uv
-
-    if (checkUvs && cd_uv.exists) {
-      const hash = new util.HashDigest()
-
-      for (const l of this.loops) {
-        const uv = cd_uv.get(l).uv
-
-        hash.add(uv[0] * 8196)
-        hash.add(uv[1] * 8196)
-      }
-
-      this._last_wr_loophash = hash.get()
-    }
-
-    key += ':' + this._last_wr_loophash
-
-    update = update || key !== this._last_wr_key
-
-    if (update) {
-      this.recalc &= ~RecalcFlags.UVWRANGLER
-      this._last_wr_key = key
-
-      console.log('making new UVWrangler', key)
-
-      if (this.uvWrangler) {
-        this.uvWrangler.destroy(this)
-      }
-
-      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv)
-      this.uvWrangler.buildIslands()
-    }
-
-    return this.uvWrangler
-  }
-
-  destroyUVWrangler() {
-    if (this.uvWrangler) {
-      this.uvWrangler.destroy(this)
-    }
-
-    this.uvWrangler = undefined
-    return this
   }
 
   getLastBVH() {

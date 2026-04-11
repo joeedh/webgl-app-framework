@@ -34,17 +34,17 @@ import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils'
 import {Icons} from '../icon_enum'
 import {NoneWidget} from './widgets/widget_tools'
 import {View3DFlags, CameraModes} from './view3d_base'
-import {Library} from '../../core/lib_api'
+import type {Library} from '../../core/lib_api'
 import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
-import {SceneObject} from '../../sceneobject/sceneobject'
+import type {SceneObject} from '../../sceneobject/sceneobject'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw'
 import {WidgetBase} from './widgets/widgets'
 import {OptionalIfNot} from '../../util/optionalIf'
-import {ViewContext} from '../../core/context'
+import type {ViewContext} from '../../core/context'
 import {Mesh} from '../../mesh/mesh'
 import {BusMessage} from '../../core/bus'
-import {Number3} from '../../path.ux/scripts/path-controller/old_types/controller'
-import {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import type {Number3} from '../../path.ux/scripts/path-controller/old_types/controller'
+import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export interface ITempText {
   co: Vector3
@@ -139,7 +139,7 @@ export function initWebGL() {
   loadShaders(window._gl)
   textsprite.defaultFont.update(_gl!)
 
-  getBlueMask(_gl)
+  getBlueMask(_gl!)
 
   canvas.addEventListener(
     'webglcontextrestored',

@@ -1,5 +1,5 @@
 import {BrushProperty, PaintSample, PaintSampleProperty} from './pbvh_base'
-import {BVHToolMode} from './pbvh'
+import type {BVHToolMode} from './pbvh'
 import * as util from '../../../util/util.js'
 import {
   BoolProperty,
@@ -30,11 +30,12 @@ import {ProceduralTex} from '../../../texture/proceduralTex'
 const _id: number = 0
 
 import {GPUTile, tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js'
-import {ToolContext, ViewContext} from '../../../core/context'
-import {SceneObject} from '../../../sceneobject/sceneobject'
-import {View3D} from '../view3d'
+import type {ToolContext, ViewContext} from '../../../core/context'
+import type {SceneObject} from '../../../sceneobject/sceneobject'
+import type {View3D} from '../view3d'
 import {Loop, Mesh, UVLayerElem} from '../../../mesh/mesh'
 import {AttrRef, ColorLayerElem} from '../../../mesh/mesh_customdata'
+import { getUVWrangler } from '../../../mesh/unwrapping'
 
 declare global {
   let DDD: number
@@ -358,7 +359,7 @@ export class TexPaintOp extends ToolOp<
     }
 
     //check that UV island mesh is up to date
-    mesh.getUVWrangler(true, true)
+    getUVWrangler(mesh, true, true)
 
     for (const ps of this.inputs.samples) {
       this.execDot(ctx, ps)
@@ -415,7 +416,7 @@ export class TexPaintOp extends ToolOp<
 
     fbo = texture._drawFBO!
 
-    const wrangler = mesh.getUVWrangler(false, false)!
+    const wrangler = getUVWrangler(mesh, false, false)!
     //console.log(wrangler);
 
     const gltex = texture.getGlTex(gl)
@@ -972,8 +973,8 @@ export class TexPaintOp extends ToolOp<
         console.error('BLUR')
 
         sm.program.defines.BLUR_MODE = null
-        texture.glTex.texture_slot = undefined
-        this.blurfbo.fbo.texColor.texture_slot = undefined
+        texture.glTex!.textureSlot = undefined
+        this.blurfbo.fbo.texColor!.textureSlot = undefined
 
         console.log('TEXTURE', texture.glTex)
 
@@ -1091,7 +1092,7 @@ export class TexPaintOp extends ToolOp<
     const mesh = ctx.mesh
     if (mesh) {
       //check that UV island mesh is up to date
-      mesh.getUVWrangler(true, true)
+      getUVWrangler(mesh, true, true)
     }
 
     return super.modalStart(ctx)

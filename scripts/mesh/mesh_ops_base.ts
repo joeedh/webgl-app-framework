@@ -5,7 +5,7 @@ import {Mesh, MeshDrawFlags, MeshFlags, MeshTypes, Vertex} from './mesh.js'
 import {View3DOp} from '../editors/view3d/view3d_ops.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
 import {BlockLoader, DataBlock, DataRef} from '../core/lib_api'
-import {ToolContext} from '../core/context.js'
+import type {ToolContext} from '../core/context.js'
 
 /**
  *

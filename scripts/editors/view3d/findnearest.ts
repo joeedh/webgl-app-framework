@@ -1,6 +1,6 @@
 /*view picking functionality*/
 
-import {ViewContext} from '../../core/context.js'
+import type {ViewContext} from '../../core/context.js'
 import {IUniformsBlock} from '../../webgl/webgl.js'
 import {Mesh} from '../../mesh/mesh.js'
 import {SceneObject} from '../../sceneobject/sceneobject.js'

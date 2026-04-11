@@ -7,15 +7,13 @@ import {
   FloatProperty,
   FlagProperty,
   ToolOp,
-  UndoFlags,
   ReportProperty,
   ListProperty,
 } from '../path.ux/scripts/pathux.js'
-import {MeshTypes, MeshFlags, LogContext} from './mesh_base.js'
-import * as util from '../util/util.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js'
+import {MeshTypes, MeshFlags} from './mesh_base.js'
+import {Vector3} from '../util/vectormath.js'
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js'
-import {DataRefListProperty, DataRefProperty} from '../core/lib_api.js'
+import {DataRefProperty} from '../core/lib_api.js'
 import {Icons} from '../editors/icon_enum.js'
 import {MeshOp} from './mesh_ops_base.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'

@@ -47,103 +47,26 @@ import './pbvh_sculptops'
 import './pbvh_base'
 import './pbvh_texpaint'
 
-import {calcConcave, getBVH} from './pbvh_base'
+import {calcConcave, getBVH, PaintToolModeBase} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
 import {IUniformsBlock, ShaderProgram, Texture} from '../../../webgl/webgl.js'
 import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
 import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
-import {enumKeys, enumValues} from '../../../util/enum-utils'
+import {enumValues} from '../../../util/enum-utils'
 import {ParamVert} from '../../../mesh/mesh_paramizer'
-import {SceneObject} from '../../../sceneobject/sceneobject'
-import {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
-import {Scene} from '../../../scene/scene'
-import { StructReader } from '../../../path.ux/scripts/util/nstructjs'
+import type {SceneObject} from '../../../sceneobject/sceneobject'
+import type {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
+import type {Scene} from '../../../scene/scene'
+import {StructReader} from '../../../path.ux/scripts/util/nstructjs'
+import type {View3D} from '../view3d'
 
-export class BVHToolMode extends ToolMode {
-  mdown = false
-  lastFaceSet: number
-  editDisplaced: boolean
-  drawDispDisField: boolean
-  reprojectCustomData: boolean
-  sharedBrushRadius: number
-  gridEditDepth: number
-  enableMaxEditDepth: boolean
-  dynTopo: any
-  mpos: Vector2
-  _radius: number | undefined
-  debugSphere: Vector3
-  drawFlat: boolean
-  drawMask: boolean
-  _last_cd_mask: number
-  tool: number
-  slots: any
-  _brush_lines: any[]
-  drawColPatches: boolean
-  symmetryAxes: number
-  drawBVH: boolean
-  drawCavityMap: boolean
-  drawNodeIds: boolean
-  drawWireframe: boolean
-  drawValidEdges: boolean
-  _last_bvh_key: string
-  _last_hqed: string
-  view3d: any
+export class BVHToolMode extends PaintToolModeBase {
   _apiDynTopo: any
-  _last_enable_mres: string | undefined
-  _last_draw_key: string | undefined
 
   constructor(manager: any) {
     super(manager)
-
-    this.lastFaceSet = 1
-
-    this.editDisplaced = false
-    this.drawDispDisField = false
-    this.reprojectCustomData = false
-
-    this.sharedBrushRadius = 55
-
-    this.gridEditDepth = 2
-    this.enableMaxEditDepth = false
-
-    this.dynTopo = new DynTopoSettings()
-    //this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
-
-    this.mpos = new Vector2()
-    this._radius = undefined
-
-    this.debugSphere = new Vector3()
-
-    this.drawFlat = false
-    this.drawMask = true
-    this._last_cd_mask = -1
-
-    this.flag |= WidgetFlags.ALL_EVENTS
-
-    this.tool = SculptTools.CLAY
-    this.slots = {}
-
-    this._brush_lines = []
-
-    for (const k in SculptTools) {
-      const tool = SculptTools[k]
-      this.slots[tool] = new PaintToolSlot(tool as unknown as SculptTools)
-    }
-
-    this.drawColPatches = false
-    this.symmetryAxes = 1
-    this.drawBVH = false
-    this.drawCavityMap = false
-    this.drawNodeIds = false
-    this.drawWireframe = false
-    this.drawValidEdges = true
-
-    this._last_bvh_key = ''
-    this._last_hqed = ''
-
-    this.view3d = manager !== undefined ? manager.view3d : undefined
 
     this._apiDynTopo = new Proxy(this.dynTopo, {
       get: (target: any, key: string | symbol): any => {
@@ -348,7 +271,9 @@ export class BVHToolMode extends ToolMode {
     row.tool("brush.load_default(dataPath='scene.tools.sculpt.brush')")
 
     const col = container.col()
-    let strip, panel, panel2
+    let strip
+    let panel
+    let panel2
 
     const settings = col.panel('Brush Settings')
     strip = settings.row().strip()
@@ -654,7 +579,7 @@ export class BVHToolMode extends ToolMode {
       const pbvh = this.dataref
       const mesh = pbvh.ctx.mesh
 
-      if (mesh && mesh.bvh && !mesh.bvh.dead) {
+      if (mesh?.bvh && !mesh.bvh.dead) {
         const bvh = mesh.bvh
 
         for (const node of bvh.nodes) {
@@ -707,26 +632,18 @@ export class BVHToolMode extends ToolMode {
     ])
   }
 
-  getBrush(tool: number = this.tool): any {
-    if (!this.ctx) {
-      return undefined
-    }
-
-    return this.slots[tool].resolveBrush(this.ctx)
-  }
-
-  drawBrush(view3d: any): void {
+  drawBrush(view3d: View3D): void {
     for (const l of this._brush_lines) {
       l.remove()
     }
     this._brush_lines.length = 0
 
     const drawCircle = (x: number, y: number, r: number, mat: Matrix4 = new Matrix4(), z: number = 0.0): void => {
-      const p = new Vector3(),
-        lastp = new Vector3()
+      const p = new Vector3()
+      const lastp = new Vector3()
       const steps = Math.max(Math.ceil((Math.PI * r * 2) / 20), 8)
-      let th = -Math.PI,
-        dth = (2.0 * Math.PI) / (steps - 1)
+      let th = -Math.PI
+      const dth = (2.0 * Math.PI) / (steps - 1)
 
       r /= devicePixelRatio
 
@@ -744,7 +661,7 @@ export class BVHToolMode extends ToolMode {
 
         p.multVecMatrix(mat)
         if (i > 0) {
-          this._brush_lines.push(view3d.overdraw.line(lastp, p, 'red'))
+          this._brush_lines.push(view3d.overdraw!.line(lastp, p, 'red'))
         }
         lastp.load(p)
       }
@@ -761,8 +678,8 @@ export class BVHToolMode extends ToolMode {
     drawCircle(this.mpos[0], this.mpos[1], r)
   }
 
-  getBVH(mesh: any, useGrids: boolean = true): any {
-    return mesh.getLastBVH(false)
+  getBVH(mesh: Mesh, useGrids: boolean = true): BVH {
+    return mesh.getLastBVH()
   }
 
   on_mousemove(e: any, x: number, y: number, was_touch: boolean): any {
@@ -817,7 +734,7 @@ export class BVHToolMode extends ToolMode {
           const cd_fset = getFaceSets(mesh, true)
 
           const isect = bvh.castRay(origin, view)
-          if (isect && isect.tri && isect.tri.l1) {
+          if (isect?.tri?.l1) {
             const f = isect.tri.l1.f
             drawFaceSet = this.lastFaceSet = Math.abs((f.customData[cd_fset] as IntElem).value)
           }
@@ -944,7 +861,7 @@ export class BVHToolMode extends ToolMode {
 
     //hackishly update triangle count
     //in the UI
-    if (this.ctx.mesh && this.ctx.mesh.bvh && this.ctx.mesh.bvh.cd_grid.i >= 0) {
+    if (this.ctx.mesh?.bvh && this.ctx.mesh.bvh.cd_grid.i >= 0) {
       const mesh = this.ctx.mesh
       const bvh = this.ctx.mesh.bvh
       let tottri = 0
@@ -959,7 +876,7 @@ export class BVHToolMode extends ToolMode {
       mesh.uiTriangleCount = tottri
     }
 
-    if (!this.ctx || !this.ctx.object || !(this.ctx.object.data instanceof Mesh)) {
+    if (!this.ctx?.object || !(this.ctx.object.data instanceof Mesh)) {
       return this
     }
 
@@ -1003,7 +920,7 @@ export class BVHToolMode extends ToolMode {
     }
     this._brush_lines = []
 
-    if (!this.ctx || !this.ctx.object) {
+    if (!this.ctx?.object) {
       return
     }
     const ctx = this.ctx
@@ -1026,14 +943,14 @@ export class BVHToolMode extends ToolMode {
   }
 
   on_drawend(view3d: any, gl: WebGL2RenderingContext): void {
-    if (!this.ctx || !this.ctx.scene) {
+    if (!this.ctx?.scene) {
       return
     }
 
     this.drawBrush(view3d)
 
-    const ctx = this.ctx,
-      scene = ctx.scene
+    const ctx = this.ctx
+    const scene = ctx.scene
 
     const uniforms: IUniformsBlock = {
       projectionMatrix: view3d.activeCamera.rendermat,
@@ -1159,7 +1076,7 @@ export class BVHToolMode extends ToolMode {
 
       uniforms.object_id = ob.lib_id
 
-      const mesh = ob.data
+      const mesh = ob.data as Mesh
       const bvh = this.getBVH(mesh)
 
       //console.log("BVH", bvh.nodes.length);
@@ -1188,7 +1105,7 @@ export class BVHToolMode extends ToolMode {
     mesh: Mesh
   ): boolean {
     //return true;
-    if (!(this.ctx && this.ctx.object && object === this.ctx.object)) {
+    if (!(this.ctx?.object && object === this.ctx.object)) {
       return false
     }
 
@@ -1567,7 +1484,7 @@ export class BVHToolMode extends ToolMode {
     if (isDeforming) {
       const {data, dimen} = bvh.makeNodeDefTexture()
 
-      if (!bvh.glLeafTex || bvh.glLeafTex.createParams.width !== dimen) {
+      if (bvh.glLeafTex?.createParams.width !== dimen) {
         if (bvh.glLeafTex) {
           bvh.glLeafTex.destroy(gl)
         }
@@ -1605,9 +1522,9 @@ export class BVHToolMode extends ToolMode {
 
       buildNodes(node)
 
-      let totvert = 0,
-        totedge = 0,
-        tottri = 0
+      let totvert = 0
+      let totedge = 0
+      let tottri = 0
       let updateColors = false
       let updateUvs = false
       let haveColors = true //cd_color.i >= 0; //XXX todo: add support in shader code to handle no vcol data
@@ -1695,7 +1612,10 @@ export class BVHToolMode extends ToolMode {
 
       let vcos = island.tri_cos
       let vnos = island.tri_normals
-      let vuvs, vcolors, colormul, uvmul
+      let vuvs
+      let vcolors
+      let colormul
+      let uvmul
 
       if (cd_uv.i >= 0) {
         updateUvs = updateUvs || island.tri_uvs.dataUsed / 2 !== totvert
@@ -1757,8 +1677,8 @@ export class BVHToolMode extends ToolMode {
       const white = [1, 1, 1, 1]
 
       const displayers = mesh.verts.customData.getLayerSet('displace', false)
-      let cd_disp = new AttrRef<DispLayerVert>()
-      let cd_pvert = new AttrRef<ParamVert>()
+      const cd_disp = new AttrRef<DispLayerVert>()
+      const cd_pvert = new AttrRef<ParamVert>()
 
       if (displayers && displayers.length > 0) {
         cd_disp.i = displayers[displayers.length - 1].index
@@ -1815,7 +1735,7 @@ export class BVHToolMode extends ToolMode {
 
             if (isDeforming) {
               const n3 = cd_node.get(v).node
-              if (!n3 || !n3.boxvdata) {
+              if (!n3?.boxvdata) {
                 console.warn('eek!', v, n3)
                 vcos[j++] = 0.0
                 vcos[j++] = 0.0
@@ -1846,7 +1766,7 @@ export class BVHToolMode extends ToolMode {
             if (isDeforming) {
               const n3 = cd_node.get(v).node
 
-              if (!n3 || !n3.boxvdata) {
+              if (!n3?.boxvdata) {
                 if (Math.random() > 0.97) {
                   console.warn('eek!', v, n3)
                 }
@@ -1957,9 +1877,9 @@ export class BVHToolMode extends ToolMode {
         const li = 0
 
         for (let i = 0; i < lmap.length; i += 3) {
-          const i1 = lmap[i] + base,
-            i2 = lmap[i + 1] + base,
-            i3 = lmap[i + 2] + base
+          const i1 = lmap[i] + base
+          const i2 = lmap[i + 1] + base
+          const i3 = lmap[i + 2] + base
 
           idx[ti++] = i1
           idx[ti++] = i2
@@ -2011,7 +1931,12 @@ export class BVHToolMode extends ToolMode {
 
       let sm = node.drawData
 
-      let primc1, primc2, primc3, primc4, primc5, primc6
+      let primc1
+      let primc2
+      let primc3
+      let primc4
+      let primc5
+      let primc6
       let primuv
 
       if (!sm) {
@@ -2336,7 +2261,9 @@ export class BVHToolMode extends ToolMode {
           tri_cos[i++] = t3[1]
           tri_cos[i++] = t3[2]
 
-          let no1, no2, no3
+          let no1
+          let no2
+          let no3
 
           if (!drawFlat && nsmooth !== undefined) {
             no1 = nsmooth(t1)
@@ -2367,7 +2294,9 @@ export class BVHToolMode extends ToolMode {
           tri_ids[i++] = id
 
           if (haveUvs) {
-            let uv1, uv2, uv3
+            let uv1
+            let uv2
+            let uv3
 
             if (have_grids) {
               uv1 = tv1.customData.get(cd_uv).uv
@@ -2376,10 +2305,10 @@ export class BVHToolMode extends ToolMode {
             } else {
               const ltris = mesh._ltris
 
-              let l1,
-                l2,
-                l3,
-                bad = false
+              let l1
+              let l2
+              let l3
+              let bad = false
 
               if (tri.l1) {
                 l1 = tri.l1
@@ -2436,9 +2365,9 @@ export class BVHToolMode extends ToolMode {
             }
           }
 
-          let cv1 = 1.0,
-            cv2 = 1.0,
-            cv3 = 1.0
+          let cv1 = 1.0
+          let cv2 = 1.0
+          let cv3 = 1.0
 
           if (drawCavityMap) {
             cv1 = vcavity(tri.v1)
@@ -2480,7 +2409,7 @@ export class BVHToolMode extends ToolMode {
             tc2.load(c2)
             tc3.load(c3)
 
-            for (let j of IndexRange(3)) {
+            for (const j of IndexRange(3)) {
               tc1[j] *= cv1
               tc2[j] *= cv2
               tc3[j] *= cv3
@@ -2830,8 +2759,8 @@ export class BVHToolMode extends ToolMode {
 
           if (drawWireframe) {
             //uniforms.polygonOffset = window.d || 10.0;
-            let off = uniforms.polygonOffset ?? 0.0,
-              old = off
+            let off = uniforms.polygonOffset ?? 0.0
+            const old = off
             off = off !== 0.0 ? off * 2.0 : 0.2
 
             uniforms.polygonOffset = off

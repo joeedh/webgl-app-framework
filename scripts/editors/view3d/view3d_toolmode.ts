@@ -11,17 +11,17 @@ import '../../webgl/textsprite.js'
 
 import messageBus, {BusTriggers} from '../../core/bus'
 import type {ViewContext} from '../../core/context'
-import {SceneObject} from '../../sceneobject/sceneobject'
-import {Scene} from '../../scene/scene'
+import type {SceneObject} from '../../sceneobject/sceneobject'
+import type {Scene} from '../../scene/scene'
 import type {BlockLoader, BlockLoaderAddUser} from '../../core/lib_api'
 import {StandardTools} from '../../sceneobject/stdtools'
 import type {AppState} from '../../core/appstate'
 import {View3D} from '../all'
 import {IUniformsBlock, ShaderProgram} from '../../webgl/webgl'
-import {Mesh} from '../../mesh/mesh'
-import {MeshDrawInterface} from './view3d_draw'
-import {BoundingBox} from './view3d_utils'
-import {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import type {Mesh} from '../../mesh/mesh'
+import type {MeshDrawInterface} from './view3d_draw'
+import type {BoundingBox} from './view3d_utils'
+import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export interface IToolModeDefine {
   name: string

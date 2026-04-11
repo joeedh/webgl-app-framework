@@ -1,3 +1,4 @@
+import {ImageBus} from './ImageBus'
 import {DataBlockBrowser, Editor, EditorSideBar, HotKey, VelPan} from '../editor_base'
 import {Icons} from '../icon_enum.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js'
@@ -30,7 +31,7 @@ import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../.
 import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../webgl/simplemesh'
 import {UVWrangler} from '../../mesh/unwrapping.js'
 import {Shaders} from '../../shaders/shaders.js'
-import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef, DataRefProperty} from '../../core/lib_api'
+import {type BlockLoader, BlockLoaderAddUser, DataBlock, DataRef, DataRefProperty} from '../../core/lib_api'
 
 import './uv_selectops.js'
 import './uv_transformops.js'
@@ -38,9 +39,9 @@ import './uv_ops.js'
 import {AttrRef, UVFlags, UVLayerElem} from '../../mesh/mesh_customdata'
 import {resetUnwrapSolvers} from '../../mesh/mesh_uvops.js'
 import bus, {BusTriggers} from '../../core/bus'
-import {Loop, Mesh} from '../../mesh/mesh'
-import {ToolContext, ViewContext} from '../../core/context'
-import {IUniformsBlock, ShaderProgram} from '../../webgl'
+import type {Loop, Mesh} from '../../mesh/mesh'
+import type {ToolContext, ViewContext} from '../../core/context'
+import type {IUniformsBlock, ShaderProgram} from '../../webgl'
 import {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 const _projtmp = new Vector2()
@@ -780,7 +781,7 @@ export class UVEditor extends UIBase<ViewContext> {
 
     const wr = new UVWrangler(mesh, mesh.faces.selected.editable, cd_uv)
     wr.buildIslands()
-    //let wr = mesh.getUVWrangler(true, true);
+    //let wr = getUVWrangler(mesh, true, true);
 
     const lhighlight = mesh.loops.highlight
     const lactive = mesh.loops.active
@@ -1326,13 +1327,6 @@ export class SetImageTypeOp extends ImageBlockOp<{}, {}> {
 ToolOp.register(SetImageTypeOp)
 
 export class ImageEditor extends Editor {
-  static busDefine() {
-    return {
-      events  : [],
-      triggers: ['resetDrawLines', 'flagRedraw', 'addDrawLine'],
-    } as const
-  }
-
   uvEditor: UVEditor
   subframe: Container<ViewContext>
   sidebar: EditorSideBar
@@ -1363,7 +1357,7 @@ export class ImageEditor extends Editor {
     this.rebuildLayout()
   }
 
-  onTrigger(type: BusTriggers<typeof ImageEditor>, data: any) {
+  onTrigger(type: BusTriggers<typeof ImageBus>, data: any) {
     switch (type) {
       case 'resetDrawLines': {
         this.uvEditor.resetDrawLines()
@@ -1380,14 +1374,14 @@ export class ImageEditor extends Editor {
   }
 
   on_area_active() {
-    bus.addEmitter(this, ImageEditor)
+    bus.addEmitter(this, ImageBus)
   }
   on_area_inactive() {
-    bus.removeEmitter(this, ImageEditor)
+    bus.removeEmitter(this, ImageBus)
   }
   on_destroy() {
-    if (bus.hasEmitter(this, ImageEditor)) {
-      bus.removeEmitter(this, ImageEditor)
+    if (bus.hasEmitter(this, ImageBus)) {
+      bus.removeEmitter(this, ImageBus)
     }
   }
 

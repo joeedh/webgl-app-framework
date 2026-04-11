@@ -2,6 +2,7 @@
   "scripts": {
     "build": "node esbuilder.js",
     "watch": "node esbuilder.js --watch",
+    "cyclecheck": "node circular-ref-finder/dist/index.js scripts/core/AppState.ts",
     "typecheck": "npx tsgo",
     "watch-typecheck": "npx tsgo --watch",
     "serv": "node serv.js",

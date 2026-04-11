@@ -17,7 +17,7 @@ import {DependSocket} from '../../../core/graphsockets.js'
 import {css2color} from '../../../path.ux/scripts/core/ui_base.js'
 import type {View3D} from '../view3d.js'
 import {OptionalIf} from '../../../util/optionalIf.js'
-import {ToolContext, ViewContext} from '../../../core/context.js'
+import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {util, math, ToolOp, PropertySlots, IVector4} from '../../../path.ux/pathux.js'
 import {SelMask} from '../selectmode.js'
 

@@ -28,7 +28,7 @@ export class SceneObjectData<
   OutputSet extends INodeSocketSet = {},
 > extends DataBlock<InputSet & {depend: DependSocket}, OutputSet & {depend: DependSocket}> {
   material?: Material = undefined
-  materials: (Material | undefined)[] = []
+  materials: Array<Material | undefined> & {active?: Material} = []
   usesMaterial = false
 
   // update generation

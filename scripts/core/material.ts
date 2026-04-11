@@ -4,8 +4,8 @@ import {nstructjs, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts
 import {Icons} from '../editors/icon_enum.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {DiffuseNode, GeometryNode, OutputNode} from '../shadernodes/shader_nodes.js'
-import {ToolContext} from './context'
-import { StructReader } from '../path.ux/scripts/util/nstructjs'
+import type {ToolContext} from './context'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 export function makeDefaultMaterial() {
   const mat = new Material()

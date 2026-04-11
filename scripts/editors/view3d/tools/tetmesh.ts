@@ -5,8 +5,8 @@ import {SelMask} from '../selectmode.js'
 
 import '../../../tet/tet_ops.js'
 import '../../../tet/tet_selectops.js'
-import {ViewContext} from '../../../core/context.js'
-import {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
+import type {ViewContext} from '../../../core/context.js'
+import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
 
 export class TetMeshTool extends ToolMode {
   constructor(ctx: ViewContext) {

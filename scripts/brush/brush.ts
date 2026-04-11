@@ -11,9 +11,9 @@ import {
   TexUserModes,
 } from '../texture/proceduralTex'
 import {nstructjs, Number4} from '../path.ux/pathux.js'
-import {Scene} from '../scene/scene.js'
-import {ToolContext} from '../core/context'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
+import type {Scene} from '../scene/scene.js'
+import type {ToolContext} from '../core/context'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 function feq(a: number, b: number) {
   return Math.abs(a - b) < 0.00001

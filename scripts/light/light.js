@@ -34,6 +34,9 @@ export const LightTypes = {
 }
 
 export class Light extends SceneObjectData {
+  /** @type { number} */
+  
+  type
   constructor() {
     super()
 
@@ -75,12 +78,12 @@ Light {
   `
   )
 
+  /** @returns {[Vector3, Vector3]} */
   getBoundingBox() {
     let r = this.inputs.radius.getValue()
     r = Math.max(r, 0.1)
 
-    let aabb = [new Vector3().addScalar(-r), new Vector3().addScalar(r)]
-    return aabb
+    return [new Vector3().addScalar(-r), new Vector3().addScalar(r)]
   }
 
   draw(view3d, gl, uniforms, program, object) {

@@ -87,7 +87,11 @@ export function composeObjectMatrix(
   return mat
 }
 
-export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> extends DataBlock<
+export class SceneObject<
+  OBDATA extends SceneObjectData<any, any> = SceneObjectData<any, any>,
+  InputSet extends {} = {},
+  OutputSet extends {} = {},
+> extends DataBlock<
   InputSet & {
     depend: DependSocket
     rot: Vec3Socket
@@ -103,17 +107,17 @@ export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> ex
     matrix: Matrix4Socket
   }
 > {
-  data: SceneObjectData<any, any>
+  data: OBDATA
   flag: ObjectFlags
 
   // update generation
   updateGen?: number
 
-  constructor(data?: SceneObjectData<any, any>) {
+  constructor(data?: OBDATA) {
     super()
 
     // is assigned after datablock instantiation
-    this.data = data as unknown as SceneObjectData
+    this.data = data as unknown as OBDATA
     this.flag = 0
 
     if (data) {
@@ -341,7 +345,7 @@ SceneObject {
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
-    this.data = getblock_addUser(this.data, this) as SceneObjectData
+    this.data = getblock_addUser(this.data, this) as OBDATA
   }
 
   draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram = Shaders.BasicLitMesh): void {

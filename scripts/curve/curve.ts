@@ -59,10 +59,10 @@ export class WalkRet {
 
 export * from './curve_knot'
 import {KnotDataLayer, KnotFlags, getKnot} from './curve_knot'
-import {IUniformsBlock, ShaderProgram} from '../webgl/webgl.js'
-import {ViewContext} from '../core/context.js'
+import type {IUniformsBlock, ShaderProgram} from '../webgl/webgl.js'
+import type {ViewContext} from '../core/context.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 let WalkRets = util.cachering.fromConstructor(WalkRet, 1024)
 

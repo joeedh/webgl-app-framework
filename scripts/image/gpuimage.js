@@ -1,4 +1,4 @@
-import {FBO} from '../webgl/fbo.js';
+import {FBO} from '../webgl/fbo';
 
 export class GPUTile {
   constructor(fbo, width, height=width) {

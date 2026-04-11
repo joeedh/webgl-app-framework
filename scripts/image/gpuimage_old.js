@@ -1,5 +1,5 @@
 import {Texture} from '../webgl/webgl.js';
-import {FBO} from '../webgl/fbo.js';
+import {FBO} from '../webgl/fbo';
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../webgl/simplemesh.ts';
 
 export const GPUTileFlags = {

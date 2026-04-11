@@ -5,12 +5,12 @@ import {MeshTypes, MeshFlags, MAX_FACE_VERTS} from './mesh_base.js'
 import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_customdata.js'
 import {BVH, BVHNode, BVHTri} from '../util/bvh.js'
 import {CustomDataElem} from './customdata.js'
-import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
+import {Edge, Face, Loop, Mesh, RecalcFlags, Vertex} from './mesh'
 import {INumberList} from '../util/polyfill'
 import bus from '../core/bus.js'
-import {ImageEditor} from '../editors/image/ImageEditor'
 import type {SolveTri} from './unwrapping_solve.js'
 import {OptionalIf, OptionalIfNot} from '../util/optionalIf.js'
+import {ImageBus} from '../editors/image/ImageBus.js'
 
 const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
@@ -800,7 +800,9 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
         continue
       }
 
-      let v1: Vertex | undefined, v2: Vertex | undefined, vcent: Vertex | undefined
+      let v1: Vertex | undefined
+      let v2: Vertex | undefined
+      let vcent: Vertex | undefined
 
       for (const e2 of v.edges) {
         const v3 = e2.otherVertex(v)
@@ -1026,12 +1028,12 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
   }
 
   packIslands(ignorePinnedIslands = false, islandsWithSelLoops = false) {
-    bus.sendTrigger(ImageEditor, 'resetDrawLines')
-    bus.sendTrigger(ImageEditor, 'flagRedraw')
+    bus.sendTrigger(ImageBus, 'resetDrawLines')
+    bus.sendTrigger(ImageBus, 'flagRedraw')
 
     function drawline(v1: INumberList, v2: INumberList, color = 'red'): void {
-      bus.sendTrigger(ImageEditor, 'addDrawLine', [v1, v2, color])
-      bus.sendTrigger(ImageEditor, 'flagRedraw')
+      bus.sendTrigger(ImageBus, 'addDrawLine', [v1, v2, color])
+      bus.sendTrigger(ImageBus, 'flagRedraw')
     }
 
     const cd_corner = this.cd_corner
@@ -1056,8 +1058,8 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
       let th = 0.0
       const dth = (Math.PI * 0.5) / steps
 
-      let min = 1e17,
-        minth = 0.0
+      let min = 1e17
+      let minth = 0.0
       for (let i = 0; i < steps; i++, th += dth) {
         //th += (Math.random()-0.5)*dth;
 
@@ -1136,8 +1138,8 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
 
       const margin = 0.001
 
-      let min = 1e17,
-        island
+      let min = 1e17
+      let island
       for (const island2 of islands) {
         this.updateAABB(island2)
 
@@ -1534,4 +1536,63 @@ export function voxelUnwrap(
   wn.buildIslands()
   wn.packIslands()
   wn.finish()
+}
+
+export function getUVWrangler(mesh: Mesh, check = true, checkUvs = false) {
+  let update: boolean = !mesh.uvWrangler || !!(mesh.recalc & RecalcFlags.UVWRANGLER)
+
+  if (!check && mesh.uvWrangler) {
+    return mesh.uvWrangler
+  }
+
+  if (mesh._last_wr_loophash === undefined) {
+    checkUvs = true
+  }
+
+  const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+
+  let key = '' + mesh.loops.length + ':' + mesh.edges.length + ':' + mesh.faces.length
+  key += ':' + mesh.verts.length + ':' + cd_uv
+
+  if (checkUvs && cd_uv.exists) {
+    const hash = new util.HashDigest()
+
+    for (const l of mesh.loops) {
+      const uv = cd_uv.get(l).uv
+
+      hash.add(uv[0] * 8196)
+      hash.add(uv[1] * 8196)
+    }
+
+    mesh._last_wr_loophash = hash.get()
+  }
+
+  key += ':' + mesh._last_wr_loophash
+
+  update = update || key !== mesh._last_wr_key
+
+  if (update) {
+    mesh.recalc &= ~RecalcFlags.UVWRANGLER
+    mesh._last_wr_key = key
+
+    console.log('making new UVWrangler', key)
+
+    if (mesh.uvWrangler) {
+      mesh.uvWrangler.destroy(mesh)
+    }
+
+    mesh.uvWrangler = new UVWrangler(mesh, mesh.faces, cd_uv)
+    mesh.uvWrangler.buildIslands()
+  }
+
+  return mesh.uvWrangler
+}
+
+export function destroyUVWrangler(mesh: Mesh) {
+  if (mesh.uvWrangler) {
+    mesh.uvWrangler.destroy(mesh)
+  }
+
+  mesh.uvWrangler = undefined
+  return mesh
 }

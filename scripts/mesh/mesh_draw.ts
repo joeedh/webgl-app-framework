@@ -10,7 +10,7 @@ import {GridBase} from './mesh_grids'
 import {getFaceSetColor, getFaceSetsAttr} from './mesh_facesets'
 import type {IUniformsBlock, ShaderProgram} from '../webgl/webgl'
 import type {AttrRef, ColorLayerElem, ElementList, FaceSetElem, Mesh} from './mesh'
-import {ViewContext} from '../core/context.js'
+import type {ViewContext} from '../core/context.js'
 import type {View3D} from '../editors/all.js'
 
 export function genRenderMesh(

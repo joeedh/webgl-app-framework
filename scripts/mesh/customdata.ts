@@ -4,7 +4,7 @@ import {EmptyCDArray, ICustomDataCapable} from './mesh_base.js'
 import {Icons} from '../editors/icon_enum.js'
 import {CDElemArray} from './mesh_base.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import {Element} from './mesh_types'
+import type {Element} from './mesh_types'
 
 /* @deprecated */
 export type CDRef<Type> = number

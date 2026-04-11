@@ -300,9 +300,9 @@ export const SceneRecalcFlags = {
 }
 
 import messageBus from '../core/bus.js'
-import {INodeSocketSet} from '../core/graph'
-import {ToolContext, ViewContext} from '../core/context'
-import { StructReader } from '../path.ux/scripts/util/nstructjs';
+import type {INodeSocketSet} from '../core/graph'
+import type  {ToolContext, ViewContext} from '../core/context'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 export class Scene<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends DataBlock<
   InputSet & {},
@@ -465,10 +465,13 @@ propIslandOnly : bool;
     const ret = (function* () {
       for (const ob of this2.objects) {
         if (ob.data instanceof Light) {
-          yield ob
+          yield ob as SceneObject<Light>
         }
       }
-    })() as unknown as Iterable<Light> & {visible: Iterable<Light>; renderable: Iterable<Light>}
+    })() as unknown as Iterable<SceneObject<Light>> & {
+      visible: Iterable<SceneObject<Light>>
+      renderable: Iterable<SceneObject<Light>>
+    }
 
     ret.visible = (function* () {
       for (const ob of this2.objects) {
@@ -477,7 +480,7 @@ propIslandOnly : bool;
         }
 
         if (ob.data instanceof Light) {
-          yield ob
+          yield ob as SceneObject<Light>
         }
       }
     })()

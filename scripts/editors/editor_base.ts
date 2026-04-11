@@ -931,8 +931,8 @@ import type {ImageEditor} from './all'
 import type {ViewContext, ToolContext} from '../core/context'
 import messageBus from '../core/bus'
 import {areaclasses, IAreaConstructor} from '../path.ux/scripts/screen/area_base'
-import {StructReader} from '../path.ux/scripts/path-controller/old_types/util/nstructjs'
-import { ShaderNode } from '../shadernodes/shader_nodes';
+import type {StructReader} from '../path.ux/scripts/path-controller/old_types/util/nstructjs'
+import type {ShaderNode} from '../shadernodes/shader_nodes'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   const tools: IToolOpConstructor[] = []
@@ -1507,7 +1507,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
     if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'has_shader')) {
       const node = this.ctx.api.getValue<ShaderNode>(this.ctx, this.subpanel.dataPrefix + 'shader')
       if (node === undefined) {
-        this.ctx.error("Could not find shader node " + this.subpanel.dataPrefix + 'shader')
+        this.ctx.error('Could not find shader node ' + this.subpanel.dataPrefix + 'shader')
         loadUIData(this.subpanel, uidata)
         return
       }

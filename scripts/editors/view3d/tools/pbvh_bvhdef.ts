@@ -15,7 +15,7 @@ import {Mesh, MeshFlags, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
 import {BVHFlags, CDNodeInfo, IsectRet} from '../../../util/bvh.js'
 import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
-import {ViewContext} from '../../../core/context.js'
+import type {ViewContext} from '../../../core/context.js'
 import {GridBase} from '../../../mesh/mesh_grids.js'
 ;(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
   let boxverts: any[] = [

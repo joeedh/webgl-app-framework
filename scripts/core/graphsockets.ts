@@ -11,8 +11,8 @@ import {
   ToolProperty,
   Container,
 } from '../path.ux/scripts/pathux.js'
-import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import {ViewContext} from './context.js'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import type {ViewContext} from './context.js'
 import {NodeSocketType, SocketFlags, nodeSocket_api_uiname} from './graph.js'
 
 export class Matrix4Socket extends NodeSocketType<Matrix4> {
@@ -251,9 +251,8 @@ graph.Vec2Socket {
 
   value: Vector2
 
-  constructor(uiname?: string, flag?: number, default_value?: Vector2) {
+  constructor(uiname?: string, flag?: number, default_value?: Vector2 | number[]) {
     super(uiname, flag)
-
     this.value = new Vector2(default_value)
   }
 
@@ -319,7 +318,7 @@ graph.Vec3Socket {
 
   value: Vector3
 
-  constructor(uiname?: string, flag?: number, default_value?: Vector3) {
+  constructor(uiname?: string, flag?: number, default_value?: Vector3 | number[]) {
     super(uiname, flag)
 
     this.value = new Vector3(default_value)
@@ -389,9 +388,8 @@ graph.Vec4Socket {
 
   value: Vector4
 
-  constructor(uiname?: string, flag?: number, default_value?: Vector4) {
+  constructor(uiname?: string, flag?: number, default_value?: Vector4 | number[]) {
     super(uiname, flag)
-
     this.value = new Vector4(default_value)
   }
 
@@ -479,7 +477,7 @@ graph.RGBSocket {
     const def = sockstruct.color3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname)
 
     def.on('change', function (this: ToolProperty) {
-      (this.dataref as RGBSocket).graphUpdate(true)
+      ;(this.dataref as RGBSocket).graphUpdate(true)
     })
   }
 
@@ -512,8 +510,8 @@ graph.RGBASocket {
 }`
   )
 
-  constructor(uiname?: string, flag?: number, default_value = new Vector4([0.5, 0.5, 0.5, 1.0])) {
-    super(uiname, flag, default_value)
+  constructor(uiname?: string, flag?: number, default_value: Vector4 | number[] = [0.5, 0.5, 0.5, 1.0]) {
+    super(uiname, flag, new Vector4(default_value))
   }
 
   static nodedef() {
@@ -529,7 +527,7 @@ graph.RGBASocket {
     const def = sockstruct.color4('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname).noUnits()
 
     def.on('change', function (this: ToolProperty) {
-      (this.dataref as RGBASocket).graphUpdate(true)
+      ;(this.dataref as RGBASocket).graphUpdate(true)
     })
   }
 
@@ -578,7 +576,7 @@ graph.FloatSocket {
     const def = sockstruct.float('value', 'value', 'value').noUnits()
 
     def.on('change', function (this: ToolProperty) {
-      (this.dataref as FloatSocket).graphUpdate(true)
+      ;(this.dataref as FloatSocket).graphUpdate(true)
     })
   }
 
@@ -679,7 +677,7 @@ export class EnumSocket extends IntSocket {
   apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.enum('value', 'value', this.items, this.uiname).uiNames(this.uimap)
     def.on('change', function (this: ToolProperty) {
-      (this.dataref as EnumSocket).graphUpdate(true)
+      ;(this.dataref as EnumSocket).graphUpdate(true)
     })
   }
 

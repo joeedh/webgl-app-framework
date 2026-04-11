@@ -1,6 +1,5 @@
 import {Matrix4, Vector2} from '../util/vectormath.js'
-import {StringProperty, nstructjs, Vec2Property, ToolOp, UndoFlags, keymap} from '../path.ux/scripts/pathux.js'
-import {Icons} from './icon_enum.js'
+import {StringProperty, nstructjs, Vec2Property, ToolOp, UndoFlags} from '../path.ux/scripts/pathux.js'
 import * as util from '../util/util.js'
 
 export let VelPanFlags = {

@@ -1,4 +1,4 @@
-import {nstructjs, ToolProperty, PropTypes, EnumProperty, util} from '../path.ux/scripts/pathux.js'
+import {nstructjs, ToolProperty, EnumProperty, util} from '../path.ux/scripts/pathux.js'
 
 import {IDGen} from '../util/util.js'
 import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
@@ -10,7 +10,7 @@ import type {Collection} from '../scene/collection'
 import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {ToolContext} from './context.js'
 import type {Scene} from '../scene/scene.js'
-import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const BlockTypes = [] as IDataBlockConstructor[]
 

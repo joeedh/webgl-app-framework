@@ -1,33 +1,11 @@
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js'
-import {Editor} from '../editor_base.ts'
 import {nstructjs} from '../../path.ux/scripts/pathux.js'
-import {UIBase} from '../../path.ux/scripts/core/ui_base.js'
-import {Container} from '../../path.ux/scripts/core/ui.js'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
-import * as util from '../../util/util.js'
-import {DataRef} from '../../core/lib_api.js'
-import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js'
 import {AbstractGraphClass} from '../../core/graph_class.js'
 import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from '../../core/graph.js'
 
-import {
-  IntProperty,
-  Vec2Property,
-  StringProperty,
-  PropSubTypes,
-  PropTypes,
-  PropFlags,
-  KeyMap,
-  HotKey,
-  ToolOp,
-  UndoFlags,
-  ToolFlags,
-  DataPathError,
-} from '../../path.ux/scripts/pathux.js'
+import {IntProperty, Vec2Property, StringProperty, ToolOp, DataPathError} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
-import {getContextArea} from '../editor_base.ts'
 import {ModalFlags} from '../../core/modalflags.js'
-import {NodeEditor} from './NodeEditor.js'
 
 export class SavedGraph {
   constructor(graph) {
@@ -102,7 +80,7 @@ export class NodeGraphOp extends ToolOp {
 
   updateAllEditors(ctx) {
     for (let sarea of ctx.screen.sareas) {
-      if (sarea.area instanceof NodeEditor) {
+      if (sarea.area.constructor.define().areaname === 'NodeEditor') {
         sarea.area.flushUpdate()
         sarea.area._recalcLines()
       }
