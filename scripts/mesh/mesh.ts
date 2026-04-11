@@ -4954,7 +4954,7 @@ mesh.Mesh {
     }
   }
 
-  flagElemUpdate(e: Edge) {
+  flagElemUpdate(e: {flag: number}) {
     e.flag |= MeshFlags.UPDATE
 
     //if (!(e.eid in this.updatelist)) {

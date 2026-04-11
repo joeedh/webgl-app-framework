@@ -369,8 +369,8 @@ export class WidgetArrow extends WidgetShape {
     let t = tout[0]
 
     const p = new Vector2().loadXY(x, y)
-    const t1 = new Vector2(v2 as unknown as Vector2).sub(v1),
-      t2 = new Vector2(p).sub(v1)
+    const t1 = new Vector2(v2 as unknown as Vector2).sub(v1)
+    const t2 = new Vector2(p).sub(v1)
     t1.normalize()
 
     t = t1.dot(t2) / v1.vectorDistance(v2)
@@ -700,11 +700,11 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
    * @param y view3d-local coordinate y
    */
   findNearest(view3d: View3D, x: number, y: number, limit = 8, matrix?: Matrix4): IFindNearestResult | undefined {
-    let mindis: number | undefined,
-      minz: number | undefined,
-      minret: this | undefined,
-      minf: number | undefined,
-      minmargin: number | undefined
+    let mindis: number | undefined
+    let minz: number | undefined
+    let minret: this | undefined
+    let minf: number | undefined
+    let minmargin: number | undefined
 
     if (!matrix) {
       matrix = dist_temp_mats.next()
@@ -890,7 +890,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     this.shape.draw(gl, manager, mat)
   }
 
-  _newbase(matrix: Matrix4, color: Vector4, shape: WidgetShape) {
+  _newbase(matrix: Matrix4 | undefined, color: Vector4 | string, shape: WidgetShape) {
     const ret = new WidgetBase()
 
     ret.shape = shape
@@ -911,31 +911,31 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     return ret
   }
 
-  getTorus(matrix: Matrix4, color: Vector4) {
+  getTorus(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetTorus()))
   }
 
-  getArrow(matrix: Matrix4, color: Vector4) {
+  getArrow(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetArrow()))
   }
 
-  getSphere(matrix: Matrix4, color: Vector4) {
+  getSphere(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetSphere()))
   }
 
-  getChevron(matrix: Matrix4, color: Vector4) {
+  getChevron(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetChevron()))
   }
 
-  getDoubleChevron(matrix: Matrix4, color: Vector4) {
+  getDoubleChevron(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetDoubleChevron()))
   }
 
-  getPlane(matrix: Matrix4, color: Vector4) {
+  getPlane(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetPlane()))
   }
 
-  getBlockArrow(matrix: Matrix4, color: Vector4) {
+  getBlockArrow(matrix: Matrix4 | undefined, color: Vector4 | string) {
     return this.add(this._newbase(matrix, color, new WidgetBlockArrow()))
   }
 
@@ -1329,7 +1329,7 @@ export class WidgetManager {
 
     widget.id = -1
 
-    if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
+    if (this.ctx.view3d?.gl !== undefined) {
       widget.destroy(this.ctx.view3d.gl)
     }
   }
@@ -1450,7 +1450,7 @@ export class WidgetManager {
   }
 
   updateGraph() {
-    if (!this.ctx || !this.ctx.graph) {
+    if (!this.ctx?.graph) {
       return
     }
 
