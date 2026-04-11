@@ -23,43 +23,39 @@ The data graph is a DAG solver with optional support for cyclic graphs.
 Dag nodes are declared by subclassing from graph.Node.  Each subclass should implementation
 an exec method and the static nodedef method, like so:
 
-```
+```typescript
 class MyNode extends Node {
-  constructor() {
-    super();
-    
-    this.mysetting = 0;
-  }
-  
+  mysetting = 0
+
   static nodedef() {
     return {
       uiname : "My Node",
-      name   : "MyNode",     //if you want to inherit sockets from parent
-      inputs : Node.merge({ //class, wrap inputs/outputs in Node.inherit
+      name   : "MyNode",
+      inputs : {
         ...super.nodedef().inputs,
         myinput : new FloatSocket()
-      }),
+      },
       outputs : {
         ...super.nodedef().outputs,
         myoutput : new FloatSocket()
       }
-      }
     }
-  
+  }
+
+  static STRUCT = nstructjs.inlineRegister(this, `
+  MyNode {
+    mysetting : int;
+  }`)
+
   //ctx is the argument passed to Graph.prototype.exec
   exec(ctx) {
     this.outputs.myoutput.setValue(this.inputs.myinput.getValue());
-    
+
     //note that child nodes aren't executed unless you call .update() on output sockets
     //except for shader nodes, which don't use .exec methods at all
     this.outputs.myoutput.update();
   }
 }
-MyNode.struct = STRUCT.inherit(MyNode, Node) + ~
-  mysetting : int;
-}
-`;
-nstructjs.manager.add_class(MyNode);
 ```
 
 ## Cycles

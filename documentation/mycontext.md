@@ -26,4 +26,4 @@ Some important properties:
 * ctx.selectedObjects
 * ctx.selectedMeshObjects
 * ctx.menubar: The menu bar, also not available to ToolOp.prototype.exec
-* ctx.props: The properties window, also not available to ToolOp.prototype.exec
+* ctx.propsbar: The properties panel, also not available to ToolOp.prototype.exec

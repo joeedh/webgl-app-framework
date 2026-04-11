@@ -226,13 +226,13 @@ main content area. UI widgets are added to this container.
 
 | Editor | Tag | Area Name | File | Description |
 |--------|-----|-----------|------|-------------|
-| View3D | `view3d-editor-x` | `view3d` | `editors/view3d/view3d.js` | Main 3D viewport for modeling, sculpting, and scene manipulation |
+| View3D | `view3d-editor-x` | `view3d` | `editors/view3d/view3d.ts` | Main 3D viewport for modeling, sculpting, and scene manipulation |
 | MenuBarEditor | `menu-editor-x` | `MenuBarEditor` | `editors/menu/MainMenu.js` | Top menu bar (File, Edit, Add, Session); hidden from area switcher |
 | PropsEditor | `props-editor-x` | `props` | `editors/properties/PropsEditor.js` | Properties panel with workspace, scene, material, object, and texture tabs |
 | NodeEditor | `node-editor-x` | `NodeEditor` | `editors/node/NodeEditor.js` | Shader node graph editor with pan/zoom and node connections |
 | MaterialEditor | `material-editor-x` | `MaterialEditor` | `editors/node/MaterialEditor.js` | Material-specific node editor with material slot selection |
 | NodeViewer | `nodegraph-viewer-x` | `nodegraph_viewer` | `editors/node/NodeEditor_debug.js` | Read-only scene graph visualization |
-| ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.js` | UV editor with image display and UV transform tools |
+| ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.ts` | UV editor with image display and UV transform tools |
 | ConsoleEditor | `console-editor-x` | `console_editor` | `editors/console/console.js` | JavaScript console with history and autocomplete |
 | SettingsEditor | `settings-editor-x` | `settings-editor` | `editors/settings/SettingsEditor.js` | Application preferences (general, theme, addons) |
 | DebugEditor | `debug-editor-x` | `DebugEditor` | `editors/debug/DebugEditor.js` | GPU debug viewer for inspecting framebuffers and textures |

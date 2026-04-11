@@ -22,8 +22,8 @@ View3D has a few important properties and methods:
 * gl: the gl context
 * camera: the camera
 * getLocalMouse(x, y): Returns mouse coords relative to screen origin, basically (x-view3d.pos[0], y-view3d.pos[1]). 
-* project(co): Project to 3d space, returns w
-* unproject: Project from screen space
+* project(co): Project from 3D to screen space, returns w
+* unproject(co): Project from screen space to 3D space
 
 Viewport redraws are queued by window.redraw_viewport().  Only one draw request
 is allowed at a time, so calling redraw_viewport multiple times in a row will

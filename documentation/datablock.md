@@ -69,10 +69,8 @@ class SomeDataBlock extends DataBlock {
   }
   
   loadSTRUCT(reader: StructReader<this>) {
-    reader(ret);
-    ret.afterSTRUCT();
+    reader(this);
+    this.afterSTRUCT();
   }
 }
-}
-`
 ```
