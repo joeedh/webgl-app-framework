@@ -34,8 +34,9 @@ import './textures.js'
 import {TexPaintShaderLib} from '../shaders/shaders.js'
 import {IUniformsBlock} from '../webgl/webgl'
 import {ICompiledCode} from '../mathl/core/mathl.js'
-import { HashDigest } from '../util/util.js';
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
+import {HashDigest} from '../util/util.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import {ViewContext} from '../core/context.js'
 
 export enum PatternRecalcFlags {
   PREVIEW = 1,
@@ -123,8 +124,7 @@ export interface IPatternConstructor<T = unknown> {
 
   patternDefine(): IPatternDef
 
-  // eslint-disable-next-line no-unused-vars
-  buildSettings(container: Container): void
+  buildSettings(container: Container<ViewContext>): void
 }
 
 export type TexJSArgs = {[k: string]: TexPropTypeBase}
@@ -182,8 +182,8 @@ export class PatternGen {
   }
 
   //container.pathPrefix is set to point to correct location
-  // eslint-disable-next-line no-unused-vars
-  static buildSettings(container: Container) {}
+
+  static buildSettings(container: Container<ViewContext>) {}
 
   static getGeneratorClass(name: string): IPatternConstructor {
     return patternsNameMap[name]
@@ -203,7 +203,6 @@ export class PatternGen {
   }
 
   genTexShader() {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const uniforms = {
       angle: 0.0,
     } as IUniformsBlock
@@ -428,7 +427,7 @@ export class SimpleNoise extends PatternGen {
     return st
   }
 
-  static buildSettings(container: Container): void {
+  static buildSettings(container: Container<ViewContext>): void {
     container.prop('levels')
     container.prop('levelScale')
     container.prop('factor')
@@ -578,7 +577,7 @@ export class MoireNoise extends PatternGen {
     return st
   }
 
-  static buildSettings(container: Container): void {
+  static buildSettings(container: Container<ViewContext>): void {
     container.prop('angleOffset')
     container.prop('dynamicAngle')
   }
@@ -641,9 +640,9 @@ export class MoireNoise extends PatternGen {
 
     p2.rot2d(this.angleOffset)
 
-    const fract = Math.fract,
-      abs = Math.abs,
-      cos = Math.cos
+    const fract = Math.fract
+    const abs = Math.abs
+    const cos = Math.cos
 
     const dx1 = 1.0 - abs(fract(p2[0]) - 0.5) * 2.0
     const dy1 = 1.0 - abs(fract(p2[1]) - 0.5) * 2.0
@@ -728,7 +727,7 @@ export class CombPattern extends PatternGen {
     return st
   }
 
-  static buildSettings(container: Container): void {
+  static buildSettings(container: Container<ViewContext>): void {
     container.prop('mode')
     container.prop('count')
     container.prop('angleOffset')
@@ -890,7 +889,7 @@ export class GaborNoise extends PatternGen {
     return st
   }
 
-  static buildSettings(container: Container): void {
+  static buildSettings(container: Container<ViewContext>): void {
     container.prop('levels')
     container.prop('levelScale')
     container.prop('factor')
@@ -942,7 +941,6 @@ export class GaborNoise extends PatternGen {
 
   evaluate(co: Vector3): number {
     return super.evaluate(co)
-
     ;`
     co = sntmps.next().load(co)
 
@@ -1362,7 +1360,7 @@ uniform float texPower;
     return false as unknown as this
   }
 
-  buildSettings(container: Container) {
+  buildSettings(container: Container<ViewContext>) {
     container.prop('scale')
     container.prop('brightness')
     container.prop('contrast')
@@ -1406,10 +1404,10 @@ uniform float texPower;
     const co = new Vector3()
 
     for (let i = 0; i < width * height; i++) {
-      const ix = i % width,
-        iy = ~~(i / height)
-      const x = ix / width,
-        y = iy / height
+      const ix = i % width
+      const iy = ~~(i / height)
+      const x = ix / width
+      const y = iy / height
 
       const idx = i * 4
 

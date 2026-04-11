@@ -127,3 +127,100 @@ MyClass {
 }`
 nstructjs.register(MyClass);
 ```
+
+## ToolOp inheritance
+ToolOp has strongly typed property inheritance.
+
+For example:
+```ts
+// InputSlots and OutputSlots are for child classes to add more properties
+class MyTool<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}>
+  extends ToolOp<InputSlots & {
+    myProp: FloatProperty
+  }, OutputSlots & {
+    myOutput: StringProperty
+  }> {
+    static tooldef() {
+      return {
+        toolpath: 'tools.mytool',
+        inputs: {
+          myProp: new FloatProperty({
+            name: 'My Property',
+            default: 0.0,
+          }),
+        },
+        outputs: {
+          myOutput: new StringProperty({
+            name: 'My Output',
+            default: '',
+          }),
+        },
+      }
+    }
+}
+```
+
+DO NOT put property slots into a separate type or interface
+unless there are more than 5 properties:
+
+```ts
+// DO NOT DO THIS:
+type MyToolInputs = {
+  myProp: FloatProperty
+}
+// BAD
+type MyToolOutputs = {
+    myOutput: StringProperty
+}
+class MyTool<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}>
+  extends ToolOp<InputSlots & MyToolInputs, OutputSlots & MyToolOutputs> {
+
+  }
+
+// DO NOT DO THIS:
+interface MyToolInputs {
+  myProp: FloatProperty
+}
+// BAD
+interface MyToolOutputs {
+    myOutput: StringProperty
+}
+class MyTool<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}>
+  extends ToolOp<InputSlots & MyToolInputs, OutputSlots & MyToolOutputs> {
+  }
+```
+
+## Do not use ToolOp.inherit on inputs and outputs
+
+ToolOp.inherit is deprecated on inputs/outputs, which 
+now always inherit:
+
+```ts
+// InputSlots and OutputSlots are for child classes to add more properties
+class MyTool<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}>
+  extends ToolOp<InputSlots & {
+    myProp: FloatProperty
+  }, OutputSlots & {
+    myOutput: StringProperty
+  }> {
+    static tooldef() {
+      return {
+        toolpath: 'tools.mytool',
+        //BAD!
+        inputs: ToolOp.inherit({
+          myProp: new FloatProperty({
+            name: 'My Property',
+            default: 0.0,
+          }),
+        }),
+        //GOOD, not wrapped in ToolOp.inherit
+        outputs: {
+          myOutput: new StringProperty({
+            name: 'My Output',
+            default: '',
+          }),
+        },
+      }
+    }
+}
+```

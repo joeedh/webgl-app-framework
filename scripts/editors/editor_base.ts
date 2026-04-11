@@ -290,7 +290,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
   /* if not undefined, is a function that filters blocks for visibility
    *  in menu*/
-  filterFunc?: (block: DataBlock) => boolean
+  filterFunc?: (block: BlockType) => boolean
   onValidData?: (col: ColumnFrame<ViewContext>) => void
 
   newOp = 'datalib.default_new'

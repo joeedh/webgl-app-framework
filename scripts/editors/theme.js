@@ -437,6 +437,9 @@ export const theme = {
   },
 
   panel: {
+    header: {
+      iconSize: 16,
+    },
     HeaderBorderRadius    : 1,
     HeaderRadius          : 1,
     TitleBackground       : 'rgba(98,98,98, 1)',

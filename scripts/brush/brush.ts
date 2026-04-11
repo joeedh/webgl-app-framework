@@ -113,7 +113,7 @@ export enum SubdivModes {
   SMART = 1,
 }
 
-const apiKeyMap: any = {
+const apiKeyMap: {[k: string]: string} = {
   valenceGoal    : 'VALENCE_GOAL',
   edgeSize       : 'EDGE_SIZE',
   decimateFactor : 'DECIMATE_FACTOR',
@@ -170,7 +170,6 @@ export class DynTopoSettings {
   spacingMode = BrushSpacingModes.EVEN
 
   flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE
-  //flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
   edgeCount = 150
   repeat = 1
@@ -224,7 +223,7 @@ export class DynTopoSettings {
     return r
   }
 
-  loadDefaults(defaults: any): this {
+  loadDefaults(defaults: this): this {
     const b = defaults
 
     const mask = this.overrideMask
@@ -838,6 +837,8 @@ SculptBrush {
       super.copyTo(b, false)
     }
 
+    this.dynamics.copyTo(b.dynamics)
+
     b.flag = this.flag
     b.tool = this.tool
     b.sharp = this.sharp
@@ -867,7 +868,6 @@ SculptBrush {
     this.texUser.copyTo(b.texUser)
     b.dynTopo.load(this.dynTopo)
     b.falloff = this.falloff.copy()
-    this.dynamics.copyTo(b.dynamics)
   }
 
   copy(addLibUsers = false): this {

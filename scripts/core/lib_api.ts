@@ -755,9 +755,9 @@ Library {
 
   //builds enum property of active blocks
   //for path.ux.  does not include ones that are hidden.
-  getBlockListEnum(
+  getBlockListEnum<T extends DataBlock>(
     blockClass: IDataBlockConstructor<any, any, any>,
-    filterfunc: (block: DataBlock) => boolean
+    filterfunc: (block: T) => boolean
   ): EnumProperty {
     const tname = blockClass.blockDefine().typeName
     const uiname = blockClass.blockDefine().uiName

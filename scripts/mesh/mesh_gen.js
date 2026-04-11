@@ -97,10 +97,10 @@ mesh.ProceduralGen {
 `
 nstructjs.register(ProceduralGen)
 
-let VX = 0,
-  VY = 1,
-  VZ = 2,
-  VTOT = 3
+let VX = 0
+let VY = 1
+let VZ = 2
+let VTOT = 3
 
 export class CubeGenerator extends ProceduralGen {
   constructor() {
@@ -135,13 +135,13 @@ export class CubeGenerator extends ProceduralGen {
     let toSphere = this.toSphere
 
     for (let face = 0; face < 6; face++) {
-      let axis = face % 3,
-        sign = face >= 3 ? 0 : 1
+      let axis = face % 3
+      let sign = face >= 3 ? 0 : 1
 
       for (let i = 0; i < dimen; i++) {
         for (let j = 0; j < dimen; j++) {
-          let u = i / (dimen - 1),
-            v = j / (dimen - 1)
+          let u = i / (dimen - 1)
+          let v = j / (dimen - 1)
 
           co[axis] = u
           co[(axis + 1) % 3] = v
@@ -261,10 +261,10 @@ export class CubeGenerator extends ProceduralGen {
       sm.island.regen = true
 
       for (let i = 0; i < quads.length; i += 4) {
-        let v1 = quads[i],
-          v2 = quads[i + 1],
-          v3 = quads[i + 2],
-          v4 = quads[i + 3]
+        let v1 = quads[i]
+        let v2 = quads[i + 1]
+        let v3 = quads[i + 2]
+        let v4 = quads[i + 3]
 
         idx[ti++] = ~~(v1 / VTOT + 0.000001)
         idx[ti++] = ~~(v2 / VTOT + 0.000001)
@@ -279,10 +279,10 @@ export class CubeGenerator extends ProceduralGen {
     }
 
     for (let i = 0; i < quads.length; i += 4) {
-      let v1 = quads[i],
-        v2 = quads[i + 1],
-        v3 = quads[i + 2],
-        v4 = quads[i + 3]
+      let v1 = quads[i]
+      let v2 = quads[i + 1]
+      let v3 = quads[i + 2]
+      let v4 = quads[i + 3]
 
       for (let j = 0; j < 3; j++) {
         p1[j] = verts[v1 + j]
@@ -334,9 +334,9 @@ export class CubeGenerator extends ProceduralGen {
     let vs = []
 
     for (let i = 0; i < verts.length; i += VTOT) {
-      let x = verts[i],
-        y = verts[i + 1],
-        z = verts[i + 2]
+      let x = verts[i]
+      let y = verts[i + 1]
+      let z = verts[i + 2]
 
       let v = mesh.makeVertex()
       v.co[0] = x
@@ -348,10 +348,10 @@ export class CubeGenerator extends ProceduralGen {
     }
 
     for (let i = 0; i < quads.length; i += 4) {
-      let v1 = quads[i],
-        v2 = quads[i + 1],
-        v3 = quads[i + 2],
-        v4 = quads[i + 3]
+      let v1 = quads[i]
+      let v2 = quads[i + 1]
+      let v3 = quads[i + 2]
+      let v4 = quads[i + 3]
 
       v1 = vs[v1 / VTOT]
       v2 = vs[v2 / VTOT]

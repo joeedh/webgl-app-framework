@@ -136,11 +136,11 @@ export class DataPathBrowser extends Editor {
         } else if (dpath.type === DataTypes.STRUCT) {
           let panel = con.panel(ToolProperty.makeUIName(dpath.apiname))
 
-          panel._panel.overrideDefault('padding-bottom', 0.0)
-          panel._panel.overrideDefault('padding-top', 0.0)
-          panel._panel.overrideDefault('padding-left', 5.0)
-          panel._panel.overrideDefault('margin-bottom-closed', 0.0)
-          panel._panel.overrideDefault('margin-top-closed', 0.0)
+          panel.panelFrame.overrideDefault('padding-bottom', 0.0)
+          panel.panelFrame.overrideDefault('padding-top', 0.0)
+          panel.panelFrame.overrideDefault('padding-left', 5.0)
+          panel.panelFrame.overrideDefault('margin-bottom-closed', 0.0)
+          panel.panelFrame.overrideDefault('margin-top-closed', 0.0)
 
           panel.onchange = makeLoadPanel(dpath.data, path2 + dpath.apiname, dpath)
           panel.closed = true
@@ -152,11 +152,11 @@ export class DataPathBrowser extends Editor {
         } else if (dpath.type === DataTypes.DYNAMIC_STRUCT) {
           let panel = con.panel(ToolProperty.makeUIName(dpath.apiname))
 
-          panel._panel.overrideDefault('padding-bottom', 0.0)
-          panel._panel.overrideDefault('padding-top', 0.0)
-          panel._panel.overrideDefault('padding-left', 5.0)
-          panel._panel.overrideDefault('margin-bottom-closed', 0.0)
-          panel._panel.overrideDefault('margin-top-closed', 0.0)
+          panel.panelFrame.overrideDefault('padding-bottom', 0.0)
+          panel.panelFrame.overrideDefault('padding-top', 0.0)
+          panel.panelFrame.overrideDefault('padding-left', 5.0)
+          panel.panelFrame.overrideDefault('margin-bottom-closed', 0.0)
+          panel.panelFrame.overrideDefault('margin-top-closed', 0.0)
 
           let rdef
 

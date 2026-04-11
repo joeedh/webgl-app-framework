@@ -25,7 +25,15 @@ import {
 import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
-import {IndexRange, math, Number3, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
+import {
+  Container,
+  IndexRange,
+  math,
+  Number3,
+  PackFlags,
+  PanelContents,
+  UIBase,
+} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../webgl/simplemesh'
 import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
@@ -59,8 +67,10 @@ import {ParamVert} from '../../../mesh/mesh_paramizer'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
 import type {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
 import type {Scene} from '../../../scene/scene'
-import {StructReader} from '../../../path.ux/scripts/util/nstructjs'
+import type {StructReader} from '../../../path.ux/scripts/util/nstructjs'
 import type {View3D} from '../view3d'
+import type {ViewContext} from '../../../core/context'
+import type {TextureSelectPanel} from '../../properties/PropsEditor'
 
 export class BVHToolMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -249,14 +259,14 @@ export class BVHToolMode extends PaintToolModeBase {
     }
   }
 
-  static buildSettings(container: any): void {
+  static buildSettings(container: Container<ViewContext>): void {
     const name = this.toolModeDefine().name
     const path = `scene.tools.${name}`
 
     const browser = document.createElement('data-block-browser-x') as DataBlockBrowser<SculptBrush>
     browser.blockClass = SculptBrush
     browser.setAttribute('datapath', path + '.brush')
-    browser.filterFunc = function (brush: any): boolean {
+    browser.filterFunc = function (brush: SculptBrush): boolean {
       if (!browser.ctx) {
         return false
       }
@@ -281,8 +291,8 @@ export class BVHToolMode extends PaintToolModeBase {
     strip.label('Spacing')
     strip.prop(path + '.brush.spacingMode')
 
-    function doChannel(name: string, panel: any = settings): any {
-      const col2 = panel.col().strip()
+    function doChannel(name: string, panelCh: PanelContents<ViewContext> = settings): any {
+      const col2 = panelCh.col().strip()
 
       //col2.style["padding"] = "7px";
       //col2.style["margin"] = "2px";
@@ -295,21 +305,22 @@ export class BVHToolMode extends PaintToolModeBase {
         col2.prop(path + `.brush.${name}`)
       }
 
-      panel = col2.panel('Dynamics')
+      panelCh = col2.panel('Dynamics')
+      panelCh.panelFrame.openCloseIcon.overrideClassDefault('panel.header', 'iconSize', 12)
 
-      panel._panel.overrideDefault('padding-top', 0)
-      panel._panel.overrideDefault('padding-bottom', 0)
-      panel.prop(path + `.brush.dynamics.${name}.useDynamics`)
-      panel.prop(path + `.brush.dynamics.${name}.curve`)
-      panel.closed = true
-      panel.setCSS()
+      panelCh.panelFrame.overrideDefault('padding-top', 0)
+      panelCh.panelFrame.overrideDefault('padding-bottom', 0)
+      panelCh.prop(path + `.brush.dynamics.${name}.useDynamics`)
+      panelCh.prop(path + `.brush.dynamics.${name}.curve`)
+      panelCh.closed = true
+      panelCh.setCSS()
 
       return col2
     }
 
     panel = col.panel('Texture')
     panel.closed = true
-    const tex = document.createElement('texture-select-panel-x')
+    const tex = document.createElement('texture-select-panel-x') as TextureSelectPanel
 
     tex.setAttribute('datapath', path + '.brush.texUser.texture')
 
