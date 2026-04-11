@@ -1979,12 +1979,12 @@ export class PaintOp extends PaintOpBase<
 
     let smemo: SmoothMemoizer | undefined
     if (useSmoothMemo) {
-      smemo = new SmoothMemoizer(mesh, -1)
+      smemo = new SmoothMemoizer(mesh, new AttrRef(-1))
       smemo.noDisp = true
       smemo.projection = smoothProj
       smemo.smoothGen = Math.random()
       smemo.initGen = Math.random()
-      smemo.start(false, -1, true)
+      smemo.start(false, new AttrRef(-1), true)
       smemo.memoize = !(window.noMemoize ?? false)
     }
 
@@ -5051,7 +5051,7 @@ export class PaintOp extends PaintOpBase<
       dctx.settings.smoothGen++
       dctx.settings.initGen++
 
-      const smemo = getSmoothMemo(mesh, cd_disp)
+      const smemo = getSmoothMemo(mesh, new AttrRef(cd_disp))
       dctx.smemo = smemo
 
       for (const v of vs) {
@@ -5334,7 +5334,7 @@ export class PaintOp extends PaintOpBase<
       dctx.settings.smoothGen++
       dctx.settings.initGen++
 
-      const smemo = getSmoothMemo(mesh, cd_disp)
+      const smemo = getSmoothMemo(mesh, new AttrRef(cd_disp))
       dctx.smemo = smemo
 
       vs = bvh.closestVerts(ps.p, bvhRadius)

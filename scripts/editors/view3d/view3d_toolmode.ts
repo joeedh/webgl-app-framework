@@ -31,7 +31,7 @@ export interface IToolModeDefine {
   description: string
   selectMode?: number
   stdtools?: StandardTools
-  transWidgets?: (typeof WidgetBase)[]
+  transWidgets?: (typeof WidgetBase<any, any>)[]
 }
 
 type ViewContainer = Container<ViewContext>
@@ -129,7 +129,7 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
       description : '',
       selectMode  : undefined, //if set, preferred selectmode, see SelModes
       stdtools    : undefined, //if set, will override standard tools in inherited keymaps
-      transWidgets: [] as (typeof WidgetBase)[], //list of widget classes tied to this.transformWidget
+      transWidgets: [] as (typeof WidgetBase<any, any>)[], //list of widget classes tied to this.transformWidget
     }
   }
 

@@ -1685,7 +1685,7 @@ export class BVHToolMode extends PaintToolModeBase {
         const dctx = new DispContext()
         dctx.reset(mesh, cd_disp.i)
 
-        cd_pvert.i = dctx.cd_pvert ?? -1
+        cd_pvert.i = dctx.cd_pvert?.i ?? -1
         //cd_disp = mesh.verts.customData.getLayerIndex("displace");
       }
 

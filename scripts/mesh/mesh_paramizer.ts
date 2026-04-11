@@ -1,22 +1,25 @@
-import {nstructjs, util, math} from '../path.ux/scripts/pathux.js'
+import {nstructjs, util, math, Vector3Like, DataAPI, DataStruct, Number3} from '../path.ux/scripts/pathux.js'
 import {CustomDataElem, LayerSettingsBase} from './customdata.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
 import '../util/numeric.js'
 
-let Queue = util.Queue
+const Queue = util.Queue
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {buildCotanVerts, getCotanData, VAREA, VCTAN1, VCTAN2, VW, VETOT, vertexSmooth} from './mesh_utils.js'
+import {AttrRef, Edge, Face, Loop, Mesh, Vertex} from './mesh.js'
+import {DispLayerVert} from './mesh_displacement.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const ParamizeModes = {
   SELECTED: 1,
   MAX_Z   : 2,
 }
 
-let tmp1 = new Vector3()
-let tmp2 = new Vector3()
-let tmp3 = new Vector3()
+const tmp1 = new Vector3()
+const tmp2 = new Vector3()
+const tmp3 = new Vector3()
 
-let gtmps = util.cachering.fromConstructor(Vector3, 256)
+const gtmps = util.cachering.fromConstructor(Vector3, 256)
 
 export const KDrawModes = {
   NO   : 0,
@@ -34,13 +37,24 @@ export const KDrawModes = {
   ERROR: 12,
 }
 
+declare global {
+  interface Window {
+    kdrawmode: number
+  }
+}
 window.kdrawmode = KDrawModes.TAN
 
 /* Propagate distance from v1 and v2 to v0. */
-export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
+export function geodesic_distance_triangle(
+  v0: Vector3Like,
+  v1: Vector3Like,
+  v2: Vector3Like,
+  dist1: number,
+  dist2: number
+) {
   /* Vectors along triangle edges. */
-  let v10 = gtmps.next()
-  let v12 = gtmps.next()
+  const v10 = gtmps.next()
+  const v12 = gtmps.next()
 
   v10.load(v0).sub(v1)
   v12.load(v2).sub(v1)
@@ -49,9 +63,9 @@ export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
 
   if (dist1 > eps && dist2 > eps) {
     /* Local coordinate system in the triangle plane. */
-    let u = gtmps.next(),
-      v = gtmps.next(),
-      n = gtmps.next()
+    const u = gtmps.next()
+    const v = gtmps.next()
+    const n = gtmps.next()
 
     u.load(v12)
     let d12 = u.vectorLength()
@@ -69,18 +83,18 @@ export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
       v.load(n).cross(u)
 
       /* v0 in local coordinates */
-      let v0_ = gtmps.next().zero()
+      const v0_ = gtmps.next().zero()
       v0_[0] = v10.dot(u)
       v0_[1] = Math.abs(v10.dot(v))
 
       /* Compute virtual source point in local coordinates, that we estimate the geodesic
        * distance is being computed from. See figure 9 in the paper for the derivation. */
-      let a = 0.5 * (1.0 + (dist1 * dist1 - dist2 * dist2) / (d12 * d12))
+      const a = 0.5 * (1.0 + (dist1 * dist1 - dist2 * dist2) / (d12 * d12))
       const hh = dist1 * dist1 - a * a * d12 * d12
 
       if (hh > 0.0) {
         const h = Math.sqrt(hh)
-        let S_ = gtmps.next().zero()
+        const S_ = gtmps.next().zero()
 
         S_[0] = a * d12
         S_[1] = -h
@@ -108,6 +122,10 @@ export const WeightModes = {
 }
 
 export class ParamVertSettings extends LayerSettingsBase {
+  declare updateGen: number
+  declare smoothTangents: boolean
+  declare weightMode: number
+
   constructor() {
     super()
 
@@ -116,17 +134,17 @@ export class ParamVertSettings extends LayerSettingsBase {
     this.weightMode = WeightModes.EDGE_LENGTH
   }
 
-  static apiDefine(api) {
-    let st = super.apiDefine(api)
+  static apiDefine(api: DataAPI, st?: DataStruct) {
+    const ret = super.apiDefine(api, st!)
 
-    st.int('updateGen', 'updateGen', 'Generation').noUnits().readOnly()
-    st.bool('smoothTangents', 'smoothTangents', 'Smooth Tangents') //.noUnits().range(0, 25);
-    st.enum('weightMode', 'weightMode', WeightModes, 'Weight Mode')
+    ret.int('updateGen', 'updateGen', 'Generation').noUnits().readOnly()
+    ret.bool('smoothTangents', 'smoothTangents', 'Smooth Tangents') //.noUnits().range(0, 25);
+    ret.enum('weightMode', 'weightMode', WeightModes, 'Weight Mode')
 
-    return st
+    return ret
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     b.updateGen = this.updateGen
     b.smoothTangents = this.smoothTangents
     b.weightMode = this.weightMode
@@ -142,9 +160,36 @@ ParamVertSettings.STRUCT =
 }`
 nstructjs.register(ParamVertSettings)
 
-let tmp = new Vector3()
+const tmp = new Vector3()
 
 export class ParamVert extends CustomDataElem {
+  updateGen: number
+  needsSmooth: boolean
+  disUV: Vector4
+  smoothTan: Vector3
+  totarea: number
+  wlist: number[]
+  dis!: number
+  dv = new Vector3()
+  k1 = 0
+  k2 = 0
+  k3 = 0
+  tan = new Vector3()
+  no = new Vector3()
+  bin = new Vector3()
+  lastd2k1 = new Vector3()
+  lastd2k2 = new Vector3()
+  lastd2k3 = new Vector3()
+  dk1 = new Vector3()
+  dk2 = new Vector3()
+  dk3 = new Vector3()
+  d2k1 = new Vector3()
+  d2k2 = new Vector3()
+  d2k3 = new Vector3()
+  d3k1 = new Vector3()
+  d3k2 = new Vector3()
+  d3k3 = new Vector3()
+
   constructor() {
     super()
 
@@ -170,6 +215,7 @@ export class ParamVert extends CustomDataElem {
 
   static define() {
     return {
+      elemTypeMask : 0,
       typeName     : 'paramvert',
       uiTypeName   : 'Param Vert',
       defaultName  : 'Param Vert',
@@ -187,29 +233,29 @@ export class ParamVert extends CustomDataElem {
     return this.disUV
   }
 
-  interp(dest, datas, ws) {
-    let x = 0,
-      y = 0,
-      z = 0,
-      w = 0
-    let tx = 0,
-      ty = 0,
-      tz = 0
+  interp(dest: this, datas: this[], ws: number[]) {
+    let x = 0
+    let y = 0
+    let z = 0
+    let w = 0
+    let tx = 0
+    let ty = 0
+    let tz = 0
 
     for (let i = 0; i < datas.length; i++) {
-      let vec = datas[i].disUV
-      let weight = ws[i]
+      const vec = datas[i].disUV
+      const weight = ws[i]
 
       x += vec[0] * weight
       y += vec[1] * weight
       z += vec[2] * weight
       w += vec[3] * weight
 
-      vec = datas[i].smoothTan
+      const vec2 = datas[i].smoothTan
 
-      tx += vec[0] * weight
-      ty += vec[1] * weight
-      tz += vec[2] * weight
+      tx += vec2[0] * weight
+      ty += vec2[1] * weight
+      tz += vec2[2] * weight
     }
 
     //normalize
@@ -231,7 +277,12 @@ export class ParamVert extends CustomDataElem {
     dest.smoothTan.normalize()
   }
 
-  updateWeights(ps, owning_v, cd_pvert, cd_disp = undefined) {
+  updateWeights(
+    ps: ParamVertSettings,
+    owning_v: Vertex,
+    cd_pvert: AttrRef<ParamVert>,
+    cd_disp?: AttrRef<DispLayerVert>
+  ) {
     const val = owning_v.valence
 
     if (this.wlist.length !== val) {
@@ -239,7 +290,7 @@ export class ParamVert extends CustomDataElem {
     }
 
     if (ps.weightMode === WeightModes.SIMPLE) {
-      let w = 1.0 / val
+      const w = 1.0 / val
 
       for (let i = 0; i < val; i++) {
         this.wlist[i] = w
@@ -249,13 +300,16 @@ export class ParamVert extends CustomDataElem {
       let tot = 0.0
       const wlist = this.wlist
 
-      for (let v2 of owning_v.neighbors) {
-        let a = v2
-        let b = owning_v
+      for (const v2 of owning_v.neighbors) {
+        const va = v2
+        const vb = owning_v
+
+        let a = va.co
+        let b = vb.co
 
         if (cd_disp !== undefined) {
-          a = v2.customData[cd_disp].worldco
-          b = owning_v.customData[cd_disp].worldco
+          a = v2.customData.get(cd_disp).worldco
+          b = owning_v.customData.get(cd_disp).worldco
         }
 
         const w = a.vectorDistance(b)
@@ -276,24 +330,24 @@ export class ParamVert extends CustomDataElem {
     }
   }
 
-  updateCotan(ps, owning_v, cd_pvert) {
+  updateCotan(ps: ParamVertSettings, owning_v: Vertex, cd_pvert: AttrRef<ParamVert>) {
     if (ps.weightMode !== WeightModes.COTAN) {
       return
     }
 
-    let v = owning_v
+    const v = owning_v
 
-    let vdata = getCotanData(v)
+    const vdata = getCotanData(v)
     let totarea = 0.0
     let totw = 0.0
 
     let wi = 0
     let vi = VETOT //skip first entry
 
-    for (let e of v.edges) {
-      let area = vdata[vi + VAREA]
-      let cot1 = vdata[vi + VCTAN1]
-      let cot2 = vdata[vi + VCTAN2]
+    for (const e of v.edges) {
+      const area = vdata[vi + VAREA]
+      const cot1 = vdata[vi + VCTAN1]
+      const cot2 = vdata[vi + VCTAN2]
 
       let w = vdata[vi + VW]
 
@@ -330,24 +384,24 @@ export class ParamVert extends CustomDataElem {
     this.totarea = totarea
   }
 
-  smooth(ps, owning_v, cd_pvert, depth = 0) {
-    let v = owning_v
+  smooth(ps: ParamVertSettings, owning_v: Vertex, cd_pvert: AttrRef<ParamVert>, depth = 0) {
+    const v = owning_v
 
     let tot = 0.0
     tmp.zero()
 
     this.needsSmooth = false
 
-    let flag = MeshFlags.MAKE_FACE_TEMP
+    const flag = MeshFlags.MAKE_FACE_TEMP
 
-    for (let v2 of v.neighbors) {
-      for (let v3 of v2.neighbors) {
+    for (const v2 of v.neighbors) {
+      for (const v3 of v2.neighbors) {
         v3.flag &= ~flag
       }
     }
 
-    for (let v2 of v.neighbors) {
-      for (let v3 of v2.neighbors) {
+    for (const v2 of v.neighbors) {
+      for (const v3 of v2.neighbors) {
         if (v3 === v) {
           continue
         }
@@ -356,8 +410,8 @@ export class ParamVert extends CustomDataElem {
           continue
         }
 
-        let pv3 = v3.customData[cd_pvert]
-        let w = v3.vectorDistance(v)
+        const pv3 = v3.customData.get(cd_pvert)
+        const w = v3.co.vectorDistance(v.co)
         //w = 1.0;
 
         pv3.checkTangent(ps, v3, cd_pvert, true)
@@ -373,7 +427,7 @@ export class ParamVert extends CustomDataElem {
     }
 
     if (tot) {
-      let d = tmp.dot(v.no)
+      const d = tmp.dot(v.no)
       tmp.addFac(v.no, -d)
       tmp.normalize()
       /*
@@ -386,7 +440,7 @@ export class ParamVert extends CustomDataElem {
     }
   }
 
-  checkTangent(ps, owning_v, cd_pvert, noSmooth = false) {
+  checkTangent(ps: ParamVertSettings, owning_v: Vertex, cd_pvert: AttrRef<ParamVert>, noSmooth = false) {
     let updateCot = owning_v.valence !== this.wlist.length
     updateCot = updateCot || ps.updateGen !== this.updateGen
 
@@ -403,40 +457,47 @@ export class ParamVert extends CustomDataElem {
 
   /*calculate tangent and smooth with neighbors
    * if necassary */
-  updateTangent(ps, owning_v, cd_pvert, noSmooth = false, cd_disp = undefined, noNorm = false) {
-    let v = owning_v
+  updateTangent(
+    ps: ParamVertSettings,
+    owning_v: Vertex,
+    cd_pvert: AttrRef<ParamVert>,
+    noSmooth = false,
+    cd_disp?: AttrRef<DispLayerVert>,
+    noNorm = false
+  ) {
+    const v = owning_v
 
     this.updateGen = ps.updateGen
 
-    let pv = v.customData[cd_pvert]
-    let d1 = pv.disUV[0]
+    const pv = v.customData.get(cd_pvert)
+    const d1 = pv.disUV[0]
 
-    let dv = tmp1.zero()
+    const dv = tmp1.zero()
 
     if (v.valence !== this.wlist.length) {
       this.updateWeights(ps, owning_v, cd_pvert)
     }
 
-    let norm = 0.0
+    const norm = 0.0
     const cotan = ps.weightMode === WeightModes.COTAN
     const edge_length = ps.weightMode === WeightModes.EDGE_LENGTH
 
     let i = 0
-    for (let e of v.edges) {
-      let v2 = e.otherVertex(v)
-      let pv2 = v2.customData[cd_pvert]
+    for (const e of v.edges) {
+      const v2 = e.otherVertex(v)
+      const pv2 = v2.customData.get(cd_pvert)
 
-      let d2 = pv2.disUV[0]
+      const d2 = pv2.disUV[0]
 
       let w = 1.0
 
       w = this.wlist[i]
 
       let dv2
-      if (cd_disp !== undefined && cd_disp >= 0) {
-        dv2 = tmp3.load(v2.customData[cd_disp].smoothco).sub(v.customData[cd_disp].smoothco)
+      if (cd_disp !== undefined && cd_disp.i >= 0) {
+        dv2 = tmp3.load(v2.customData.get(cd_disp).smoothco).sub(v.customData.get(cd_disp).smoothco)
       } else {
-        dv2 = tmp3.load(v2).sub(v)
+        dv2 = tmp3.load(v2.co).sub(v.co)
       }
 
       if (!noNorm) {
@@ -473,7 +534,7 @@ export class ParamVert extends CustomDataElem {
     }
   }
 
-  mulScalar(f) {
+  mulScalar(f: number) {
     this.disUV.mulScalar(f)
     return this
   }
@@ -483,37 +544,37 @@ export class ParamVert extends CustomDataElem {
     return this
   }
 
-  add(b) {
+  add(b: this) {
     this.disUV.add(b.disUV)
     return this
   }
 
-  addFac(b, fac) {
+  addFac(b: this, fac: number) {
     this.disUV.addFac(b.disUV, fac)
     return this
   }
 
-  sub(b) {
+  sub(b: this) {
     this.disUV.sub(b.disUV)
     return this
   }
 
-  setValue(v) {
+  setValue(v: Vector4) {
     this.disUV.load(v)
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     super.loadSTRUCT(reader)
 
     if (typeof this.disUV !== 'object') {
-      this.disUV = new Vector3()
+      this.disUV = new Vector4()
     } else if (this.disUV instanceof Vector3) {
       this.disUV = new Vector4(this.disUV)
       this.disUV[3] = 0.0
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     b.disUV.load(this.disUV)
     b.smoothTan.load(this.smoothTan)
   }
@@ -531,21 +592,21 @@ ParamVert.STRUCT =
 nstructjs.register(ParamVert)
 CustomDataElem.register(ParamVert)
 
-export function calcGeoDist(mesh, cd_pvert, shell, mode) {
-  let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+export function calcGeoDist(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, shell: Face[], mode: number) {
+  const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
-  let verts = new Set()
-  let edges = new Set()
-  let loops = new Set()
-  let faces = new Set()
+  const verts = new Set<Vertex>()
+  const edges = new Set<Edge>()
+  const loops = new Set<Loop>()
+  const faces = new Set<Face>()
 
-  let startv = undefined
+  let startv: Vertex | undefined = undefined
 
   console.log('cd_pvert', cd_pvert)
-  for (let f of shell) {
+  for (const f of shell) {
     faces.add(f)
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       verts.add(l.v)
       edges.add(l.e)
       loops.add(l)
@@ -556,29 +617,29 @@ export function calcGeoDist(mesh, cd_pvert, shell, mode) {
     }
   }
   if (mode === ParamizeModes.MAX_Z) {
-    let min = new Vector3().addScalar(1e17)
-    let max = new Vector3().addScalar(1e17)
+    const min = new Vector3().addScalar(1e17)
+    const max = new Vector3().addScalar(1e17)
 
-    let vs = []
+    const vs = [] as Vertex[]
 
-    for (let v of verts) {
-      min.min(v)
-      max.max(v)
+    for (const v of verts) {
+      min.min(v.co)
+      max.max(v.co)
 
       vs.push(v)
     }
 
-    let cent = max.sub(min)
+    const cent = max.sub(min)
     vs.sort((a, b) => {
       const eps = 0.00001
 
-      let dz = a[2] - b[2]
+      const dz = a[2] - b[2]
       if (dz > -eps && dz < eps) {
         return b[2] - a[2]
       }
 
-      let da = (a[1] - cent[1]) ** 2 + (a[0] - cent[0]) ** 2
-      let db = (b[1] - cent[1]) ** 2 + (b[0] - cent[0]) ** 2
+      const da = (a[1] - cent[1]) ** 2 + (a[0] - cent[0]) ** 2
+      const db = (b[1] - cent[1]) ** 2 + (b[0] - cent[0]) ** 2
 
       return da - db
     })
@@ -588,34 +649,34 @@ export function calcGeoDist(mesh, cd_pvert, shell, mode) {
     }
   }
 
-  for (let v of verts) {
-    let pv = v.customData[cd_pvert]
+  for (const v of verts) {
+    const pv = v.customData.get(cd_pvert)
     pv.updateWeights(ps, v, cd_pvert)
   }
 
-  for (let v of verts) {
-    v.customData[cd_pvert].disUV[0] = -1
+  for (const v of verts) {
+    v.customData.get(cd_pvert).disUV[0] = -1
   }
 
-  startv.customData[cd_pvert].disUV[0] = 0.0
+  startv!.customData.get(cd_pvert).disUV[0] = 0.0
 
-  let queue = new Queue(1024 * 64)
-  queue.enqueue(startv)
+  const queue = new Queue<Vertex>(1024 * 64)
+  queue.enqueue(startv!)
 
-  let visit = new WeakSet()
+  const visit = new WeakSet()
   let _i = 0
 
-  visit.add(startv)
+  visit.add(startv!)
 
   while (queue.length > 0) {
-    let v = queue.dequeue()
-    let pv = v.customData[cd_pvert]
+    const v = queue.dequeue()!
+    const pv = v.customData.get(cd_pvert)
 
-    for (let e of v.edges) {
-      let vb = e.otherVertex(v)
-      let pvb = vb.customData[cd_pvert]
+    for (const e of v.edges) {
+      const vb = e.otherVertex(v)
+      const pvb = vb.customData.get(cd_pvert)
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         let l2 = l
         let _i = 0
 
@@ -625,23 +686,23 @@ export function calcGeoDist(mesh, cd_pvert, shell, mode) {
             break
           }
 
-          let v2 = l2.v
-          let pv2 = v2.customData[cd_pvert]
+          const v2 = l2.v
+          const pv2 = v2.customData.get(cd_pvert)
 
           if (v2 === v) {
             l2 = l2.next
             continue
           }
 
-          let dis = v2.vectorDistance(v)
+          let dis = v2.co.vectorDistance(v.co)
 
           if (v2 !== vb && pvb.disUV[0] >= 0.0) {
-            dis = geodesic_distance_triangle(v2, v, vb, pv.disUV[0], pvb.disUV[0])
+            dis = geodesic_distance_triangle(v2.co, v.co, vb.co, pv.disUV[0], pvb.disUV[0])
             dis -= pv.disUV[0]
           }
 
           if (visit.has(v2)) {
-            let dis2 = pv.disUV[0] + dis
+            const dis2 = pv.disUV[0] + dis
             pv2.disUV[0] = Math.min(pv2.disUV[0], dis2)
             l2 = l2.next
           } else {
@@ -668,21 +729,21 @@ export function calcGeoDist(mesh, cd_pvert, shell, mode) {
   }
 }
 
-export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
-  let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+export function testCurvatureMath(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, shell: Face[], mode: number) {
+  const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
-  let verts = new Set()
-  let edges = new Set()
-  let loops = new Set()
-  let faces = new Set()
+  const verts = new Set<Vertex>()
+  const edges = new Set<Edge>()
+  const loops = new Set<Loop>()
+  const faces = new Set<Face>()
 
   let startv = undefined
 
   console.log('cd_pvert', cd_pvert)
-  for (let f of shell) {
+  for (const f of shell) {
     faces.add(f)
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       verts.add(l.v)
       edges.add(l.e)
       loops.add(l)
@@ -694,20 +755,20 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
   }
 
   if (1) {
-    let co = new Vector3()
-    let n = new Vector3()
-    let dv = new Vector3()
-    let mat = new Matrix4()
+    const co = new Vector3()
+    const n = new Vector3()
+    const dv = new Vector3()
+    const mat = new Matrix4()
 
-    for (let v of verts) {
-      let pv = v.customData[cd_pvert]
+    for (const v of verts) {
+      const pv = v.customData.get(cd_pvert)
 
       co.zero()
       n.zero()
       let tot = 0.0
 
-      for (let v2 of v.neighbors) {
-        co.add(v2)
+      for (const v2 of v.neighbors) {
+        co.add(v2.co)
         n.add(v2.no)
         tot++
       }
@@ -719,39 +780,39 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       co.mulScalar(1.0 / tot)
       n.normalize()
 
-      let dis = v.vectorDistance(co) * 0.1
+      const dis = v.co.vectorDistance(co) * 0.1
       //dis = n.dot(v.no);
       //dis = Math.acos(n.dot(v.no);
 
       pv.disUV[0] = dis
-      co.sub(v)
+      co.sub(v.co)
       pv.dis = dis
 
       pv.dv = new Vector3(co)
     }
 
     const CURVATURE = true
-    let dvtmp = new Vector3()
+    const dvtmp = new Vector3()
 
-    let cos = []
+    const cos = []
     const flag = MeshFlags.MAKE_FACE_TEMP
 
-    for (let v of verts) {
+    for (const v of verts) {
       if (!CURVATURE) {
         break
       }
-      let pv = v.customData[cd_pvert]
+      const pv = v.customData.get(cd_pvert)
 
       mat.makeIdentity()
-      let m = mat.$matrix
+      const m = mat.$matrix
 
       m.m11 = m.m22 = m.m33 = m.m44 = 0.0
 
-      let w = 1.0 / v.edges.length
+      const w = 1.0 / v.edges.length
 
-      for (let v2 of v.neighbors) {
+      for (const v2 of v.neighbors) {
         v2.flag &= ~flag
-        for (let v3 of v2.neighbors) {
+        for (const v3 of v2.neighbors) {
           v3.flag &= ~flag
         }
       }
@@ -760,21 +821,21 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
 
       let count = 0
 
-      for (let v2 of v.neighbors) {
-        for (let v3 of v2.neighbors) {
+      for (const v2 of v.neighbors) {
+        for (const v3 of v2.neighbors) {
           if (!(v3.flag & flag)) {
             v3.flag |= flag
 
-            let w = v3.vectorDistance(v)
+            const w = v3.co.vectorDistance(v.co)
 
-            cov(m, v3.no, -w)
+            cov(m, v3.no as unknown as number[], -w)
             count += w
           }
         }
       }
 
       if (0 && count > 0) {
-        let mul = 1.0 / count
+        const mul = 1.0 / count
         m.m11 *= mul
         m.m12 *= mul
         m.m13 *= mul
@@ -788,14 +849,16 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
 
       //cov(m, v.no, 1.0);
 
-      let dv = dvtmp
-      let dv2 = new Vector3()
-      let dv3 = new Vector3()
-      let k1, k2, k3
+      const dv = dvtmp
+      const dv2 = new Vector3()
+      const dv3 = new Vector3()
+      let k1
+      let k2
+      let k3
 
       let lastn = undefined
 
-      function eigen(n, k1) {
+      function eigen(n: number[] | Vector3, k1: number) {
         /*
         on factor;
         off period;
@@ -836,19 +899,19 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
           }
         }//`
 
-        let m11 = m.m11,
-          m12 = m.m12,
-          m13 = m.m13
-        let m21 = m.m21,
-          m22 = m.m22,
-          m23 = m.m23
-        let m31 = m.m31,
-          m32 = m.m32,
-          m33 = m.m33
-        let x = n[0],
-          y = n[1],
-          z = n[2]
-        let sqrt = Math.sqrt
+        const m11 = m.m11
+        const m12 = m.m12
+        const m13 = m.m13
+        const m21 = m.m21
+        const m22 = m.m22
+        const m23 = m.m23
+        const m31 = m.m31
+        const m32 = m.m32
+        const m33 = m.m33
+        const x = n[0]
+        const y = n[1]
+        const z = n[2]
+        const sqrt = Math.sqrt
 
         //first derivative
         let dx =
@@ -1003,13 +1066,15 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       n.load(v.no)
 
       if (1) {
-        let nmat = [
+        const nmat = [
           [m.m11, m.m12, m.m13],
           [m.m21, m.m22, m.m23],
           [m.m31, m.m32, m.m33],
         ]
 
-        let ret = numeric.eig(nmat, 50)
+        // XXX
+        //@ts-ignore
+        const ret = numeric.eig(nmat, 50)
 
         pv.no = new Vector3(ret.E.x[0])
         pv.tan = new Vector3(ret.E.x[1])
@@ -1038,7 +1103,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
         pv.d2k3 = new Vector3(dv2)
         pv.d3k3 = new Vector3(dv3)
       } else {
-        pv.k1 = eigen()
+        // XXX pv.k1 = eigen()
         pv.lastd2k1.load(pv.d2k1)
         pv.no = new Vector3(n)
         pv.dk1 = new Vector3(dv)
@@ -1065,7 +1130,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
         m.m33 -= pv.k1
         //no need to invert here, matrix is symmetric
 
-        pv.k2 = eigen()
+        // XXX pv.k2 = eigen()
         pv.lastd2k2.load(pv.d2k2)
         pv.tan = new Vector3(n)
         pv.dk2 = new Vector3(dv)
@@ -1073,7 +1138,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
         pv.d3k2 = new Vector3(dv3)
 
         n.cross(v.no).normalize() //.negate();
-        pv.k3 = eigen()
+        // XXX pv.k3 = eigen()
         pv.lastd2k3.load(pv.d2k3)
         pv.bin = new Vector3(n)
         pv.dk3 = new Vector3(dv)
@@ -1084,13 +1149,13 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       }
     }
 
-    let dv2 = new Vector3()
-    let dv3 = new Vector3()
-    let dv4 = new Vector3()
-    let dv5 = new Vector3()
-    let dv6 = new Vector3()
+    const dv2 = new Vector3()
+    const dv3 = new Vector3()
+    const dv4 = new Vector3()
+    const dv5 = new Vector3()
+    const dv6 = new Vector3()
 
-    function cov(m, n, w) {
+    function cov(m: Matrix4['$matrix'], n: number[], w: number) {
       m.m11 += n[0] * n[0] * w
       m.m12 += n[0] * n[1] * w
       m.m13 += n[0] * n[2] * w
@@ -1103,8 +1168,8 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
     }
 
     for (let i = 0; i < 0; i++) {
-      for (let v of verts) {
-        let pv = v.customData[cd_pvert]
+      for (const v of verts) {
+        const pv = v.customData.get(cd_pvert)
         let dis = 0.0
         let tot = 0.0
 
@@ -1117,20 +1182,21 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
           dv2[2] = pv.disUV[3]
         }
 
-        for (let v2 of v.neighbors) {
-          let pv2 = v2.customData[cd_pvert]
-          let w = 1.0
+        for (const v2 of v.neighbors) {
+          const pv2 = v2.customData.get(cd_pvert)
+          const w = 1.0
 
           if (!CURVATURE) {
             dv3[0] = pv.disUV[1]
             dv3[1] = pv.disUV[2]
             dv3[2] = pv.disUV[3]
 
-            let dis1 = pv.dis,
-              dis2 = pv2.dis
+            const dis1 = pv.dis
+            const dis2 = pv2.dis
             error += (dis1 - dis2) ** 2
 
-            for (let j = 0; j < 3; j++) {
+            for (let _j = 0; _j < 3; _j++) {
+              let j = _j as Number3
               dv4[j] = pv.dv[j] * dis1 - pv.dv[j] * dis2 - pv2.dv[j] * dis1 + pv2.dv[j] * dis2
             }
 
@@ -1154,15 +1220,16 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
           pv.dis = error
 
           dv.mulScalar(1.0 / tot)
-          let totg = dv.dot(dv)
+          const totg = dv.dot(dv)
 
           if (totg === 0.0) {
             continue
           }
 
-          let mul = -error / totg
+          const mul = -error / totg
 
-          for (let j = 0; j < 3; j++) {
+          for (let _j = 0; _j < 3; _j++) {
+            let j = _j as Number3
             v[j] += mul * dv[j] * 0.1
           }
         }
@@ -1171,18 +1238,18 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       }
     }
 
-    let tmp2 = new Vector3()
-    let tmp3 = new Vector3()
-    let tmp4 = new Vector3()
+    const tmp2 = new Vector3()
+    const tmp3 = new Vector3()
+    const tmp4 = new Vector3()
 
-    for (let v of verts) {
+    for (const v of verts) {
       v.flag |= MeshFlags.UPDATE
 
-      let pv = v.customData[cd_pvert]
-      let k = pv.disUV[0]
+      const pv = v.customData.get(cd_pvert)
+      const k = pv.disUV[0]
 
       let error = (pv.k2 + pv.k3) ** 2
-      let vec = tmp3
+      const vec = tmp3
 
       tmp2.load(pv.dk2).add(pv.dk3).mul(tmp2)
 
@@ -1206,9 +1273,9 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       pv.disUV[0] = Math.abs(pv.k3) / 20000.0
       ;(pv.dk2.vectorLength() + pv.dk3.vectorLength()) / 20.0 //error*20.0;
 
-      let t = new Vector3(pv.no)
+      const t = new Vector3(pv.no)
 
-      switch (kdrawmode) {
+      switch (window.kdrawmode) {
         case KDrawModes.TAN:
           t.load(pv.tan)
           break
@@ -1261,7 +1328,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
 
       error /= vec.dot(vec)
 
-      let co = new Vector3(v)
+      const co = new Vector3(v.co)
 
       let fac = -0.005
       if (0) {
@@ -1271,7 +1338,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
 
       if (isNaN(co.dot(co))) {
         console.warn('NaN!')
-        co.load(v)
+        co.load(v.co)
       }
 
       fac = pv.d2k1.vectorLength() //*0.5 + pv.dk3.vectorLength()*0.5;
@@ -1301,7 +1368,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
       pv.disUV[0] = (pv.k2 + pv.k3) ** 2
 
       if (0) {
-        let totg = vec.dot(vec)
+        const totg = vec.dot(vec)
         if (totg > 0.0) {
           error /= totg
 
@@ -1326,7 +1393,7 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
     }
 
     let vi = 0
-    for (let v of verts) {
+    for (const v of verts) {
       v.load(cos[vi])
       vi++
     }
@@ -1345,29 +1412,29 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
   }
 
   if (mode === ParamizeModes.MAX_Z) {
-    let min = new Vector3().addScalar(1e17)
-    let max = new Vector3().addScalar(1e17)
+    const min = new Vector3().addScalar(1e17)
+    const max = new Vector3().addScalar(1e17)
 
-    let vs = []
+    const vs = [] as Vertex[]
 
-    for (let v of verts) {
-      min.min(v)
-      max.max(v)
+    for (const v of verts) {
+      min.min(v.co)
+      max.max(v.co)
 
       vs.push(v)
     }
 
-    let cent = max.sub(min)
+    const cent = max.sub(min)
     vs.sort((a, b) => {
       const eps = 0.00001
 
-      let dz = a[2] - b[2]
+      const dz = a[2] - b[2]
       if (dz > -eps && dz < eps) {
         return b[2] - a[2]
       }
 
-      let da = (a[1] - cent[1]) ** 2 + (a[0] - cent[0]) ** 2
-      let db = (b[1] - cent[1]) ** 2 + (b[0] - cent[0]) ** 2
+      const da = (a[1] - cent[1]) ** 2 + (a[0] - cent[0]) ** 2
+      const db = (b[1] - cent[1]) ** 2 + (b[0] - cent[0]) ** 2
 
       return da - db
     })
@@ -1377,37 +1444,37 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
     }
   }
 
-  for (let v of verts) {
-    let pv = v.customData[cd_pvert]
+  for (const v of verts) {
+    const pv = v.customData.get(cd_pvert)
     pv.updateWeights(ps, v, cd_pvert)
   }
 
-  for (let v of verts) {
-    v.customData[cd_pvert].disUV[0] = -1
+  for (const v of verts) {
+    v.customData.get(cd_pvert).disUV[0] = -1
   }
 
   console.log(verts, edges, loops, faces)
   console.log(startv)
 
-  startv.customData[cd_pvert].disUV[0] = 0.0
+  startv!.customData.get(cd_pvert).disUV[0] = 0.0
 
-  let queue = new Queue(1024 * 64)
-  queue.enqueue(startv)
+  const queue = new Queue<Vertex>(1024 * 64)
+  queue.enqueue(startv!)
 
-  let visit = new WeakSet()
+  const visit = new WeakSet()
   let _i = 0
 
-  visit.add(startv)
+  visit.add(startv!)
 
   while (queue.length > 0) {
-    let v = queue.dequeue()
-    let pv = v.customData[cd_pvert]
+    const v = queue.dequeue()!
+    const pv = v.customData.get(cd_pvert)
 
-    for (let e of v.edges) {
-      let vb = e.otherVertex(v)
-      let pvb = vb.customData[cd_pvert]
+    for (const e of v.edges) {
+      const vb = e.otherVertex(v)
+      const pvb = vb.customData.get(cd_pvert)
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         let l2 = l
         let _i = 0
 
@@ -1417,23 +1484,23 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
             break
           }
 
-          let v2 = l2.v
-          let pv2 = v2.customData[cd_pvert]
+          const v2 = l2.v
+          const pv2 = v2.customData.get(cd_pvert)
 
           if (v2 === v) {
             l2 = l2.next
             continue
           }
 
-          let dis = v2.vectorDistance(v)
+          let dis = v2.co.vectorDistance(v.co)
 
           if (v2 !== vb && pvb.disUV[0] >= 0.0) {
-            dis = geodesic_distance_triangle(v2, v, vb, pv.disUV[0], pvb.disUV[0])
+            dis = geodesic_distance_triangle(v2.co, v.co, vb.co, pv.disUV[0], pvb.disUV[0])
             dis -= pv.disUV[0]
           }
 
           if (visit.has(v2)) {
-            let dis2 = pv.disUV[0] + dis
+            const dis2 = pv.disUV[0] + dis
             pv2.disUV[0] = Math.min(pv2.disUV[0], dis2)
             l2 = l2.next
           } else {
@@ -1460,32 +1527,32 @@ export function testCurvatureMath(mesh, cd_pvert, shell, mode) {
   }
 }
 
-export function paramizeShell(mesh, cd_pvert, shell, mode) {
-  let {verts, edges, faces} = calcGeoDist(mesh, cd_pvert, shell, mode)
+export function paramizeShell(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, shell: Face[], mode: number) {
+  const {verts, edges, faces} = calcGeoDist(mesh, cd_pvert, shell, mode)
 }
 
-export function smoothParam(mesh, verts = mesh.verts) {
+export function smoothParam(mesh: Mesh, verts: Iterable<Vertex> = mesh.verts) {
   if (!mesh.verts.customData.hasLayer('paramvert')) {
     console.error('No parameterization customdata layer')
     return
   }
 
-  let cd_pvert = mesh.verts.customData.getLayerIndex('paramvert')
-  let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+  const cd_pvert = mesh.verts.customData.getLayerRef('paramvert') as AttrRef<ParamVert>
+  const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
-  for (let v of verts) {
-    let pv = v.customData[cd_pvert]
+  for (const v of verts) {
+    const pv = v.customData.get(cd_pvert)
     pv.needsSmooth = true
   }
 
-  for (let v of verts) {
-    let pv = v.customData[cd_pvert]
+  for (const v of verts) {
+    const pv = v.customData.get(cd_pvert)
 
     pv.smooth(ps, v, cd_pvert)
   }
 
-  for (let v of verts) {
-    let pv = v.customData[cd_pvert]
+  for (const v of verts) {
+    const pv = v.customData.get(cd_pvert)
 
     pv.disUV[1] = pv.smoothTan[0]
     pv.disUV[2] = pv.smoothTan[1]
@@ -1493,39 +1560,39 @@ export function smoothParam(mesh, verts = mesh.verts) {
   }
 }
 
-export function paramizeMesh(mesh, cd_pvert, mode = ParamizeModes.SELECTED) {
+export function paramizeMesh(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, mode = ParamizeModes.SELECTED) {
   console.log('parameterize mesh')
 
   if (cd_pvert === undefined) {
-    cd_pvert = mesh.verts.customData.getLayerIndex('paramvert')
+    cd_pvert = mesh.verts.customData.getLayerRef('paramvert')
   }
 
   if (!mesh.verts.customData.hasLayer('paramvert')) {
-    cd_pvert = mesh.verts.addCustomDataLayer('paramvert').index
+    cd_pvert = new AttrRef(mesh.verts.addCustomDataLayer('paramvert').index)
   }
 
-  let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+  const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
-  let visit = new WeakSet()
-  let stack = []
-  let shells = []
+  const visit = new WeakSet()
+  const stack = []
+  const shells = [] as Face[][]
 
   for (let f of mesh.faces) {
     if (visit.has(f)) {
       continue
     }
 
-    let shell = []
+    const shell = [] as Face[]
     shells.push(shell)
 
     stack.push(f)
     while (stack.length > 0) {
-      f = stack.pop()
+      f = stack.pop()!
       visit.add(f)
       shell.push(f)
 
-      for (let l of f.loops) {
-        for (let l2 of l.e.loops) {
+      for (const l of f.loops) {
+        for (const l2 of l.e.loops) {
           if (!visit.has(l2.f)) {
             stack.push(l2.f)
             visit.add(l2.f)
@@ -1537,13 +1604,13 @@ export function paramizeMesh(mesh, cd_pvert, mode = ParamizeModes.SELECTED) {
 
   console.log('shells', shells)
 
-  for (let shell of shells) {
+  for (const shell of shells) {
     paramizeShell(mesh, cd_pvert, shell, mode)
   }
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
     //break; //XXX
-    let pv = v.customData[cd_pvert]
+    const pv = v.customData.get(cd_pvert)
     pv.updateTangent(ps, v, cd_pvert, true)
 
     pv.smoothTan[0] = pv.disUV[1]
@@ -1551,9 +1618,9 @@ export function paramizeMesh(mesh, cd_pvert, mode = ParamizeModes.SELECTED) {
     pv.smoothTan[2] = pv.disUV[3]
   }
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
     //break; //XXX
-    let pv = v.customData[cd_pvert]
+    const pv = v.customData.get(cd_pvert)
     pv.updateTangent(ps, v, cd_pvert)
   }
 }

@@ -1,22 +1,30 @@
-import {nstructjs, util, math} from '../path.ux/scripts/pathux.js'
-import {CustomDataElem, LayerSettingsBase} from './customdata.ts'
+import {nstructjs, util, math, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {CustomDataElem, LayerSettingsBase} from './customdata'
+import {StructReader} from '../path.ux/scripts/util/nstructjs'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
 import '../util/numeric.js'
 
-let Queue = util.Queue
+declare const numeric: {
+  eig(matrix: number[][], maxiter?: number): {E: {x: number[][]}, lambda: {x: number[]}}
+  dot(a: number[] | number[][], b: number[] | number[][]): number[]
+}
+
+const Queue = util.Queue
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {buildCotanVerts, getCotanData, VAREA, VCTAN1, VCTAN2, VW, VETOT, vertexSmooth} from './mesh_utils.js'
+import type {Vertex, Edge, Face, Loop} from './mesh_types'
+import type {Mesh} from './mesh'
 
 export const calcCurvModes = {
   SELECTED: 1,
   MAX_Z   : 2,
 }
 
-let tmp1 = new Vector3()
-let tmp2 = new Vector3()
-let tmp3 = new Vector3()
+const tmp1 = new Vector3()
+const tmp2 = new Vector3()
+const tmp3 = new Vector3()
 
-let gtmps = util.cachering.fromConstructor(Vector3, 256)
+const gtmps = util.cachering.fromConstructor(Vector3, 256)
 
 export const KDrawModes = {
   NO        : 0,
@@ -35,7 +43,7 @@ export const KDrawModes = {
   SMOOTH_TAN: 13,
 }
 
-window.kdrawmode = KDrawModes.TAN
+//window.kdrawmode = KDrawModes.TAN
 
 export const WeightModes = {
   SIMPLE     : 0,
@@ -44,6 +52,10 @@ export const WeightModes = {
 }
 
 export class CurvVert2Settings extends LayerSettingsBase {
+  declare updateGen: number
+  declare smoothTangents: boolean
+  declare weightMode: number
+
   constructor() {
     super()
 
@@ -52,17 +64,17 @@ export class CurvVert2Settings extends LayerSettingsBase {
     this.weightMode = WeightModes.EDGE_LENGTH
   }
 
-  static apiDefine(api) {
-    let st = super.apiDefine(api)
+  static apiDefine(api: DataAPI, st?: DataStruct) {
+    const ret = super.apiDefine(api, st!)
 
-    st.int('updateGen', 'updateGen', 'Generation').noUnits().readOnly()
-    st.bool('smoothTangents', 'smoothTangents', 'Smooth Tangents') //.noUnits().range(0, 25);
-    st.enum('weightMode', 'weightMode', WeightModes, 'Weight Mode')
+    ret.int('updateGen', 'updateGen', 'Generation').noUnits().readOnly()
+    ret.bool('smoothTangents', 'smoothTangents', 'Smooth Tangents') //.noUnits().range(0, 25);
+    ret.enum('weightMode', 'weightMode', WeightModes, 'Weight Mode')
 
-    return st
+    return ret
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     b.updateGen = this.updateGen
     b.smoothTangents = this.smoothTangents
     b.weightMode = this.weightMode
@@ -78,13 +90,42 @@ CurvVert2Settings.STRUCT =
 }`
 nstructjs.register(CurvVert2Settings)
 
-let tmp = new Vector3()
-let itmp1 = new Vector3()
-let itmp2 = new Vector3()
-let itmp3 = new Vector3()
-let itmp4 = new Vector3()
+const tmp = new Vector3()
+const itmp1 = new Vector3()
+const itmp2 = new Vector3()
+const itmp3 = new Vector3()
+const itmp4 = new Vector3()
 
 export class CurvVert2 extends CustomDataElem {
+  error: number
+  errorvec: Vector3
+  lastd2k1: Vector3
+  lastd2k2: Vector3
+  lastd2k3: Vector3
+  no: Vector3
+  tan: Vector3
+  bin: Vector3
+  k1: number
+  k2: number
+  k3: number
+  d2k1: Vector3
+  d2k2: Vector3
+  d2k3: Vector3
+  dk1: Vector3
+  dk2: Vector3
+  dk3: Vector3
+  d3k1: Vector3
+  d3k2: Vector3
+  d3k3: Vector3
+  updateGen: number
+  needsSmooth: boolean
+  smoothTan: Vector3
+  totarea: number
+  k: number
+  wlist: number[]
+  dis!: number
+  dv!: Vector3
+
   constructor() {
     super()
 
@@ -121,6 +162,7 @@ export class CurvVert2 extends CustomDataElem {
 
   static define() {
     return {
+      elemTypeMask : 0,
       typeName     : 'curvetest',
       uiTypeName   : 'Curv Test',
       defaultName  : 'Curv Test',
@@ -140,37 +182,37 @@ export class CurvVert2 extends CustomDataElem {
 
   /*calculate tangent and smooth with neighbors
    * if necassary */
-  updateTangent(ps, owning_v, cd_curvt, noNorm = false) {
+  updateTangent(ps: CurvVert2Settings, owning_v: Vertex, cd_curvt: number, noNorm = false) {
     let v = owning_v
 
     this.updateGen = ps.updateGen
 
-    let pv = v.customData[cd_curvt]
-    let d1 = pv.k
+    const pv = v.customData[cd_curvt] as CurvVert2 as CurvVert2
+    const d1 = pv.k
 
-    let dv = tmp1.zero()
+    const dv = tmp1.zero()
 
     if (v.valence !== this.wlist.length) {
       this.updateWeights(ps, owning_v, cd_curvt)
     }
 
-    let norm = 0.0
+    const norm = 0.0
     const cotan = ps.weightMode === WeightModes.COTAN
     const edge_length = ps.weightMode === WeightModes.EDGE_LENGTH
 
     let i = 0
-    for (let e of v.edges) {
-      let v2 = e.otherVertex(v)
-      let pv2 = v2.customData[cd_curvt]
+    for (const e of v.edges) {
+      const v2 = e.otherVertex(v)
+      const pv2 = v2.customData[cd_curvt] as CurvVert2 as CurvVert2
 
-      let d2 = pv2.k
+      const d2 = pv2.k
 
       let w = 1.0
 
       w = this.wlist[i]
 
       let dv2
-      dv2 = tmp3.load(v2).sub(v)
+      dv2 = tmp3.load(v2.co).sub(v.co)
 
       if (!noNorm) {
         dv2.normalize()
@@ -207,7 +249,7 @@ export class CurvVert2 extends CustomDataElem {
     }
   }
 
-  smooth(ps, v, cd_curvt, fac = 0.5) {
+  smooth(ps: CurvVert2Settings, v: Vertex, cd_curvt: number, fac = 0.5) {
     let k = 0
     let tot = 0.0
     let i = 0
@@ -215,7 +257,7 @@ export class CurvVert2 extends CustomDataElem {
     this.updateWeights(ps, v, cd_curvt)
 
     for (let v2 of v.neighbors) {
-      let pv2 = v2.customData[cd_curvt]
+      let pv2 = v2.customData[cd_curvt] as CurvVert2
       let w = this.wlist[i]
 
       k += pv2.k * w
@@ -231,7 +273,7 @@ export class CurvVert2 extends CustomDataElem {
     this.k += (k - this.k) * fac
   }
 
-  interp(dest, datas, ws) {
+  interp(dest: this, datas: this[], ws: number[]) {
     let k1 = 0,
       k2 = 0,
       k3 = 0,
@@ -268,7 +310,7 @@ export class CurvVert2 extends CustomDataElem {
     dest.bin.load(bin)
   }
 
-  updateWeights(ps, owning_v, cd_curvt) {
+  updateWeights(ps: CurvVert2Settings, owning_v: Vertex, cd_curvt: number) {
     const val = owning_v.valence
 
     if (this.wlist.length !== val) {
@@ -296,7 +338,7 @@ export class CurvVert2 extends CustomDataElem {
           b = owning_v.customData[cd_disp].worldco;
         }*/
 
-        const w = a.vectorDistance(b)
+        const w = a.co.vectorDistance(b.co)
 
         wlist[wi++] = w
         tot += w
@@ -314,7 +356,7 @@ export class CurvVert2 extends CustomDataElem {
     }
   }
 
-  updateCotan(ps, owning_v, cd_curvt) {
+  updateCotan(ps: CurvVert2Settings, owning_v: Vertex, cd_curvt: number) {
     if (ps.weightMode !== WeightModes.COTAN) {
       return
     }
@@ -368,7 +410,7 @@ export class CurvVert2 extends CustomDataElem {
     this.totarea = totarea
   }
 
-  mulScalar(f) {
+  mulScalar(f: number) {
     this.tan.mulScalar(f)
     return this
   }
@@ -378,30 +420,30 @@ export class CurvVert2 extends CustomDataElem {
     return this
   }
 
-  add(b) {
+  add(b: this) {
     this.tan.add(b.tan)
     return this
   }
 
-  addFac(b, fac) {
+  addFac(b: this, fac: number) {
     this.tan.addFac(b.tan, fac)
     return this
   }
 
-  sub(b) {
+  sub(b: this) {
     this.tan.sub(b.tan)
     return this
   }
 
-  setValue(v) {
+  setValue(v: this) {
     this.tan.load(v.tan)
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     super.loadSTRUCT(reader)
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     b.k1 = this.k1
     b.k2 = this.k2
     b.k3 = this.k3
@@ -449,18 +491,18 @@ CurvVert2.STRUCT =
 nstructjs.register(CurvVert2)
 CustomDataElem.register(CurvVert2)
 
-export function curvatureTest(mesh, cd_curvt, shell, mode) {
-  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings()
+export function curvatureTest(mesh: Mesh, cd_curvt: number, shell: Face[], mode: number) {
+  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings() as CurvVert2Settings
 
-  let verts = new Set()
-  let edges = new Set()
-  let loops = new Set()
-  let faces = new Set()
+  let verts = new Set<Vertex>()
+  let edges = new Set<Edge>()
+  let loops = new Set<Loop>()
+  let faces = new Set<Face>()
 
   //used by cov()
   let cntmp2 = new Vector3()
 
-  let startv = undefined
+  let startv: Vertex | undefined = undefined
 
   console.log('cd_curvt', cd_curvt)
   for (let f of shell) {
@@ -486,14 +528,14 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
   let spacetan_tmp = new Vector3()
 
   for (let v of verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
 
     co.zero()
     n.zero()
     let tot = 0.0
 
     for (let v2 of v.neighbors) {
-      co.add(v2)
+      co.add(v2.co)
       n.add(v2.no)
       tot++
     }
@@ -505,11 +547,11 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
     co.mulScalar(1.0 / tot)
     n.normalize()
 
-    let dis = v.vectorDistance(co) * 0.1
+    let dis = v.co.vectorDistance(co) * 0.1
     //dis = n.dot(v.no);
     //dis = Math.acos(n.dot(v.no);
 
-    co.sub(v)
+    co.sub(v.co)
     pv.dis = dis
     pv.dv = new Vector3(co)
   }
@@ -522,7 +564,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
   let ispacemat = new Matrix4()
 
   for (let v of verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
 
     spacemat.makeIdentity()
     let spacetan
@@ -531,7 +573,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
     if (v.edges.length > 0) {
       let e = v.edges[0]
 
-      spacetan = spacetan_tmp.load(v.edges[0].otherVertex(v)).sub(v)
+      spacetan = spacetan_tmp.load(v.edges[0].otherVertex(v).co).sub(v.co)
       spacetan.normalize()
     }
     ispacemat.makeNormalMatrix(v.no, spacetan)
@@ -568,7 +610,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
         if (!(v3.flag & flag)) {
           v3.flag |= flag
 
-          let w = v3.vectorDistance(v)
+          let w = v3.co.vectorDistance(v.co)
 
           cov(m, v.no, v3.no, w)
           count += 1
@@ -597,10 +639,10 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
     let dv3 = new Vector3()
     let k1, k2, k3
 
-    let lastn = undefined
+    let lastn: Vector3 | undefined = undefined
 
     /** multplies n by ispacemat */
-    function eigen(n, k1, doPowerSolve = false) {
+    function eigen(n: Vector3, k1: number | undefined, doPowerSolve = false): number {
       /*
       on factor;
       off period;
@@ -808,7 +850,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
       dv3[1] = dy
       dv3[2] = dz
 
-      return k1
+      return k1!
     }
 
     n.load(v.no)
@@ -823,7 +865,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
       let ret
       try {
         ret = numeric.eig(nmat, 1050)
-      } catch (error) {
+      } catch (error: unknown) {
         ret = {
           E: {
             x: [new Vector3([0, 0, 0]), new Vector3([0, 0, 0]), new Vector3([0, 0, 0])],
@@ -831,7 +873,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
           lambda: {x: new Vector3([0, 0, 0])},
         }
 
-        console.log(error.stack)
+        console.log((error as Error).stack)
         console.log(error)
         console.log('numeric.eigen error')
       }
@@ -860,8 +902,8 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
 
         t2.normalize()
 
-        let t3 = [t[0], t[1], t[2]]
-        t3 = new Vector3(numeric.dot(t3, nmat))
+        let t3a = [t[0], t[1], t[2]]
+        let t3 = new Vector3(numeric.dot(t3a, nmat))
         t3.normalize()
 
         console.log(t, t2, t.dot(t2), ret, t3.dot(t2), t3)
@@ -962,7 +1004,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
   let dv5 = new Vector3()
   let dv6 = new Vector3()
 
-  function cov(m, vno, otherno, w) {
+  function cov(m: Matrix4['$matrix'], vno: Vector3, otherno: Vector3, w: number) {
     cntmp2.load(otherno).sub(vno).multVecMatrix(spacemat)
     //cntmp2.normalize();
     n = cntmp2
@@ -980,7 +1022,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
 
   for (let i = 0; i < 0; i++) {
     for (let v of verts) {
-      let pv = v.customData[cd_curvt]
+      let pv = v.customData[cd_curvt] as CurvVert2
       let dis = 0.0
       let tot = 0.0
 
@@ -988,7 +1030,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
       let error = 0.0
 
       for (let v2 of v.neighbors) {
-        let pv2 = v2.customData[cd_curvt]
+        let pv2 = v2.customData[cd_curvt] as CurvVert2
         let w = 1.0
 
         dis += pv2.error * w
@@ -1015,7 +1057,7 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
   for (let v of verts) {
     v.flag |= MeshFlags.UPDATE
 
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
 
     let error = (pv.k2 + pv.k3) ** 2
     let vec = tmp3
@@ -1047,13 +1089,13 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
 
     error /= vec.dot(vec)
 
-    let co = new Vector3(v)
+    let co = new Vector3(v.co)
 
     let fac = -0.005
 
     if (isNaN(co.dot(co))) {
       console.warn('NaN!')
-      co.load(v)
+      co.load(v.co)
     }
 
     fac = pv.d2k1.vectorLength() //*0.5 + pv.dk3.vectorLength()*0.5;
@@ -1123,38 +1165,38 @@ export function curvatureTest(mesh, cd_curvt, shell, mode) {
   }
 }
 
-export function calcCurvShell(mesh, cd_curvt, shell, mode) {
+export function calcCurvShell(mesh: Mesh, cd_curvt: number, shell: Face[], mode: number) {
   let {verts, edges, faces} = curvatureTest(mesh, cd_curvt, shell, mode)
 }
 
-export function smoothParam(mesh, verts = mesh.verts) {
+export function smoothParam(mesh: Mesh, verts: Iterable<Vertex> = mesh.verts) {
   if (!mesh.verts.customData.hasLayer('curvetest')) {
     console.error('No parameterization customdata layer')
     return
   }
 
   let cd_curvt = mesh.verts.customData.getLayerIndex('curvetest')
-  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings()
+  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings() as CurvVert2Settings
 
   for (let v of verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
     pv.needsSmooth = true
   }
 
   for (let v of verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
 
     pv.smooth(ps, v, cd_curvt)
   }
 
   for (let v of verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
 
     pv.updateTangent(ps, v, cd_curvt)
   }
 }
 
-export function calcCurvMesh(mesh, cd_curvt, mode = calcCurvModes.SELECTED) {
+export function calcCurvMesh(mesh: Mesh, cd_curvt?: number, mode = calcCurvModes.SELECTED) {
   console.log('calcCurvMesh')
 
   if (cd_curvt === undefined) {
@@ -1165,23 +1207,23 @@ export function calcCurvMesh(mesh, cd_curvt, mode = calcCurvModes.SELECTED) {
     cd_curvt = mesh.verts.addCustomDataLayer('curvetest').index
   }
 
-  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings()
+  let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings() as CurvVert2Settings
 
   let visit = new WeakSet()
-  let stack = []
-  let shells = []
+  let stack: Face[] = []
+  let shells: Face[][] = []
 
   for (let f of mesh.faces) {
     if (visit.has(f)) {
       continue
     }
 
-    let shell = []
+    let shell: Face[] = []
     shells.push(shell)
 
     stack.push(f)
     while (stack.length > 0) {
-      f = stack.pop()
+      f = stack.pop()!
       visit.add(f)
       shell.push(f)
 
@@ -1203,7 +1245,7 @@ export function calcCurvMesh(mesh, cd_curvt, mode = calcCurvModes.SELECTED) {
   }
 
   for (let v of mesh.verts) {
-    let pv = v.customData[cd_curvt]
+    let pv = v.customData[cd_curvt] as CurvVert2
     pv.updateTangent(ps, v, cd_curvt)
   }
 }

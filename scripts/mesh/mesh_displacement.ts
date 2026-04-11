@@ -20,11 +20,11 @@ import {CustomDataElem} from './customdata'
 import {Vector3, Matrix4} from '../util/vectormath.js'
 
 import {MeshTypes, MeshFlags} from './mesh_base.js'
-import {paramizeMesh, ParamizeModes, ParamVert} from './mesh_paramizer'
+import {paramizeMesh, ParamizeModes, ParamVert, ParamVertSettings} from './mesh_paramizer'
 import {BVHVertFlags, MDynVert} from '../util/bvh.js'
 import {getCornerFlag, getFaceSetsAttr, getSmoothBoundFlag} from './mesh_facesets.js'
 import {AttrRef, IntElem, Mesh, Vector2LayerElem, Vector3LayerElem, Vertex} from './mesh'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 function smoothno(v: Vertex, dv: DispLayerVert) {
   dv.no.load(v.no)
@@ -61,7 +61,7 @@ export class SmoothMemoizer {
   smoothGen: number = 0
   initGen: number = 0
 
-  cd_disp: number = -1
+  cd_disp = new AttrRef<DispLayerVert>(-1)
   cd_temps: number[] = []
 
   noDisp: boolean = false
@@ -95,7 +95,7 @@ export class SmoothMemoizer {
   steps: number = 0
   memoize: boolean = false
 
-  constructor(mesh: Mesh, cd_disp: number) {
+  constructor(mesh: Mesh, cd_disp: AttrRef<DispLayerVert>) {
     this.smoothGen = 0
     this.initGen = 0
 
@@ -112,8 +112,8 @@ export class SmoothMemoizer {
 
     this.mesh = mesh
 
-    if (cd_disp >= 0) {
-      this.settings = mesh.verts.customData.flatlist[cd_disp].getTypeSettings()
+    if (cd_disp.i >= 0) {
+      this.settings = mesh.verts.customData.flatlist[cd_disp.i].getTypeSettings() as DispLayerSettings
     } else {
       this.settings = undefined
     }
@@ -171,39 +171,39 @@ export class SmoothMemoizer {
     }
   }
 
-  start(setSmoothGen = true, cd_disp?: number, checkTemps = true) {
+  start(setSmoothGen = true, cd_disp?: AttrRef<DispLayerVert>, checkTemps = true) {
     const mesh = this.mesh
     this.cd_dyn_vert = mesh.verts.customData.getLayerIndex('dynvert')
     this.fsetAttr = getFaceSetsAttr(mesh, false) as AttrRef<IntElem>
     this.cd_fset = this.fsetAttr.i
 
-    if (cd_disp !== undefined && cd_disp >= 0) {
+    if (cd_disp !== undefined && cd_disp.i >= 0) {
       this.cd_disp = cd_disp
-      this.settings = this.mesh.verts.customData.flatlist[cd_disp].getTypeSettings()
+      this.settings = this.mesh.verts.customData.flatlist[cd_disp.i].getTypeSettings()
     } else {
       cd_disp = this.cd_disp
 
-      if (cd_disp === undefined || cd_disp < 0) {
+      if (cd_disp === undefined || cd_disp.i < 0) {
         this.settings = undefined
       }
     }
 
     if (checkTemps) {
-      let layer
-      if (cd_disp >= 0) {
-        layer = this.mesh.verts.customData.flatlist[cd_disp]
+      let layer: CustomDataLayer | undefined
+      if (cd_disp.i >= 0) {
+        layer = this.mesh.verts.customData.flatlist[cd_disp.i]
       }
 
       this.checkTemps()
 
-      if (cd_disp >= 0 && layer !== undefined) {
-        cd_disp = this.cd_disp = layer.index
+      if (cd_disp.i >= 0 && layer !== undefined) {
+        cd_disp.i = this.cd_disp.i = layer.index
       }
     }
 
     if (setSmoothGen) {
       for (const v of mesh.verts) {
-        const dv = v.customData[cd_disp] as DispLayerVert
+        const dv = v.customData[cd_disp.i] as DispLayerVert
         dv.smoothGen = this.settings!.smoothGen
         dv.initGen = this.settings!.initGen
       }
@@ -223,7 +223,7 @@ export class SmoothMemoizer {
     const cd_dyn_vert = this.cd_dyn_vert
     const cd_fset = this.cd_fset
 
-    const dv = cd_disp >= 0 ? (v.customData[cd_disp] as DispLayerVert) : undefined
+    const dv = cd_disp.i >= 0 ? (v.customData[cd_disp.i] as DispLayerVert) : undefined
 
     const cd_temp = this.cd_temps[0]
     const cd_temp2 = this.cd_temps[1]
@@ -255,7 +255,7 @@ export class SmoothMemoizer {
 
     function checkinit1(v: Vertex, dv: DispLayerVert, co?: Vector3) {
       if (co === undefined) {
-        co = noDisp ? v.co : (v.customData[cd_disp] as DispLayerVert).worldco
+        co = noDisp ? v.co : (v.customData[cd_disp.i] as DispLayerVert).worldco
       }
 
       if (dv.initGen !== initGen) {
@@ -320,7 +320,7 @@ export class SmoothMemoizer {
 
       if (maxDepth > 1) {
         if (!noDisp) {
-          dv2 = v2.customData[cd_disp] as DispLayerVert
+          dv2 = v2.customData[cd_disp.i] as DispLayerVert
           checkinit1(v2, dv2)
         } else {
           checkinit2(v2)
@@ -331,7 +331,7 @@ export class SmoothMemoizer {
         if (cd_gens >= 0) {
           sgen = (v.customData[cd_gens] as Vector2LayerElem).value[0]
         } else {
-          sgen = (v.customData[cd_disp] as DispLayerVert).smoothGen
+          sgen = (v.customData[cd_disp.i] as DispLayerVert).smoothGen
         }
 
         if (this.memoize && sgen === this.smoothGen) {
@@ -350,7 +350,7 @@ export class SmoothMemoizer {
             }
 
             if (!noDisp) {
-              const dv3 = v3.customData[cd_disp] as DispLayerVert
+              const dv3 = v3.customData[cd_disp.i] as DispLayerVert
               checkinit1(v3, dv3)
             } else {
               checkinit2(v3)
@@ -520,16 +520,16 @@ const mtmp1 = new Vector3()
 const mat_temps = util.cachering.fromConstructor(Matrix4, 512)
 
 export class DispContext {
-  stack: (number | DispLayerSettings | LayerSettingsBase)[]
+  stack: (number | AttrRef<ParamVert> | DispLayerSettings | LayerSettingsBase)[]
   scur: 0
-  cd_disp?: number
+  cd_disp: AttrRef<DispLayerVert> = new AttrRef()
   settings: DispLayerSettings = new DispLayerSettings()
   smemo?: SmoothMemoizer
   mesh?: Mesh
   layerset?: LayerSet<DispLayerVert>
-  cd_pvert?: number
+  cd_pvert = new AttrRef<ParamVert>()
   v?: Vertex
-  pvert_settings?: LayerSettingsBase
+  pvert_settings?: ParamVertSettings
 
   constructor() {
     this.reset()
@@ -540,14 +540,14 @@ export class DispContext {
   pushDisp(cd_disp: number) {
     const mesh = this.mesh!
 
-    this.stack[this.scur++] = this.cd_disp!
+    this.stack[this.scur++] = this.cd_disp.i!
     this.stack[this.scur++] = this.settings!
 
-    this.cd_disp = cd_disp
+    this.cd_disp.i = cd_disp
     this.settings = mesh.verts.customData.flatlist[cd_disp].getTypeSettings()
 
     if (this.smemo) {
-      this.stack[this.scur++] = this.smemo.cd_disp
+      this.stack[this.scur++] = this.smemo.cd_disp.i
       this.stack[this.scur++] = this.smemo.settings!
       this.stack[this.scur++] = this.smemo.smoothGen
       this.stack[this.scur++] = this.smemo.initGen
@@ -567,20 +567,20 @@ export class DispContext {
       this.smemo.initGen = this.stack[--this.scur] as number
       this.smemo.smoothGen = this.stack[--this.scur] as number
       this.smemo.settings = this.stack[--this.scur] as LayerSettingsBase
-      this.smemo.cd_disp = this.stack[--this.scur] as number
+      this.smemo.cd_disp.i = this.stack[--this.scur] as number
     } else {
       this.scur -= 4
     }
 
     this.settings = this.stack[--this.scur] as DispLayerSettings
-    this.cd_disp = this.stack[--this.scur] as number
+    this.cd_disp.i = this.stack[--this.scur] as number
 
     return this
   }
 
   reset(mesh?: Mesh, cd_disp?: number, cd_pvert?: number) {
     this.v = undefined
-    this.cd_disp = cd_disp
+    this.cd_disp.i = cd_disp ?? -1
     const settings =
       cd_disp !== undefined && cd_disp >= 0
         ? mesh!.verts.customData.flatlist[cd_disp].getTypeSettings<DispLayerSettings>()
@@ -597,7 +597,7 @@ export class DispContext {
       this.layerset = undefined
     }
 
-    this.cd_pvert = cd_pvert
+    this.cd_pvert.i = cd_pvert ?? -1
 
     if (cd_pvert !== undefined && cd_pvert >= 0) {
       this.pvert_settings = mesh!.verts.customData.flatlist[cd_pvert].getTypeSettings()
@@ -679,21 +679,21 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     const v = dctx.v
     const cd_pvert = dctx.cd_pvert
 
-    if (v === undefined || cd_pvert === undefined || cd_pvert === -1 || !(this.flag & DispVertFlags.INTERP_NEW)) {
+    if (v === undefined || cd_pvert === undefined || cd_pvert.i === -1 || !(this.flag & DispVertFlags.INTERP_NEW)) {
       return false
     }
 
     this.flag &= ~DispVertFlags.INTERP_NEW
 
     const cd_disp = dctx.cd_disp!
-    const pv = v.customData[cd_pvert] as ParamVert
+    const pv = v.customData[cd_pvert.i] as ParamVert
 
     //smoothno(v, this);
     //this.no.normalize();
     let tot = 1
 
     for (const v2 of v.neighbors) {
-      const dv2 = v2.customData[cd_disp] as DispLayerVert
+      const dv2 = v2.customData[cd_disp.i] as DispLayerVert
 
       if (depth < 3) {
         //  dv2.checkInterpNew(dctx, depth+1);
@@ -720,15 +720,15 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     }
 
     //*
-    pv.updateTangent(dctx.pvert_settings, v, dctx.cd_pvert, true, cd_disp, false)
+    pv.updateTangent(dctx.pvert_settings!, v, dctx.cd_pvert, true, cd_disp, false)
 
     this.tan[0] = pv.disUV[1]
     this.tan[1] = pv.disUV[2]
     this.tan[2] = pv.disUV[3] //*/
 
-    this.scale = getscale(v, this, cd_disp)
+    this.scale = getscale(v, this, cd_disp.i)
 
-    if (cd_disp !== dctx.layerset![0].index) {
+    if (cd_disp.i !== dctx.layerset![0].index) {
       const cd_base = dctx.layerset![dctx.settings!.base].index
       const dvbase = v.customData[cd_base] as DispLayerVert
 
@@ -747,9 +747,9 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
       }
     }
 
-    if (cd_disp === dctx.layerset!.active!.index) {
+    if (cd_disp.i === dctx.layerset!.active!.index) {
       this.worldco = v.co
-    } else if (cd_disp !== dctx.layerset![0].index) {
+    } else if (cd_disp.i !== dctx.layerset![0].index) {
       //*
 
       this.updateTanCo(dctx)
@@ -758,7 +758,7 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
         let tot = 1.0
 
         for (const v2 of v.neighbors) {
-          const dv2 = v2.customData[cd_disp] as DispLayerVert
+          const dv2 = v2.customData[cd_disp.i] as DispLayerVert
           //dv2.checkInterpNew(dctx);
 
           const tanco = itmp1.load(dv2.tanco)
@@ -831,8 +831,8 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     const cd_disp = dctx.cd_disp!
     const cd_pvert = dctx.cd_pvert!
 
-    const dv = v.customData[cd_disp] as DispLayerVert
-    const pv = v.customData[cd_pvert] as ParamVert
+    const dv = v.customData[cd_disp.i] as DispLayerVert
+    const pv = v.customData[cd_pvert.i] as ParamVert
 
     dv.smoothco.load(dctx.smemo!.smoothco(v))
 
@@ -841,20 +841,20 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     for (const v2 of v.neighbors) {
       dv.no.add(v2.no)
 
-      const dv2 = v2.customData[cd_disp] as DispLayerVert
+      const dv2 = v2.customData[cd_disp.i] as DispLayerVert
       dv2.smoothco.load(dctx.smemo!.smoothco(v2))
     }
 
     dv.no.normalize()
     dv.no.load(v.no)
 
-    pv.updateTangent(dctx.pvert_settings, v, cd_pvert, true, cd_disp, false)
+    pv.updateTangent(dctx.pvert_settings!, v, cd_pvert, true, cd_disp, false)
 
     dv.tan[0] = pv.disUV[1]
     dv.tan[1] = pv.disUV[2]
     dv.tan[2] = pv.disUV[3]
 
-    dv.scale = getscale(v, dv, cd_disp)
+    dv.scale = getscale(v, dv, cd_disp.i)
 
     for (const layer of dctx.layerset!) {
       const settings = layer.getTypeSettings<DispLayerSettings>()
@@ -862,7 +862,7 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
 
       dctx.pushDisp(layer.index)
 
-      if (layer.index === cd_disp || layer === dctx.layerset![0]) {
+      if (layer.index === cd_disp.i || layer === dctx.layerset![0]) {
         dctx.popDisp()
         continue
       }
@@ -870,7 +870,7 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
       dv2.checkInterpNew(dctx)
 
       const cd_base = dctx.layerset![settings.base].index
-      if (cd_base === cd_disp) {
+      if (cd_base === cd_disp.i) {
         dv2.parentTan.load(dv.tan)
         dv2.parentNo.load(dv.no)
         dv2.parentScale = dv.scale
@@ -901,9 +901,9 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     const mat = mat_temps.next()
 
     const m = mat.$matrix
-    const co = this.baseco,
-      no = this.parentNo,
-      tan = this.parentTan
+    const co = this.baseco
+    const no = this.parentNo
+    const tan = this.parentTan
 
     const scale = this.parentScale
 
@@ -953,7 +953,7 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     let x = 0
 
     for (let _i = 0; _i < 3; _i++) {
-      let i = _i as Number3
+      const i = _i as Number3
       x ^= this.worldco[i] * 1024 * 32
       x ^= this.tan[i] * 3024 * 32
       x ^= this.no[i] * 2024 * 32
@@ -1083,14 +1083,13 @@ export function initDispLayers(mesh: Mesh) {
     return
   }
 
-  let cd_pvert = mesh.verts.customData.getNamedLayerIndex('disp_pvert', 'paramvert')
-
-  if (cd_pvert < 0) {
-    cd_pvert = mesh.verts.addCustomDataLayer('paramvert', 'disp_pvert').index
+  const cd_pvert = mesh.verts.customData.getNamedLayerRef<ParamVert>('disp_pvert', 'paramvert')
+  if (cd_pvert.i < 0) {
+    cd_pvert.i = mesh.verts.addCustomDataLayer('paramvert', 'disp_pvert').index
     paramizeMesh(mesh, cd_pvert, ParamizeModes.MAX_Z)
   }
 
-  const dctx = disp_contexts.next().reset(mesh, undefined, cd_pvert)
+  const dctx = disp_contexts.next().reset(mesh, undefined, cd_pvert.i)
 
   //ensure all displacement layers are initialized
 
@@ -1099,13 +1098,13 @@ export function initDispLayers(mesh: Mesh) {
 
   let need_normals = true
 
-  const pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+  const pvert_settings = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
   for (const layer of layerset) {
     const settings = layer.getTypeSettings<DispLayerSettings>()
     let cd_disp = layer.index
 
-    dctx.reset(mesh, cd_disp, cd_pvert)
+    dctx.reset(mesh, cd_disp, cd_pvert.i)
 
     if (settings.flag & DispLayerFlags.NEEDS_INIT) {
       settings.flag &= ~DispLayerFlags.NEEDS_INIT
@@ -1123,7 +1122,7 @@ export function initDispLayers(mesh: Mesh) {
         settings.smoothGen++
         settings.initGen++
 
-        smemo = getSmoothMemo(mesh, cd_disp)
+        smemo = getSmoothMemo(mesh, new AttrRef(cd_disp))
         cd_disp = layer.index //in case getSmoothMemo modified customdata layout
 
         for (const v of mesh.verts) {
@@ -1146,7 +1145,7 @@ export function initDispLayers(mesh: Mesh) {
         dv.flag &= ~DispVertFlags.NEEDS_INIT
 
         dv.tanco.zero()
-        const pv = v.customData[cd_pvert] as ParamVert
+        const pv = v.customData[cd_pvert.i] as ParamVert
 
         //smooth normals
         dv.no.zero()
@@ -1192,7 +1191,7 @@ export function checkDispLayers(mesh: Mesh) {
   return initDispLayers(mesh)
 }
 
-export function getSmoothMemo(mesh: Mesh, cd_disp: number) {
+export function getSmoothMemo(mesh: Mesh, cd_disp: AttrRef<DispLayerVert>) {
   if (!mesh.smemo) {
     mesh.smemo = new SmoothMemoizer(mesh, cd_disp)
     mesh.smemo.cd_disp = -1
@@ -1203,7 +1202,7 @@ export function getSmoothMemo(mesh: Mesh, cd_disp: number) {
     //cd_disp = mesh.smemo.cd_disp;
   }
 
-  if (cd_disp >= 0) {
+  if (cd_disp.i >= 0) {
     const settings = mesh.smemo.settings
     mesh.smemo.smoothGen = settings.smoothGen
     mesh.smemo.initGen = settings.initGen
@@ -1221,8 +1220,8 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
     activeLayerIndex = mesh.verts.customData.getLayerIndex('displace')
   }
 
-  const cd_pvert = mesh.verts.customData.getNamedLayerIndex('disp_pvert', 'paramvert')
-  const pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
+  const cd_pvert = mesh.verts.customData.getNamedLayerRef<ParamVert>('disp_pvert', 'paramvert')
+  const pvert_settings = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings
 
   const layers = mesh.verts.customData.getLayerSet<DispLayerVert>('displace')
   let actlayer: CustomDataLayer<DispLayerVert>
@@ -1255,19 +1254,19 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
     //get smoother updater
     s2.smoothGen++
     s2.initGen++
-    const smemo = getSmoothMemo(mesh, layers[mesh.lastDispActive].index)
+    const smemo = getSmoothMemo(mesh, new AttrRef(layers[mesh.lastDispActive].index))
 
-    const cd_disp1 = actlayer.index
-    const cd_disp2 = layers[mesh.lastDispActive].index
+    const cd_disp1 = new AttrRef<DispLayerVert>(actlayer.index)
+    const cd_disp2 = new AttrRef<DispLayerVert>(layers[mesh.lastDispActive].index)
 
-    dctx1.reset(mesh, cd_disp1, cd_pvert)
-    dctx2.reset(mesh, cd_disp2, cd_pvert)
+    dctx1.reset(mesh, cd_disp1.i, cd_pvert.i)
+    dctx2.reset(mesh, cd_disp2.i, cd_pvert.i)
 
     for (const v of mesh.verts) {
       dctx1.v = v
       dctx2.v = v
 
-      const dv2 = v.customData[cd_disp2] as DispLayerVert
+      const dv2 = v.customData[cd_disp2.i] as DispLayerVert
       dv2.smoothco.load(smemo.smoothco(v))
       smoothno(v, dv2)
     }
@@ -1276,22 +1275,22 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
       dctx1.v = v
       dctx2.v = v
 
-      const dv1 = v.customData[cd_disp1] as DispLayerVert
-      const dv2 = v.customData[cd_disp2] as DispLayerVert
-      const pv = v.customData[cd_pvert] as ParamVert
+      const dv1 = v.customData[cd_disp1.i] as DispLayerVert
+      const dv2 = v.customData[cd_disp2.i] as DispLayerVert
+      const pv = v.customData[cd_pvert.i] as ParamVert
 
-      pv.updateTangent(pvert_settings, v, cd_pvert, true, cd_disp2, false)
+      pv.updateTangent(pvert_settings!, v, cd_pvert, true, cd_disp2, false)
 
       dv2.tan[0] = pv.disUV[1]
       dv2.tan[1] = pv.disUV[2]
       dv2.tan[2] = pv.disUV[3]
 
-      dv2.scale = getscale(v, dv2, cd_disp2) //*Math.max(dv2.tan.vectorLength(), 0.00001);
+      dv2.scale = getscale(v, dv2, cd_disp2.i) //*Math.max(dv2.tan.vectorLength(), 0.00001);
       //dv2.tan.normalize();
 
       v.flag |= MeshFlags.UPDATE
 
-      if (cd_disp2 !== cd_baselayer) {
+      if (cd_disp2.i !== cd_baselayer) {
         dv2.worldco = v.co
         dv2.updateTanCo(dctx2)
 
@@ -1307,7 +1306,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
       dv2._worldco.load(dv2.worldco)
       dv2.worldco = dv2._worldco
 
-      if (cd_disp1 !== cd_baselayer) {
+      if (cd_disp1.i !== cd_baselayer) {
         dv1.worldco = v.co
         const cd_parent = layers[s1.base].index
         const dvbase = v.customData[cd_parent] as DispLayerVert
@@ -1380,13 +1379,13 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
 
   let li = 0
   for (const layer of layers) {
-    const cd_disp = layer.index
+    const cd_disp = new AttrRef<DispLayerVert>(layer.index)
     const settings = layer.getTypeSettings<DispLayerSettings>()
 
     settings.lastUpdateGen = settings.updateGen
 
     for (const v of mesh.verts) {
-      const dv = v.customData[cd_disp] as DispLayerVert
+      const dv = v.customData[cd_disp.i] as DispLayerVert
       const dvbase = v.customData[layers[settings.base].index] as DispLayerVert
 
       if (li > 0) {
@@ -1399,14 +1398,14 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
       }
     }
 
-    mesh.recalcNormals(cd_disp)
+    mesh.recalcNormals(cd_disp.i)
 
     //dctx1.reset(mesh, cd_disp, cd_pvert);
 
     //calc no/tangents
     for (const v of mesh.verts) {
-      const pv = v.customData[cd_pvert] as ParamVert
-      const dv = v.customData[cd_disp] as DispLayerVert
+      const pv = v.customData[cd_pvert.i] as ParamVert
+      const dv = v.customData[cd_disp.i] as DispLayerVert
 
       smoothno(v, dv)
 

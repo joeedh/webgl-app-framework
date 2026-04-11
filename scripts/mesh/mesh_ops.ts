@@ -1,5 +1,5 @@
 import './mesh_loopops.js'
-import './mesh_curvature_test.js'
+import './mesh_curvature_test'
 
 import {
   IntProperty,

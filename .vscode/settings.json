@@ -19,6 +19,7 @@
     "getblock",
     "getchannel",
     "graphsockets",
+    "gtmps",
     "holefiller",
     "idmap",
     "IDTYPE",

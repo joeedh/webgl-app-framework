@@ -1,29 +1,26 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
+import {Vector3} from '../util/vectormath.js'
 import * as util from '../util/util.js'
 import * as math from '../util/math.js'
-import {LogContext} from './mesh_base.js'
-
-import {nstructjs} from '../path.ux/scripts/pathux.js'
-
-import {MeshFlags} from './mesh_base.js'
-import {CustomDataElem, CDFlags} from './customdata.js'
-import {tri_angles} from '../util/math.js'
+import {nstructjs, Vector3Like} from '../path.ux/scripts/pathux.js'
+import {CustomDataElem} from './customdata'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import type {Vertex} from './mesh_types'
 
 export const CotanVertFlags = {
   UPDATE: 1,
 }
 
-let digest = new util.HashDigest()
+const digest = new util.HashDigest()
 
-let _cota = new Vector3()
-let _cotb = new Vector3()
-let _cotc = new Vector3()
+const _cota = new Vector3()
+const _cotb = new Vector3()
+const _cotc = new Vector3()
 
-export function cotangent_tri_weight_v3(v1, v2, v3) {
+export function cotangent_tri_weight_v3(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like): number {
   let c_len
-  let a = _cota,
-    b = _cotb,
-    c = _cotc
+  const a = _cota
+  const b = _cotb
+  const c = _cotc
 
   a.load(v2).sub(v1)
   b.load(v3).sub(v1)
@@ -41,34 +38,42 @@ export function cotangent_tri_weight_v3(v1, v2, v3) {
 // TODO: check if (mathematically speaking) is it really necassary
 // to sort the edge lists around verts
 
-let _pr = new Vector3()
-let _pq = new Vector3()
+const _pr = new Vector3()
+const _pq = new Vector3()
 
 // from http://rodolphe-vaillant.fr/?e=20
-export function tri_voronoi_area(p, q, r) {
-  let pr = _pr,
-    pq = _pq
+export function tri_voronoi_area(p: Vector3Like, q: Vector3Like, r: Vector3Like): number {
+  const pr = _pr
+  const pq = _pq
 
   pr.load(p).sub(r)
   pq.load(p).sub(q)
 
-  let angles = math.tri_angles(p, q, r)
+  const angles = math.tri_angles(p, q, r)
 
   if (angles[0] > Math.PI * 0.5) {
     return math.tri_area(p, q, r) / 2.0
   } else if (angles[1] > Math.PI * 0.5 || angles[2] > Math.PI * 0.5) {
     return math.tri_area(p, q, r) / 2.0
   } else {
-    let dpr = pr.dot(pr)
-    let dpq = pq.dot(pq)
+    const dpr = pr.dot(pr)
+    const dpq = pq.dot(pq)
 
-    let area = (1.0 / 8.0) * (dpr * cotangent_tri_weight_v3(q, p, r) + dpq * cotangent_tri_weight_v3(r, q, p))
+    const area = (1.0 / 8.0) * (dpr * cotangent_tri_weight_v3(q, p, r) + dpq * cotangent_tri_weight_v3(r, q, p))
 
     return area
   }
 }
 
 export class CotanVert extends CustomDataElem {
+  ws: number[]
+  cot1: number[]
+  cot2: number[]
+  areas: number[]
+  totarea: number
+  _last_hash: number
+  flag: number
+
   constructor() {
     super()
 
@@ -85,6 +90,7 @@ export class CotanVert extends CustomDataElem {
 
   static define() {
     return {
+      elemTypeMask : 0,
       typeName     : 'cotan',
       uiName       : 'cotan',
       defaultName  : 'cotan',
@@ -93,15 +99,15 @@ export class CotanVert extends CustomDataElem {
     }
   }
 
-  calcMemSize() {
+  calcMemSize(): number {
     return this.ws.length * 8 * 4 + 8
   }
 
-  interp(dest, datas, ws) {
+  interp(dest: this, _datas: this[], _ws: number[]) {
     dest.flag |= CotanVertFlags.UPDATE
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     b.flag = this.flag | CotanVertFlags.UPDATE
 
     b.ws = this.ws.concat([])
@@ -111,7 +117,7 @@ export class CotanVert extends CustomDataElem {
     b.totarea = this.totarea
   }
 
-  check(v, cd_cotan) {
+  check(v: Vertex, cd_cotan: number): boolean {
     if (this.flag & CotanVertFlags.UPDATE) {
       this.recalc(v)
       return true
@@ -126,15 +132,15 @@ export class CotanVert extends CustomDataElem {
     digest.add(v.no[1])
     digest.add(v.no[2])
 
-    let hash = digest.get()
+    const hash = digest.get()
 
     if (hash !== this._last_hash) {
       this._last_hash = hash
       this.flag |= CotanVertFlags.UPDATE
 
       //flag surrounding verts too
-      for (let v2 of v.neighbors) {
-        v2.customData[cd_cotan].flag |= CotanVertFlags.UPDATE
+      for (const v2 of v.neighbors) {
+        ;(v2.customData[cd_cotan] as CotanVert).flag |= CotanVertFlags.UPDATE
       }
     }
 
@@ -146,9 +152,9 @@ export class CotanVert extends CustomDataElem {
     return false
   }
 
-  recalc(v) {
+  recalc(v: Vertex) {
     this.flag &= ~CotanVertFlags.UPDATE
-    let val = v.edges.length
+    const val = v.edges.length
 
     if (this.ws.length !== val) {
       this.ws.length = val
@@ -159,26 +165,26 @@ export class CotanVert extends CustomDataElem {
 
     let totarea = 0.0
 
-    let ws = this.ws,
-      cot1 = this.cot1,
-      cot2 = this.cot2,
-      areas = this.areas
+    const ws = this.ws
+    const cot1 = this.cot1
+    const cot2 = this.cot2
+    const areas = this.areas
 
     for (let i = 0; i < val; i++) {
-      let eprev = v.edges[(i + val - 1) % val]
-      let e = v.edges[i]
-      let enext = v.edges[(i + 1) % val]
+      const eprev = v.edges[(i + val - 1) % val]
+      const e = v.edges[i]
+      const enext = v.edges[(i + 1) % val]
 
-      let v1 = eprev.otherVertex(v)
-      let v2 = e.otherVertex(v)
-      let v3 = enext.otherVertex(v)
+      const v1 = eprev.otherVertex(v)
+      const v2 = e.otherVertex(v)
+      const v3 = enext.otherVertex(v)
 
-      let cot1_th = cotangent_tri_weight_v3(v1.co, v.co, v2.co)
-      let cot2_th = cotangent_tri_weight_v3(v3.co, v2.co, v.co)
+      const cot1_th = cotangent_tri_weight_v3(v1.co, v.co, v2.co)
+      const cot2_th = cotangent_tri_weight_v3(v3.co, v2.co, v.co)
 
       let area = tri_voronoi_area(v.co, v1.co, v2.co)
 
-      let w = cot1_th + cot2_th
+      const w = cot1_th + cot2_th
 
       if (isNaN(w) || isNaN(area)) {
         console.log(v, v1, v2)
@@ -197,7 +203,7 @@ export class CotanVert extends CustomDataElem {
       return
     }
 
-    let mul = 1.0 / (2.0 * totarea)
+    const mul = 1.0 / (2.0 * totarea)
 
     for (let i = 0; i < val; i++) {
       ws[i] *= mul
@@ -208,7 +214,7 @@ export class CotanVert extends CustomDataElem {
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     super.loadSTRUCT(reader)
 
     this.flag |= CotanVertFlags.UPDATE
