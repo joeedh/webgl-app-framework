@@ -244,7 +244,9 @@ export class MonacoContainer {
   }
 }
 
-export function register(api) {
+let _CodeEditor
+
+export function onAddonCreate(api) {
   _api = api;
   let Editor = api.editor.Editor;
 
@@ -307,6 +309,14 @@ export function register(api) {
   `;
   api.nstructjs.register(CodeEditor);
   api.register(CodeEditor);
+  _CodeEditor = CodeEditor
+}
+
+export function register(api) {
+  if (_CodeEditor) {
+    api.nstructjs.register(_CodeEditor)
+    api.register(_CodeEditor)
+  }
 }
 
 export function unregister(api) {

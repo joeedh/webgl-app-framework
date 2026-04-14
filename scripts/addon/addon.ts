@@ -69,7 +69,7 @@ export class AddonRecord<T extends IAddon> {
     }
 
     if (!val) {
-      this._enabled = !!val
+      this._enabled = false
       this.addonAPI.unregisterAll()
       this.addon.unregister()
     } else {
@@ -123,11 +123,9 @@ export class AddonManager {
   private _loadAddon(rec: AddonRecord<IAddon>, reject: (reason?: any) => void) {
     const module = rec.addon
 
-    module.register(rec.addonAPI)
-    // XXX
-
     try {
-      //module.register(rec.addonAPI)
+      module.onAddonCreate?.(rec.addonAPI)
+      module.register(rec.addonAPI)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       util.print_stack(error)

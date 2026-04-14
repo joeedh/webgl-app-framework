@@ -94,6 +94,8 @@ export interface IAddonDefine {
 
 export interface IAddon {
   addonDefine: IAddonDefine
+  /** called only once, create classes here */
+  onAddonCreate?(api: AddonAPI<this>): void
   unregister(): void
   register(api: AddonAPI<this>): void
   handleArgv(api: AddonAPI<this>, argv: string[]): void
@@ -356,11 +358,9 @@ export class AddonAPI<T> {
 
     console.log('unregistered', cls.name)
 
-    //do not unregister with nstructjs
-    //if (nstructjs.isRegistered(cls)) {
-    //console.log("unregister with nstructjs!", cls);
-    //nstructjs.unregister(cls);
-    //}
+    if (nstructjs.isRegistered(cls)) {
+      nstructjs.unregister(cls);
+    }
 
     if (subclassOf(cls, ToolMode)) {
       console.log('unregistering a toolmode', cls)
@@ -425,6 +425,7 @@ export class AddonAPI<T> {
       }
     }
 
+    this.classes = new AddonClasses()
     return this
   }
 }

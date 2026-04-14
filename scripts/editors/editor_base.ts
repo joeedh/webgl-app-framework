@@ -811,7 +811,7 @@ Editor {
       throw new Error('You must register editors with nstructjs: ' + cls.name)
     }
 
-    Area.register(cls)
+    Area.register(cls, false)
   }
 
   static newSTRUCT() {
