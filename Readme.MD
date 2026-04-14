@@ -10,10 +10,14 @@
 
 git clone https://github.com/joeedh/webgl-app-framework.git
 cd webgl-app-framework
-bash git_pull.sh
+bash tools/git_pull.sh
 
 </pre>
 
 ## Building
 
-Run build.sh in bash
+* Build: `pnpm build`
+* Watch build: `pnpm watch`
+* Typecheck: `pnpm typecheck`
+* Start web server: `pnpm serv`
+

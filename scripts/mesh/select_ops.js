@@ -1218,7 +1218,7 @@ export class CircleSelectOp extends SelectOpBase {
 
   on_mousewheel(e) {
     console.log(e)
-    let dy = e.deltaY * 0.35
+    let dy = e.deltaY * 0.1
 
     let r = this.inputs.radius.getValue()
     r += dy
