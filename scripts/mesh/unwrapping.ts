@@ -746,7 +746,7 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
 
       for (const l of ls) {
         if (!imap.has(l.index)) {
-          const v = uvmesh.makeVertex(cd_uv.get(l).uv)
+          const v = uvmesh.makeVertex(new Vector3().load2(cd_uv.get(l).uv))
           v.co[2] = 0.0
 
           this.vertMap.set(v, new Set([l]))

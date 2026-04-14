@@ -204,6 +204,14 @@ mesh.CustomDataElem {
     return true
   }
 
+  static unregister(cls: any) {
+    let i = CDElemTypes.indexOf(cls)
+    if (i !== -1) {
+      CDElemTypes.splice(i, 1)
+    }
+    delete CDElemMap[cls.define().typeName]
+  }
+
   static register(cls: any) {
     if (!cls.hasOwnProperty('STRUCT')) {
       throw new Error('You forgot to make a STRUCT script for ' + cls.name)

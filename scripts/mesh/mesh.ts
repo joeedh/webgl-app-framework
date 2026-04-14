@@ -22,7 +22,7 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../webgl/simplemesh'
 
 import {DataBlock} from '../core/lib_api'
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base'
-import {math, Matrix4, nstructjs, Number3, util, Vector2, Vector3, Vector4} from '../path.ux/pathux.js'
+import {math, Matrix4, nstructjs, Number3, util, Vector2, Vector3, Vector3Like, Vector4} from '../path.ux/pathux.js'
 
 import {
   CDFlags,
@@ -632,12 +632,12 @@ mesh.Mesh {
   }
 
   /* TODO: make _co soley an optional Vector3 parameter. */
-  makeVertex(_co?: any, customEid?: number, lctx?: LogContext) {
+  makeVertex(_co?: Vertex | Vector3Like | number[], customEid?: number, lctx?: LogContext) {
     let co: Vector3 | undefined
 
     if (_co && _co instanceof Vertex) {
       co = (_co as Vertex).co
-    } else if (_co instanceof Vector3) {
+    } else {
       co = _co as Vector3
     }
 

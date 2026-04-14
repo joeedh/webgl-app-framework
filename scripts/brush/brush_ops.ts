@@ -2,6 +2,7 @@ import {ToolOp, StringProperty, nstructjs, PropertySlots, ToolDef} from '../path
 import {SculptBrush, DefaultBrushes, getBrushes} from './brush'
 import {Icons} from '../editors/icon_enum.js'
 import type {ToolContext} from '../core/context'
+import { BlockLoader, BlockLoaderAddUser } from '../core/lib_api.js'
 
 export class BrushOp<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}> extends ToolOp<
   InputSlots & {
@@ -88,7 +89,7 @@ export class BrushOp<InputSlots extends PropertySlots = {}, OutputSlots extends 
       return block
     }
 
-    brush2.dataLink(gb, gb_us)
+    brush2.dataLink(gb as BlockLoader, gb_us as BlockLoaderAddUser)
 
     if (brush.texUser.texture) {
       brush.texUser.texture.lib_remUser(brush)

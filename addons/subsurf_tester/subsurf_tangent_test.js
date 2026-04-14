@@ -16,7 +16,7 @@ export function registerToolMode(api) {
   const {Shaders} = api.shaders;
   const {util, nstructjs, SelMask, Icons, KeyMap, HotKey} = api;
   const {ToolOp, MeshOp} = api.toolop;
-  const {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} = api.widget3d;
+  const {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} = api.widgets3d;
   const {LayerTypes, SimpleMesh} = api.simplemesh;
   const {CubicPatch} = api.subsurf;
   const {DataBlock, DataRefProperty} = api.lib_api;

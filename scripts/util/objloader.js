@@ -32,7 +32,8 @@ export function readOBJ(buf, me = new Mesh()) {
     l[0] = l[0].toLowerCase()
 
     for (let j = 1; l[0] !== 'f' && j < l.length; j++) {
-      l[j] = parseFloat(l[j])
+      const f = parseFloat(l[j])
+      l[j] = !isNaN(f) ? f : l[j]
     }
 
     if (l[0] === 'v') {
