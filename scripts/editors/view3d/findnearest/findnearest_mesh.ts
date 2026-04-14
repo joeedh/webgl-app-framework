@@ -171,9 +171,7 @@ export class FindnearestMesh extends FindnearestClass {
     x = ~~x
     y = ~~y
 
-    const order = this.getSearchOrder(radius)
     let objects
-
     if (selmask & SelMask.GEOM) {
       objects = new Set(ctx.selectedObjects).filter((ob) => ob.data instanceof Mesh)
     } else {
@@ -181,35 +179,28 @@ export class FindnearestMesh extends FindnearestClass {
       selmask |= SelMask.FACE
     }
 
-    const hits = []
-
-    const cam = view3d.activeCamera
-    const co = new Vector3(cam.pos)
-    const ray = view3d.getViewVec(x, y)
-    const ray1 = new Vector3(cam.target).sub(cam.pos)
-
+    const distOut = [0]
     const report = Math.random() > 0.998
-
+    const origin3 = new Vector3()
+    const origin = new Vector4()
     const tmp1 = new Vector3()
     const tmp2 = new Vector3()
     const tmp3 = new Vector3()
-    const tmp4 = new Vector3()
 
     let selmask2 = selmask
     let foundmask = 0
 
     const ret_elems: Element[] = []
     const ret_objects: SceneObject[] = []
+    const ret_dists: number[] = []
     const visit = new WeakSet()
 
-    function doElem(mat: Matrix4, ob: SceneObject, elem: Element) {
+    function elemDist(mat: Matrix4, ob: SceneObject, elem: Element) {
       foundmask |= elem.type
 
       if (!(elem.type & selmask2) || visit.has(elem)) {
-        return
+        return Number.MAX_SAFE_INTEGER
       }
-
-      visit.add(elem)
 
       if (elem.type === MeshTypes.VERTEX) {
         tmp1.load(elem.co).multVecMatrix(mat)
@@ -219,12 +210,7 @@ export class FindnearestMesh extends FindnearestClass {
         tmp2[2] = 0.0
         tmp1[2] = 0.0
 
-        const dis = tmp1.vectorDistance(tmp2)
-
-        if (dis < radius) {
-          ret_elems.push(elem)
-          ret_objects.push(ob)
-        }
+        return tmp1.vectorDistance(tmp2)
       } else if (elem.type === MeshTypes.EDGE) {
         const e = elem
 
@@ -237,12 +223,7 @@ export class FindnearestMesh extends FindnearestClass {
         tmp3.load(mpos as IVectorOrHigher<3>)
         tmp3[2] = 0.0
 
-        const dis = math.dist_to_line_2d(tmp3, tmp1, tmp2, true)
-
-        if (dis < radius) {
-          ret_elems.push(elem)
-          ret_objects.push(ob)
-        }
+        return math.dist_to_line_2d(tmp3, tmp1, tmp2, true)
       } else if (elem.type === MeshTypes.FACE) {
         const f = elem
         tmp1.load(f.cent).multVecMatrix(mat)
@@ -252,111 +233,119 @@ export class FindnearestMesh extends FindnearestClass {
         tmp2[2] = 0.0
         tmp1[2] = 0.0
 
-        const dis = tmp1.vectorDistance(tmp2)
-
-        if (dis < radius) {
-          ret_elems.push(elem)
-          ret_objects.push(ob)
-        }
+        return tmp1.vectorDistance(tmp2)
       }
+      return Number.MAX_SAFE_INTEGER
+    }
+    function tubeTest(mat: Matrix4, ob: SceneObject, elem: Element, disOut: number[]) {
+      if (!(elem.type & selmask2) || visit.has(elem)) {
+        return false
+      }
+      const dist = elemDist(mat, ob, elem)
+      disOut[0] = dist
+      return dist < radius
     }
 
-    for (let i = 0; i < 1; i++) {
-      //let dx = (i % radius);
-      //let dy = ~~(i / radius);
-      let dx = 0
-      let dy = 0
+    function push(ob: SceneObject, elem: Element, dist: number) {
+      if (visit.has(elem)) {
+        return
+      }
+      visit.add(elem)
+      ret_elems.push(elem)
+      ret_objects.push(ob)
+      ret_dists.push(dist)
+    }
 
-      dx -= radius * 0.5
-      dy -= radius * 0.5
+    selmask2 = selmask
+    foundmask = 0
 
-      selmask2 = selmask
-      foundmask = 0
+    const x2 = x
+    const y2 = y
+    for (const ob of objects) {
+      const me = ob.data
+      const bvh = me.getLastBVH(true, false, false, true)
 
-      const x2 = dx + x
-      const y2 = dy + y
+      const obmatrix = ob.outputs.matrix.getValue()
+      const imat = new Matrix4(obmatrix)
+      imat.multiply(view3d.activeCamera.rendermat)
+      imat.invert()
 
-      for (const ob of objects) {
-        const me = ob.data
-        const bvh = me.getLastBVH(true, false, false, true)
+      //set up cone tracing fallback
+      const p1 = new Vector4()
+      const p2 = new Vector4()
 
-        const mat = ob.outputs.matrix.getValue()
-        const imat = new Matrix4(mat)
-        imat.invert()
+      const d = 0.9999
+      const znear = -1.0 * d // -(view3d.activeCamera.near * 1.001)
+      const zfar = 1.0 * d //-(view3d.activeCamera.far * 0.999)
 
-        const co2 = new Vector4()
-        const ray2 = view3d.getViewVec(x2, y2) //new Vector4();
+      p1[0] = x2
+      p1[1] = y2
+      p1[2] = znear
+      p1[3] = 1.0
+      view3d.unproject(p1, imat)
+      p1[3] = 0.0
 
-        co2.load(co as unknown as IVectorOrHigher<4>)
-        co2[3] = 1.0
+      origin.load3(p1)
+      origin[3] = 1.0
 
-        ray2.load(ray as unknown as IVectorOrHigher<4>)
-        ray2[3] = 0.0
+      p2[0] = x2 + 1.0
+      p2[1] = y2 + 1.0
+      p2[2] = znear
+      p2[3] = 1.0
+      view3d.unproject(p2, imat)
+      p2[3] = 0.0
 
-        co2.multVecMatrix(imat)
-        ray2.multVecMatrix(imat)
-        ray2.normalize()
+      const radius1 = (p2.vectorDistance(p1) * radius) / Math.sqrt(2) // (radius * p1[3]) / size[1] //p2.vectorDistance(p1)
+      p1[0] = x2
+      p1[1] = y2
+      p1[2] = zfar
+      p1[3] = 1.0
+      view3d.unproject(p1, imat)
+      p1[3] = 0.0
 
-        //set up cone tracing fallback
-        const p = new Vector3()
-        const p2 = new Vector3()
+      const dest = new Vector3(p1)
+      const ray2 = new Vector3().load(dest).sub(origin)
 
-        p[0] = x2
-        p[1] = y2
-        p[2] = 0.00000001
-        view3d.unproject(p)
-        p.multVecMatrix(imat)
+      p2[0] = x2 + 1.0
+      p2[1] = y2 + 1.0
+      p2[2] = zfar
+      p2[3] = 1.0
+      view3d.unproject(p2, imat)
+      p2[3] = 0.0
 
-        co2.load(p as unknown as IVectorOrHigher<4>)
+      const radius2 = (p2.vectorDistance(p1) * radius) / Math.sqrt(2) //(radius * p1[3]) / size[1]
+      //view3d.makeDrawCone(origin, dest, radius1, radius2, [1, 0, 1, 1], 8)
 
-        p2[0] = x2 + 1.0
-        p2[1] = y2 + 1.0
-        p2[2] = 0.00000001
-        view3d.unproject(p2)
-        p2.multVecMatrix(imat)
+      origin3.load(origin)
 
-        const radius1 = p2.vectorDistance(p) * 1.0
-
-        p[0] = x2
-        p[1] = y2
-        p[2] = 0.99999999999
-        view3d.unproject(p)
-        p.multVecMatrix(imat)
-
-        ray2.load(p).sub(co2)
-
-        p2[0] = x2 + 1.0
-        p2[1] = y2 + 1.0
-        p2[2] = 0.99999999999
-        view3d.unproject(p2)
-        p2.multVecMatrix(imat)
-
-        const radius2 = p2.vectorDistance(p) * 1.0
-
-        //radius1 *= view3d.glSize[1];
-        //radius2 *= view3d.glSize[1];
-
-        const vs = bvh.vertsInCone(co2, ray2, radius1, radius2, false)
-        let fs
-
+      const fs = bvh.facesInCone(origin3, ray2, radius1, radius2, true, false)
+      for (const f of fs) {
+        // find other elements using faces
         if (selmask & SelMask.FACE) {
-          fs = bvh.facesInCone(co2, ray2, radius1, radius2, true, false)
-          console.log('fs', fs)
-          for (const f of fs) {
-            doElem(mat, ob, f)
+          push(ob, f, elemDist(obmatrix, ob, f))
+        }
+        const doVert = selmask & SelMask.VERTEX
+        const doEdge = selmask & SelMask.EDGE
+        if (doVert || doEdge) {
+          for (const list of f.lists) {
+            for (const l of list) {
+              if (doVert && tubeTest(obmatrix, ob, l.v, distOut)) {
+                push(ob, l.v, distOut[0])
+              }
+              if (doEdge && tubeTest(obmatrix, ob, l.e, distOut)) {
+                push(ob, l.e, distOut[0])
+              }
+            }
           }
-
-          continue
         }
+      }
 
-        if (report) {
-          //console.log(limit, dx, dy, radius1, radius2);
-          console.log(vs)
-        }
-
+      if (selmask & SelMask.VERTEX) {
+        const vs = bvh.vertsInCone(origin3, ray2, radius1, radius2, false)
         for (const v of vs) {
           let skip = false
 
+          // find wires/vertices not part of faces
           for (const e of v.edges) {
             if (e.l) {
               skip = true
@@ -365,13 +354,19 @@ export class FindnearestMesh extends FindnearestClass {
           }
 
           if (skip) {
-            // continue;
+            continue
           }
 
-          doElem(mat, ob, v)
+          if (selmask & SelMask.VERTEX) {
+            push(ob, v, elemDist(obmatrix, ob, v))
+          }
 
-          for (const e of v.edges) {
-            doElem(mat, ob, e)
+          if (selmask & SelMask.EDGE) {
+            for (const e of v.edges) {
+              if (tubeTest(obmatrix, ob, e, distOut)) {
+                push(ob, e, distOut[0])
+              }
+            }
           }
         }
       }
@@ -380,6 +375,7 @@ export class FindnearestMesh extends FindnearestClass {
     return {
       elements      : ret_elems,
       elementObjects: ret_objects,
+      elementDists  : ret_dists,
     }
   }
 
@@ -391,348 +387,87 @@ export class FindnearestMesh extends FindnearestClass {
     limit = 25,
     depth = 0
   ): FindNearestRet[] {
-    let x = mpos[0]
-    let y = mpos[1]
-    limit = Math.max(~~limit, 1)
+    const results = new Map<number, FindNearestRet>()
 
-    x = ~~x
-    y = ~~y
-
-    const order = this.getSearchOrder(limit)
-    let objects
-
-    if (selmask & SelMask.GEOM) {
-      objects = new Set(ctx.selectedObjects).filter((ob) => ob.data instanceof Mesh)
-    } else {
-      objects = new Set(ctx.scene.objects.editable).filter((ob) => ob.data instanceof Mesh)
-      selmask |= SelMask.FACE
+    function getFindRet(type: number) {
+      let ret = results.get(type)
+      if (ret === undefined) {
+        ret = new FindNearestRet()
+        ret.dis = Number.MAX_SAFE_INTEGER
+        results.set(type, ret)
+      }
+      return ret!
     }
 
-    const hits = []
+    const ret = this.castScreenCircle(ctx, selmask, mpos, limit, view3d)
+    const p1 = new Vector3()
+    const p2 = new Vector3()
 
-    const cam = view3d.activeCamera
-    const co = new Vector3(cam.pos)
-    const ray = view3d.getViewVec(x, y)
-    const ray1 = new Vector3(cam.target).sub(cam.pos)
+    for (let i = 0; i < ret.elements.length; i++) {
+      const ob = ret.elementObjects[i]
+      const elem = ret.elements[i]
+      const dist = ret.elementDists[i]
 
-    const rets = []
-
-    const report = false //Math.random() > 0.998;
-
-    let minv: Vertex | undefined
-    let mine: Edge | undefined
-    let minf: Face | undefined
-    let minvob: SceneObject | undefined
-    let mineob: SceneObject | undefined
-    let minfob: SceneObject | undefined
-    let minvmat: Matrix4 | undefined
-    let minemat: Matrix4 | undefined
-    let minfmat: Matrix4 | undefined
-    let minvdis: number | undefined
-    let minedis: number | undefined
-    let minfdis: number | undefined
-
-    const tmp1 = new Vector3()
-    const tmp2 = new Vector3()
-    const tmp3 = new Vector3()
-    const tmp4 = new Vector3()
-
-    let selmask2 = selmask
-    let foundmask = 0
-
-    function doElem(mat: Matrix4, ob: SceneObject, elem: Element, dist?: number) {
-      foundmask |= elem.type
-
-      if (!(elem.type & selmask2)) {
-        return
-      }
-
-      if (elem.type === MeshTypes.VERTEX) {
-        tmp1.load(elem.co).multVecMatrix(mat)
-        view3d.project(tmp1)
-
-        tmp2.load(mpos as IVectorOrHigher<3>)
-        tmp2[2] = 0.0
-        tmp1[2] = 0.0
-
-        const dis = tmp1.vectorDistance(tmp2)
-
-        if (dis < limit && (minvdis === undefined || dis < minvdis)) {
-          minv = elem
-          minvdis = dis
-          minvob = ob
-          minvmat = mat
-        }
-      } else if (elem.type === MeshTypes.EDGE) {
-        const e = elem
-
-        tmp1.load(e.v1.co).multVecMatrix(mat)
-        tmp2.load(e.v2.co).multVecMatrix(mat)
-
-        view3d.project(tmp1)
-        view3d.project(tmp2)
-
-        tmp3.load(mpos as IVectorOrHigher<3>)
-        tmp3[2] = 0.0
-
-        const dis = math.dist_to_line_2d(tmp3, tmp1, tmp2, true)
-
-        if (dis < limit && (minedis === undefined || dis < minedis)) {
-          mine = elem
-          minedis = dis
-          mineob = ob
-          minemat = mat
-        }
-      } else if (elem.type === MeshTypes.FACE) {
-        const f = elem
-        tmp1.load(f.cent).multVecMatrix(mat)
-        view3d.project(tmp1)
-
-        tmp2.load(mpos as IVectorOrHigher<3>)
-        tmp2[2] = 0.0
-        tmp1[2] = 0.0
-
-        const dis = Math.min(dist ?? Infinity, tmp1.vectorDistance(tmp2))
-
-        if (minfdis === undefined || dis < minfdis) {
-          minf = elem
-          minfdis = dis
-          minfob = ob
-          minfmat = mat
-        }
-      }
-    }
-    for (const i of order) {
-      let dx = i % limit
-      let dy = ~~(i / limit)
-
-      dx -= limit * 0.5
-      dy -= limit * 0.5
-
-      selmask2 = selmask
-      foundmask = 0
-
-      const x2 = dx + x
-      const y2 = dy + y
-
-      for (const ob of objects) {
-        const me = ob.data
-        const bvh = me.getLastBVH(true, false, false, true)
-
-        const mat = ob.outputs.matrix.getValue()
-        const imat = new Matrix4(mat)
-        imat.invert()
-
-        const co2 = new Vector3()
-        co2[0] = x2
-        co2[1] = y2
-        co2[2] = 0.0000001
-        view3d.unproject(co2)
-
-        let ray2: Vector3 | Vector4 = view3d.getViewVec(x2, y2)
-
-        ray2 = new Vector4(ray2 as unknown as IVectorOrHigher<4>)
-        ray2[3] = 0.0
-
-        co2.multVecMatrix(imat)
-        ray2.multVecMatrix(imat)
-        ray2.normalize()
-
-        const isect = bvh.castRay(co2, ray2)
-        if (isect) {
-          const tri = isect.tri
-          let l
-          let f
-
-          if (tri.l1) {
-            l = tri.l1
-            f = l.f
-          } else {
-            f = me.eidMap.get(tri.id)
-            l = f.loops[0].l
-          }
-
-          if (!f) {
-            console.warn('bvh error!')
-            me.regenBVH()
-
-            if (depth < 5) {
-              return this.findnearest_pbvh(ctx, selmask, mpos, view3d, limit, depth + 1)
-            } else {
-              continue
-            }
-          }
-
-          doElem(mat, ob, f, isect.dist)
-
-          for (const l of f.loops) {
-            doElem(mat, ob, l.v, isect.dist)
-            doElem(mat, ob, l.e, isect.dist)
-          }
-
-          if (Math.random() > 0.995) {
-            //console.log(f);
-          }
+      if (selmask & SelMask.OBJECT) {
+        const f = getFindRet(SelMask.OBJECT)
+        if (dist < f.dis!) {
+          f.data = ob
+          f._object = ob.lib_id
+          f.p3d.zero().multVecMatrix(ob.outputs.matrix.getValue())
+          f.p2d.load(f.p3d)
+          view3d.project(f.p2d)
+          f.dis = dist
         }
       }
 
-      //clear found bits in selmask2
-      selmask2 &= ~foundmask
-
-      if (foundmask & MeshTypes.FACE || selmask2 === 0 || selmask2 === MeshTypes.FACE) {
-        continue
-      }
-
-      for (const ob of objects) {
-        const me = ob.data
-        const bvh = me.getLastBVH(true, false, false, true)
-
-        const mat = ob.outputs.matrix.getValue()
-        const imat = new Matrix4(mat)
-        imat.invert()
-
-        const co2 = new Vector4()
-        const ray2 = view3d.getViewVec(x2, y2) //new Vector4();
-
-        co2.load(co as unknown as IVectorOrHigher<4>)
-        co2[3] = 1.0
-
-        ray2.load(ray as unknown as IVectorOrHigher<4>)
-        ray2[3] = 0.0
-
-        co2.multVecMatrix(imat)
-        ray2.multVecMatrix(imat)
-        ray2.normalize()
-
-        //set up cone tracing fallback
-        const p = new Vector3()
-        const p2 = new Vector3()
-
-        p[0] = x2
-        p[1] = y2
-        p[2] = 0.00000001
-        view3d.unproject(p)
-        p.multVecMatrix(imat)
-
-        co2.load(p as unknown as IVectorOrHigher<4>)
-
-        p2[0] = x2 + 1.0
-        p2[1] = y2 + 1.0
-        p2[2] = 0.00000001
-        view3d.unproject(p2)
-        p2.multVecMatrix(imat)
-
-        const radius1 = p2.vectorDistance(p) * 1.0
-
-        p[0] = x2
-        p[1] = y2
-        p[2] = 0.99999999999
-        view3d.unproject(p)
-        p.multVecMatrix(imat)
-
-        ray2.load(p).sub(co2)
-
-        p2[0] = x2 + 1.0
-        p2[1] = y2 + 1.0
-        p2[2] = 0.99999999999
-        view3d.unproject(p2)
-        p2.multVecMatrix(imat)
-
-        const radius2 = p2.vectorDistance(p) * 1.0
-
-        //radius1 *= view3d.glSize[1];
-        //radius2 *= view3d.glSize[1];
-
-        const vs = bvh.vertsInCone(co2, ray2, radius1, radius2, false)
-
-        if (report) {
-          //console.log(limit, dx, dy, radius1, radius2);
-          console.log(vs)
+      switch (elem.type) {
+        case MeshTypes.VERTEX: {
+          const ft = getFindRet(SelMask.VERTEX)
+          if (dist < ft.dis!) {
+            ft.data = elem
+            ft._object = ob.lib_id
+            ft._mesh = ob.data.lib_id
+            ft.p3d.load(elem.co)
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
+          }
+          break
         }
-
-        for (const v of vs) {
-          let skip = false
-
-          for (const e of v.edges) {
-            if (e.l) {
-              skip = true
-              break
-            }
+        case MeshTypes.EDGE: {
+          const ft = getFindRet(SelMask.EDGE)
+          if (dist < ft.dis!) {
+            ft.data = elem
+            ft._object = ob.lib_id
+            ft._mesh = ob.data.lib_id
+            p1.load(elem.v1.co)
+            p2.load(elem.v2.co)
+            p1.multVecMatrix(ob.outputs.matrix.getValue())
+            p2.multVecMatrix(ob.outputs.matrix.getValue())
+            ft.p3d.load(p1).interp(p2, 0.5)
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
           }
-
-          if (skip) {
-            // continue;
+          break
+        }
+        case MeshTypes.FACE: {
+          const ft = getFindRet(SelMask.FACE)
+          if (dist < ft.dis!) {
+            ft._object = ob.lib_id
+            ft._mesh = ob.data.lib_id
+            ft.data = elem
+            ft.p3d.load(elem.cent).multVecMatrix(ob.outputs.matrix.getValue())
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
           }
-
-          doElem(mat, ob, v)
-
-          for (const e of v.edges) {
-            doElem(mat, ob, e)
-          }
+          break
         }
       }
     }
 
-    if (minv) {
-      const ret = new FindNearestRet()
-
-      ret.mesh = minvob!.data
-      ret.data = minv
-      ret.object = minvob!
-
-      const co = tmp1
-      co.load(minv.co).multVecMatrix(minvmat!)
-
-      ret.dis = minvdis
-      ret.p3d.load(co)
-      ret.p2d.load(co)
-
-      view3d.project(ret.p2d)
-
-      rets.push(ret)
-    }
-
-    if (mine) {
-      const ret = new FindNearestRet()
-
-      ret.mesh = mineob!.data
-      ret.data = mine
-      ret.object = mineob!
-
-      const co = tmp1
-      co.load(mine.v1.co).interp(mine.v2.co, 0.5).multVecMatrix(minemat!)
-
-      ret.dis = minedis
-      ret.p3d.load(co)
-      ret.p2d.load(co)
-
-      view3d.project(ret.p2d)
-
-      rets.push(ret)
-    }
-
-    if (minf) {
-      //console.log("minf", minf);
-
-      const ret = new FindNearestRet()
-
-      ret.mesh = minfob!.data
-      ret.data = minf
-      ret.object = minfob!
-
-      const co = tmp1
-      co.load(minf.cent).multVecMatrix(minfmat!)
-
-      ret.dis = 0.0 //minfdis;
-      ret.p3d.load(co)
-      ret.p2d.load(co)
-
-      view3d.project(ret.p2d)
-
-      rets.push(ret)
-    }
-
-    return rets
+    return Array.from(results.values())
   }
 
   static findnearest(ctx: ViewContext, selmask: number, mpos: IVectorOrHigher<2>, view3d: View3D, limit = 25) {

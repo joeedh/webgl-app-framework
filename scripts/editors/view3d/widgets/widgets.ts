@@ -662,12 +662,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
   }
 
   onRemove() {
-    this.manager?.remove(this)
-
-    if (this.graph_graph) {
-      this.graph_graph.remove(this)
-      this.graph_graph = undefined
-    }
+    //
   }
 
   onContextLost(e: WebGLContextEvent) {

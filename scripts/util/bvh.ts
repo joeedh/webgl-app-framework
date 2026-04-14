@@ -1296,8 +1296,6 @@ export class BVHNode<
 
     const co2 = vttmp1.load(co).add(ray)
     const t1 = vttmp2
-    const t2 = vttmp3
-    const t3 = vttmp4
     const rsqr = radius * radius
     const raylen = clip ? ray.vectorLength() : 0.0
     let nray = ray
@@ -1366,8 +1364,8 @@ export class BVHNode<
       const v2 = t.v2
       const v3 = t.v3
 
-      let ok = tri_cone_isect(co, co2, radius1, radius2, v1, v2, v3, false)
-      if (visibleOnly) {
+      let ok = tri_cone_isect(co, co2, radius1, radius2, v1.co, v2.co, v3.co, false)
+      if (ok && visibleOnly) {
         ok = false
 
         for (let i = 0; i < 2; i++) {
@@ -1383,19 +1381,19 @@ export class BVHNode<
             w *= sum
           }
 
-          co2.load(t.v1.co).mulScalar(u)
-          co2.addFac(t.v2.co, v)
-          co2.addFac(t.v3.co, w)
+          const co3 = _fictmp3
+          const ray3 = _fictmp4
 
-          ray2.load(ray).negate()
-          co2.addFac(ray2, 0.0001)
+          co3.load(t.v1.co).mulScalar(u)
+          co3.addFac(t.v2.co, v)
+          co3.addFac(t.v3.co, w)
 
-          const maxdis = co2.vectorDistance(co)
-          const isect = this.bvh.castRay(co2, ray2)
+          ray3.load(ray).negate()
+          co3.addFac(ray3, 0.0001)
 
-          if (Math.random() > 0.9975) {
-            console.log(co2, ray2, maxdis, isect, t, isect ? isect.dist : undefined)
-          }
+          const maxdis = co3.vectorDistance(co)
+          const isect = this.bvh.castRay(co3, ray3)
+
 
           //intersected behind origin?
           if (isect && isect.dist >= maxdis) {
@@ -1438,13 +1436,11 @@ export class BVHNode<
 
     const co2 = vttmp1
     const t1 = vttmp2
-    const t2 = vttmp3
-    const t3 = vttmp4
     const raylen = ray.vectorLength()
 
     const report = Math.random() > 0.9995
 
-    const nray = new Vector3(ray)
+    const nray = vttmp3.load(ray)
     nray.normalize()
 
     for (let i = 0; i < 2; i++) {
@@ -1462,6 +1458,7 @@ export class BVHNode<
           continue
         }
 
+        // project ray origin in plane with vertex
         co2.load(co).addFac(nray, t)
 
         t /= raylen

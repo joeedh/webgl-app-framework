@@ -1691,6 +1691,51 @@ View3D {
     return this.tempTexts[this.tempTexts.length - 1]
   }
 
+  makeDrawCone(
+    p1: Vector3Like | number[],
+    p2: Vector3Like | number[],
+    radius1: number,
+    radius2: number,
+    color: number[] | Vector4 = [0, 0, 0, 1],
+    count = 64
+  ): DrawLine[] {
+    p1 = new Vector3(p1)
+    p2 = new Vector3(p2)
+
+    const drawlines = [] as DrawLine[]
+
+    let th = -Math.PI
+    const dth = (2.0 * Math.PI) / count
+    const len = p1.vectorDistance(p2)
+
+    const nor = new Vector3(p2).sub(p1).normalize()
+    const mat = new Matrix4().makeNormalMatrix(nor)
+    const tmat = new Matrix4()
+    tmat.translate(p1[0], p1[1], p1[2])
+    mat.preMultiply(tmat)
+
+    for (let i = 0; i < count; i++, th += dth) {
+      const a = new Vector3().loadXY(radius1 * Math.cos(th), radius1 * Math.sin(th))
+      const b = new Vector3().loadXYZ(radius2 * Math.cos(th), radius2 * Math.sin(th), len)
+      a.multVecMatrix(mat)
+      b.multVecMatrix(mat)
+
+      if (i > 0) {
+        const dl = drawlines.at(-1)!
+        drawlines.push(this.makeDrawLine(a, dl.v1, color))
+        drawlines.push(this.makeDrawLine(b, dl.v2, color))
+      }
+
+      drawlines.push(this.makeDrawLine(a, b, color))
+    }
+    const dl1 = drawlines.at(-1)!
+    const dl2 = drawlines[0]!
+    drawlines.push(this.makeDrawLine(dl1.v1, dl2.v1, color))
+    drawlines.push(this.makeDrawLine(dl1.v2, dl2.v2, color))
+
+    return drawlines
+  }
+
   makeDrawLine(v1: Vector3, v2: Vector3, color: Vector4 | number[] = [0, 0, 0, 1], useZ = true) {
     if (typeof color == 'string') {
       color = css2color(color)

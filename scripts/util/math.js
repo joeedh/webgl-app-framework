@@ -1,3 +1,4 @@
+/** @deprecated */
 //handle to module.  never access in code; for debug console use only.
 var _math = undefined
 

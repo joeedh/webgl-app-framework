@@ -1230,9 +1230,9 @@ export class CircleSelectOp extends SelectOpBase {
   }
 
   sample(e) {
-    let sel = e.button === 0
+    let sel = e.buttons & 1
 
-    if (e.button === 0 && e.altKey) {
+    if ((e.button === 0 && (e.altKey || e.ctrlKey || e.shiftKey)) || e.buttons & 2) {
       sel = false
     }
 
