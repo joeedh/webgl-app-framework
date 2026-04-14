@@ -1127,7 +1127,7 @@ export function vertexSmooth_tst(mesh: Mesh, vertsInput = mesh.verts.selected.ed
   const verts = new Set<Vertex>(vertsInput)
 
   if (1) {
-    const faces = new Set()
+    const faces = new Set<Face>()
 
     for (const v of verts) {
       for (const f of v.faces) {
@@ -1242,7 +1242,7 @@ export function ccVertexSmooth(
   }
 
   if (0) {
-    const faces = new Set()
+    const faces = new Set<Face>()
 
     for (const v of verts) {
       for (const f of v.faces) {

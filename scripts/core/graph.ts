@@ -318,7 +318,7 @@ graph.NodeSocketType {
   }
 
   connect(sock: this) {
-    if (this.edges.indexOf(sock) >= 0) {
+    if (this.edges.includes(sock)) {
       console.warn('Already have socket connected')
       return
     }
@@ -418,7 +418,7 @@ graph.NodeSocketType {
   flag the socket as updated and queue
   the datagraph for execution
   */
-  graphUpdate(updateParentNode = false, _exclude = undefined) {
+  graphUpdate(updateParentNode = false, _exclude?: NodeSocketType) {
     if (this.graph_id === -1) {
       //we're not in a graph
       console.warn('graphUpdate called on non-node', this)
@@ -576,11 +576,11 @@ graph.Node {
     this.graph_graph = undefined
 
     const getflag = () => {
-      let inherit = true // TS should enforce inheritance
+      const inherit = true // TS should enforce inheritance
 
       //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
       //is nodedef().flag of any ancestor
-      let p = this.constructor as any
+      const p = this.constructor as any
       let def2 = def
 
       if (inherit) {
@@ -630,11 +630,11 @@ graph.Node {
 
         while (p !== null && p !== undefined && p !== Object && p !== Node) {
           if (p.nodedef === undefined) continue
-          let obj2 = p.nodedef()[key]
+          const obj2 = p.nodedef()[key]
 
           if (obj2 !== undefined) {
             for (const k in obj2) {
-              let sock2 = obj2[k]
+              const sock2 = obj2[k]
 
               if (!(k in ret)) {
                 ret[k] = sock2.copy()
@@ -733,7 +733,7 @@ graph.Node {
 
       while (p !== null && p !== undefined && (p as any) !== Object && p !== Node) {
         if (p.nodedef === undefined) continue
-        let obj2 = p.nodedef()[key]
+        const obj2 = p.nodedef()[key]
 
         if (obj2) {
           for (const k in obj2) {
@@ -812,7 +812,7 @@ graph.Node {
     }
   }
 
-  copy(addLibUsers = false, libOwner = undefined): this {
+  copy(addLibUsers = false, libOwner?: DataBlock): this {
     const ret = new this.constructor!()
     this.copyTo(ret as this)
 
@@ -1105,7 +1105,10 @@ graph.CallbackNode {
 
 export type GenericNode<ExecContextType> = Node<INodeSocketSet, INodeSocketSet, ExecContextType>
 
-export class NodeSelectedSet<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> extends Set<NodeBase> {
+export class NodeSelectedSet<
+  ExecContextType,
+  NodeBase extends Node = GenericNode<ExecContextType>,
+> extends Set<NodeBase> {
   /* We don't support hidden nodes yet, for
    * now just return this set.
    */
@@ -1114,7 +1117,7 @@ export class NodeSelectedSet<ExecContextType, NodeBase extends Node= GenericNode
   }
 }
 
-export class GraphNodes<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> extends Array<NodeBase> {
+export class GraphNodes<ExecContextType, NodeBase extends Node = GenericNode<ExecContextType>> extends Array<NodeBase> {
   graph: Graph<ExecContextType, NodeBase>
   active?: NodeBase
   highlight?: NodeBase
@@ -1150,7 +1153,7 @@ export class GraphNodes<ExecContextType, NodeBase extends Node= GenericNode<Exec
   setSelect<NodeType extends NodeBase>(node: NodeType, state = false): void {
     if (state) {
       node.graph_flag |= GraphFlags.SELECT
-      this.selected.add(node )
+      this.selected.add(node)
     } else {
       node.graph_flag &= ~GraphFlags.SELECT
       this.selected.delete(node)
@@ -1186,7 +1189,7 @@ export class GraphNodes<ExecContextType, NodeBase extends Node= GenericNode<Exec
   }
 }
 
-export class Graph<ExecContextType, NodeBase extends Node= GenericNode<ExecContextType>> {
+export class Graph<ExecContextType, NodeBase extends Node = GenericNode<ExecContextType>> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -1205,7 +1208,7 @@ graph.Graph {
   graph_idgen: util.IDGen
   node_idmap: Map<number, NodeBase>
   sock_idmap: Map<number, NodeSocketType>
-  sortlist: Array<NodeBase>
+  sortlist: NodeBase[]
 
   constructor() {
     /**unfortunately we can't use normal event callbacks (or the graph itself)
@@ -1232,7 +1235,7 @@ graph.Graph {
     this.sock_idmap = new Map()
   }
 
-  copy(addLibUsers = false, libOwner = undefined) {
+  copy(addLibUsers = false, libOwner?: DataBlock) {
     const ret = new (this.constructor as new () => this)()
 
     ret.nodes.length = 0
@@ -1288,7 +1291,7 @@ graph.Graph {
           const sock2 = s2[k]
 
           for (const sock3 of sock1.edges) {
-            const bad = sock3.node && sock3.node.graph_graph && sock3.node.graph_graph !== this
+            const bad = sock3.node?.graph_graph && sock3.node.graph_graph !== this
 
             if (bad) {
               console.log('bad socket', sock3)
@@ -1592,7 +1595,7 @@ graph.Graph {
     }
 
     this.node_idmap.delete(node.graph_id)
-    this.nodes.remove(node)
+    this.nodes.remove(node as NodeBase)
     node.graph_id = -1
   }
 
@@ -1797,9 +1800,9 @@ graph.Graph {
           s1.edges = s2.edges
 
           for (const s3 of s2.edges) {
-            if (s3.edges.indexOf(s2) >= 0) {
+            if (s3.edges.includes(s2)) {
               //paranoia check
-              if (s3.edges.indexOf(s1) >= 0) {
+              if (s3.edges.includes(s1)) {
                 s3.edges.remove(s2)
               } else {
                 s3.edges.replace(s2, s1)

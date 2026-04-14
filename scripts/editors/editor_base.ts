@@ -931,8 +931,8 @@ import type {ImageEditor} from './all'
 import type {ViewContext, ToolContext} from '../core/context'
 import messageBus from '../core/bus'
 import {areaclasses, IAreaConstructor} from '../path.ux/scripts/screen/area_base'
-import type {StructReader} from '../path.ux/scripts/path-controller/old_types/util/nstructjs'
 import type {ShaderNode} from '../shadernodes/shader_nodes'
+import type {StructReader} from 'nstructjs'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   const tools: IToolOpConstructor[] = []

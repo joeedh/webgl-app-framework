@@ -1,4 +1,4 @@
-import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux'
+import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, Number3, util} from '../../path.ux/scripts/pathux'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -43,7 +43,6 @@ import {OptionalIfNot} from '../../util/optionalIf'
 import type {ViewContext} from '../../core/context'
 import {Mesh} from '../../mesh/mesh'
 import {BusMessage} from '../../core/bus'
-import type {Number3} from '../../path.ux/scripts/path-controller/old_types/controller'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export interface ITempText {

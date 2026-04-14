@@ -157,7 +157,7 @@ SceneObjectData {
   // parent classes with unrelated behavior
   // XXX: temporary hack, TODO: rename this to objectDataRegister
   static unregister(cls: IDataBlockConstructor<any, {}, {}>) {
-    ObjectDataTypes.remove(cls)
+    ObjectDataTypes.remove(cls as unknown as IObjectDataConstructor)
   }
 
   static register(cls: IDataBlockConstructor<any, {}, {}>) {
