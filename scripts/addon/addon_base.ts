@@ -356,20 +356,24 @@ export class AddonAPI<T> {
       return
     }
 
-    console.log('unregistered', cls.name)
+    function consolelog(...args: any[]) {
+      //console.log(...args)
+    }
+
+    consolelog('unregistered', cls.name)
 
     if (nstructjs.isRegistered(cls)) {
       nstructjs.unregister(cls);
     }
 
     if (subclassOf(cls, ToolMode)) {
-      console.log('unregistering a toolmode', cls)
+      consolelog('unregistering a toolmode', cls)
 
       ToolMode.unregister(cls)
     }
 
     if (subclassOf(cls, customdata.CustomDataElem)) {
-      console.log('unregistering a toolmode', cls)
+      consolelog('unregistering a toolmode', cls)
 
       customdata.CustomDataElem.unregister(cls)
     }

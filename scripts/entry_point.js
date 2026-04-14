@@ -55,6 +55,7 @@ export function init() {
   }
 
   setupPathux();
+  nstructjs.setWarningMode(0);
   nstructjs.validateStructs();
 
   appstate.preinit();

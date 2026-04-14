@@ -410,7 +410,7 @@ export class ViewContext extends ToolContext {
   }
 
   get camera() {
-    return this.view3d.camera
+    return this.view3d?.camera
   }
 
   get activeTexture() {

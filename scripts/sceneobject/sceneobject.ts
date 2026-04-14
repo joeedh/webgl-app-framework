@@ -233,8 +233,6 @@ SceneObject {
       }
     }
 
-    console.log('make graph connection')
-
     this.outputs.depend.connect(this.data.inputs.depend)
 
     return false

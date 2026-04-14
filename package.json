@@ -1,14 +1,14 @@
 {
   "scripts": {
-    "build": "node esbuilder.js",
-    "watch": "node esbuilder.js --watch",
-    "cyclecheck": "node circular-ref-finder/dist/index.js scripts/core/AppState.ts",
+    "build": "node tools/esbuilder.js",
+    "watch": "node tools/esbuilder.js --watch",
+    "cyclecheck": "node tools/circular-ref-finder/dist/index.js scripts/core/AppState.ts",
     "typecheck": "npx tsgo",
     "watch-typecheck": "npx tsgo --watch",
-    "serv": "node serv.js",
+    "serv": "node tools/serv.js",
     "test": "jest",
     "eslint": "npx eslint",
-    "markdown-toc": "bash run_markdown_toc.sh"
+    "markdown-toc": "bash tools/run_markdown_toc.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

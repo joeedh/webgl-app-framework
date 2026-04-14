@@ -1631,8 +1631,6 @@ export class ProceduralTexUser {
   }
 }
 
-nstructjs.register(ProceduralTexUser)
-
 export function buildProcTextureAPI(api: DataAPI, api_define_datablock: (api: DataAPI, cls: any) => DataStruct) {
   for (const cls of Patterns) {
     cls.defineAPI(api)

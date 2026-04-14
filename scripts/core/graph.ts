@@ -1532,7 +1532,6 @@ graph.Graph {
   //context is provided by client code
   exec(context: ExecContextType, force_single_solve = false) {
     if (this.graph_flag & GraphFlags.RESORT) {
-      console.log('resorting graph')
       this.sort()
     }
 

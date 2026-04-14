@@ -219,10 +219,10 @@ float fsample(vec3 co, vec3 colorOut) {
     }
 
     if (cls.STRUCT === TextureShader.STRUCT || !cls.STRUCT) {
-      console.warn('Auto-registering texture shader with nstructjs. . .')
-
-      cls.STRUCT = nstructjs.inherit(cls, TextureShader) + `\n}`
-      nstructjs.register(cls)
+      throw new Error('Texture generators must have nstructjs scripts')
+      //console.warn('Auto-registering texture shader with nstructjs. . .')
+      //cls.STRUCT = nstructjs.inherit(cls, TextureShader) + `\n}`
+      //nstructjs.register(cls)
     } else if (!(cls as unknown as any).structName) {
       throw new Error('You wrote a STRUCT script but forgot to register it with nstructjs')
     }

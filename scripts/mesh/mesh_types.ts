@@ -349,7 +349,7 @@ import {KnotDataLayer} from '../curve/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
 import {CDRef} from './customdata'
 import type {View3D} from '../editors/all'
-import { StructReader } from '../path.ux/scripts/util/nstructjs';
+import {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 class ElementBase<TYPE extends number = -1> {
   static STRUCT = nstructjs.inlineRegister(
@@ -2493,14 +2493,6 @@ mesh.LoopList {
     }
   }
 }
-
-/*
-store loops in LoopList to save having to store
-next pointers
-  l      : int | obj.l.eid;
-
-*/
-nstructjs.register(LoopList)
 
 let fiter_stack_v: MeshIterStack<FaceVertIter>
 let fiter_stack_l: MeshIterStack<FaceLoopIter>

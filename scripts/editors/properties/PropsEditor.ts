@@ -115,8 +115,6 @@ export class ChangeActCDLayerOp<
     }
     const undo = this._undo!
 
-    console.error('full:', this.inputs.fullMeshUndo.getValue())
-
     const mesh = this.getMesh(ctx)
 
     if (!mesh) {
@@ -147,8 +145,6 @@ export class ChangeActCDLayerOp<
     if (!undo) {
       return
     }
-
-    console.error('full:', undo.full)
 
     if (!undo.mesh) {
       return
@@ -1021,13 +1017,11 @@ PropsEditor {
       return
     }
 
-    //check that init has been called
+    // check that init has been called
     this._init()
     this.setCSS()
-
-    console.log('Area active!')
-
-    //on_area_active could be called during file load, so put flushUpdate in a try block
+    // on_area_active could be called during file load, so put 
+    // flushUpdate in a try block
 
     try {
       this.flushUpdate()

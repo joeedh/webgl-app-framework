@@ -132,9 +132,10 @@ export class BasicFileOp extends ToolOp {
     window.updateDataGraph()
 
     // /*/
-
-    scene.selectMask = SelMask.VERTEX
     scene.switchToolMode('mesh')
+    // note: switchToolMode sets the select mask, we set it
+    // to VERTEX here
+    scene.selectMask = SelMask.VERTEX
   }
 
   static tooldef() {

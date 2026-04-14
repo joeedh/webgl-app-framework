@@ -4,10 +4,13 @@
 
 - [Code Style and Standard Practices Guide](#code-style-and-standard-practices-guide)
   * [Prettier](#prettier)
-  * [Type assumptions](#type-assumptions)
+  * [Do not use type annotations in variable declarations if types can be inferred](#do-not-use-type-annotations-in-variable-declarations-if-types-can-be-inferred)
+  * [Type assumption tags](#type-assumption-tags)
   * [Static properties should come first in classes](#static-properties-should-come-first-in-classes)
   * [Imports](#imports)
   * [nstructjs pattern](#nstructjs-pattern)
+  * [ToolOp inheritance](#toolop-inheritance)
+  * [Do not use ToolOp.inherit on inputs and outputs](#do-not-use-toolopinherit-on-inputs-and-outputs)
 <!-- regenerate with pnpm markdown-toc -->
 
 <!-- tocstop -->
