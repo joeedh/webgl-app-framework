@@ -351,12 +351,12 @@ export class MeshEditor extends MeshToolBase {
   defineKeyMap(): KeyMap {
     this.keymap = new KeyMap([
       new HotKey('A', [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey('A', ['ALT'], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey('J', ['ALT'], 'mesh.tris_to_quads()'),
+      new HotKey('A', ['alt'], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey('J', ['alt'], 'mesh.tris_to_quads()'),
       new HotKey('J', [], 'mesh.connect_verts()'),
-      new HotKey('S', ['ALT'], 'view3d.inflate()'),
-      new HotKey('S', ['CTRL', 'ALT'], 'view3d.to_sphere()'),
-      new HotKey('G', ['SHIFT'], () => {
+      new HotKey('S', ['alt'], 'view3d.inflate()'),
+      new HotKey('S', ['ctrl', 'alt'], 'view3d.to_sphere()'),
+      new HotKey('G', ['shift'], () => {
         const template = ["mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"]
 
         const menu = createMenu(this.ctx, 'Select Similar', template)
@@ -371,23 +371,23 @@ export class MeshEditor extends MeshToolBase {
       //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
       new HotKey('Y', [], 'mesh.test_color_smooth()'),
       new HotKey('D', [], 'mesh.dissolve_verts()'),
-      new HotKey('D', ['SHIFT'], 'mesh.duplicate()'),
+      new HotKey('D', ['shift'], 'mesh.duplicate()'),
       new HotKey('K', [], 'mesh.subdiv_test()'),
       //new HotKey("D", [], "mesh.test_collapse_edge()"),
       new HotKey('F', [], 'mesh.create_face()'),
       new HotKey('G', [], 'view3d.translate(selmask=17)'),
       new HotKey('R', [], 'view3d.rotate(selmask=17)'),
       new HotKey('L', [], 'mesh.pick_select_linked()'),
-      new HotKey('=', ['CTRL'], "mesh.select_more_less(mode='ADD')"),
-      new HotKey('-', ['CTRL'], "mesh.select_more_less(mode='SUB')"),
-      new HotKey('L', ['SHIFT'], 'mesh.pick_select_linked(mode="SUB")'),
+      new HotKey('=', ['ctrl'], "mesh.select_more_less(mode='ADD')"),
+      new HotKey('-', ['ctrl'], "mesh.select_more_less(mode='SUB')"),
+      new HotKey('L', ['shift'], 'mesh.pick_select_linked(mode="SUB")'),
       new HotKey('X', [], 'mesh.delete_selected()'),
 
       new HotKey('E', [], 'mesh.extrude_regions(transform=true)'),
-      new HotKey('E', ['ALT'], 'mesh.extrude_individual_faces(transform=true)'),
+      new HotKey('E', ['alt'], 'mesh.extrude_individual_faces(transform=true)'),
 
-      new HotKey('R', ['SHIFT'], 'mesh.edgecut()'),
-      new HotKey('I', ['CTRL'], 'mesh.select_inverse()'),
+      new HotKey('R', ['shift'], 'mesh.edgecut()'),
+      new HotKey('I', ['ctrl'], 'mesh.select_inverse()'),
       new HotKey('C', [], 'mesh.select_brush()'),
     ])
 

@@ -639,7 +639,7 @@ export class BVHToolMode extends PaintToolModeBase {
     this.keymap = new KeyMap([
       new HotKey('F', [], 'brush.set_radius()'),
       new HotKey('.', [], 'view3d.view_selected()'),
-      new HotKey('M', ['ALT'], 'paint.clear_mask()'),
+      new HotKey('M', ['alt'], 'paint.clear_mask()'),
     ])
   }
 

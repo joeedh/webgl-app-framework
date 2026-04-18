@@ -60,7 +60,7 @@ export class ObjectEditor extends ToolMode {
       new HotKey('G', [], "view3d.translate(selmask='OBJECT')"),
       new HotKey('R', [], "view3d.rotate(selmask='OBJECT')"),
       new HotKey('A', [], "object.toggle_select_all(mode='AUTO')"),
-      new HotKey('A', ['ALT'], "object.toggle_select_all(mode='SUB')"),
+      new HotKey('A', ['alt'], "object.toggle_select_all(mode='SUB')"),
       new HotKey('X', [], 'object.delete_selected()'),
       new HotKey('Delete', [], 'object.delete_selected()'),
     ])

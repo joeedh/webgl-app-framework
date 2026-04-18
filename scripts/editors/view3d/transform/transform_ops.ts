@@ -543,7 +543,7 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
 
     if (key === keymap['-']) {
       num.sign *= -1
-    } else if (key >= keymap['0'] && key <= keymap['9']) {
+    } else if (key >= keymap['Key0'] && key <= keymap['Key9']) {
       num.str += reverse_keymap[key]
     } else if (key === keymap['.']) {
       if (num.str === '') {
@@ -610,7 +610,7 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
     }
 
     let numeric = e.keyCode === keymap['-'] || e.keyCode === keymap['.']
-    numeric = numeric || (e.keyCode >= keymap['0'] && e.keyCode <= keymap['9'])
+    numeric = numeric || (e.keyCode >= keymap['Key0'] && e.keyCode <= keymap['Key9'])
     numeric = numeric || e.keyCode === keymap['Backspace']
 
     if (numeric) {

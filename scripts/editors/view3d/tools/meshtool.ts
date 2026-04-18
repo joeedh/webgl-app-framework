@@ -58,7 +58,7 @@ export class MeshToolBase extends ToolMode {
   defineKeyMap(): KeyMap {
     this.keymap = new KeyMap([
       new HotKey('A', [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey('A', ['ALT'], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey('A', ['alt'], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey('D', [], 'mesh.subdivide()'),
       new HotKey('G', [], 'view3d.translate(selmask=17)'),
       new HotKey('X', [], 'mesh.delete_selected()'),

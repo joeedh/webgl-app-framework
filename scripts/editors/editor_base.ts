@@ -377,7 +377,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
       if (meta === undefined) {
         return
       }
-      if (val !== undefined && val.lib_id === parseInt(id as string)) {
+      if (val?.lib_id === parseInt(id as string)) {
         return
       }
       if (val !== undefined) {
@@ -1020,15 +1020,15 @@ App {
     this._last_dpi = undefined
 
     this.keymap = new KeyMap([
-      new HotKey('Z', ['CTRL'], () => {
+      new HotKey('Z', ['ctrl'], () => {
         window._appstate.toolstack.undo()
         window.redraw_viewport()
       }),
-      new HotKey('Z', ['CTRL', 'SHIFT'], () => {
+      new HotKey('Z', ['ctrl', 'shift'], () => {
         window._appstate.toolstack.redo()
         window.redraw_viewport()
       }),
-      new HotKey('Y', ['CTRL'], () => {
+      new HotKey('Y', ['ctrl'], () => {
         console.log('redo!')
         window._appstate.toolstack.redo()
         window.redraw_viewport()
@@ -1052,10 +1052,10 @@ App {
           window.__stest.start();
         }
       }),*/
-      new HotKey('S', ['CTRL'], 'app.save(forceDialog=false)'),
-      new HotKey('O', ['CTRL'], 'app.open()'),
-      new HotKey('N', ['CTRL'], 'app.new()'),
-      new HotKey('N', ['CTRL', 'ALT'], 'app.new()'),
+      new HotKey('S', ['ctrl'], 'app.save(forceDialog=false)'),
+      new HotKey('O', ['ctrl'], 'app.open()'),
+      new HotKey('N', ['ctrl'], 'app.new()'),
+      new HotKey('N', ['ctrl', 'alt'], 'app.new()'),
 
       new HotKey('Left', [], () => {
         const time = this.ctx.scene.time
@@ -1086,15 +1086,15 @@ App {
   updateCanvasSize() {
     const dpi = this.getDPI()
 
-    const size = this.size,
-      canvas = document.getElementById('webgl') as HTMLCanvasElement
+    const size = this.size
+    const canvas = document.getElementById('webgl') as HTMLCanvasElement
 
     if (!canvas || size === undefined) {
       return
     }
 
-    const w = size[0],
-      h = size[1]
+    const w = size[0]
+    const h = size[1]
     const w2 = ~~(w * dpi)
     const h2 = ~~(h * dpi)
 
@@ -1399,7 +1399,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       i++
     }
     box.setActive(box.items[this.getActive(mesh)])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     box.on_change = (id?: number) => {
       if (this.onchange) {
         this.onchange(id)
@@ -1701,8 +1701,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
       const m = a | (b << 1)
 
       const r = this.getBoundingClientRect()
-      const dx2 = x - (r.x + r.width * 0.5),
-        dy2 = y - r.y - r.height * 0.5
+      const dx2 = x - (r.x + r.width * 0.5)
+      const dy2 = y - r.y - r.height * 0.5
       const s = dx2 * this.value[1] - dy2 * this.value[0]
 
       //this.flip[0] = s < 0.0 ? -1.0 : 1.0;
@@ -1728,10 +1728,10 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
           const rx = r.x + r.width * 0.5
           const ry = r.y + r.height * 0.5
 
-          let dx2 = e.x - rx,
-            dy2 = e.y - ry
-          let sdx2 = this.start_mpos[0] - rx,
-            sdy2 = this.start_mpos[1] - ry
+          let dx2 = e.x - rx
+          let dy2 = e.y - ry
+          let sdx2 = this.start_mpos[0] - rx
+          let sdy2 = this.start_mpos[1] - ry
 
           const scale = 1.0 / (0.5 * this.size * Math.sqrt(3.0))
           let rawlen = Math.sqrt(dx2 * dx2 + dy2 * dy2) / (Math.sqrt(2.0) * this.size)
@@ -1865,9 +1865,9 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
   render() {
     //console.log("rendering direction chooser");
 
-    const g = this.g,
-      canvas = this.canvas,
-      size = canvas.width
+    const g = this.g
+    const canvas = this.canvas
+    const size = canvas.width
 
     g.clearRect(0, 0, size, size)
 
@@ -1916,8 +1916,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
     g.fillStyle = 'rgba(55,55,55,0.35)'
 
     steps = 64
-    let th = -Math.PI,
-      dth = (Math.PI * 2.0) / steps
+    let th = -Math.PI
+    const dth = (Math.PI * 2.0) / steps
     r *= 1.5
 
     for (let i = 0; i < steps; i++, th += dth) {
@@ -1951,8 +1951,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
     }
 
     steps = 64
-    let s = 0,
-      ds = 1.0 / steps
+    let s = 0
+    const ds = 1.0 / steps
 
     const value4 = new Vector4().loadXYZ(this.value[0], this.value[1], this.value[2])
 

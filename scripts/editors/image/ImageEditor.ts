@@ -1630,12 +1630,12 @@ export class ImageEditor extends Editor {
     this.keymap = new KeyMap([
       new HotKey('A', [], "uveditor.toggle_select_all(mode='AUTO')"),
       new HotKey('L', [], "uveditor.pick_select_linked(mode='ADD' immediateMode=true)"),
-      new HotKey('L', ['SHIFT'], "uveditor.pick_select_linked(mode='SUB' immediateMode=true)"),
+      new HotKey('L', ['shift'], "uveditor.pick_select_linked(mode='SUB' immediateMode=true)"),
       new HotKey('G', [], 'uveditor.translate()'),
       new HotKey('S', [], 'uveditor.scale()'),
       new HotKey('R', [], 'uveditor.rotate()'),
       new HotKey('P', [], "uveditor.set_flag(flag='PIN')"),
-      new HotKey('P', ['ALT'], "uveditor.clear_flag(flag='PIN')"),
+      new HotKey('P', ['alt'], "uveditor.clear_flag(flag='PIN')"),
     ])
     return this.keymap
   }

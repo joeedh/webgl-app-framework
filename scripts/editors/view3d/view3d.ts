@@ -676,26 +676,26 @@ View3D {
         spawnToolSearchMenu(this.ctx)
       }),
 
-      new HotKey('1', [], () => {
+      new HotKey('Key1', [], () => {
         this.viewAxis(1, 1)
       }),
-      new HotKey('3', [], () => {
+      new HotKey('Key3', [], () => {
         this.viewAxis(0, 1)
       }),
-      new HotKey('5', [], () => {
+      new HotKey('Key5', [], () => {
         this.cameraMode ^= 1
         window.redraw_viewport(true)
       }),
-      new HotKey('7', [], () => {
+      new HotKey('Key7', [], () => {
         this.viewAxis(2, 1)
       }),
-      new HotKey('1', ['CTRL'], () => {
+      new HotKey('Key1', ['ctrl'], () => {
         this.viewAxis(1, -1)
       }),
-      new HotKey('3', ['CTRL'], () => {
+      new HotKey('Key3', ['ctrl'], () => {
         this.viewAxis(0, -1)
       }),
-      new HotKey('7', ['CTRL'], () => {
+      new HotKey('Key7', ['ctrl'], () => {
         this.viewAxis(2, -1)
       }),
     ])
