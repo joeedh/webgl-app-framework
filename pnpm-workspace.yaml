@@ -1,9 +1,11 @@
 packages:
- - addons/*
+  - addons/*
+  - electron
 
 ignoredBuiltDependencies:
   - '@swc/core'
   - core-js
+  - electron
   - esbuild
   - unrs-resolver
 

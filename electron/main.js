@@ -1,7 +1,27 @@
 let win
-const {app, BrowserWindow, dialog} = require('electron')
+const {app, BrowserWindow, dialog, nativeTheme} = require('electron')
 
 const {ipcMain, Menu, MenuItem} = require('electron')
+
+ipcMain.handle("nativeTheme.setThemeSource", async (event, val) => {
+  nativeTheme.themeSource = val;
+});
+
+ipcMain.handle("nativeTheme", async (event) => {
+  let obj = {};
+
+  for (let k in nativeTheme) {
+    let v = nativeTheme[k];
+
+    if (typeof v !== "object" && typeof v !== "function") {
+      obj[k] = v;
+    }
+  }
+
+  if (win) {
+    win.webContents.send('nativeTheme', obj);
+  }
+});
 
 function makeInvoker(
   event,
@@ -118,6 +138,7 @@ function createWindow() {
     height        : 900,
     webPreferences: {
       nodeIntegration            : true,
+      nodeIntegrationInWorker    : true,
       sandbox                    : false,
       contextIsolation           : false,
       enableRemoteModule         : true,

@@ -1,4 +1,5 @@
 {
+  "name": "@webgl-app-framework/electron_app",
   "main": "main.js",
   "devDependencies": {
     "electron": "^41.1.1"
@@ -6,5 +7,6 @@
   "dependencies": {
     "pngjs": "^7.0.0",
     "pngjs-nozlib": "^1.0.0"
-  }
+  },
+  "packageManager": "pnpm@10.30.3"
 }
