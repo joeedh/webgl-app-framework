@@ -1,7 +1,9 @@
 packages:
   - addons/*
   - electron
-
+  - sculptcore/tests
+  - sculptcore/source/litestl/binding/typescriptRuntime
+  
 ignoredBuiltDependencies:
   - '@swc/core'
   - core-js

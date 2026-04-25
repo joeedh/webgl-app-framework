@@ -6,7 +6,6 @@ import * as editors from '../editors/all.js';
 
 import '../tet/wiregen_ops.js';
 import '../mesh/mesh_bevel.js';
-import '../smesh/smesh_ops.ts';
 import '../mesh/mesh_ops.js';
 import '../mesh/mesh_extrudeops.js';
 

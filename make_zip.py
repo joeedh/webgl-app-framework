@@ -22,7 +22,7 @@ sources = [
   "./scripts/tet/**",
   "./scripts/test/**",
   "./scripts/trimesh/**",
-  "./scripts/smesh/**",
+  "./scripts/litemesh/**",
   "./scripts/addon/**",
   "./scripts/hair/**",
   "./scripts/mathl/**",

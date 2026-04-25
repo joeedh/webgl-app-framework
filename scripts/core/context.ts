@@ -16,7 +16,6 @@ import {PropsEditor} from '../editors/properties/PropsEditor.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
 import {TetMesh} from '../tet/tetgen.js'
 import {StrandSet} from '../hair/strand.js'
-import {SMesh} from '../smesh/smesh.js'
 
 const passthrus = new Set<string | number | symbol>(['datalib', 'gl', 'graph', 'last_tool', 'toolstack', 'api'])
 
@@ -310,13 +309,6 @@ export class ToolContext extends ContextExtraAPI {
   get tetmesh() {
     const ob = this.object
     if (ob !== undefined && ob.data instanceof TetMesh) {
-      return ob.data
-    }
-  }
-
-  get smesh() {
-    const ob = this.object
-    if (ob !== undefined && ob.data instanceof SMesh) {
       return ob.data
     }
   }
