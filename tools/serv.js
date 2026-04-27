@@ -29,6 +29,7 @@ let mimemap = {
   '.jpg' : 'image/jpeg',
   '.css' : 'text/css',
   '.svg' : 'image/svg+xml',
+  '.wasm': 'application/wasm',
 }
 
 let getMime = (p) => {
@@ -108,12 +109,12 @@ const serv = http.createServer(
     try {
       stt = fs.statSync(p)
     } catch (error) {
-      return res.sendError(404, 'bad path')
+      return res.sendError(404, 'bad path ' + p)
     }
 
     if (stt === undefined || stt.isDirectory() || !stt.isFile()) {
       console.log('access error for', p)
-      return res.sendError(404, 'bad path')
+      return res.sendError(404, 'invalid path ' + p)
     }
 
     let mime = getMime(p)

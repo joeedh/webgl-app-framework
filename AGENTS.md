@@ -1,5 +1,10 @@
 # Agent instructions
 
+## Plans
+
+- Write all plans to the `documentation/plans` folder (with proper descriptive names; add
+  the current date and time to the name).
+
 ## Setup commands
 
 - Install deps: `pnpm i`
@@ -11,9 +16,10 @@
 ## Generating type annotations
 
 When generating type annotations:
+
 - Do not add annotations if type can be inferred, e.g.
-  + Assignment to known typed variables
-  + Assignment to new operator
+  - Assignment to known typed variables
+  - Assignment to new operator
 - Do not use the any type
 - Do not use single-line control blocks, e.g. `if (test) action()` is bad,
   `if (test) { action() }` is good.

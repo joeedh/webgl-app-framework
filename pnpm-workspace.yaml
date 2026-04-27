@@ -3,7 +3,12 @@ packages:
   - electron
   - sculptcore/tests
   - sculptcore/source/litestl/binding/typescriptRuntime
-  
+  - sculptcore/source/litestl/tests
+  - sculptcore/typescript
+  - sculptcore
+  - scripts
+  - tests
+
 ignoredBuiltDependencies:
   - '@swc/core'
   - core-js

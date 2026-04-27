@@ -22,6 +22,9 @@ import addon, {startAddons} from './addon/addon.js';
 import config from './config/config.js';
 import {setupPathux} from './setup_pathux.js';
 import {nstructjs} from './path.ux/pathux.js';
+import * as sculptcore from '@sculptcore/api/api'
+
+await sculptcore.loadWasm()
 
 export function handleNodeArguments() {
   console.error("arguments", process, process.arguments, process.argv);

@@ -1,12 +1,20 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["tsconfig.json"],
-  "pipeline": {
-    "build": {
-      "inputs": [
-        "scripts/entry_point.js"
-      ],
-      "outputs": ["build/**"]
+  "globalDependencies": [
+    "tsconfig.json"
+  ],
+  "tasks": {
+    "typecheck": {
+      "cache": true,
+      "dependsOn": [
+        "^typecheck"
+      ]
+    },
+    "test": {
+      "cache": true,
+      "dependsOn": [
+        "^test"
+      ]
     }
   }
 }

@@ -1,0 +1,185 @@
+{
+  "summary": {
+    "total_files": 17,
+    "done": 17,
+    "in_progress": 0,
+    "not_started": 0
+  },
+  "type_decisions": {
+    "VectorFromComponents": {
+      "decision": "When constructing Vector4 from a Vector3, use explicit component extraction: new Vector4([v[0], v[1], v[2], w]) — the Vector4 constructor does not accept Vector3 (IBaseVector<3>) directly.",
+      "established_in": "scripts/camera/camera.ts",
+      "pass": 1
+    },
+    "curvesplineDataRef": {
+      "decision": "STRUCT-serialized DataRef fields typed as 'T | DataRef<T> | undefined'. In dataLink(), cast to 'unknown as number' when passing to getblock_addUser to satisfy the overloaded type. After deserialization, check 'instanceof DataRef' to guard against unresolved refs.",
+      "established_in": "scripts/camera/camera.ts",
+      "pass": 1
+    },
+    "TransDataElemGeneric": {
+      "decision": "TransDataElem<D1, D2> is generic over its data1/data2 slot types. D1 is the element (e.g. Vertex, SceneObject), D2 is the stored transform data (e.g. Vector3, ObjectTransform). TransDataList<D1, D2> follows the same pattern. TransformData uses the default <undefined, undefined> parameterization for heterogeneous storage. Subclasses specify concrete types when creating elements.",
+      "established_in": "scripts/editors/view3d/transform/transform_base.ts",
+      "pass": 1
+    },
+    "ITransDataTypeInterface": {
+      "decision": "TransDataType implementations use ITransDataType<D1, D2, TransElem, UndoData> interface as object literals rather than class inheritance. MeshTransType implements ITransDataType<Vertex, Vector3, MeshTransVert, MeshUndoData>. ObjectTransType implements ITransDataType<SceneObject, ObjectTransform, ...>. TransDataType class remains as a helper with static utilities (calcPropCurve, register, buildTypesProp).",
+      "established_in": "scripts/editors/view3d/transform/transform_types.ts",
+      "pass": 1
+    }
+  },
+  "files": {
+    "scripts/camera/camera.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [4, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Pass 1 had 4 errors: .ts extension import (fixed to .js), plain tuple not assignable to Vector3Like (fixed to new Vector3([...])), Vector3 not assignable to Vector4 constructor (fixed to explicit component extraction), unused variable 'l' (removed). Fixed logic bug: LayerTypes.LOC || LayerTypes.ID was short-circuited OR (always LOC); changed to bitwise | for correct flag union."
+    },
+    "scripts/editors/view3d/selectmode.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Pure constants file. Added declare global for window._SelMask."
+    },
+    "scripts/editors/view3d/view3d_base.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Pure constants file, no changes needed."
+    },
+    "scripts/editors/view3d/transform/transform_base.ts": {
+      "status": "done",
+      "passes_completed": 2,
+      "error_count_by_pass": [2, 0],
+      "current_error_count": 0,
+      "human_edits": [
+        {
+          "pass": 1,
+          "reason": "TransDataElem data1/data2 polymorphic slot typing",
+          "resolution": "User chose generic approach: TransDataElem<D1, D2> with definite assignment assertions"
+        },
+        {
+          "pass": 2,
+          "reason": "User refactored to ITransDataType interface, extracted from class to object literal pattern",
+          "resolution": "ITransDataType<D1, D2, TransElem, UndoData> interface; TransDataType kept as utility class"
+        }
+      ],
+      "notes": "Added TransformDefine interface. Made TransDataElem and TransDataList generic. Replaced deprecated util.set with Set<string>. Added ITransDataType interface. TransDataList constructor now takes ITransDataType."
+    },
+    "scripts/editors/view3d/findnearest/all.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Pure re-export aggregator, no changes needed."
+    },
+    "scripts/editors/view3d/transform/all.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Pure re-export aggregator, no changes needed."
+    },
+    "scripts/editors/view3d/transform/transform_query.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [4, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Added TransCenterResult interface (exported). Typed all function params with ToolContext, number, etc."
+    },
+    "scripts/editors/view3d/transform/transform_types.ts": {
+      "status": "done",
+      "passes_completed": 2,
+      "error_count_by_pass": [114, 0],
+      "current_error_count": 0,
+      "human_edits": [
+        {
+          "pass": 1,
+          "reason": "User refactored MeshTransType from class to object literal implementing ITransDataType",
+          "resolution": "Created MeshTransList, MeshTransVert subclasses. MeshTransType as const object literal."
+        }
+      ],
+      "notes": "Major refactor: MeshTransType and ObjectTransType converted to ITransDataType object literals. Added MeshTransList, MeshTransVert, MeshUndoData, ObjectUndoData types. ObjectTransform class fully typed. RingStack interface for proportional editing stack."
+    },
+    "scripts/editors/view3d/view3d_draw.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [77, 9, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Added local type aliases (MeshCache, ChunkedMesh, DrawPrimitive, Uniforms, ShaderProgram). Dead code methods gutted. Fixed .ts import extension."
+    },
+    "scripts/editors/view3d/findnearest/findnearest_mesh.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [79, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Fixed ...arguments spreads with explicit params. Fixed cam.position to cam.pos. Vector3-to-Vector4 casts via as unknown as IVectorOrHigher<4>. Element type narrowing."
+    },
+    "scripts/editors/view3d/findnearest/findnearest_object.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Typed all static methods. Removed dead threeCamera code. Cast ctx.datalib.get() as SceneObject."
+    },
+    "scripts/editors/view3d/transform/transform_ops.ts": {
+      "status": "done",
+      "passes_completed": 3,
+      "error_count_by_pass": [393, 52, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "TransformOp made generic. NumericVal interface. TransformOpInputs type. Subclasses: TranslateOp, ScaleOp, RotateOp, InflateOp, ToSphereOp. MeshTransVert casts for mesh-specific fields. Vector2-to-Vector3 fixed with .load2()."
+    },
+    "scripts/editors/view3d/view3d_ops.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [190, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Field declarations for CenterViewOp, OrbitTool, TouchViewTool, PanTool, ZoomTool, TouchData. Event handler types. castViewRay array return fix. modalEnd(false) boolean required."
+    },
+    "scripts/editors/view3d/view3d_select.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [123, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "GPUSelectBuffer field declarations. FindnearestWithStaticDrawIDs intersection type. Fixed ...arguments spread in sampleBlock_intern."
+    },
+    "scripts/editors/view3d/transform/transform_inset.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [54, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Region class typed with Set<Face/Vertex/Edge> and Map<Vertex, Vector3>. InsetTransformOp field declarations. Renamed this.first to this._first. Fixed Vertex-as-Vector3 bugs (v.co.load instead of v.load)."
+    },
+    "scripts/editors/view3d/widgets/widget_utils.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Already clean after rename, no changes needed."
+    },
+    "scripts/editors/view3d/widgets/widget_tools.ts": {
+      "status": "done",
+      "passes_completed": 1,
+      "error_count_by_pass": [155, 0],
+      "current_error_count": 0,
+      "human_edits": [],
+      "notes": "Fixed import extension. Added field declarations for all widget classes. Fixed update() signatures to match base (no params). Renamed onclick methods to _handleClick to avoid property/method conflict. Wrapped array colors in new Vector4(). Added return true to on_mousedown lambdas. Removed dead code after early returns. Widened widgets.ts factory signatures for Matrix4|undefined and Vector4|string."
+    }
+  }
+}

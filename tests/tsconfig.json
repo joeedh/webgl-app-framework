@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "es6",
+    "module": "es2022",
+    "lib": ["dom", "scripthost", "esnext", "ESNext.Disposable"],
+    "pretty": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "noEmitOnError": false,
+    "declaration": false,
+    "noEmit": true,
+    "noImplicitThis": true,
+    "listEmittedFiles": false,
+    "outDir": "types",
+  },
+  "files": ["scripts/typescript_entry.ts"],
+}
