@@ -1,4 +1,13 @@
-import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, Number3, util} from '../../path.ux/scripts/pathux'
+import {
+  Area,
+  DataAPI,
+  IAreaDef,
+  IVector4,
+  IVectorOrHigher,
+  nstructjs,
+  Number3,
+  util,
+} from '../../path.ux/scripts/pathux'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -44,6 +53,7 @@ import type {ViewContext} from '../../core/context'
 import {Mesh} from '../../mesh/mesh'
 import {BusMessage} from '../../core/bus'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import * as sculptcore_demo from '../../sculptcore_demo'
 
 export interface ITempText {
   co: Vector3
@@ -1146,6 +1156,15 @@ View3D {
       throw new Error('no webgl')
     }
 
+    sculptcore_demo
+      .initSculptcoreDemo(getWebGL())
+      .then(() => {
+        window.redraw_viewport()
+      })
+      .catch((error) => {
+        throw error
+      })
+
     this.canvas = this.gl.canvas as CanvasWithExtra
     this.grid = this.makeGrid()
 
@@ -1556,6 +1575,7 @@ View3D {
     const aspect = this.size[0] / this.size[1]
     this.activeCamera.regen_mats(aspect)
 
+    sculptcore_demo.drawSculptcoreDemo(gl, this.activeCamera.rendermat.getAsFloat32Array())
     //this.drawThreeScene();
 
     const finish = (projmat?: Matrix4) => {
