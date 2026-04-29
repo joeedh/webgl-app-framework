@@ -1,5 +1,5 @@
 {
-  "prettier.prettierPath": "./node_modules/@pathtx/prettier/index.cjs",
+  "prettier.prettierPath"              : "./node_modules/@pathtx/prettier/index.cjs",
   "cSpell.words": [
     "appstate",
     "boxverts",
@@ -10,6 +10,7 @@
     "datapath",
     "Dimen",
     "dslider",
+    "elemsize",
     "emap",
     "enumdef",
     "facecolor",
@@ -82,5 +83,7 @@
     "**/*.code-search"       : true,
     "**/.dart_tool"          : true
   },
-  "typescript.tsdk": "node_modules\\typescript\\lib"
+  "typescript.tsdk"                    : "node_modules\\typescript\\lib",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.compileCommands"      : ["sculptcore/build/compile_commands.json"]
 }

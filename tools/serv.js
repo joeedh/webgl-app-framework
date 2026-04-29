@@ -47,16 +47,16 @@ let getMime = (p) => {
 let allowed_origins = new Set([`http://${HOST}:${PORT}/`, `http://${HOST}:${PORT}`])
 
 exports.ServerResponse = class ServerResponse extends http.ServerResponse {
-  _addHeaders(origin) {
+  _addHeaders(origin = globalThis.ORIGIN) {
     this.setHeader('X-Content-Type-Options', 'nosniff')
 
-    if (allowed_origins.has(origin)) {
+    if (true) { //allowed_origins.has(origin)) {
       this.setHeader('Access-Control-Allow-Origin', origin)
     }
-
+    
     this.setHeader('Document-Policy', 'js-profiling')
     this.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-    this.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
+    this.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
     this.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
     this.setHeader('Vary', 'Origin')
   }
@@ -91,9 +91,9 @@ const serv = http.createServer(
       p = '/' + p
     }
 
-    let origin = req.headers['origin'] || ''
+    globalThis.ORIGIN = req.headers['origin'] ?? '*' //Boolean(origin.trim().length) ? origin : undefined
 
-    console.log(req.method, p, origin)
+    console.log(req.method, p, ORIGIN)
 
     if (p === '/') {
       p += INDEX
@@ -123,7 +123,8 @@ const serv = http.createServer(
 
     res.statusCode = 200
     res.setHeader('Content-Type', mime)
-    res._addHeaders(origin)
+    res._addHeaders()
+    res.writeHead(200)
     res.end(buf)
   }
 )
