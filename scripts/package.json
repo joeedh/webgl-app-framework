@@ -5,6 +5,7 @@
   },
   "devDependencies": {
     "@sculptcore/api": "workspace:*",
+    "@litestl/typescript-runtime": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@pathtx/prettier": "3.3.0-dev",
     "@swc/jest": "^0.2.39",

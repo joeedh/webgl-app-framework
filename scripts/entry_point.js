@@ -48,8 +48,10 @@ export function handleNodeArguments() {
   addon.handleArgv(args);
 }
 
-export function init() {
+export async function init() {
   console.log("init!");
+
+  await sculptcore.getWasm()
 
   //give addons 500 ms to load
   let timeout = config.addonLoadWaitTime;

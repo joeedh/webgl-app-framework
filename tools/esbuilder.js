@@ -2,21 +2,11 @@ import * as esbuild from 'esbuild'
 import fs from 'fs'
 import Path from 'path'
 
-const onBuildFinished  = {
-  name: 'env',
-  setup(build) {
-    // Load paths tagged with the "env-ns" namespace and behave as if
-    // they point to a JSON file containing the environment variables.
-    build.onEnd(result => {
-      console.log('on build end!')
-      fs.mkdirSync('./build', {recursive: true})
-      fs.copyFileSync('./sculptcore/typescript/build/sculptcore-browser.wasm', './build/sculptcore-browser.wasm')
-    })
-  },
-}
-
 let options = {
-  entryPoints: ['./scripts/entry_point.js'],
+  entryPoints: [
+    './scripts/entry_point.js',
+    {in: './sculptcore/typescript/build/sculptcore-browser.wasm', out: 'sculptcore-browser'},
+  ],
   outdir     : "./build",
   bundle     : true,
   target     : "es2022",
@@ -26,6 +16,7 @@ let options = {
   logLevel   : "info",
   format     : "esm",
   platform   : "browser",
+  loader     : {'.wasm': 'copy'},
   external   : ["fs",
                 "*/build/sculptcore.js",
                 "electron",
@@ -42,9 +33,6 @@ let options = {
   splitting  : true,
   keepNames  : true,
   logOverride: {"direct-eval": "silent"},
-  plugins    : [
-    onBuildFinished
-  ]
 };
 
 const handlers = {

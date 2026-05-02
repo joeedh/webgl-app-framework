@@ -96,8 +96,35 @@ export const SmoothLine = {
   },
 }
 
+export const BasicLineShader2 = {
+  vertex: `//glsl
+precision mediump float;
+uniform mat4 drawMatrix;
+
+attribute vec3 position;
+void main() {
+  vec4 p = drawMatrix * vec4(position, 1.0);
+  gl_Position = p;
+}
+`,
+  fragment: `//glsl
+precision mediump float;
+uniform vec4 uColor;
+
+void main() {
+  gl_FragColor = uColor;
+}
+  `,
+  attributes: ['position'],
+  uniforms: {
+    uColor    : [1, 1, 1, 1],
+    drawMatrix: new Matrix4(),
+  },
+}
+
 export const BasicLineShader = {
-  vertex: `precision mediump float;
+  vertex: `//glsl
+precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -2007,6 +2034,7 @@ export const SubSurfPatchShader = {
 }
 export const ShaderDef = {
   BasicLineShader      : BasicLineShader,
+  BasicLineShader2     : BasicLineShader2,
   ObjectLineShader     : ObjectLineShader,
   BasicLineShader2D    : BasicLineShader2D,
   BasicLitMesh         : BasicLitMesh,

@@ -1093,7 +1093,7 @@ v${attr} = ${attr};
         const v = us[k]
         const loc = this.uniformloc(k)
 
-        if (loc === undefined) {
+        if (loc === undefined || loc === null) {
           //stupid gl returns null if it optimized away the uniform,
           //so we must silently accept this
           //console.log("Warning, could not locate uniform", k, "in shader");

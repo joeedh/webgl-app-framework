@@ -1,6 +1,7 @@
 {
   "prettier.prettierPath"              : "./node_modules/@pathtx/prettier/index.cjs",
   "cSpell.words": [
+    "AABB",
     "appstate",
     "boxverts",
     "cachering",

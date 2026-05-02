@@ -1156,14 +1156,7 @@ View3D {
       throw new Error('no webgl')
     }
 
-    sculptcore_demo
-      .initSculptcoreDemo(getWebGL())
-      .then(() => {
-        window.redraw_viewport()
-      })
-      .catch((error) => {
-        throw error
-      })
+    sculptcore_demo.initSculptcoreDemo(getWebGL())
 
     this.canvas = this.gl.canvas as CanvasWithExtra
     this.grid = this.makeGrid()
@@ -1575,7 +1568,15 @@ View3D {
     const aspect = this.size[0] / this.size[1]
     this.activeCamera.regen_mats(aspect)
 
-    sculptcore_demo.drawSculptcoreDemo(gl, this.activeCamera.rendermat.getAsFloat32Array())
+    const {near, far} = this.activeCamera
+    sculptcore_demo.drawSculptcoreDemo(
+      gl,
+      this.activeCamera.rendermat,
+      aspect,
+      near,
+      far,
+      this.size as ArrayLike<number>
+    )
     //this.drawThreeScene();
 
     const finish = (projmat?: Matrix4) => {

@@ -52,6 +52,7 @@ import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools
 import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
+import { getWasm } from '@sculptcore/api/api'
 
 declare let _appstate: AppState
 declare let JSZip: {
