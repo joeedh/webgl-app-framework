@@ -1286,13 +1286,20 @@ View3D {
 
       const clr = new Vector4([1.0 - d, 1.0 - d, 1.0 - d, 1.0])
 
+      if (t === 0.0) {
+        clr[1] = clr[2] = 0.0
+        clr[0] = 1.0
+      }
       let line = mesh.line(new Vector3([-sz, t, 0.0]), new Vector3([sz, t, 0.0]))
-
       line.colors(clr, clr)
       line.uvs(new Vector2([-1, -1]), new Vector2([1, 1]))
 
-      line = mesh.line(new Vector3([t, -sz, 0.0]), new Vector3([t, sz, 0.0]))
 
+      if (t === 0.0) {
+        clr[0] = clr[2] = 0.0
+        clr[1] = 1.0
+      }
+      line = mesh.line(new Vector3([t, -sz, 0.0]), new Vector3([t, sz, 0.0]))
       line.colors(clr, clr)
       line.uvs(new Vector2([-1, -1]), new Vector2([1, 1]))
     }

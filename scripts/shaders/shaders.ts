@@ -102,20 +102,26 @@ precision mediump float;
 uniform mat4 drawMatrix;
 
 attribute vec3 position;
+attribute vec4 color;
+
+varying vec4 vColor;
+
 void main() {
   vec4 p = drawMatrix * vec4(position, 1.0);
   gl_Position = p;
+  vColor = color;
 }
 `,
   fragment: `//glsl
 precision mediump float;
 uniform vec4 uColor;
+varying vec4 vColor;
 
 void main() {
-  gl_FragColor = uColor;
+  gl_FragColor = uColor * vColor;
 }
   `,
-  attributes: ['position'],
+  attributes: ['position', 'color'],
   uniforms: {
     uColor    : [1, 1, 1, 1],
     drawMatrix: new Matrix4(),
@@ -241,6 +247,57 @@ void main() {
   },
 
   attributes: ['position', 'uv', 'color'],
+}
+
+export const BasicLitMesh2 = {
+  vertex: `//glsl
+precision mediump float;
+  
+uniform mat4 drawMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+
+varying vec3 vNormal;
+
+void main() {
+  vec4 p = drawMatrix * vec4(position, 1.0);
+  gl_Position = p;
+  vNormal = normalize( (normalMatrix * vec4(normal, 0.0)).xyz );
+}
+
+  `,
+
+  fragment: `//glsl
+precision mediump float;
+uniform float alpha;
+varying vec3 vNormal;
+
+void main() {
+  vec3 no = vNormal; //normalize(vNormal);
+  
+  float f1 = dot(no, normalize(vec3(0.1, 0.2, -1.0)));
+  float f = f1 < 0.0 ? -f1*0.2 : f1;
+  
+  f = f*0.8 + 0.2;
+
+  vec4 vcolor = vec4(1.0, 1.0, 1.0, 1.0);
+  if (f1 < 0.0) {
+    vcolor[2] *= 0.8;
+    vcolor[0] *= 0.5;
+  }
+  gl_FragColor = vec4(vcolor.rgb * f, vcolor.a);
+}
+  `,
+
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4(),
+    normalMatrix: new Matrix4(),
+  },
+
+  attributes: ['position', 'normal'],
 }
 
 export const BasicLitMesh = {
@@ -2038,6 +2095,7 @@ export const ShaderDef = {
   ObjectLineShader     : ObjectLineShader,
   BasicLineShader2D    : BasicLineShader2D,
   BasicLitMesh         : BasicLitMesh,
+  BasicLitMesh2        : BasicLitMesh2,
   BasicLitMeshTexture  : BasicLitMeshTexture,
   MeshEditShader       : MeshEditShader,
   MeshIDShader         : MeshIDShader,
