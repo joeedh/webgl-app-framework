@@ -151,6 +151,8 @@ export class WebGLBatchExecutor {
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]
 
+      console.log(cmd.shader)
+
       for (const attrName of this.shader.attrs) {
         const attr = findAttr(attrName, cmd)
         if (attr === undefined) {

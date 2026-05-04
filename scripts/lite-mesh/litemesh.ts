@@ -1,18 +1,30 @@
-import {nstructjs} from '../path.ux/pathux'
+import {Matrix4, nstructjs} from '../path.ux/pathux'
 import {AttrSet} from './litemesh_attrSet'
-import {AttrTypes} from './litemesh_base'
-import { BoolAttribute, Float3Attribute, Int2Attribute, Int4Attribute, IntAttribute, ShortAttribute } from './litemesh_types'
+import {AttrType} from './litemesh_base'
+import {
+  BoolAttribute,
+  Float3Attribute,
+  Int2Attribute,
+  Int4Attribute,
+  IntAttribute,
+  ShortAttribute,
+} from './litemesh_types'
+import {SceneObjectData} from '../sceneobject/sceneobject_base'
+import {DataBlock} from '../core/lib_api'
+import {SelMask} from '../editors/view3d/selectmode'
+import {NodeFlags} from '../core/graph'
+import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
+import {ShaderProgram, WebGLBatchExecutor} from '../webgl'
+import {View3D} from '../editors/all'
+import {SceneObject} from '../sceneobject'
+import {Shaders} from '../shaders/shaders'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
 
   constructor() {
     super()
-
-    this.ensureAttr(AttrTypes.FLOAT3, 'positions')
-    this.ensureAttr(AttrTypes.FLOAT3, 'normals')
-    this.ensureAttr(AttrTypes.BOOL, 'select')
-    this.ensureAttr(AttrTypes.INT, 'e')
   }
 
   get positions() {
@@ -31,10 +43,6 @@ export class EdgeData extends AttrSet {
 
   constructor() {
     super()
-    this.ensureAttr(AttrTypes.INT2, '.edge.vs')
-    this.ensureAttr(AttrTypes.INT4, '.edge.vs.disk')
-    this.ensureAttr(AttrTypes.BOOL, '.edge.select')
-    this.ensureAttr(AttrTypes.INT, '.edge.c')
   }
 
   get vs() {
@@ -51,18 +59,17 @@ export class EdgeData extends AttrSet {
   }
 }
 
-
 export class CornerData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.CornerData {}')
   constructor() {
     super()
-    this.ensureAttr(AttrTypes.INT, '.corner.v')
-    this.ensureAttr(AttrTypes.INT, '.corner.e')
-    this.ensureAttr(AttrTypes.INT, '.corner.l')
-    this.ensureAttr(AttrTypes.INT, '.corner.next')
-    this.ensureAttr(AttrTypes.INT, '.corner.prev')
-    this.ensureAttr(AttrTypes.INT, '.corner.radial_next')
-    this.ensureAttr(AttrTypes.INT, '.corner.radial_prev')
+    this.ensureAttr(AttrType.Int, '.corner.v')
+    this.ensureAttr(AttrType.Int, '.corner.e')
+    this.ensureAttr(AttrType.Int, '.corner.l')
+    this.ensureAttr(AttrType.Int, '.corner.next')
+    this.ensureAttr(AttrType.Int, '.corner.prev')
+    this.ensureAttr(AttrType.Int, '.corner.radial_next')
+    this.ensureAttr(AttrType.Int, '.corner.radial_prev')
   }
   get v() {
     return this.attrs.get('.corner.v') as IntAttribute
@@ -92,10 +99,10 @@ export class ListData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.ListData {}')
   constructor() {
     super()
-    this.ensureAttr(AttrTypes.INT, '.list.c')
-    this.ensureAttr(AttrTypes.INT, '.list.f')
-    this.ensureAttr(AttrTypes.INT, '.list.next')
-    this.ensureAttr(AttrTypes.INT, '.list.size')
+    this.ensureAttr(AttrType.Int, '.list.c')
+    this.ensureAttr(AttrType.Int, '.list.f')
+    this.ensureAttr(AttrType.Int, '.list.next')
+    this.ensureAttr(AttrType.Int, '.list.size')
   }
   get c() {
     return this.attrs.get('.list.c') as IntAttribute
@@ -115,9 +122,9 @@ export class FaceData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.FaceData {}')
   constructor() {
     super()
-    this.ensureAttr(AttrTypes.SHORT, '.face.list_count')
-    this.ensureAttr(AttrTypes.INT, '.face.list')
-    this.ensureAttr(AttrTypes.FLOAT3, '.face.normal')
+    this.ensureAttr(AttrType.Short, '.face.list_count')
+    this.ensureAttr(AttrType.Int, '.face.list')
+    this.ensureAttr(AttrType.Float3, '.face.normal')
   }
   get list_count() {
     return this.attrs.get('.face.list_count') as ShortAttribute
@@ -130,19 +137,91 @@ export class FaceData extends AttrSet {
   }
 }
 
-export class LiteMesh {
+export class LiteMesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
     litemesh.LiteMesh {
-        v: litemesh.VertexData;
     }
     `
   )
 
-  v = new VertexData()
+  static nodedef() {
+    return {
+      name   : 'litemesh',
+      uiname : 'LiteMesh',
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
+    }
+  }
 
-  constructor() {
+  static blockDefine() {
+    return {
+      typeName   : 'litemesh',
+      defaultName: 'LiteMesh',
+      uiName     : 'LiteMesh',
+      flag       : 0,
+      icon       : -1,
+    }
+  }
+
+  static dataDefine() {
+    return {
+      name      : 'LiteMesh',
+      selectMask: SelMask.MESH,
+      tools     : undefined,
+    }
+  }
+
+  mesh: WasmMesh
+  spatial: SpatialTree
+  wasm: IWasmInterface
+  drawBatch?: DrawBatch
+  drawBatchExecutor?: WebGLBatchExecutor
+
+  constructor(wasmMesh?: WasmMesh) {
+    super()
+
+    // this code cannot run before wasm loads
+    this.wasm = getWasmImmediate()!
+
+    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(16, 1.0, 1.0)
+    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
+    this.drawBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+  }
+
+  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject) {
+    let exec = this.drawBatchExecutor
+    if (exec === undefined) {
+      exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
+      this.drawBatchExecutor = exec
+    }
+
+    const drawMatrix = new Matrix4(uniforms.projectionMatrix)
+    if (uniforms.objectMatrix instanceof Matrix4) {
+      drawMatrix.multiply(uniforms.objectMatrix)
+    }
+
+    const normalMatrix = drawMatrix.copy().makeRotationOnly()
+
+    const uniforms2 = {
+      uColor: [1, 1, 1, 1],
+      ...uniforms,
+      drawMatrix,
+      normalMatrix,
+    }
+    exec.dispatch(this.drawBatch!, uniforms2)
+  }
+
+  regenRender() {
     //
   }
+  regenTessellation() {
+    //
+  }
+  regenElementsDraw() {}
 }
+
+DataBlock.register(LiteMesh)
+SceneObjectData.register(LiteMesh)

@@ -1,28 +1,9 @@
 //override default undo implementation in Path.ux's toolop class
-import {
-  ToolOp,
-  BoolProperty,
-  EnumProperty,
-  FlagProperty,
-  ToolFlags,
-  PropFlags,
-  UndoFlags,
-} from '../path.ux/scripts/pathux.js'
-import {Scene} from '../scene/scene.ts'
-import {Collection} from '../scene/collection.ts'
-import {ScreenBlock} from '../editors/editor_base.ts'
-import {Mesh} from '../mesh/mesh.js'
-import {makeCube} from './mesh_shapes.js'
-import {makeDefaultMaterial} from './material.js'
-import {SceneObject} from '../sceneobject/sceneobject.js'
-import {Light} from '../light/light.js'
-import {SelMask} from '../editors/view3d/selectmode.js'
+import {ToolOp, BoolProperty, UndoFlags} from '../path.ux/scripts/pathux.js'
 import * as cconst from './const.js'
 import * as platform from '../core/platform.js'
 import {exportSTLMesh} from '../util/stlformat.js'
 import {ImportOBJOp} from '../mesh/mesh_createops.js'
-import {subdivide} from '../subsurf/subsurf_mesh.js'
-import {vertexSmooth} from '../mesh/mesh_utils.js'
 
 ToolOp.prototype.calcUndoMem = function (ctx) {
   if (this.undoPre !== ToolOp.prototype.undoPre) {
@@ -47,106 +28,6 @@ ToolOp.prototype.undo = function (ctx) {
 ToolOp.prototype.execPost = function (ctx) {
   window.redraw_viewport()
 }
-
-/*root operator for when loading files*/
-export class RootFileOp extends ToolOp {
-  static tooldef() {
-    return {
-      undoflag: UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
-      uiname  : 'File Start',
-      toolpath: 'app.__new_file',
-    }
-  }
-}
-
-/*root operator that build a file*/
-export class BasicFileOp extends ToolOp {
-  constructor() {
-    super()
-  }
-
-  exec(ctx) {
-    let scene = new Scene()
-    let lib = ctx.datalib
-
-    lib.add(scene)
-    lib.setActive(scene)
-
-    let collection = new Collection()
-    lib.add(collection)
-
-    scene.collection = collection
-    collection.lib_addUser(scene)
-
-    let screenblock = new ScreenBlock()
-    screenblock.screen = _appstate.screen
-
-    lib.add(screenblock)
-    lib.setActive(screenblock)
-
-    //*
-    let mesh = new Mesh()
-    lib.add(mesh)
-
-    makeCube(mesh)
-    for (let i = 0; i < 2; i++) {
-      subdivide(mesh, mesh.faces)
-      vertexSmooth(mesh, mesh.verts)
-    }
-    for (let v of mesh.verts) {
-      v.co.mulScalar(6.0)
-    }
-    mesh.selectAll()
-
-    let mat = makeDefaultMaterial()
-    lib.add(mat)
-    mesh.materials.push(mat)
-    mat.lib_addUser(mesh)
-
-    let sob = new SceneObject()
-    lib.add(sob)
-
-    sob.data = mesh
-    mesh.lib_addUser(sob)
-
-    scene.add(sob)
-    scene.objects.setSelect(sob, true)
-    scene.objects.setActive(sob)
-
-    let light = new Light()
-    lib.add(light)
-
-    let sob2 = new SceneObject(light)
-    lib.add(sob2)
-    sob2.location[2] = 7.0
-
-    scene.add(sob2)
-
-    sob.graphUpdate()
-    mesh.graphUpdate()
-
-    mesh.regenRender()
-    mesh.regenTessellation()
-    mesh.regenElementsDraw()
-
-    window.updateDataGraph()
-
-    // /*/
-    scene.switchToolMode('mesh')
-    // note: switchToolMode sets the select mask, we set it
-    // to VERTEX here
-    scene.selectMask = SelMask.VERTEX
-  }
-
-  static tooldef() {
-    return {
-      undoflag: UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
-      uiname  : 'File Start',
-      toolpath: 'app.__new_file_basic',
-    }
-  }
-}
-
 export class FileSaveOp extends ToolOp {
   static tooldef() {
     return {
@@ -268,7 +149,7 @@ export class FileNewOp extends ToolOp {
       //paranoia check, clear this here
       _appstate.saveHandle = undefined
 
-      _genDefaultFile(_appstate, false)
+      genDefaultFile(_appstate, false)
     }
   }
 }

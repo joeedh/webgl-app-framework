@@ -44,7 +44,7 @@ export function initSculptcoreDemo(
   const mesh = wasm.Mesh_createCube(dimen, size, sphereFac)
   mesh.recalc_normals()
   const tree = wasm.Mesh_buildSpatialTree(mesh, leafLimit, depthLimit)
-  const batch = tree.buildLeafBoundsBatch(wasm.gpu) as DrawBatch
+  const batch = tree.buildLeafBoundsBatch(wasm.gpu)
   const executor = new WebGLBatchExecutor(gl, wasm, Shaders.BasicLineShader2)
 
   const st = wasm.manager.get('sculptcore::mesh::gpu::MeshBatchManager') as StructType

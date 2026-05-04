@@ -38,12 +38,6 @@ import {AppSettings} from './settings'
 
 export class FileLoadError extends Error {}
 
-import {BasicFileOp, RootFileOp} from './app_ops'
-
-export {BasicFileOp, RootFileOp} from './app_ops'
-
-export {genDefaultScreen} from '../editors/screengen'
-import {genDefaultScreen} from '../editors/screengen'
 import {Collection} from '../scene/collection'
 import {PropsEditor} from '../editors/properties/PropsEditor'
 import '../light/light'
@@ -52,39 +46,13 @@ import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools
 import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
-import { getWasm } from '@sculptcore/api/api'
+import {genDefaultFile, RootFileOp} from './gen_default_file'
 
 declare let _appstate: AppState
 declare let JSZip: {
   deflate(data: number[] | Uint8Array): Uint8Array
   inflate(data: Uint8Array): Uint8Array
 }
-
-export function genDefaultFile(appstate: AppState, dont_load_startup = 0): void {
-  _appstate.saveHandle = undefined
-
-  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
-    let buf = localStorage[cconst.APP_KEY_NAME]
-
-    try {
-      buf = util.atob(buf)
-      appstate.loadFile(buf.buffer)
-      return
-    } catch (error) {
-      util.print_stack(error as Error)
-      console.warn('Failed to load startup file')
-    }
-  }
-
-  const tool = new BasicFileOp()
-
-  appstate.datalib = new Library()
-  appstate.toolstack.execTool(appstate.ctx, tool)
-
-  genDefaultScreen(appstate)
-}
-
-window._genDefaultFile = genDefaultFile
 
 export const BlockTypes = {
   SCREEN   : 'scrn',
@@ -375,7 +343,7 @@ export class AppState {
     const file = this.createUndoFile()
     this.loadUndoFile(file)
     window.redraw_viewport()
-  } 
+  }
 
   testFileIO(): void {
     const file = this.createFile({save_settings: true})
@@ -974,6 +942,8 @@ export class AppState {
       console.log(`saved startup file; ${(bufStr.length / 1024).toFixed(2)}kb`)
       this.ctx.message('Saved startup file')
     } catch (error) {
+      console.warn((error as Error).stack)
+      console.warn((error as Error).message)
       this.ctx.error('Failed to save startup file')
     }
   }

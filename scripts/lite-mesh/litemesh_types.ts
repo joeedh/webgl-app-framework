@@ -1,11 +1,11 @@
 import {nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
 import {cachering} from '../util/util'
-import {AttrTypes} from './litemesh_base'
+import {AttrType} from './litemesh_base'
 import {AttrPageType} from './litemesh_page'
 
-export type AttrPageOf<T extends AttrTypes> = AttrPageType & {type: T}
+export type AttrPageOf<T extends AttrType> = AttrPageType & {type: T}
 
-export abstract class Attribute<T extends AttrTypes, V extends number | number[] | Vector2 | Vector3 | Vector4> {
+export abstract class Attribute<T extends AttrType, V extends number | number[] | Vector2 | Vector3 | Vector4> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -18,14 +18,14 @@ export abstract class Attribute<T extends AttrTypes, V extends number | number[]
   )
 
   name: string = ''
-  type: AttrTypes
+  type: AttrType
   pageSize: number = 4096
   // since there is no such thing as a float3[] array buffer,
   // we store each component in a separate page
   pageDivisor: number = 1
   pages: AttrPageOf<T>[] = []
 
-  constructor(type: AttrTypes) {
+  constructor(type: AttrType) {
     this.type = type
   }
 
@@ -37,9 +37,9 @@ export abstract class Attribute<T extends AttrTypes, V extends number | number[]
   }
 }
 
-export type AttributeAny = Attribute<AttrTypes, any>
+export type AttributeAny = Attribute<AttrType, any>
 
-class NumberAttribute<TYPE extends AttrTypes> extends Attribute<TYPE, number> {
+class NumberAttribute<TYPE extends AttrType> extends Attribute<TYPE, number> {
   get(i: number): number {
     return this.pages[~~(i / this.pageSize)]!.data![i % this.pageSize]
   }
@@ -48,39 +48,39 @@ class NumberAttribute<TYPE extends AttrTypes> extends Attribute<TYPE, number> {
   }
 }
 
-export class FloatAttribute extends NumberAttribute<AttrTypes.FLOAT> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.FloatAttribute')
+export class FloatAttribute extends NumberAttribute<AttrType.Float> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.FloatAttribute {}')
   constructor() {
-    super(AttrTypes.FLOAT)
+    super(AttrType.Float)
   }
 }
-export class ByteAttribute extends NumberAttribute<AttrTypes.BYTE> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.ByteAttribute')
+export class ByteAttribute extends NumberAttribute<AttrType.Byte> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.ByteAttribute {}')
   constructor() {
-    super(AttrTypes.BYTE)
-  }
-}
-
-export class IntAttribute extends NumberAttribute<AttrTypes.INT> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.IntAttribute')
-  constructor() {
-    super(AttrTypes.INT)
+    super(AttrType.Byte)
   }
 }
 
-export class ShortAttribute extends NumberAttribute<AttrTypes.SHORT> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.ShortAttribute')
+export class IntAttribute extends NumberAttribute<AttrType.Int> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.IntAttribute {}')
   constructor() {
-    super(AttrTypes.SHORT)
+    super(AttrType.Int)
   }
 }
 
-export class Float2Attribute extends Attribute<AttrTypes.FLOAT2, Vector2> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float2Attribute')
+export class ShortAttribute extends NumberAttribute<AttrType.Short> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.ShortAttribute {}')
+  constructor() {
+    super(AttrType.Short)
+  }
+}
+
+export class Float2Attribute extends Attribute<AttrType.Float2, Vector2> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float2Attribute {}')
   protected cachering = cachering.fromConstructor(Vector2, 64)
 
   constructor() {
-    super(AttrTypes.FLOAT2)
+    super(AttrType.Float2)
   }
 
   /** Warning: returns values in a cachering! */
@@ -100,12 +100,12 @@ export class Float2Attribute extends Attribute<AttrTypes.FLOAT2, Vector2> {
   }
 }
 
-export class Float3Attribute extends Attribute<AttrTypes.FLOAT3, Vector3> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float3Attribute')
+export class Float3Attribute extends Attribute<AttrType.Float3, Vector3> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float3Attribute {}')
   protected cachering = cachering.fromConstructor(Vector3, 64)
 
   constructor() {
-    super(AttrTypes.FLOAT3)
+    super(AttrType.Float3)
   }
 
   /** Warning: returns values in a cachering! */
@@ -127,12 +127,12 @@ export class Float3Attribute extends Attribute<AttrTypes.FLOAT3, Vector3> {
   }
 }
 
-export class Float4Attribute extends Attribute<AttrTypes.FLOAT4, Vector4> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float4Attribute')
+export class Float4Attribute extends Attribute<AttrType.Float4, Vector4> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Float4Attribute {}')
   protected cachering = cachering.fromConstructor(Vector4, 64)
 
   constructor() {
-    super(AttrTypes.FLOAT4)
+    super(AttrType.Float4)
   }
 
   /** Warning: returns values in a cachering! */
@@ -156,12 +156,12 @@ export class Float4Attribute extends Attribute<AttrTypes.FLOAT4, Vector4> {
   }
 }
 
-export class Int2Attribute extends Attribute<AttrTypes.INT2, Vector2> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int2Attribute')
+export class Int2Attribute extends Attribute<AttrType.Int2, Vector2> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int2Attribute {}')
   protected cachering = cachering.fromConstructor(Vector2, 64)
 
   constructor() {
-    super(AttrTypes.INT2)
+    super(AttrType.Int2)
   }
 
   /** Warning: returns values in a cachering! */
@@ -181,12 +181,12 @@ export class Int2Attribute extends Attribute<AttrTypes.INT2, Vector2> {
   }
 }
 
-export class Int3Attribute extends Attribute<AttrTypes.INT3, Vector3> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int3Attribute')
+export class Int3Attribute extends Attribute<AttrType.Int3, Vector3> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int3Attribute {}')
   protected cachering = cachering.fromConstructor(Vector3, 64)
 
   constructor() {
-    super(AttrTypes.INT3)
+    super(AttrType.Int3)
   }
 
   /** Warning: returns values in a cachering! */
@@ -208,12 +208,12 @@ export class Int3Attribute extends Attribute<AttrTypes.INT3, Vector3> {
   }
 }
 
-export class Int4Attribute extends Attribute<AttrTypes.INT4, Vector4> {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int4Attribute')
+export class Int4Attribute extends Attribute<AttrType.Int4, Vector4> {
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.Int4Attribute {}')
   protected cachering = cachering.fromConstructor(Vector4, 64)
 
   constructor() {
-    super(AttrTypes.INT4)
+    super(AttrType.Int4)
   }
 
   /** Warning: returns values in a cachering! */
@@ -238,21 +238,21 @@ export class Int4Attribute extends Attribute<AttrTypes.INT4, Vector4> {
 }
 
 export class BoolAttribute extends ByteAttribute {
-  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.BoolAttribute')
-  
+  static STRUCT = nstructjs.inlineRegister(this, 'litemesh.BoolAttribute {}')
+
   constructor() {
     super()
   }
 }
 
 export const AttributeClasses = {
-  [AttrTypes.FLOAT] : FloatAttribute,
-  [AttrTypes.BYTE]  : ByteAttribute,
-  [AttrTypes.BOOL]  : BoolAttribute,
-  [AttrTypes.SHORT] : ShortAttribute,
-  [AttrTypes.INT]   : IntAttribute,
-  [AttrTypes.FLOAT3]: Float3Attribute,
-  [AttrTypes.INT2]  : Int2Attribute,
-  [AttrTypes.INT3]  : Int3Attribute,
-  [AttrTypes.INT4]  : Int4Attribute,
+  [AttrType.Float] : FloatAttribute,
+  [AttrType.Byte]  : ByteAttribute,
+  [AttrType.Bool]  : BoolAttribute,
+  [AttrType.Short] : ShortAttribute,
+  [AttrType.Int]   : IntAttribute,
+  [AttrType.Float3]: Float3Attribute,
+  [AttrType.Int2]  : Int2Attribute,
+  [AttrType.Int3]  : Int3Attribute,
+  [AttrType.Int4]  : Int4Attribute,
 } as const

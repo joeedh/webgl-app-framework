@@ -1294,7 +1294,6 @@ View3D {
       line.colors(clr, clr)
       line.uvs(new Vector2([-1, -1]), new Vector2([1, 1]))
 
-
       if (t === 0.0) {
         clr[0] = clr[2] = 0.0
         clr[1] = 1.0
@@ -1575,15 +1574,17 @@ View3D {
     const aspect = this.size[0] / this.size[1]
     this.activeCamera.regen_mats(aspect)
 
-    const {near, far} = this.activeCamera
-    sculptcore_demo.drawSculptcoreDemo(
-      gl,
-      this.activeCamera.rendermat,
-      aspect,
-      near,
-      far,
-      this.size as ArrayLike<number>
-    )
+    if (0) {
+      const {near, far} = this.activeCamera
+      sculptcore_demo.drawSculptcoreDemo(
+        gl,
+        this.activeCamera.rendermat,
+        aspect,
+        near,
+        far,
+        this.size as ArrayLike<number>
+      )
+    }
     //this.drawThreeScene();
 
     const finish = (projmat?: Matrix4) => {

@@ -1,6 +1,6 @@
 import {Attribute, AttributeAny, AttributeClasses} from './litemesh_types'
 import {nstructjs} from '../path.ux/pathux'
-import { AttrTypes } from './litemesh_base'
+import {AttrType} from './litemesh_base'
 
 export class AttrSet {
   static STRUCT = nstructjs.inlineRegister(
@@ -18,7 +18,7 @@ export class AttrSet {
     //
   }
 
-  ensureAttr(type: AttrTypes, name: string) {
+  ensureAttr(type: AttrType, name: string) {
     if (!this.attrs.has(name)) {
       const AttrClass = AttributeClasses[type as keyof typeof AttributeClasses]
       const attr = new AttrClass()
@@ -34,7 +34,7 @@ export class AttrSet {
     }
     this.attrs.set(attr.name, attr)
   }
-  
+
   loadSTRUCT(reader: nstructjs.StructReader<this>) {
     reader(this)
     const attrs = this.attrs as unknown as AttributeAny[]
