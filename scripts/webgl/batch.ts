@@ -1,10 +1,11 @@
-import {GPUManager, Buffer, DrawBatch, DrawCommand} from '@sculptcore/api'
+import {GPUManager, Buffer, DrawBatch, DrawCommand, ShaderDef} from '@sculptcore/api'
 import {} from '@litestl/typescript-runtime'
 import {GPUType} from '@sculptcore/api/sculptcore/gpu/GPUType'
 import {GPUBufferType} from '@sculptcore/api/sculptcore/gpu/GPUBufferType'
 import {GPUCmdType} from '@sculptcore/api/sculptcore/gpu/GPUCmdType'
 import {IWasmInterface} from '@sculptcore/api/api'
 import {IUniformsBlock, ShaderProgram} from './webgl'
+import {loadShader} from '../shaders/shaders'
 
 interface BoundLike {
   ptr: number
@@ -84,12 +85,14 @@ export class WebGLBatchExecutor {
   private bufferCache = new Map<number, CachedBuffer>()
   private vao: WebGLVertexArrayObject
   private shader: ShaderProgram
+  private shaderCache = new Map<number, ShaderProgram>()
 
   constructor(gl: WebGL2RenderingContext, wasm: IWasmInterface, shader: ShaderProgram) {
     this.gl = gl
     this.wasm = wasm
     this.vao = gl.createVertexArray()!
     this.shader = shader
+    this.shaderCache = new Map()
   }
 
   private uploadBuffer(buf: Buffer): WebGLBuffer {
@@ -129,6 +132,23 @@ export class WebGLBatchExecutor {
     }
   }
 
+  getShader(sdef: ShaderDef): ShaderProgram {
+    let shader = this.shaderCache.get((sdef as any).ptr)
+    if (shader === undefined) {
+      const sdef2 = {
+        vertex    : sdef.vertexSource,
+        fragment  : sdef.fragmentSource,
+        attributes: Array.from(sdef.attrs).map((a) => a.name),
+        uniforms  : {},
+        defines   : {},
+      }
+
+      shader = loadShader(this.gl, sdef2)
+      this.shaderCache.set((sdef as any).ptr, shader)
+    }
+    return shader
+  }
+
   dispatch(batch: DrawBatch, uniforms: IUniformsBlock) {
     const gl = this.gl
     const commands = batch.commands
@@ -151,15 +171,20 @@ export class WebGLBatchExecutor {
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]
 
-      console.log(cmd.shader)
+      let shader = this.shader
 
-      for (const attrName of this.shader.attrs) {
+      if (cmd.shader !== undefined) {
+        shader = this.getShader(cmd.shader)
+      }
+      shader.bind(gl, uniforms)
+
+      for (const attrName of shader.attrs) {
         const attr = findAttr(attrName, cmd)
         if (attr === undefined) {
           console.log('Could not find shader attribute', attrName)
           continue
         }
-        const bindLoc = this.shader.attrLoc(attr.name)
+        const bindLoc = shader.attrLoc(attr.name)
         const glBuf = this.uploadBuffer(attr)
 
         gl.bindBuffer(gl.ARRAY_BUFFER, glBuf)

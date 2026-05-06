@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type"          : "shell",
+      "label"         : "Build",
+      "command"       : "pnpm build",
+      "group"         : "build",
+      "problemMatcher": [],
+      "detail"        : "",
+      "presentation": {
+        "reveal": "always",
+        "panel" : "new"
+      }
+    },
+    {
+      "type"          : "shell",
+      "label"         : "Build (watch)",
+      "command"       : "pnpm watch",
+      "group"         : "build",
+      "problemMatcher": [],
+      "detail"        : "",
+	  "runOptions": {
+		"runOn": "folderOpen"
+	  },
+      "presentation": {
+        "reveal": "always",
+        "panel" : "new"
+      }
+    },
+	{
+      "type"          : "shell",
+      "label"         : "Serve",
+      "command"       : "pnpm serv",
+      "group"         : "build",
+      "problemMatcher": [],
+      "detail"        : "",
+	  "runOptions": {
+		"runOn": "folderOpen"
+	  },
+      "presentation": {
+        "reveal": "always",
+        "panel" : "new"
+      }
+    }
+  ]
+}

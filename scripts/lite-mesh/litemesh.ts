@@ -15,7 +15,7 @@ import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
-import {ShaderProgram, WebGLBatchExecutor} from '../webgl'
+import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl'
 import {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject'
 import {Shaders} from '../shaders/shaders'
@@ -178,6 +178,7 @@ export class LiteMesh extends SceneObjectData {
   spatial: SpatialTree
   wasm: IWasmInterface
   drawBatch?: DrawBatch
+  treeBatch?: DrawBatch
   drawBatchExecutor?: WebGLBatchExecutor
 
   constructor(wasmMesh?: WasmMesh) {
@@ -186,12 +187,28 @@ export class LiteMesh extends SceneObjectData {
     // this code cannot run before wasm loads
     this.wasm = getWasmImmediate()!
 
-    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(16, 1.0, 1.0)
+    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(100, 1.0, 1.0)
     this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
-    this.drawBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+    this.spatial.update(this.wasm.gpu)
+    this.drawBatch = this.spatial.getDrawBatch()
+    this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
   }
 
-  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject) {
+  draw(
+    view3d: View3D,
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock,
+    program: ShaderProgram,
+    object: SceneObject
+  ) {
+    if (this.spatial.update(this.wasm.gpu)) {
+      if (this.treeBatch) {
+        this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+        this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+      }
+    }
+    this.drawBatch = this.spatial.getDrawBatch()
+
     let exec = this.drawBatchExecutor
     if (exec === undefined) {
       exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
@@ -211,7 +228,12 @@ export class LiteMesh extends SceneObjectData {
       drawMatrix,
       normalMatrix,
     }
-    exec.dispatch(this.drawBatch!, uniforms2)
+    if (this.drawBatch) {
+      exec.dispatch(this.drawBatch, uniforms2)
+    }
+    if (this.treeBatch) {
+      exec.dispatch(this.treeBatch, uniforms2)
+    }
   }
 
   regenRender() {
