@@ -801,7 +801,7 @@ export class PaintOp extends PaintOpBase<
       return
     }
 
-    let {ob, origco, p, isect, radius, vec, mpos, getchannel, w} = ret
+    let {ob, origco, p, radius, vec, mpos, getchannel, w} = ret
     view = ret.view
 
     let strength = brush.strength
@@ -832,7 +832,12 @@ export class PaintOp extends PaintOpBase<
       cd_orig = this.initOrigData(the_mesh as Mesh)
     }
 
-    const p3 = new Vector4(isect.p as unknown as Vector4)
+    const isect = the_mesh!.getBVH()!.castRay(ret.origin, ret.view)
+    if (isect === undefined) {
+      return undefined
+    }
+
+    const p3 = new Vector4(isect!.p as unknown as Vector4)
     p3[3] = 1.0
 
     const matrix = new Matrix4(ob.outputs.matrix.getValue())

@@ -61,7 +61,7 @@ import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
 import {IUniformsBlock, ShaderProgram, Texture} from '../../../webgl/webgl.js'
 import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
-import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
+import {eventWasTouch, haveModal} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumValues} from '../../../util/enum-utils'
 import {ParamVert} from '../../../mesh/mesh_paramizer'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
@@ -648,6 +648,10 @@ export class BVHToolMode extends PaintToolModeBase {
       l.remove()
     }
     this._brush_lines.length = 0
+
+    if (haveModal()) {
+      return
+    }
 
     const drawCircle = (x: number, y: number, r: number, mat: Matrix4 = new Matrix4(), z: number = 0.0): void => {
       const p = new Vector3()

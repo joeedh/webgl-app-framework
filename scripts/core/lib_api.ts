@@ -664,7 +664,7 @@ BlockSet {
     }
   }
 
-  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader) {
+  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     const type = this.type.blockDefine().typeName
 
     if (window.DEBUG?.DataLink) {

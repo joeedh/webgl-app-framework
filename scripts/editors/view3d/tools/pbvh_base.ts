@@ -7,9 +7,66 @@ import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
 
+/*
+function myToFixed(n: number, places = 4) {
+  return n.toFixed(places)
+}
+
+function myToJSON(obj: any): string {
+  if (typeof obj === 'object') {
+    if (Array.isArray(obj) || typeof obj['length'] === 'number') {
+      let s = '['
+      for (let i = 0; i < obj.length; i++) {
+        if (i > 0) {
+          s += ','
+        }
+
+        s += myToJSON(obj[i])
+      }
+
+      s += ']'
+
+      return s
+    } else if (obj instanceof Matrix4) {
+      return myToJSON(obj.getAsArray())
+    } else {
+      let s = '{'
+      const keys = Object.keys(obj)
+
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i]
+        let v: any
+
+        try {
+          v = obj[k]
+        } catch (error) {
+          console.log('error with property ' + k)
+          continue
+        }
+
+        if (typeof v === 'function') {
+          continue
+        }
+
+        if (i > 0) {
+          s += ','
+        }
+
+        s += `"${k}" : ${myToJSON(v)}`
+      }
+      s += '}'
+
+      return s
+    }
+  } else if (typeof obj === 'number') {
+    return toFixed(obj)
+  } else {
+    return '' + obj
+  }
+}*/
+
 import {
   Curve1DProperty,
-  EnumProperty,
   Vec2Property,
   FlagProperty,
   FloatProperty,
@@ -25,7 +82,6 @@ import {
   PropertySlots,
   IVectorOrHigher,
   Number3,
-  IndexRange,
 } from '../../../path.ux/scripts/pathux.js'
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings, PaintToolSlot} from '../../../brush'
@@ -35,11 +91,25 @@ import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {Mesh, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
 import {GridBase} from '../../../mesh/mesh_grids.js'
-import {BVH, BVHFlags, IsectRet} from '../../../util/bvh.js'
+import {BVH, BVHFlags, GenericIsect, IBVHVertex, IGenericIsect, IsectRet, ISurfaceSampler} from '../../../util/bvh.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 
 import * as util from '../../../util/util.js'
-import * as math from '../../../util/math.js'
+import {SceneObject, SceneObjectData} from '../../../sceneobject/index.js'
+
+export interface ISampleViewRet {
+  origco: Vector3
+  p: Vector3
+  isect: IGenericIsect
+  radius: number
+  ob: SceneObject
+  vec: Vector3
+  mpos: Vector2
+  view: Vector3
+  origin:  Vector3
+  getchannel(key: string, value: number): number
+  w: number
+}
 
 export function getBVH(ctx: any): BVH | undefined {
   const ob = ctx.object
@@ -809,10 +879,14 @@ export abstract class PaintToolModeBase extends ToolMode {
   }
 
   abstract drawBrush(view3d: View3D): void
-  abstract getBVH(mesh: Mesh, useGrids?: boolean): BVH
+  abstract getSurfaceSampler(mesh: Mesh, useGrids?: boolean): ISurfaceSampler
 }
 
-export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
+export abstract class PaintOpBase<
+  OBDATA extends SceneObjectData,
+  Inputs extends PropertySlots = {},
+  Outputs extends PropertySlots = {},
+> extends ToolOp<
   {
     brush: BrushProperty //
     samples: PaintSampleProperty //
@@ -877,6 +951,8 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
 
     this._savedViewPoints = []
   }
+
+  abstract getSampler(obdata: OBDATA): ISurfaceSampler
 
   static tooldef(): any {
     return {
@@ -1139,9 +1215,10 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
       while (this2.queue.length > 0) {
         const [e, p, pi] = this2.queue.shift()
 
-        const iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1) as any
+        const iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1)
 
-        if (typeof iter === 'object' && iter[Symbol.iterator]) {
+        // did pointermove return an asyncronous task generator?
+        if (typeof iter === 'object' && Symbol.iterator in iter) {
           for (const step of iter) {
             yield
           }
@@ -1173,7 +1250,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     y: number = e.y,
     in_timer: boolean = false,
     isInterp: boolean = false
-  ) {
+  ): undefined | ISampleViewRet | Generator<any> {
     //this.makeTempLine()
 
     const ctx = this.modal_ctx!
@@ -1225,17 +1302,8 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
   }
 
-  getBVH(mesh: Mesh | TetMesh): BVH {
-    return mesh.getBVH({autoUpdate: false})!
-  }
-
-  abstract initOrigData(mesh: Mesh): AttrRef<Vector3LayerElem>
-  abstract getOrigCo(
-    mesh: Mesh,
-    vertex: Vertex,
-    cd_grid: AttrRef<GridBase>,
-    cd_orig: AttrRef<Vector3LayerElem>
-  ): Vector3
+  abstract initOrigData(mesh: OBDATA): AttrRef<Vector3LayerElem>
+  abstract getSymflag(mesh: OBDATA): number
 
   sampleViewRay(
     rendermat: Matrix4,
@@ -1245,14 +1313,14 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     pressure: number,
     invert: boolean,
     isInterp: boolean
-  ) {
+  ): ISampleViewRet | undefined {
     const brush = this.inputs.brush.getValue()
     const mode = brush.tool
 
     const ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
-      return
+      return undefined
     }
 
     /*
@@ -1284,24 +1352,20 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     //console.log("pressure", pressure, strength, dynmask);
 
     const ob = ctx.object
-    const mesh = ob.data as Mesh
+    const mesh = ob.data as OBDATA
 
-    const bvh = this.getBVH(mesh)
+    const sampler = this.getSampler(mesh)
 
     const axes: number[] = [-1] as (Number3 | -1)[]
-    const sym = mesh.symFlag
+    const sym = this.getSymflag(mesh)
 
     for (let i = 0; i < 3; i++) {
-      if (mesh.symFlag & (1 << i)) {
+      if (sym & (1 << i)) {
         axes.push(i)
       }
     }
 
-    const haveOrigData = PaintOpBase.needOrig(brush)
-    const cd_orig = haveOrigData ? this.initOrigData(mesh) : undefined
-    const cd_grid = GridBase.meshGridRef(mesh)
-
-    let isect: any
+    let isect: IGenericIsect | undefined
     const obmat = ob.outputs.matrix.getValue()
     const matinv = new Matrix4(obmat)
     matinv.invert()
@@ -1326,9 +1390,9 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
       origin2 = new Vector3(origin2)
       view2 = new Vector3(view2)
 
-      const isect2 = bvh.castRay(origin2, view2)
+      const isect2 = sampler.rayCast(origin2, view2)
 
-      if (isect2 && (!isect || isect2.dist < isect.dist)) {
+      if (isect2 && (!isect || isect2.dis < isect.dis)) {
         isect = isect2.copy()
         origin = origin2
         view = view2
@@ -1352,48 +1416,29 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
 
         const dis = p.vectorDistance(origin)
 
-        isect = new IsectRet()
+        isect = new GenericIsect()
 
         isect.p = p
+        isect.origp = new Vector3(p)
         isect.dis = dis
-        isect.tri = undefined
+        isect.tri = -1
+        origco.load3(p)
+        origco[3] = 1.0
       } else {
         return
       }
     } else {
-      const tri = isect.tri
-
-      if (haveOrigData) {
-        const o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig!)
-        const o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig!)
-        const o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig!)
-
-        for (const i of IndexRange(3)) {
-          origco[i as Vector3['LEN']] =
-            o1[i] * isect.uv[0] + o2[i] * isect.uv[1] + o3[i] * (1.0 - isect.uv[0] - isect.uv[1])
-        }
-
-        origco[3] = 1.0
-      } else {
-        origco.load(isect.p)
-        origco[3] = 1.0
-      }
+      origco.load3(isect.origp)
+      origco[3] = 1.0
     }
 
-    const p3 = new Vector4(isect.p)
+    const p3 = new Vector4().load3(isect.p)
     p3[3] = 1.0
 
     const matrix = new Matrix4(ob.outputs.matrix.getValue())
     p3.multVecMatrix(rendermat)
 
     const w = p3[3] * matrix.$matrix.m11
-
-    if (view3d.cameraMode === CameraModes.ORTHOGRAPHIC) {
-      //w = 1.0;
-    }
-
-    //let w2 = Math.cbrt(w);
-
     if (w <= 0) return
 
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1])
@@ -1402,10 +1447,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     const vec = new Vector3()
 
     if (isect.tri) {
-      vec.load(isect.tri.v1.no)
-      vec.add(isect.tri.v2.no)
-      vec.add(isect.tri.v3.no)
-      vec.normalize()
+      vec.load(isect.normal)
     } else {
       vec.load(view).normalize()
     }
@@ -1440,91 +1482,17 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
       // XXX possible performance issue!
       // allocating a vector3 here
       origco: new Vector3(origco),
-      p     : isect.p as Vector3,
-      isect : isect.copy() as IsectRet,
+      p     : new Vector3().load3(isect.p),
+      isect : isect.copy(),
       radius,
       ob,
       vec,
       mpos,
-      view: view as Vector3,
+      view: new Vector3().load3(view),
+      origin: new Vector3().load3(origin),
       getchannel,
       w,
-    }
-  }
-
-  //for debugging purposes
-  writeSaveViewPoints(n: number = 5): string {
-    function toFixed(f: number): string {
-      let s = f.toFixed(n)
-      while (s.endsWith('0')) {
-        s = s.slice(0, s.length - 1)
-      }
-
-      if (s.length === 0) {
-        return '0'
-      }
-
-      if (s[s.length - 1] === '.') {
-        s += '0'
-      }
-
-      return s
-    }
-
-    function myToJSON(obj: any): string {
-      if (typeof obj === 'object') {
-        if (Array.isArray(obj) || typeof obj['length'] === 'number') {
-          let s = '['
-          for (let i = 0; i < obj.length; i++) {
-            if (i > 0) {
-              s += ','
-            }
-
-            s += myToJSON(obj[i])
-          }
-
-          s += ']'
-
-          return s
-        } else if (obj instanceof Matrix4) {
-          return myToJSON(obj.getAsArray())
-        } else {
-          let s = '{'
-          const keys = Object.keys(obj)
-
-          for (let i = 0; i < keys.length; i++) {
-            const k = keys[i]
-            let v: any
-
-            try {
-              v = obj[k]
-            } catch (error) {
-              console.log('error with property ' + k)
-              continue
-            }
-
-            if (typeof v === 'function') {
-              continue
-            }
-
-            if (i > 0) {
-              s += ','
-            }
-
-            s += `"${k}" : ${myToJSON(v)}`
-          }
-          s += '}'
-
-          return s
-        }
-      } else if (typeof obj === 'number') {
-        return toFixed(obj)
-      } else {
-        return '' + obj
-      }
-    }
-
-    return myToJSON(this._savedViewPoints)
+    } as ISampleViewRet
   }
 
   taskNext(): void {
@@ -1883,3 +1851,72 @@ export class ClearMaskOp extends MaskOpBase<{value: FloatProperty}> {
 }
 
 ToolOp.register(ClearMaskOp)
+
+export abstract class PaintOpMesh<
+  Inputs extends PropertySlots = {},
+  Outputs extends PropertySlots = {},
+> extends PaintOpBase<Mesh, Inputs, Outputs> {
+  private cachedGrid!: AttrRef<GridBase>
+  private cachedOrigCo!: AttrRef<Vector3LayerElem>
+  private cachedMesh!: Mesh
+
+  protected getOrigCoCallback = (v: IBVHVertex) => {
+    return this.getOrigCo(this.cachedMesh, v as Vertex, this.cachedGrid, this.cachedOrigCo)
+  }
+
+  protected updateCachedLinks(
+    cachedMesh: Mesh,
+    cachedGrid: AttrRef<GridBase>,
+    cachedOrigCo: AttrRef<Vector3LayerElem>
+  ) {
+    this.cachedMesh = cachedMesh
+    this.cachedGrid = cachedGrid
+    this.cachedOrigCo = cachedOrigCo
+  }
+
+  getBVH(mesh: Mesh): BVH {
+    const bvh = mesh.getBVH({autoUpdate: false})!
+    bvh.getOrigCo = this.getOrigCoCallback
+    return bvh
+  }
+  getSampler(mesh: Mesh) {
+    return this.getBVH(mesh).sampler
+  }
+  getSymflag(mesh: Mesh) {
+    return mesh.symFlag
+  }
+  abstract getOrigCo(
+    mesh: Mesh,
+    vertex: Vertex,
+    cd_grid: AttrRef<GridBase>,
+    cd_orig: AttrRef<Vector3LayerElem>
+  ): Vector3
+
+  sampleViewRay(
+    rendermat: Matrix4,
+    mpos: Vector2,
+    view: IVectorOrHigher<3>,
+    origin: IVectorOrHigher<3>,
+    pressure: number,
+    invert: boolean,
+    isInterp: boolean
+  ) {
+    const ctx = this.modal_ctx!
+
+    if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
+      return
+    }
+
+    const ob = ctx.object
+    const mesh = ob.data as Mesh
+    const brush = this.inputs.brush.getValue()
+
+    const haveOrigData = PaintOpBase.needOrig(brush)
+    const cd_orig = haveOrigData ? this.initOrigData(mesh) : undefined
+    const cd_grid = GridBase.meshGridRef(mesh)
+
+    this.updateCachedLinks(mesh, cd_grid, cd_orig ?? new AttrRef(-1))
+
+    return super.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
+  }
+}

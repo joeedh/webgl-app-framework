@@ -38,6 +38,8 @@ import {getArrayTemp} from '../mesh/mesh_base.js'
 */
 
 export class TetMesh extends SceneObjectData {
+  symflag = 0
+
   constructor() {
     super()
 

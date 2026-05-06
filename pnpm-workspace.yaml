@@ -6,6 +6,7 @@ packages:
   - sculptcore/source/litestl/tests
   - sculptcore/typescript
   - sculptcore
+  - sculptcore/tests/testViewer3D
   - scripts
   - tests
 

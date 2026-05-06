@@ -1,4 +1,4 @@
-import {Matrix4, nstructjs} from '../path.ux/pathux'
+import {Matrix4, nstructjs, Vector3} from '../path.ux/pathux'
 import {AttrSet} from './litemesh_attrSet'
 import {AttrType} from './litemesh_base'
 import {
@@ -10,7 +10,7 @@ import {
   ShortAttribute,
 } from './litemesh_types'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
-import {DataBlock} from '../core/lib_api'
+import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
@@ -19,6 +19,7 @@ import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl'
 import {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject'
 import {Shaders} from '../shaders/shaders'
+import {GenericIsect, IGenericIsect} from '../util/bvh'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -174,6 +175,18 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  afterSTRUCT(): void {
+    super.afterSTRUCT()
+  }
+
+  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
+    return super.dataLink(getblock, getblock_addUser)
+  }
+
+  loadSTRUCT(reader: nstructjs.StructReader<this>): void {
+    super.loadSTRUCT(reader)
+  }
+
   mesh: WasmMesh
   spatial: SpatialTree
   wasm: IWasmInterface
@@ -192,6 +205,46 @@ export class LiteMesh extends SceneObjectData {
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+  }
+
+  rayCast(origin: Vector3, dir: Vector3): GenericIsect | undefined {
+    const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    const originPtr = this.wasm._rawAlloc(3 * 4)
+    const dirPtr = this.wasm._rawAlloc(3 * 4)
+
+    const f32 = this.wasm.HEAPF32
+    const fshift = this.wasm.F32SHIFT
+
+    let idx = originPtr >> fshift
+    f32[idx++] = origin[0]
+    f32[idx++] = origin[1]
+    f32[idx++] = origin[2]
+
+    idx = dirPtr >> fshift
+    f32[idx++] = dir[0]
+    f32[idx++] = dir[1]
+    f32[idx++] = dir[2]
+
+    const result = this.spatial.castRay(origin, dir, isectOut)
+
+    let isect: GenericIsect | undefined
+    if (result) {
+      isect = new GenericIsect()
+      for (let i = 0; i < 3; i++) {
+        isect.p[i] = isectOut.p.vec[i]
+        isect.normal[i] = isectOut.normal.vec[i]
+      }
+      isect.tri = isectOut.triIndex
+      isect.dis = isectOut.t
+      isect.uv[0] = isectOut.uv.vec[0]
+      isect.uv[1] = isectOut.uv.vec[1]
+      return isect
+    }
+
+    this.wasm._rawRelease(originPtr)
+    this.wasm._rawRelease(dirPtr)
+    isectOut[Symbol.dispose]()
+    return isect
   }
 
   draw(

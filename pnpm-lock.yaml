@@ -196,6 +196,21 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  sculptcore/tests/testViewer3D:
+    devDependencies:
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260406.1
+        version: 7.0.0-dev.20260406.1
+      electron:
+        specifier: ^41.1.1
+        version: 41.3.0
+      esbuild:
+        specifier: ^0.19.7
+        version: 0.19.12
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
+
   sculptcore/typescript:
     devDependencies:
       '@litestl/typescript-runtime':

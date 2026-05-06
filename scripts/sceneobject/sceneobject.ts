@@ -9,6 +9,7 @@ import {Material} from '../core/material'
 import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/all.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import { NullObject } from '../nullobject/nullobject.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 
@@ -343,7 +344,12 @@ SceneObject {
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
+    const lib_id = this.data
     this.data = getblock_addUser(this.data, this) as OBDATA
+    if (this.data === undefined) {
+      console.log('failed to load scene object data! id:', lib_id)
+      this.data = new NullObject() as unknown as OBDATA
+    }
   }
 
   draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram = Shaders.BasicLitMesh): void {

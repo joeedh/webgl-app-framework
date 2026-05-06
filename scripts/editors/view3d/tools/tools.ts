@@ -5,5 +5,6 @@ import './view3d_panmode'
 import './curvetool'
 import './pbvh'
 import './tetmesh'
+import './sculptcore'
 
 export {ToolModes} from '../view3d_toolmode.js'

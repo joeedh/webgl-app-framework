@@ -47,6 +47,7 @@ import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp} from './gen_default_file'
+import './app_ops.js'
 
 declare let _appstate: AppState
 declare let JSZip: {
@@ -1117,7 +1118,9 @@ export class AppState {
   loadSettings_intern(): void {
     this.settings.load()
 
-    window.redraw_viewport()
+    setTimeout(() => {
+      window.redraw_viewport()
+    }, 10)
   }
 
   createUndoFile(): ArrayBuffer {

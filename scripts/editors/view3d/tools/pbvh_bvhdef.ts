@@ -13,7 +13,7 @@ import {
 import {AttrRef} from '../../../mesh/customdata.js'
 import {Mesh, MeshFlags, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
 import {BVHFlags, CDNodeInfo, IsectRet} from '../../../util/bvh.js'
-import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty} from './pbvh_base'
+import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
 import type {ViewContext} from '../../../core/context.js'
 import {GridBase} from '../../../mesh/mesh_grids.js'
@@ -48,7 +48,7 @@ import {GridBase} from '../../../mesh/mesh_grids.js'
   }
 }
 
-export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
+export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
   bvhfirst: boolean
   bGrabVerts: Map<any, number> | undefined
   grabMode: boolean
@@ -103,7 +103,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     return 32
   }
 
-  on_pointermove_intern(e: any, x?: number, y?: number, in_timer?: boolean, isInterp?: boolean) {
+  on_pointermove_intern(e: PointerEvent, x?: number, y?: number, in_timer?: boolean, isInterp?: boolean) {
     const ctx = this.modal_ctx!
     if (!ctx.mesh) {
       return

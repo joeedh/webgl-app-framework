@@ -71,6 +71,7 @@ export class BasicFileOp extends ToolOp {
       mesh.selectAll()
     } else {
       mesh = new LiteMesh()
+      lib.add(mesh)
     }
 
     const mat = makeDefaultMaterial()

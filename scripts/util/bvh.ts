@@ -14,6 +14,8 @@ import '../path.ux/scripts/global.d.ts'
 
 const DYNAMIC_SHUFFLE_NODES = false //attempt fast debalancing of tree dynamically
 
+const normalRets = util.cachering.fromConstructor(Vector3, 512)
+
 import * as math from './math.js'
 import {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './isect.js'
 
@@ -29,6 +31,48 @@ import {aabb_sphere_dist, closest_point_on_tri} from './math.js'
 import {getFaceSets} from '../mesh/mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from '../mesh/mesh_customdata'
 import {Mesh} from '../mesh/mesh'
+
+export interface IGenericIsect {
+  p: Vector3
+  origp: Vector3
+  uv: Vector2
+  dis: number
+  normal: Vector3
+  vertex: number
+  tri: number
+  face: number
+  copy: () => this
+}
+
+// mesh agnostic sampler
+export interface ISurfaceSampler {
+  rayCast(origin: Vector3, direction: Vector3): IGenericIsect | undefined
+}
+
+export class GenericIsect {
+  dis = -1
+  normal = new Vector3()
+  vertex = -1
+  tri = -1
+  face = -1
+  p = new Vector3()
+  origp = new Vector3()
+  uv = new Vector2()
+
+  copy(): this {
+    const ret = new GenericIsect() as this
+    ret.dis = this.dis
+    ret.normal = this.normal
+    ret.tri = this.tri
+    ret.vertex = this.vertex
+    ret.face = this.face
+    ret.p = this.p
+    ret.uv = this.uv
+    return ret
+  }
+}
+
+const surfaceCastRets = util.cachering.fromConstructor(GenericIsect, 512)
 
 const safetimes = new Array<number>(32).map((f) => 0)
 
@@ -662,8 +706,8 @@ export class BVHNode<
   }
 
   calcBoxVerts = function (this: BVHNode<OPT & {boxedges: true}>) {
-    const min = this.min,
-      max = this.max
+    const min = this.min
+    const max = this.max
 
     this.boxedges = []
 
@@ -688,11 +732,11 @@ export class BVHNode<
 
     for (const e of this.boxedges) {
       e.nodes.push(this)
-      if (e.v1.nodes.indexOf(this) < 0) {
+      if (!e.v1.nodes.includes(this)) {
         e.v1.nodes.push(this)
       }
 
-      if (e.v2.nodes.indexOf(this) < 0) {
+      if (!e.v2.nodes.includes(this)) {
         e.v2.nodes.push(this)
       }
     }
@@ -830,7 +874,8 @@ export class BVHNode<
 
     let axis = ((this.axis + 1) % 3) as Number3
 
-    let min, max
+    let min
+    let max
     if (!this.bvh.isDeforming) {
       min = new Vector3(this.min)
       max = new Vector3(this.max)
@@ -861,8 +906,8 @@ export class BVHNode<
     const max2 = new Vector3(max)
 
     if (!this.bvh.isDeforming) {
-      let smin = 1e17,
-        smax = -1e17
+      let smin = 1e17
+      let smax = -1e17
 
       if (wireVerts) {
         for (const v of wireVerts) {
@@ -1086,15 +1131,16 @@ export class BVHNode<
     mindis: number[]
   ): Set<IBVHVertex> | undefined {
     if (!this.leaf) {
-      let mindis2, minc
+      let mindis2
+      let minc
 
       if (this.children!.length === 1) {
         return this.children![0].nearestVertsN(co, n, heapOut, mindis)
       }
 
       let i = 0
-      let mina = 0,
-        minb = 0
+      let mina = 0
+      let minb = 0
 
       for (const c of this.children!) {
         const dis = math.aabb_sphere_dist(co, c.min, c.max)
@@ -1112,8 +1158,8 @@ export class BVHNode<
         i++
       }
 
-      let a = 0,
-        b = 1
+      let a = 0
+      let b = 1
 
       if (minc === this.children![1]) {
         a = 1
@@ -1394,7 +1440,6 @@ export class BVHNode<
           const maxdis = co3.vectorDistance(co)
           const isect = this.bvh.castRay(co3, ray3)
 
-
           //intersected behind origin?
           if (isect && isect.dist >= maxdis) {
             ok = true
@@ -1499,7 +1544,8 @@ export class BVHNode<
           c2 = t
         }
 
-        let r1, r2
+        let r1
+        let r2
 
         if (d1 < mindis) {
           r1 = c1.closestPoint(p, mindis)
@@ -1638,8 +1684,8 @@ export class BVHNode<
       node.tottri++
 
       if (!node.leaf) {
-        let mindis = 1e17,
-          closest
+        let mindis = 1e17
+        let closest
 
         for (let i = 0; i < node.children.length; i++) {
           const c = node.children[i]
@@ -1752,8 +1798,8 @@ export class BVHNode<
       const ay = this.halfsize[1] / this.halfsize[2]
       const az = this.halfsize[2] / this.halfsize[0]
 
-      const l2 = 2.0,
-        l1 = 1.0 / l2
+      const l2 = 2.0
+      const l1 = 1.0 / l2
 
       split = ax < l1 || ax > l2
       split = split || ay < l1 || ay > l2
@@ -2142,9 +2188,9 @@ export class BVHNode<
     for (const bvhv of this.uniqueVerts) {
       const v = bvhv as Vertex
       const no = v.no
-      let x = 0,
-        y = 0,
-        z = 0
+      let x = 0
+      let y = 0
+      let z = 0
       let ok = false
 
       for (const e of v.edges) {
@@ -2157,9 +2203,9 @@ export class BVHNode<
 
         do {
           const fno = l.f.no
-          const fx = fno[0],
-            fy = fno[1],
-            fz = fno[2]
+          const fx = fno[0]
+          const fy = fno[1]
+          const fz = fno[2]
 
           if (fx * fx + fy * fy + fz * fz < 0.0001) {
             l.f.calcNormal()
@@ -2226,7 +2272,7 @@ export class BVHNode<
             }
 
             const l = this.bvh.mesh.eidMap.get<Loop>(v.loopEid)
-            if (!l || l.type !== MeshTypes.LOOP) {
+            if (l?.type !== MeshTypes.LOOP) {
               console.warn('Missing loop', v.loopEid, v)
               continue
             }
@@ -2451,7 +2497,8 @@ export class BVHNode<
                 break
             }
 
-            let indexLoops, indexVerts
+            let indexLoops
+            let indexVerts
 
             if (v.flag & dflag) {
               if (v.index < 0) {
@@ -2480,9 +2527,14 @@ export class BVHNode<
       //*/
 
       for (const tri of this.uniqueTris!) {
-        let indexVerts, indexLoops, indexTris, indexEdges
+        let indexVerts
+        let indexLoops
+        let indexTris
+        let indexEdges
 
-        let i1: number, i2: number, i3: number
+        let i1: number
+        let i2: number
+        let i3: number
 
         if (this.boxbridgetris && (tri.v1.flag | tri.v2.flag | tri.v3.flag) & dflag) {
           if (bridgeIdxMap) {
@@ -2636,7 +2688,8 @@ export class BVHNode<
     let idxbase = 0
 
     for (const v of vs) {
-      let hash, cdata
+      let hash
+      let cdata
 
       for (const e of v.edges) {
         for (let l of e.loops) {
@@ -2960,6 +3013,8 @@ export class BVH<
     dead?: true | false
   } = {dead: false},
 > {
+  sampler: ISurfaceSampler
+
   cd_node: AttrRef<CDNodeInfo>
   min: Vector3
   max: Vector3
@@ -3009,6 +3064,7 @@ export class BVH<
   fmap: OptionalIf<Map<number, BVHTri<OPT>[]>, OPT['dead']>
   dirtemp: Vector3
   _i: number
+  getOrigCo: (v: IBVHVertex) => Vector3 = (v) => v.co
 
   constructor(mesh: Mesh, min: Vector3, max: Vector3, tottri = 0) {
     this.min = new Vector3(min)
@@ -3079,6 +3135,58 @@ export class BVH<
 
     if (this.constructor === BVH) {
       Object.seal(this)
+    }
+
+    this.sampler = {
+      rayCast: (origin: Vector3, direction: Vector3) => {
+        const result = this.castRay(origin, direction)
+        if (result !== undefined) {
+          const ret = surfaceCastRets.next()
+
+          const u = result.uv[0]
+          const v = result.uv[1]
+          const w = 1.0 - (u + v)
+
+          const normal = normalRets.next().zero()
+          normal.addFac(result.tri!.v1!.no, u)
+          normal.addFac(result.tri!.v2!.no, v)
+          normal.addFac(result.tri!.v3!.no, w)
+          normal.normalize()
+
+          const o1 = this.getOrigCo(result.tri!.v1)
+          const o2 = this.getOrigCo(result.tri!.v2)
+          const o3 = this.getOrigCo(result.tri!.v3)
+
+          const orig = ret.origp.zero()
+          orig.addFac(o1, u)
+          orig.addFac(o2, v)
+          orig.addFac(o3, w)
+
+          const co1 = result.tri!.v1!.co
+          const co2 = result.tri!.v2!.co
+          const co3 = result.tri!.v3!.co
+
+          const d1 = co1.vectorDistanceSqr(result.p)
+          const d2 = co2.vectorDistanceSqr(result.p)
+          const d3 = co3.vectorDistanceSqr(result.p)
+
+          let vertexIndex = result.tri!.v1!.eid
+          if (d2 <= d1 && d2 <= d3) {
+            vertexIndex = result.tri!.v2!.eid
+          } else if (d3 <= d1 && d3 <= d2) {
+            vertexIndex = result.tri!.v3!.eid
+          }
+
+          ret.dis = result.dist
+          ret.tri = result.tri_idx
+          ret.normal.load(normal)
+          ret.vertex = vertexIndex
+          ret.face = result.tri!.f!.eid
+          ret.p.load(result.p)
+          ret.uv.load(result.uv)
+          return ret
+        }
+      },
     }
   }
 
@@ -3345,9 +3453,9 @@ export class BVH<
 
       for (const ri of order) {
         const i = ri
-        const l1 = ltris[i],
-          l2 = ltris[i + 1],
-          l3 = ltris[i + 2]
+        const l1 = ltris[i]
+        const l2 = ltris[i + 1]
+        const l3 = ltris[i + 2]
 
         bvh.addTri(l1.f.eid, i, l1.v, l2.v, l3.v, undefined, l1, l2, l3)
       }
@@ -3626,7 +3734,7 @@ export class BVH<
 
     const layer = cdata.flatlist[this.cd_node.i]
 
-    if (!layer || layer.typeName !== 'bvh') {
+    if (layer?.typeName !== 'bvh') {
       this.cd_node = new AttrRef(cdata.getLayerIndex('bvh'))
     }
   }
@@ -3879,7 +3987,7 @@ export class BVH<
           elist.setSelect(elem, true)
         }
 
-        if (act && i === act.index) {
+        if (i === act?.index) {
           elist.setActive(elem)
         }
         i++
@@ -3993,8 +4101,8 @@ export class BVH<
         const list1 = f1.lists[i]
         const list2 = f2.lists[i]
 
-        let l1 = list1.l,
-          l2 = list2.l
+        let l1 = list1.l
+        let l2 = list2.l
         let _i = 0
         do {
           mesh.copyElemData(l2, l1)
@@ -4353,7 +4461,7 @@ export class BVH<
         }
 
         for (const tri of n.allTris) {
-          if (tri.nodes.indexOf(n) >= 0) {
+          if (tri.nodes.includes(n)) {
             tri.nodes.remove(n)
           }
           if (tri.node === n) {
@@ -4435,7 +4543,7 @@ export class BVH<
       }
 
       for (const tri of n.allTris) {
-        if (tri.nodes.indexOf(n) >= 0) {
+        if (tri.nodes.includes(n)) {
           tri.nodes.remove(n)
         }
         if (tri.node === n) {
@@ -4546,7 +4654,7 @@ export class BVH<
     //console.log("tri.nodes", tri.nodes.concat([]));
 
     for (const node of tri.nodes) {
-      if (!node.allTris || !node.allTris.has(tri)) {
+      if (!node.allTris?.has(tri)) {
         //throw new Error("bvh error");
         console.warn('bvh error')
         continue
@@ -4654,7 +4762,7 @@ export class BVH<
 
     tri.removed = false
 
-    if (tri.node && tri.node.uniqueTris) {
+    if (tri.node?.uniqueTris) {
       tri.node.uniqueTris.delete(tri)
       tri.node = undefined
     }
@@ -5031,9 +5139,9 @@ export class SpatialHash extends BVH {
       tri.l3 = l3 as unknown as Loop
     }
 
-    const min = this.min,
-      max = this.max,
-      dimen = this.dimen
+    const min = this.min
+    const max = this.max
+    const dimen = this.dimen
     const hmul = this.hmul
 
     const minx = Math.min(Math.min(v1.co[0], v2.co[0]), v3.co[0])
