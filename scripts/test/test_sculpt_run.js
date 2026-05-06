@@ -1,5 +1,5 @@
 import {TestAction} from './test_base.js';
-import {getBrushes, SculptTools} from '../brush/brush.ts';
+import {getBrushes, SculptTools} from '../brush';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';

@@ -24,7 +24,7 @@ import {
   DynTopoModes,
   SubdivModes,
   SculptBrush,
-} from '../../../brush/brush'
+} from '../../../brush'
 import {
   CDElemArray,
   ColorLayerElem,

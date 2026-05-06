@@ -48,7 +48,7 @@ import {
   DynTopoFlags,
   DynTopoSettings,
   DynTopoOverrides,
-} from '../../../brush/brush'
+} from '../../../brush'
 
 import './pbvh_holefiller'
 import './pbvh_sculptops'

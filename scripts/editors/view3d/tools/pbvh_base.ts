@@ -28,14 +28,7 @@ import {
   IndexRange,
 } from '../../../path.ux/scripts/pathux.js'
 
-import {
-  BrushFlags,
-  SculptBrush,
-  SculptTools,
-  BrushSpacingModes,
-  DynTopoSettings,
-  PaintToolSlot,
-} from '../../../brush/brush'
+import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings, PaintToolSlot} from '../../../brush'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
@@ -995,8 +988,8 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
           return
         }
 
-        let s = 0,
-          ds = 1.0 / steps
+        let s = 0
+        const ds = 1.0 / steps
         dt *= ds
 
         const lastp = p0
@@ -1726,9 +1719,9 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
       }
 
       for (let gi = 0; gi < gd.length; gi += 3) {
-        const leid = gd[gi],
-          peid = gd[gi + 1],
-          mask = gd[gi + 2]
+        const leid = gd[gi]
+        const peid = gd[gi + 1]
+        const mask = gd[gi + 2]
 
         const l = mesh.eidMap.get(leid)
         if (!l) {
@@ -1766,8 +1759,8 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
       const vd = ud.vertData
 
       for (let vi = 0; vi < vd.length; vi += 2) {
-        const veid = vd[vi],
-          mask = vd[vi + 1]
+        const veid = vd[vi]
+        const mask = vd[vi + 1]
 
         const v = mesh.eidMap.get(veid)
 
