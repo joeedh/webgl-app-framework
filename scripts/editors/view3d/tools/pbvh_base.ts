@@ -1306,6 +1306,7 @@ export abstract class PaintOpBase<
 
   getInvertFromEvent(e: PointerEvent) {
     let invert = false
+    const brush = this.inputs.brush.getValue()
     const mode = brush.tool
 
     if (e.ctrlKey && mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH) {
