@@ -106,7 +106,7 @@ export interface ISampleViewRet {
   vec: Vector3
   mpos: Vector2
   view: Vector3
-  origin:  Vector3
+  origin: Vector3
   getchannel(key: string, value: number): number
   w: number
 }
@@ -282,9 +282,11 @@ PaintSample {
   invert         : bool;
   esize          : float;
   curve          : optional(Bezier);
+  pressure       : float;
 }`
   )
 
+  pressure = 1.0
   origp: Vector4
   p: Vector4
   dp: Vector4
@@ -401,6 +403,7 @@ PaintSample {
     b.smoothProj = this.smoothProj
     b.futureAngle = this.futureAngle
     b.curve = this.curve?.clone()
+    b.pressure = this.pressure
 
     b.strokeS = this.strokeS
     b.dstrokeS = this.dstrokeS
@@ -731,9 +734,11 @@ export class PathPoint {
   vel: Vector2
   acc: Vector2
   dt: number
+  pressure = 1.0
 
-  constructor(co: any, dt: number) {
+  constructor(co: any, dt: number, pressure = 1.0) {
     this.color = 'yellow'
+    this.pressure = pressure
     this.co = new Vector2(co)
     this.origco = new Vector2(co)
     this.vel = new Vector2()
@@ -1013,11 +1018,11 @@ export abstract class PaintOpBase<
     }
   }
 
-  appendPath(x: number, y: number): void {
+  appendPath(x: number, y: number, pressure = 1.0): void {
     let dt = util.time_ms() - this.alast_time
     dt = Math.max(dt, 1.0)
 
-    const p = new PathPoint([x, y], dt)
+    const p = new PathPoint([x, y], dt, pressure)
     const path = this.path
     const dpi = devicePixelRatio
 
@@ -1071,7 +1076,7 @@ export abstract class PaintOpBase<
         const lastp = p0
 
         for (let i = 0; i < steps; i++, s += ds) {
-          const p2 = new PathPoint(undefined, ds)
+          const p2 = new PathPoint(undefined, ds, pressure)
           for (let j = 0; j < 2; j++) {
             p2.co[j as 0 | 1] = bez4(a[j], b[j], c[j], d[j], s)
             p2.vel[j as 0 | 1] = dbez4(a[j], b[j], c[j], d[j], s) * ds
@@ -1172,6 +1177,10 @@ export abstract class PaintOpBase<
     }
   }
 
+  getPressure(e: PointerEvent) {
+    return e.pressure ?? 1.0
+  }
+
   on_pointermove(e: any, in_timer: boolean = false): void {
     if (this.mfinished) {
       return //wait for modalEnd
@@ -1185,9 +1194,9 @@ export abstract class PaintOpBase<
       //try to detect janky events and interpolate with a curve
       //note that this is not the EVEN spacing mode which happens in
       //subclases, it doesn't respect brush spacing when outputting the curve
-      this.appendPath(e.x, e.y)
+      this.appendPath(e.x, e.y, this.getPressure(e))
     } else {
-      const p = new PathPoint([e.x, e.y], util.time_ms() - this.alast_time)
+      const p = new PathPoint([e.x, e.y], util.time_ms() - this.alast_time, this.getPressure(e))
       this.path.push(p)
     }
 
@@ -1208,18 +1217,21 @@ export abstract class PaintOpBase<
     }
   }
 
+  feedTask(e: PointerEvent, p: any, pi: any): Generator<void, void, unknown> | void {
+    this.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this.path.length - 1)
+  }
+
   makeTask(): Generator<void, void, unknown> {
     const this2 = this
 
     return (function* () {
       while (this2.queue.length > 0) {
         const [e, p, pi] = this2.queue.shift()
-
-        const iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1)
+        const result = this2.feedTask(e, p, pi)
 
         // did pointermove return an asyncronous task generator?
-        if (typeof iter === 'object' && Symbol.iterator in iter) {
-          for (const step of iter) {
+        if (typeof result === 'object' && Symbol.iterator in result) {
+          for (const step of result) {
             yield
           }
         }
@@ -1250,7 +1262,7 @@ export abstract class PaintOpBase<
     y: number = e.y,
     in_timer: boolean = false,
     isInterp: boolean = false
-  ): undefined | ISampleViewRet | Generator<any> {
+  ): undefined | ISampleViewRet {
     //this.makeTempLine()
 
     const ctx = this.modal_ctx!
@@ -1285,7 +1297,14 @@ export abstract class PaintOpBase<
     const rendermat = view3d.activeCamera.rendermat
     const view = view3d.getViewVec(x, y)
     const origin = view3d.activeCamera.pos
+    const invert = this.getInvertFromEvent(e)
 
+    this.inputs.viewportSize.setValue(view3d.size)
+
+    return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
+  }
+
+  getInvertFromEvent(e: PointerEvent) {
     let invert = false
     const mode = brush.tool
 
@@ -1296,10 +1315,7 @@ export abstract class PaintOpBase<
     if (brush.flag & BrushFlags.INVERT) {
       invert = !invert
     }
-
-    this.inputs.viewportSize.setValue(view3d.size)
-
-    return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
+    return invert
   }
 
   abstract initOrigData(mesh: OBDATA): AttrRef<Vector3LayerElem>
@@ -1488,7 +1504,7 @@ export abstract class PaintOpBase<
       ob,
       vec,
       mpos,
-      view: new Vector3().load3(view),
+      view  : new Vector3().load3(view),
       origin: new Vector3().load3(origin),
       getchannel,
       w,

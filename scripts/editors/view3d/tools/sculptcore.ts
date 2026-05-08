@@ -25,6 +25,7 @@ import type {LiteMesh} from '../../../lite-mesh'
 import {DynTopoSettings, SculptBrush} from '../../../brush'
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
+import {SculptPaintOp} from './sculptcore_ops'
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -466,6 +467,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     })
   }
 
+  onInactive() {
+    this._brush_lines.forEach((b) => b.remove())
+    this._brush_lines.length = 0
+  }
+
   get _brushSizeHelper(): number {
     const brush = this.getBrush()
 
@@ -534,6 +540,49 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
   }
 
+  on_mousedown(e: PointerEvent, x: number, y: number): boolean {
+    this.mpos[0] = e.x
+    this.mpos[1] = e.y
+
+    if (e.button === 0 && !e.altKey) {
+      let brush = this.getBrush()
+
+      const isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH
+      const smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH
+
+      if (e.shiftKey) {
+        brush = this.getBrush(smoothtool)
+      }
+
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+
+      brush = brush.copy()
+      brush.dynTopo.loadDefaults(this.dynTopo)
+
+      if (e.ctrlKey) {
+        const t = brush.color
+        brush.color = brush.bgcolor
+        brush.bgcolor = t
+      }
+      brush.radius = radius
+
+      this.ctx.api.execTool(this.ctx, 'sculptcore.paint()', {
+        brush       : brush,
+        //drawFaceSet        : drawFaceSet,
+        symmetryAxes: this.symmetryAxes,
+        //dynTopoDepth       : brush.dynTopo.maxDepth,
+        //useMultiResDepth   : this.enableMaxEditDepth,
+        //reprojectCustomData: this.reprojectCustomData,
+      })
+
+      return true
+    }
+
+    window.redraw_viewport()
+
+    return false
+  }
+
   on_mousemove(e: PointerEvent, x: number, y: number, was_touch: boolean): any {
     const ret = super.on_mousemove(e, x, y, was_touch)
 
@@ -547,18 +596,25 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     return ret
   }
 
+  on_mouseup(e: PointerEvent, x: number, y: number, wasTouch: boolean): boolean {
+    super.on_mouseup(e, x, y, wasTouch)
+
+    this.mdown = false
+    return false
+  }
+
   on_drawend(view3d: View3D, gl: WebGL2RenderingContext): void {
     this.ctx = view3d.ctx
     this.drawBrush(view3d)
   }
 
-  drawBrush(view3d: View3D): void {
+  drawBrush(view3d: View3D, force = false, x = this.mpos[0], y = this.mpos[1]): void {
     for (const l of this._brush_lines) {
       l.remove()
     }
     this._brush_lines.length = 0
 
-    if (haveModal()) {
+    if (haveModal() && !force && !(this.ctx?.toolstack?.head instanceof SculptPaintOp)) {
       return
     }
 
@@ -578,7 +634,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
     const r = this._radius !== undefined ? this._radius : radius
-    drawCircle(this.mpos[0], this.mpos[1], r)
+    drawCircle(x, y, r)
   }
 
   getSurfaceSampler(mesh: Mesh): ISurfaceSampler {

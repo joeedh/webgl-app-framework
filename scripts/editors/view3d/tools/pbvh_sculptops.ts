@@ -58,7 +58,7 @@ import {
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PaintToolModeBase} from './pbvh_base'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PaintToolModeBase, PathPoint} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
@@ -788,14 +788,46 @@ export class PaintOp extends PaintOpBase<
       return
     }
 
+    return super.sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp)
+  }
+
+  feedTask(e: PointerEvent, p: PathPoint, pi: any): Generator<void, void, unknown> | void {
+    const result = this.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this.path.length - 1)
+    if (result === undefined) {
+      return undefined
+    }
+
+    const view3d = this.modal_ctx!.view3d
+    const mpos = view3d.getLocalMouse(p.co[0], p.co[1])
+    const invert = this.getInvertFromEvent(e)
+    return this.processSample(view3d.activeCamera.rendermat, mpos, result.view, result.origin, p.pressure, invert, true)
+  }
+
+  processSample(
+    rendermat: Matrix4,
+    _mpos: Vector2,
+    view: Vector3,
+    origin: Vector3,
+    pressure: number,
+    invert: boolean,
+    isInterp: boolean
+  ): any {
+    const ctx = this.modal_ctx!
+    const view3d = ctx.view3d
+    const mesh = ctx.mesh
+    const tetmesh = ctx.tetmesh
+
+    if ((!mesh && !tetmesh) || !view3d) {
+      return
+    }
+
     const the_mesh = mesh || tetmesh
 
     const brush = this.inputs.brush.getValue()
     const mode = brush.tool
 
     const first = this._first2
-
-    const ret = super.sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp)
+    const ret = this.sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp)
 
     if (!ret) {
       return
