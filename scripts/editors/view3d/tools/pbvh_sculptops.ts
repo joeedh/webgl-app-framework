@@ -58,7 +58,7 @@ import {
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PaintToolModeBase, PathPoint} from './pbvh_base'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
@@ -7796,12 +7796,6 @@ export class PaintOp extends PaintOpBase<
     }
 
     const ret = super.modalEnd(was_cancelled)
-
-    if (ctx.toolmode instanceof PaintToolModeBase) {
-      //stop custom radius drawing for brush circle
-      ctx.toolmode._radius = undefined
-    }
-
     return ret
   }
 

@@ -633,10 +633,7 @@ export class BVHToolMode extends PaintToolModeBase {
   }
 
   drawBrush(view3d: View3D): void {
-    for (const l of this._brush_lines) {
-      l.remove()
-    }
-    this._brush_lines.length = 0
+    this.clearBrushLines()
 
     if (haveModal()) {
       return
@@ -899,10 +896,7 @@ export class BVHToolMode extends PaintToolModeBase {
   onActive(): void {}
 
   onInactive(): void {
-    for (const l of this._brush_lines) {
-      l.remove()
-    }
-    this._brush_lines = []
+    this.clearBrushLines()
 
     if (!this.ctx?.object) {
       return

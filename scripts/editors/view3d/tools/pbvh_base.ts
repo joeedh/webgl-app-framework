@@ -826,6 +826,13 @@ export abstract class PaintToolModeBase extends ToolMode {
 
   abstract drawBrush(view3d: View3D): void
   abstract getSurfaceSampler(mesh: Mesh, useGrids?: boolean): ISurfaceSampler
+
+  protected clearBrushLines(): void {
+    for (const l of this._brush_lines) {
+      l.remove()
+    }
+    this._brush_lines.length = 0
+  }
 }
 
 export abstract class PaintOpBase<
@@ -1489,6 +1496,12 @@ export abstract class PaintOpBase<
     if (this.timer !== undefined) {
       window.clearInterval(this.timer)
       this.timer = undefined
+    }
+
+    const ctx = this.modal_ctx
+    if (ctx && ctx.toolmode instanceof PaintToolModeBase) {
+      //stop custom radius drawing for brush circle
+      ctx.toolmode._radius = undefined
     }
   }
 
