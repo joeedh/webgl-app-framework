@@ -99,7 +99,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
       return 0
     }
 
-    //XXX implement me
+    // TODO: compute actual undo memory; currently returns a constant placeholder.
     return 32
   }
 

@@ -1232,7 +1232,8 @@ export class BVHToolMode extends PaintToolModeBase {
       let tottri = 0
       let updateColors = false
       let updateUvs = false
-      let haveColors = true //cd_color.i >= 0; //XXX todo: add support in shader code to handle no vcol data
+      // TODO: shader paths assume vcol data is present; reinstate `cd_color.i >= 0` once the shaders handle missing vcol layers.
+      let haveColors = true
 
       haveColors = haveColors || drawMask || drawCavityMap || drawDispDisField
 

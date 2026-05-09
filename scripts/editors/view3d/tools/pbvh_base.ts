@@ -947,7 +947,7 @@ export abstract class PaintOpBase<
       return
     }
 
-    //XXX currently disabled
+    // TODO: paint timer queue is currently disabled; investigate before re-enabling.
     if (this.queue.length === 0) {
       return
     }
@@ -1432,8 +1432,8 @@ export abstract class PaintOpBase<
     })
 
     return {
-      // XXX possible performance issue!
-      // allocating a vector3 here
+      // origco/p escape this scope as part of the returned struct, so
+      // they must be freshly allocated; do not try to pool these.
       origco: new Vector3(origco),
       p     : new Vector3().load3(isect.p),
       isect : isect.copy(),
