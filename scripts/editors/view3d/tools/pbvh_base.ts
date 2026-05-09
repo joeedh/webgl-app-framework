@@ -7,64 +7,6 @@ import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
 
-/*
-function myToFixed(n: number, places = 4) {
-  return n.toFixed(places)
-}
-
-function myToJSON(obj: any): string {
-  if (typeof obj === 'object') {
-    if (Array.isArray(obj) || typeof obj['length'] === 'number') {
-      let s = '['
-      for (let i = 0; i < obj.length; i++) {
-        if (i > 0) {
-          s += ','
-        }
-
-        s += myToJSON(obj[i])
-      }
-
-      s += ']'
-
-      return s
-    } else if (obj instanceof Matrix4) {
-      return myToJSON(obj.getAsArray())
-    } else {
-      let s = '{'
-      const keys = Object.keys(obj)
-
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i]
-        let v: any
-
-        try {
-          v = obj[k]
-        } catch (error) {
-          console.log('error with property ' + k)
-          continue
-        }
-
-        if (typeof v === 'function') {
-          continue
-        }
-
-        if (i > 0) {
-          s += ','
-        }
-
-        s += `"${k}" : ${myToJSON(v)}`
-      }
-      s += '}'
-
-      return s
-    }
-  } else if (typeof obj === 'number') {
-    return toFixed(obj)
-  } else {
-    return '' + obj
-  }
-}*/
-
 import {
   Curve1DProperty,
   Vec2Property,
@@ -648,7 +590,6 @@ export class SetBrushRadius extends ToolOp<
     }
 
     radius *= ratio
-    console.log('F', ratio, radius)
 
     this.last_mpos.load(mpos)
     this.inputs.radius.setValue(radius)
@@ -1085,8 +1026,6 @@ export abstract class PaintOpBase<
           p2.color = 'orange'
           p2.origco.load(p0.co).interp(p.co, s)
 
-          //console.log(p2.co);
-
           p2.vel.load(p2.co).sub(lastp.co)
           p2.acc.load(p2.vel).sub(lastp.vel)
           this.path.push(p2)
@@ -1113,8 +1052,6 @@ export abstract class PaintOpBase<
           p.vel.load(p.co).sub(p2.co)
           p.acc.load(p.vel).sub(p2.vel)
         }
-
-        //console.log("add points");
       }
     }
 
@@ -1189,8 +1126,6 @@ export abstract class PaintOpBase<
     let pi = this.path.length
 
     if (this.inputs.brush.getValue().spacingMode === BrushSpacingModes.EVEN) {
-      //console.log("Even spacing mode");
-
       //try to detect janky events and interpolate with a curve
       //note that this is not the EVEN spacing mode which happens in
       //subclases, it doesn't respect brush spacing when outputting the curve
@@ -1252,8 +1187,6 @@ export abstract class PaintOpBase<
       delayMode = mode === TexUserModes.VIEW_REPEAT
       delayMode = delayMode && !!(flag & TexUserFlags.FANCY_RAKE)
     }
-
-    //console.log("delayMode:", delayMode);
   }
 
   on_pointermove_intern(
@@ -1291,8 +1224,6 @@ export abstract class PaintOpBase<
     if (e.pointerType === 'touch' || e.pointerType === 'pen') {
       pressure = e.pressure
     }
-
-    //console.log(e.ctrlKey, view3d.size, x, y, e.targetTouches, pressure);
 
     const rendermat = view3d.activeCamera.rendermat
     const view = view3d.getViewVec(x, y)
@@ -1365,8 +1296,6 @@ export abstract class PaintOpBase<
     if (toolmode instanceof PaintToolModeBase) {
       toolmode._radius = radius
     }
-
-    //console.log("pressure", pressure, strength, dynmask);
 
     const ob = ctx.object
     const mesh = ob.data as OBDATA
@@ -1545,7 +1474,7 @@ export abstract class PaintOpBase<
 
     if (this.task) {
       //can't end modal
-      console.log('Waiting for task to finish')
+      console.warn('Waiting for task to finish')
       this.taskNext()
 
       window.setTimeout(() => {

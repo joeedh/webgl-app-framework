@@ -282,8 +282,6 @@ export class TexPaintOp extends ToolOp<
       const sradius2: number = Math.max(~~(sradius * window.devicePixelRatio), 4)
       this.blurfbo.update(view3d.gl, sradius2)
 
-      console.log('SRADIUS', sradius, 'RADIUS', radius)
-
       this.blurfbo.draw(view3d.gl, this.mpos, ob, view3d, bvh, isect.p, sradius2, radius)
     }
 
@@ -806,8 +804,6 @@ export class TexPaintOp extends ToolOp<
 
       const ssize: Vector2 = new Vector2([UNDO_TILESIZE, UNDO_TILESIZE])
 
-      console.log(ssize, smin, smax)
-
       //let gldebug = getFBODebug(gl);
       const tile: GPUTile = tileManager.alloc(gl)
 
@@ -897,8 +893,6 @@ export class TexPaintOp extends ToolOp<
 
             this._tilemap[idx] = t
             this._tiles.push(t)
-
-            console.log('saving tile', ix, iy)
           }
         }
       }
@@ -975,8 +969,6 @@ export class TexPaintOp extends ToolOp<
         sm.program.defines.BLUR_MODE = null
         texture.glTex!.textureSlot = undefined
         this.blurfbo.fbo.texColor!.textureSlot = undefined
-
-        console.log('TEXTURE', texture.glTex)
 
         uniforms.rgba1 = texture.glTex
         uniforms.blurFBO = this.blurfbo.fbo.texColor
@@ -1107,7 +1099,6 @@ export class TexPaintOp extends ToolOp<
 
   undo(ctx: ViewContext): void {
     console.warn('undo: implement me!')
-    console.log(this._tiles)
 
     if (!ctx.mesh || !ctx.activeTexture) {
       return
@@ -1149,8 +1140,6 @@ export class TexPaintOp extends ToolOp<
 
     const gl: WebGL2RenderingContext = ctx.gl
 
-    console.log('texture paint undo!')
-
     const dbuf = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
     const rbuf = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
 
@@ -1179,8 +1168,6 @@ export class TexPaintOp extends ToolOp<
 
       w = Math.max(w + tile.x, texture.width - 1) - tile.x
       h = Math.max(h + tile.y, texture.height - 1) - tile.y
-
-      console.log(w, h, tile.x, tile.y)
 
       gl.blitFramebuffer(0, 0, w, h, tile.x, tile.y, tile.x + w, tile.y + h, gl.COLOR_BUFFER_BIT, gl.NEAREST)
     }
@@ -1343,9 +1330,6 @@ export class BrushBlurFBO {
     const vmax: Vector2 = new Vector2(mpos)
     vmax.addScalar(radius).ceil().div(view3d.glSize)
 
-    console.log('VMIN', vmin)
-    console.log('VMAX', vmax)
-
     this.vboxMin = vmin
     this.vboxMax = vmax
 
@@ -1390,7 +1374,6 @@ export class BrushBlurFBO {
 
       ok = true
       //if (aabb_sphere_isect(co, worldRadius*2.0, node.min, node.max)) {
-      console.log(node.drawData, node)
       node.drawData.draw(gl, uniforms, this.shader)
       //}
     }

@@ -294,11 +294,6 @@ export class BVHToolMode extends PaintToolModeBase {
     function doChannel(name: string, panelCh: PanelContents<ViewContext> = settings): any {
       const col2 = panelCh.col().strip()
 
-      //col2.style["padding"] = "7px";
-      //col2.style["margin"] = "2px";
-      //col2.style["border"] = "1px solid rgba(25,25,25,0.25)";
-      //col2.style["border-radius"] = "15px";
-
       if (name === 'radius') {
         col2.prop(path + `.brushRadius`)
       } else {
@@ -401,7 +396,6 @@ export class BVHToolMode extends PaintToolModeBase {
       const opath = `${path}.dynTopo.overrides[NONE]`
 
       const okey = DynTopoSettings.apiKeyToOverride(key)
-      //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
       const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`)
       const ret = strip.prop(`${path}.dynTopo.${key}`)
 
@@ -428,8 +422,6 @@ export class BVHToolMode extends PaintToolModeBase {
         }
       });
       */
-
-      //strip.prop
 
       return ret
     }
@@ -527,8 +519,6 @@ export class BVHToolMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawFlat`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.drawCavityMap`)
-    //strip.prop(`scene.tools.${name}.drawNodeIds`);
-    //strip.prop(`scene.tools.${name}.drawColPatches`);
     strip.prop(`scene.tools.${name}.drawMask`)
 
     strip = header.strip()
@@ -543,7 +533,6 @@ export class BVHToolMode extends PaintToolModeBase {
     const path = `scene.tools.${name}.brush`
 
     strip = row.strip()
-    //strip.listenum(path + ".tool");
     strip.prop(`scene.tools.${name}.tool`)
     strip.tool('mesh.symmetrize()')
     strip.prop(`scene.tools.${name}.symmetryAxes`)
@@ -766,8 +755,6 @@ export class BVHToolMode extends PaintToolModeBase {
         brush = this.getBrush(smoothtool)
       }
 
-      console.log('dynmask', dynmask)
-
       const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
       brush = brush.copy()
@@ -856,8 +843,6 @@ export class BVHToolMode extends PaintToolModeBase {
     mres.flag = flag
 
     if (update) {
-      console.log('MRES SETTINGS UPDATE')
-
       for (const l of mesh.loops) {
         const grid = l.customData[cd_grid]
         grid.update(mesh, l, cd_grid)
@@ -904,8 +889,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
     if (key !== this._last_enable_mres) {
       this._last_enable_mres = key
-      console.log(key)
-
       this.updateMeshMres(this.ctx.object.data)
     }
     return this
@@ -913,21 +896,7 @@ export class BVHToolMode extends PaintToolModeBase {
 
   destroy(): void {}
 
-  onActive(): void {
-    /*
-    if (!this.ctx || !this.ctx.mesh) {
-      return;
-    }
-
-    let mesh = this.ctx.mesh;
-    let bvh = mesh.getLastBVH(false);
-
-    console.warn("Spatially sorting mesh topology for memory coherence. . .");
-
-    bvh.spatiallySortMesh(mesh);
-    window.redraw_viewport(true);
-    //*/
-  }
+  onActive(): void {}
 
   onInactive(): void {
     for (const l of this._brush_lines) {
@@ -1032,8 +1001,6 @@ export class BVHToolMode extends PaintToolModeBase {
       uniforms.polygonOffset = 0.0
       uniforms.opacity = uniforms.alpha = 1.0
 
-      //console.log(uniforms);
-
       const white = new Vector4([1, 1, 1, 1])
 
       if (bvh.isDeforming) {
@@ -1047,18 +1014,8 @@ export class BVHToolMode extends PaintToolModeBase {
           const v1 = new Vector3(e.v1)
           const v2 = new Vector3(e.v2)
 
-          //v1.interp(node.cent, 0.05);
-          //v2.interp(node.cent, 0.05);
-
           const line = sm.line(v1, v2)
           line.colors(white, white)
-
-          //v1.interp(v2, 0.5);
-          //line = sm.line(v1, node.cent);
-          //line.colors(white, white);
-
-          //line = sm.line(v2, node.cent);
-          //line.colors(white, white);
         }
 
         sm.drawLines(gl, uniforms, program)
@@ -1077,9 +1034,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
         Shapes.CUBE.drawLines(gl, uniforms, program)
       }
-
-      //uniforms.objectMatrix = new Matrix4();
-      //Shapes.CUBE.draw(gl, uniforms, program);
     }
 
     for (const ob of scene.objects.selected.editable) {
@@ -1094,16 +1048,13 @@ export class BVHToolMode extends PaintToolModeBase {
       const mesh = ob.data as Mesh
       const bvh = this.getBVH(mesh)
 
-      //console.log("BVH", bvh.nodes.length);
       if (this.drawBVH) {
         for (const node of bvh.nodes) {
           if (node.leaf) {
             drawNodeAABB(bvh, node, matrix)
           }
         }
-        //drawNodeAABB(bvh.root, matrix);
       }
-      //console.log("BVH", bvh, Shapes.CUBE);
     }
   }
 
@@ -1119,7 +1070,6 @@ export class BVHToolMode extends PaintToolModeBase {
     object: SceneObject,
     mesh: Mesh
   ): boolean {
-    //return true;
     if (!(this.ctx?.object && object === this.ctx.object)) {
       return false
     }
@@ -1205,8 +1155,6 @@ export class BVHToolMode extends PaintToolModeBase {
       bvh.hideQuadEdges = hideQuadEdges
 
       if (update) {
-        console.log('hideQuadEdges:', hideQuadEdges)
-
         const quadflag = MeshFlags.QUAD_EDGE
         for (const e of mesh.edges) {
           e.flag &= ~quadflag
@@ -1227,7 +1175,6 @@ export class BVHToolMode extends PaintToolModeBase {
       }
     }
 
-    //*
     for (const node of new Set(bvh.nodes)) {
       if (!node || node.id < 0) {
         continue
@@ -1235,8 +1182,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
       bvh.checkJoin(node)
     }
-    //bvh.update();
-    //*/
 
     const parentoff = bvh.drawLevelOffset
 
@@ -1264,8 +1209,6 @@ export class BVHToolMode extends PaintToolModeBase {
     drawkey += ':' + cd_color.i + ':' + object.lib_id + ':' + mesh.lib_id
 
     if (drawkey !== this._last_draw_key) {
-      console.log('Full draw:', drawkey)
-
       this._last_draw_key = drawkey
       fullDraw = true
     }
@@ -1611,8 +1554,6 @@ export class BVHToolMode extends PaintToolModeBase {
         defv.setCount(tottri * 3, true)
         defv = defv._getWriteData()
       }
-
-      //console.log("TOTTRI", tottri, totvert);
 
       idx.setCount(tottri * 3, true)
       idx = idx._getWriteData()
@@ -2440,11 +2381,8 @@ export class BVHToolMode extends PaintToolModeBase {
               l = mesh.eidMap.get(l)
               if (l && l.eid === v.loopEid) {
                 l.customData.get(bvh.cd_grid).checkCustomDataLayout(mesh)
-
-                //console.log(l, l.customData[bvh.cd_grid]);
               }
 
-              //console.error("customdata error", c1, c2, c3, tri);
             }
             /*
             let c1 = colorfilter(tri.v1);
@@ -2617,8 +2555,6 @@ export class BVHToolMode extends PaintToolModeBase {
               l = mesh.eidMap.get(l)
               if (l && l.eid === v.loopEid) {
                 l.customData[bvh.cd_grid].checkCustomDataLayout(mesh)
-
-                //console.log(l, l.customData[bvh.cd_grid]);
               }
 
               console.error('customdata error', c1, c2, c3, tri)
@@ -2641,7 +2577,6 @@ export class BVHToolMode extends PaintToolModeBase {
           */
         }
       }
-      //console.log("updating draw data for bvh node", node.id);
 
       rec(node)
       sm.gen = 0
@@ -2755,8 +2690,6 @@ export class BVHToolMode extends PaintToolModeBase {
           if (isDeforming) {
             if (!program2.defines.WITH_BOXVERTS) {
               const dimen = bvh.glLeafTex.createParams.width
-
-              //console.log(dimen, node.leafTexUV);
 
               uniforms.nodeDefTex = bvh.glLeafTex
               uniforms.nodeDefTexDu = 1.0 / dimen + 0.00001

@@ -60,8 +60,6 @@ export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: We
     }
   }
 
-  console.log('vs', vs.length, vi)
-
   vs.length = vi
 
   if (vs.length < 3) {
@@ -334,7 +332,6 @@ export class HoleFillPaintOp extends PaintOpMesh<{}, {}> {
     }
 
     vs = vs.filter((v: Vertex) => v.eid >= 0 && v.isBoundary(false))
-    console.log(vs)
 
     if (vs.size === 0) {
       return
