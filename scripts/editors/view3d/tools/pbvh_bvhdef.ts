@@ -99,7 +99,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
       return 0
     }
 
-    //XXX implement me
+    // TODO: compute actual undo memory; currently returns a constant placeholder.
     return 32
   }
 
@@ -138,8 +138,6 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     const bvh: any = this.getBVH(mesh)
 
     if (this.bvhfirst) {
-      console.warn('Setting grab verts!')
-
       this.bvhfirst = false
       const bvs: Map<any, number> = (this.bGrabVerts = new Map())
 
@@ -293,7 +291,6 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
   }
 
   onBind(bvh: any): void {
-    console.warn('Bind!')
     bvh.splitToUniformDepth()
 
     //abuse the velocity field of BVHNodeElem
@@ -319,7 +316,6 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     }
 
     bvh.update()
-    console.log('done.')
   }
 
   modalEnd(wascanceled: boolean): void {
@@ -339,8 +335,6 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
   _applyDef(bvh: any): void {
     //return;
     const cd_node: any = bvh.cd_node
-
-    console.log('Apply Def')
 
     for (const node of bvh.leaves) {
       for (const v of node.uniqueVerts) {

@@ -3,7 +3,7 @@ import './pbvh_bvhdef'
 import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolModes, ToolMode} from '../view3d_toolmode.js'
 import {BVH, BVHFlags, BVHNode} from '../../../util/bvh.js'
-import {KeyMap, HotKey, DataBlockBrowser} from '../../editor_base'
+import {KeyMap, HotKey} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import * as util from '../../../util/util.js'
@@ -31,7 +31,6 @@ import {
   math,
   Number3,
   PackFlags,
-  PanelContents,
   UIBase,
 } from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
@@ -56,6 +55,7 @@ import './pbvh_base'
 import './pbvh_texpaint'
 
 import {calcConcave, getBVH, PaintToolModeBase} from './pbvh_base'
+import {buildBVHSettings} from './pbvh_ui'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
@@ -70,7 +70,6 @@ import type {Scene} from '../../../scene/scene'
 import type {StructReader} from '../../../path.ux/scripts/util/nstructjs'
 import type {View3D} from '../view3d'
 import type {ViewContext} from '../../../core/context'
-import type {TextureSelectPanel} from '../../properties/PropsEditor'
 
 export class BVHToolMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -260,261 +259,7 @@ export class BVHToolMode extends PaintToolModeBase {
   }
 
   static buildSettings(container: Container<ViewContext>): void {
-    const name = this.toolModeDefine().name
-    const path = `scene.tools.${name}`
-
-    const browser = document.createElement('data-block-browser-x') as DataBlockBrowser<SculptBrush>
-    browser.blockClass = SculptBrush
-    browser.setAttribute('datapath', path + '.brush')
-    browser.filterFunc = function (brush: SculptBrush): boolean {
-      if (!browser.ctx) {
-        return false
-      }
-
-      const toolmode = browser.ctx.toolmode! as BVHToolMode
-      return brush.tool === toolmode.tool
-    }
-
-    const row = container.row()
-    row.add(browser)
-    row.useIcons(true)
-    row.tool("brush.load_default(dataPath='scene.tools.sculpt.brush')")
-
-    const col = container.col()
-    let strip
-    let panel
-    let panel2
-
-    const settings = col.panel('Brush Settings')
-    strip = settings.row().strip()
-    strip.useIcons(false)
-    strip.label('Spacing')
-    strip.prop(path + '.brush.spacingMode')
-
-    function doChannel(name: string, panelCh: PanelContents<ViewContext> = settings): any {
-      const col2 = panelCh.col().strip()
-
-      //col2.style["padding"] = "7px";
-      //col2.style["margin"] = "2px";
-      //col2.style["border"] = "1px solid rgba(25,25,25,0.25)";
-      //col2.style["border-radius"] = "15px";
-
-      if (name === 'radius') {
-        col2.prop(path + `.brushRadius`)
-      } else {
-        col2.prop(path + `.brush.${name}`)
-      }
-
-      panelCh = col2.panel('Dynamics')
-      panelCh.panelFrame.openCloseIcon.overrideClassDefault('panel.header', 'iconSize', 12)
-
-      panelCh.panelFrame.overrideDefault('padding-top', 0)
-      panelCh.panelFrame.overrideDefault('padding-bottom', 0)
-      panelCh.prop(path + `.brush.dynamics.${name}.useDynamics`)
-      panelCh.prop(path + `.brush.dynamics.${name}.curve`)
-      panelCh.closed = true
-      panelCh.setCSS()
-
-      return col2
-    }
-
-    panel = col.panel('Texture')
-    panel.closed = true
-    const tex = document.createElement('texture-select-panel-x') as TextureSelectPanel
-
-    tex.setAttribute('datapath', path + '.brush.texUser.texture')
-
-    strip = panel.row().strip()
-    strip.useIcons(false)
-
-    strip.prop(path + '.brush.texUser.mode')
-    strip.prop(path + '.brush.texUser.flag[RAKE]')
-    strip.prop(path + '.brush.texUser.flag[FANCY_RAKE]')
-
-    strip = panel.row().strip()
-    strip.useIcons(false)
-    strip.prop(path + '.brush.texUser.flag[ORIGINAL_CO]')
-    strip.prop(path + '.brush.texUser.flag[CONSTANT_SIZE]')
-    strip.prop(path + '.brush.texUser.flag[CURVED]')
-
-    strip = panel.row().strip()
-    strip.useIcons(false)
-    strip.prop(path + '.brush.texUser.pinch')
-
-    panel.add(tex)
-
-    panel = col.panel('Falloff')
-    panel.prop(path + '.brush.falloff')
-
-    panel2 = panel.panel('Square Settings')
-    panel2.prop(path + '.brush.flag[SQUARE]')
-    strip = panel2.row().strip()
-    strip.useIcons(false)
-    strip.prop(path + '.brush.flag[LINE_FALLOFF]')
-    strip.prop(path + '.brush.flag[USE_LINE_CURVE]')
-    panel2.prop(path + '.brush.falloff2')
-    panel2.closed = true
-
-    panel.closed = true
-
-    let p
-
-    doChannel('radius')
-    doChannel('strength')
-
-    p = doChannel('autosmooth')
-    p.prop(path + '.brush.flag[MULTIGRID_SMOOTH]')
-    p.prop(path + '.brush.flag[PLANAR_SMOOTH]')
-    p.prop(path + '.brush.smoothRadiusMul')
-
-    doChannel('smoothProj', p)
-    doChannel('autosmoothInflate', p)
-
-    p = doChannel('rake')
-    p.prop(path + '.brush.rakeCurvatureFactor')
-    p.prop(path + '.brush.flag[CURVE_RAKE_ONLY_POS_X]')
-
-    doChannel('pinch')
-
-    p = doChannel('concaveFilter')
-    p.prop(path + '.brush.flag[INVERT_CONCAVE_FILTER]')
-
-    doChannel('sharp')
-
-    col.prop(path + '.brush.flag[INVERT]')
-    col.prop(path + '.brush.spacing')
-    col.prop(path + '.brush.color')
-    col.prop(path + '.brush.bgcolor')
-
-    col.prop(path + '.brush.planeoff')
-    col.prop(path + '.brush.normalfac')
-
-    function dfield(con: any, key: string): any {
-      const row = con.row()
-      const strip = row.strip(undefined, 4, 0)
-
-      strip.overrideDefault('labelOnTop', false)
-      strip.overrideDefault('BoxMargin', 0)
-      strip.overrideDefault('margin', 0)
-      strip.overrideDefault('BoxRadius', 5)
-
-      const opath = `${path}.dynTopo.overrides[NONE]`
-
-      const okey = DynTopoSettings.apiKeyToOverride(key)
-      //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
-      const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`)
-      const ret = strip.prop(`${path}.dynTopo.${key}`)
-
-      icon.iconsheet = 0 //use small icons
-      icon.drawCheck = false
-
-      icon.update.after(() => {
-        if (!icon.ctx) {
-          return
-        }
-
-        const val = icon.ctx.api.getValue(icon.ctx, opath)
-
-        if (!!val !== !!icon.disabled) {
-          icon.disabled = val
-        }
-      })
-      /*
-      row.update.after(() => {
-        let val = !icon.checked;
-
-        if (val !== strip.disabled) {
-          strip.disabled = val;
-        }
-      });
-      */
-
-      //strip.prop
-
-      return ret
-    }
-
-    panel = col.panel('DynTopo')
-    panel.useIcons(false)
-    panel.noMarginsOrPadding()
-
-    panel.prop(path + '.inheritDynTopo')
-    dfield(panel, 'edgeSize')
-    dfield(panel, 'flag[ENABLED]')
-    dfield(panel, 'flag[SUBDIVIDE]')
-    dfield(panel, 'flag[COLLAPSE]')
-    dfield(panel, 'flag[ADAPTIVE]')
-
-    dfield(panel, 'edgeMode')
-    dfield(panel, 'spacing')
-    dfield(panel, 'spacingMode')
-
-    panel2 = panel.panel('Advanced')
-    dfield(panel2, 'flag[FANCY_EDGE_WEIGHTS]')
-    dfield(panel2, 'subdivideFactor')
-    dfield(panel2, 'decimateFactor')
-    dfield(panel2, 'edgeCount')
-    dfield(panel2, 'repeat')
-    dfield(panel2, 'valenceGoal')
-    dfield(panel2, 'maxDepth')
-
-    dfield(panel2, 'subdivMode')
-
-    dfield(panel2, 'flag[QUAD_COLLAPSE]')
-    dfield(panel2, 'flag[ALLOW_VALENCE4]')
-    dfield(panel2, 'flag[DRAW_TRIS_AS_QUADS]')
-
-    /*
-    panel.prop(path + ".inheritDynTopo");
-    panel.prop(path + ".dynTopo.edgeSize");
-    panel.prop(path + ".dynTopo.flag[ENABLED]");
-    strip = panel.strip();
-
-    let row2 = strip.row();
-    row2.prop(path + ".dynTopo.flag[SUBDIVIDE]");
-    row2.prop(path + ".dynTopo.flag[COLLAPSE]");
-    row2.prop(path + ".dynTopo.flag[FANCY_EDGE_WEIGHTS]");
-
-    let panel2 = panel.panel("Advanced");
-
-    panel2.prop(path + ".dynTopo.subdivideFactor");
-    panel2.prop(path + ".dynTopo.decimateFactor");
-    panel2.prop(path + ".dynTopo.edgeCount");
-
-    strip = panel2.strip()
-
-    row2 = strip.row();
-    row2.prop(path + ".dynTopo.flag[QUAD_COLLAPSE]");
-    row2.prop(path + ".dynTopo.flag[ALLOW_VALENCE4]");
-    row2 = strip.row();
-    row2.prop(path + ".dynTopo.flag[DRAW_TRIS_AS_QUADS]");
-
-    panel2.prop(path + ".dynTopo.valenceGoal");
-    panel2.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
-    */
-
-    panel = col.panel('Multi Resolution')
-    panel.useIcons(false)
-
-    strip = panel.row()
-    strip.useIcons()
-    strip.tool('mesh.add_or_subdivide_grids()')
-    strip.tool('mesh.reset_grids()')
-    strip.tool('mesh.delete_grids()')
-
-    strip = panel.row().strip()
-    strip.useIcons(false)
-    strip.tool('mesh.smooth_grids()')
-    strip.tool('mesh.grids_test()')
-
-    strip = panel.strip()
-    strip.prop(path + '.enableMaxEditDepth')
-    strip.prop(path + '.gridEditDepth')
-
-    panel.tool('mesh.subdivide_grids()')
-
-    //panel
-    container.flushUpdate()
+    buildBVHSettings(container, this.toolModeDefine().name)
   }
 
   static buildHeader(header: any, addHeaderRow: any): void {
@@ -527,8 +272,6 @@ export class BVHToolMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawFlat`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.drawCavityMap`)
-    //strip.prop(`scene.tools.${name}.drawNodeIds`);
-    //strip.prop(`scene.tools.${name}.drawColPatches`);
     strip.prop(`scene.tools.${name}.drawMask`)
 
     strip = header.strip()
@@ -543,7 +286,6 @@ export class BVHToolMode extends PaintToolModeBase {
     const path = `scene.tools.${name}.brush`
 
     strip = row.strip()
-    //strip.listenum(path + ".tool");
     strip.prop(`scene.tools.${name}.tool`)
     strip.tool('mesh.symmetrize()')
     strip.prop(`scene.tools.${name}.symmetryAxes`)
@@ -644,10 +386,7 @@ export class BVHToolMode extends PaintToolModeBase {
   }
 
   drawBrush(view3d: View3D): void {
-    for (const l of this._brush_lines) {
-      l.remove()
-    }
-    this._brush_lines.length = 0
+    this.clearBrushLines()
 
     if (haveModal()) {
       return
@@ -766,8 +505,6 @@ export class BVHToolMode extends PaintToolModeBase {
         brush = this.getBrush(smoothtool)
       }
 
-      console.log('dynmask', dynmask)
-
       const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
       brush = brush.copy()
@@ -856,8 +593,6 @@ export class BVHToolMode extends PaintToolModeBase {
     mres.flag = flag
 
     if (update) {
-      console.log('MRES SETTINGS UPDATE')
-
       for (const l of mesh.loops) {
         const grid = l.customData[cd_grid]
         grid.update(mesh, l, cd_grid)
@@ -904,8 +639,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
     if (key !== this._last_enable_mres) {
       this._last_enable_mres = key
-      console.log(key)
-
       this.updateMeshMres(this.ctx.object.data)
     }
     return this
@@ -913,27 +646,10 @@ export class BVHToolMode extends PaintToolModeBase {
 
   destroy(): void {}
 
-  onActive(): void {
-    /*
-    if (!this.ctx || !this.ctx.mesh) {
-      return;
-    }
-
-    let mesh = this.ctx.mesh;
-    let bvh = mesh.getLastBVH(false);
-
-    console.warn("Spatially sorting mesh topology for memory coherence. . .");
-
-    bvh.spatiallySortMesh(mesh);
-    window.redraw_viewport(true);
-    //*/
-  }
+  onActive(): void {}
 
   onInactive(): void {
-    for (const l of this._brush_lines) {
-      l.remove()
-    }
-    this._brush_lines = []
+    this.clearBrushLines()
 
     if (!this.ctx?.object) {
       return
@@ -1032,8 +748,6 @@ export class BVHToolMode extends PaintToolModeBase {
       uniforms.polygonOffset = 0.0
       uniforms.opacity = uniforms.alpha = 1.0
 
-      //console.log(uniforms);
-
       const white = new Vector4([1, 1, 1, 1])
 
       if (bvh.isDeforming) {
@@ -1047,18 +761,8 @@ export class BVHToolMode extends PaintToolModeBase {
           const v1 = new Vector3(e.v1)
           const v2 = new Vector3(e.v2)
 
-          //v1.interp(node.cent, 0.05);
-          //v2.interp(node.cent, 0.05);
-
           const line = sm.line(v1, v2)
           line.colors(white, white)
-
-          //v1.interp(v2, 0.5);
-          //line = sm.line(v1, node.cent);
-          //line.colors(white, white);
-
-          //line = sm.line(v2, node.cent);
-          //line.colors(white, white);
         }
 
         sm.drawLines(gl, uniforms, program)
@@ -1077,9 +781,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
         Shapes.CUBE.drawLines(gl, uniforms, program)
       }
-
-      //uniforms.objectMatrix = new Matrix4();
-      //Shapes.CUBE.draw(gl, uniforms, program);
     }
 
     for (const ob of scene.objects.selected.editable) {
@@ -1094,16 +795,13 @@ export class BVHToolMode extends PaintToolModeBase {
       const mesh = ob.data as Mesh
       const bvh = this.getBVH(mesh)
 
-      //console.log("BVH", bvh.nodes.length);
       if (this.drawBVH) {
         for (const node of bvh.nodes) {
           if (node.leaf) {
             drawNodeAABB(bvh, node, matrix)
           }
         }
-        //drawNodeAABB(bvh.root, matrix);
       }
-      //console.log("BVH", bvh, Shapes.CUBE);
     }
   }
 
@@ -1119,7 +817,6 @@ export class BVHToolMode extends PaintToolModeBase {
     object: SceneObject,
     mesh: Mesh
   ): boolean {
-    //return true;
     if (!(this.ctx?.object && object === this.ctx.object)) {
       return false
     }
@@ -1205,8 +902,6 @@ export class BVHToolMode extends PaintToolModeBase {
       bvh.hideQuadEdges = hideQuadEdges
 
       if (update) {
-        console.log('hideQuadEdges:', hideQuadEdges)
-
         const quadflag = MeshFlags.QUAD_EDGE
         for (const e of mesh.edges) {
           e.flag &= ~quadflag
@@ -1227,7 +922,6 @@ export class BVHToolMode extends PaintToolModeBase {
       }
     }
 
-    //*
     for (const node of new Set(bvh.nodes)) {
       if (!node || node.id < 0) {
         continue
@@ -1235,8 +929,6 @@ export class BVHToolMode extends PaintToolModeBase {
 
       bvh.checkJoin(node)
     }
-    //bvh.update();
-    //*/
 
     const parentoff = bvh.drawLevelOffset
 
@@ -1264,8 +956,6 @@ export class BVHToolMode extends PaintToolModeBase {
     drawkey += ':' + cd_color.i + ':' + object.lib_id + ':' + mesh.lib_id
 
     if (drawkey !== this._last_draw_key) {
-      console.log('Full draw:', drawkey)
-
       this._last_draw_key = drawkey
       fullDraw = true
     }
@@ -1542,7 +1232,8 @@ export class BVHToolMode extends PaintToolModeBase {
       let tottri = 0
       let updateColors = false
       let updateUvs = false
-      let haveColors = true //cd_color.i >= 0; //XXX todo: add support in shader code to handle no vcol data
+      // TODO: shader paths assume vcol data is present; reinstate `cd_color.i >= 0` once the shaders handle missing vcol layers.
+      let haveColors = true
 
       haveColors = haveColors || drawMask || drawCavityMap || drawDispDisField
 
@@ -1611,8 +1302,6 @@ export class BVHToolMode extends PaintToolModeBase {
         defv.setCount(tottri * 3, true)
         defv = defv._getWriteData()
       }
-
-      //console.log("TOTTRI", tottri, totvert);
 
       idx.setCount(tottri * 3, true)
       idx = idx._getWriteData()
@@ -2440,11 +2129,8 @@ export class BVHToolMode extends PaintToolModeBase {
               l = mesh.eidMap.get(l)
               if (l && l.eid === v.loopEid) {
                 l.customData.get(bvh.cd_grid).checkCustomDataLayout(mesh)
-
-                //console.log(l, l.customData[bvh.cd_grid]);
               }
 
-              //console.error("customdata error", c1, c2, c3, tri);
             }
             /*
             let c1 = colorfilter(tri.v1);
@@ -2617,8 +2303,6 @@ export class BVHToolMode extends PaintToolModeBase {
               l = mesh.eidMap.get(l)
               if (l && l.eid === v.loopEid) {
                 l.customData[bvh.cd_grid].checkCustomDataLayout(mesh)
-
-                //console.log(l, l.customData[bvh.cd_grid]);
               }
 
               console.error('customdata error', c1, c2, c3, tri)
@@ -2641,7 +2325,6 @@ export class BVHToolMode extends PaintToolModeBase {
           */
         }
       }
-      //console.log("updating draw data for bvh node", node.id);
 
       rec(node)
       sm.gen = 0
@@ -2755,8 +2438,6 @@ export class BVHToolMode extends PaintToolModeBase {
           if (isDeforming) {
             if (!program2.defines.WITH_BOXVERTS) {
               const dimen = bvh.glLeafTex.createParams.width
-
-              //console.log(dimen, node.leafTexUV);
 
               uniforms.nodeDefTex = bvh.glLeafTex
               uniforms.nodeDefTexDu = 1.0 / dimen + 0.00001

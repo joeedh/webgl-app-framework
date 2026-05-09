@@ -468,8 +468,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   }
 
   onInactive() {
-    this._brush_lines.forEach((b) => b.remove())
-    this._brush_lines.length = 0
+    this.clearBrushLines()
   }
 
   get _brushSizeHelper(): number {
@@ -609,10 +608,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   }
 
   drawBrush(view3d: View3D, force = false, x = this.mpos[0], y = this.mpos[1]): void {
-    for (const l of this._brush_lines) {
-      l.remove()
-    }
-    this._brush_lines.length = 0
+    this.clearBrushLines()
 
     if (haveModal() && !force && !(this.ctx?.toolstack?.head instanceof SculptPaintOp)) {
       return

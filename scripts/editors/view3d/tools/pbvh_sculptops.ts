@@ -58,7 +58,7 @@ import {
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PaintToolModeBase, PathPoint} from './pbvh_base'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
@@ -383,8 +383,6 @@ export class PaintOp extends PaintOpBase<
   }
 
   undo(ctx: any): void {
-    console.log('BVH UNDO!')
-
     const undo = this._undo
     const mesh = ctx.datalib.get(undo.mesh) as Mesh
 
@@ -414,14 +412,12 @@ export class PaintOp extends PaintOpBase<
     const cd_grid = GridBase.meshGridOffset(mesh)
     const gd = undo.gdata
 
-    console.warn('UNDO', undo)
-
     if (cd_grid < 0 && cd_fset >= 0) {
       for (const [eid, fset] of undo.fsetmap) {
         const f = mesh.eidMap.get<Face>(eid)
 
         if (f?.type !== MeshTypes.FACE) {
-          console.log('invalid face in undo!', eid, f)
+          console.warn('invalid face in undo!', eid, f)
           continue
         }
 
@@ -443,8 +439,6 @@ export class PaintOp extends PaintOpBase<
         }
       }
     }
-    console.log('CD_GRID', cd_grid)
-    console.log('LOG', this._undo.log, cd_grid < 0 && this._undo.log.log.length > 0)
 
     if (cd_grid < 0 && this._undo.log.log.length > 0) {
       const log = this._undo.log
@@ -630,7 +624,6 @@ export class PaintOp extends PaintOpBase<
     }
 
     const doQuadTreeGrids = (): void => {
-      console.log('gmap:', undo.gmap)
       const gmap = undo.gmap
 
       const cd_node = new AttrRef(mesh.loops.customData.getLayerIndex('bvh'))
@@ -1214,8 +1207,6 @@ export class PaintOp extends PaintOpBase<
   }
 
   initGrabData(mesh: any, co: Vector3, radius: number): void {
-    console.log('Init grab data', mesh, co, radius)
-
     const sym = this.inputs.symmetryAxes.getValue()
     const axismap = SymAxisMap
 
@@ -1568,7 +1559,6 @@ export class PaintOp extends PaintOpBase<
 
     const cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
 
-    console.log(tris)
     //how much do normals cancel each other out?
     const n = new Vector3()
     const tan = new Vector3()
@@ -1600,8 +1590,6 @@ export class PaintOp extends PaintOpBase<
 
     tan.mulScalar(1.0 / tot)
     n.mulScalar(1.0 / tot)
-
-    console.log(n.vectorLength(), tan.vectorLength(), tan)
 
     return {
       n,
@@ -1666,7 +1654,7 @@ export class PaintOp extends PaintOpBase<
     const FACE_SET_DRAW = SculptTools.FACE_SET_DRAW
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
-      console.log('ERROR!')
+      console.error('execDot: missing or invalid object data')
       return
     }
 
@@ -2266,226 +2254,6 @@ export class PaintOp extends PaintOpBase<
     }
 
     const rmat = new Matrix4()
-
-    const firstps = this.inputs.samples.data[0]
-
-    if ((mode === SNAKE || mode === SLIDE_RELAX) && lastps) {
-      const t1 = new Vector3(ps.dp).normalize()
-      const t2 = new Vector3(lastps.dp).normalize()
-      const t3 = new Vector3(t2).cross(t1)
-      const c = lastps.p
-
-      //XXX not working
-      if (0) {
-        //(1 || t1.dot(t2) > 0.05) {
-        const quat = new Quat()
-
-        t1.cross(ps.viewPlane).normalize()
-        t2.cross(ps.viewPlane).normalize()
-
-        let th = t1.dot(t2) * 0.99999
-        th = Math.acos(th)
-
-        if (t3.dot(ps.viewPlane) < 0) {
-          th = -th
-        }
-
-        //th *= 0.75;
-        //th *= 1.25;
-        th *= 0.98
-
-        quat.axisAngleToQuat(ps.viewPlane, th)
-
-        const tmat = new Matrix4()
-        tmat.makeIdentity().translate(c[0], c[1], c[2])
-
-        quat.toMatrix(rmat)
-        rmat.preMultiply(tmat)
-
-        tmat.makeIdentity().translate(-c[0], -c[1], -c[2])
-        rmat.multiply(tmat)
-      }
-    } else if (0) {
-      //mode === GRAB && firstps && firstps !== ps && lastps) {
-      const grabco = this.inputs.grabCo.getValue()
-
-      const t1 = new Vector3(ps.p).sub(grabco)
-      let d = t1.dot(ps.viewPlane)
-      t1.addFac(ps.viewPlane, -d).normalize()
-
-      const t2 = new Vector3(lastps.p).sub(grabco)
-      d = t2.dot(ps.viewPlane)
-      t2.addFac(ps.viewPlane, -d).normalize()
-
-      let axis = new Vector3(t1).cross(t2).normalize()
-
-      const quat = new Quat()
-
-      //grabco = ps.origp;
-
-      let th = t1.dot(t2)
-      th = Math.acos(th * 0.9999) * 0.1
-      if (axis.dot(ps.viewPlane) < 0.0) {
-        th = -th
-      }
-
-      th += this.inputs.grabTh.getValue()
-
-      this.inputs.grabTh.setValue(th)
-
-      if (isNaN(th)) {
-        console.warn('NaN!', 'th', th, 't1', t1, 't2', t2)
-        th = 0.0
-      }
-
-      console.log(grabco)
-
-      axis = ps.viewPlane
-      quat.axisAngleToQuat(axis, -th)
-      quat.toMatrix(rmat)
-
-      //let tmat = new Matrix4();
-      //tmat.translate(-grabco[0], -grabco[1], -grabco[2]);
-
-      //rmat.multiply(tmat);
-      //tmat.invert();
-      //rmat.preMultiply(tmat);
-      /*
-
-      on factor;
-      load_package avector;
-
-      procedure bez(a, b);
-        a + (b - a)*s;
-
-      lin := bez(k1, k2);
-      quad := bez(lin, sub(k2=k3, k1=k2, lin));
-      cubic := bez(quad, sub(k3=k4, k2=k3, k1=k2, quad));
-
-      dis := 1;
-
-      procedure w(x, y, z, dis);
-        sub(s=(1.0 - (x**2 + y**2 + z**2) / (dis**2)), quad);
-
-      dx := df(w(x,y,z, dis), x);
-      dy := df(w(x,y,z, dis), y);
-      dz := df(w(x,y,z, dis), z);
-
-      f1 := ((dx-1.0)*dis2)**2 + ((dy-1.0)*dis2)**2 + ((dz-1.0)*dis2)**2;
-      comment: f1 := (dx*dy*dz)**2 - vol;
-
-      f2 := int(f1, x);
-      f2 := sub(x=0.5, f2) - sub(x=-0.5, f2);
-      f3 := int(f2, y);
-      f3 := sub(y=0.5, f3) - sub(y=-0.5, f3);
-      f4 := int(f3, z);
-      f4 := sub(z=0.5, f4) - sub(z=-0.5, f4);
-
-      on fort;
-
-      f4;
-      df(f4, k1);
-      df(f4, k2);
-      df(f4, k3);
-      df(f4, k4);
-
-      off fort;
-
-      ks := {0, 0, 1, 1};
-
-      procedure test(ks);
-        sub(k1=part(ks, 1), k2=part(ks, 2), k3=part(ks, 3), k4=part(ks, 4), f4);
-       */
-    } else if (0 && mode === GRAB) {
-      function f4(k1: number, k2: number, k3: number, k4: number, dis2: number): number {
-        return (
-          ((583.0 * k1 ** 2 +
-            860.0 * k1 * k2 -
-            2026.0 * k1 * k3 +
-            988.0 * k2 ** 2 -
-            2836.0 * k2 * k3 +
-            2431.0 * k3 ** 2 +
-            3780.0) *
-            dis2 ** 2) /
-          1260.0
-        )
-      }
-
-      function dk1(k1: number, k2: number, k3: number, k4: number, dis2: number): number {
-        return ((430.0 * k2 - 1013.0 * k3 + 583.0 * k1) * dis2 ** 2) / 630.0
-      }
-
-      function dk2(k1: number, k2: number, k3: number, k4: number, dis2: number): number {
-        return ((494.0 * k2 - 709.0 * k3 + 215.0 * k1) * dis2 ** 2) / 315.0
-      }
-
-      function dk3(k1: number, k2: number, k3: number, k4: number, dis2: number): number {
-        return (-(1418.0 * k2 - 2431.0 * k3 + 1013.0 * k1) * dis2 ** 2) / 630.0
-      }
-
-      function dk4(k1: number, k2: number, k3: number, k4: number, dis2: number): void {
-        //return 0.0;
-      }
-
-      const cv = brush.falloff.getGenerator('EquationCurve')
-      const cv2 = ctx.toolmode.getBrush().falloff.getGenerator('EquationCurve')
-
-      const ks = [0, 0, 1]
-      const gs = [0, 0, 0]
-
-      //console.log("concave", ps.concaveFilter);
-      const dis2 = Math.max(ps.concaveFilter, 0.0001)
-
-      //console.log("\n");
-      /*
-      for (let i=0; i<31; i++) {
-        let r1 = f4(ks[0], ks[1], ks[2], 0.0, dis2);
-        if (i % 10 === 0) {
-          console.log("ERR", r1);
-        }
-
-        gs[0] = dk1(ks[0], ks[1], ks[2], 0.0, dis2);
-        gs[1] = dk2(ks[0], ks[1], ks[2], 0.0, dis2);
-        gs[2] = dk3(ks[0], ks[1], ks[2], 0.0, dis2);
-
-        let totg = gs[0]**2 + gs[1]**2 + gs[2]**2;
-
-        if (totg === 0.0) {
-          break;
-        }
-
-        let fac = 0.1;
-        //r1 /= totg;
-
-        fac /= Math.sqrt(totg);
-
-        for (let i=0; i<3; i++) {
-          ks[i] += -gs[i]*fac;
-        }
-      }*/
-
-      const rand = new util.MersenneRandom()
-
-      function errf(k1: number, k2: number, k3: number, dis2: number): void {}
-
-      for (let i = 0; i < 31; i++) {
-        const s = Math.random()
-      }
-
-      let expr = '((k1 - k2)*x - k1 - ((k2 - k3)*x - k2))*x - ((k1 - k2)*x - k1)'
-      expr = expr
-        .replace(/k1/g, '' + ks[0])
-        .replace(/k2/g, '' + ks[1])
-        .replace(/k3/g, '' + ks[2])
-
-      cv.equation = expr
-      cv.update()
-      cv.redraw()
-
-      cv2.equation = expr
-      cv2.update()
-      cv2.redraw()
-    }
 
     const _tmp = new Vector3()
 
@@ -3274,9 +3042,6 @@ export class PaintOp extends PaintOpBase<
 
       d1.addFac(v.no, -d).normalize()
 
-      if (Math.random() > 0.999) {
-        console.log('d1', d1.dot(v.no))
-      }
       for (const v2 of v.neighbors) {
         d2.load(v2).sub(v)
 
@@ -3323,10 +3088,6 @@ export class PaintOp extends PaintOpBase<
       g.mulScalar(-r1)
 
       //co.load(v).add(g);
-
-      if (Math.random() > 0.999) {
-        console.log(co, v[0], v[1], v[2])
-      }
 
       v.addFac(g, 0.25 * fac)
     }
@@ -4785,8 +4546,6 @@ export class PaintOp extends PaintOpBase<
 
           vs2 = boundary
         }
-
-        console.log('smoothvs', smoothvs.size, vs.size)
       }
     }
 
@@ -7937,15 +7696,15 @@ export class PaintOp extends PaintOpBase<
 
           if (isNaN(v1.co.dot(v1.co))) {
             v1.co.zero()
-            console.log('v1 NaN', v1)
+            console.warn('v1 NaN', v1)
           }
           if (isNaN(v2.co.dot(v2.co))) {
             v2.co.zero()
-            console.log('v2 NaN', v2)
+            console.warn('v2 NaN', v2)
           }
           if (isNaN(v3.co.dot(v1.co))) {
             v3.co.zero()
-            console.log('v3 NaN', v3)
+            console.warn('v3 NaN', v3)
           }
 
           //v1[0] += (Math.random()-0.5)*esize*0.2;
@@ -8017,7 +7776,7 @@ export class PaintOp extends PaintOpBase<
 
     if (this.task) {
       //can't end modal
-      console.log('Waiting for task to finish')
+      console.warn('Waiting for task to finish')
       this.taskNext()
 
       window.setTimeout(() => {
@@ -8037,12 +7796,6 @@ export class PaintOp extends PaintOpBase<
     }
 
     const ret = super.modalEnd(was_cancelled)
-
-    if (ctx.toolmode instanceof PaintToolModeBase) {
-      //stop custom radius drawing for brush circle
-      ctx.toolmode._radius = undefined
-    }
-
     return ret
   }
 

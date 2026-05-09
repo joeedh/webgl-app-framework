@@ -26,6 +26,7 @@ import {Texture, getShader, ShaderProgram} from '../../../webgl/webgl'
 import {project} from '../view3d_utils.js'
 import {SculptBrush} from '../../../brush/brush'
 import {ProceduralTex} from '../../../texture/proceduralTex'
+import {BrushBlurFBO} from './pbvh_texpaint_blur'
 
 const _id: number = 0
 
@@ -281,8 +282,6 @@ export class TexPaintOp extends ToolOp<
 
       const sradius2: number = Math.max(~~(sradius * window.devicePixelRatio), 4)
       this.blurfbo.update(view3d.gl, sradius2)
-
-      console.log('SRADIUS', sradius, 'RADIUS', radius)
 
       this.blurfbo.draw(view3d.gl, this.mpos, ob, view3d, bvh, isect.p, sradius2, radius)
     }
@@ -806,8 +805,6 @@ export class TexPaintOp extends ToolOp<
 
       const ssize: Vector2 = new Vector2([UNDO_TILESIZE, UNDO_TILESIZE])
 
-      console.log(ssize, smin, smax)
-
       //let gldebug = getFBODebug(gl);
       const tile: GPUTile = tileManager.alloc(gl)
 
@@ -897,8 +894,6 @@ export class TexPaintOp extends ToolOp<
 
             this._tilemap[idx] = t
             this._tiles.push(t)
-
-            console.log('saving tile', ix, iy)
           }
         }
       }
@@ -975,8 +970,6 @@ export class TexPaintOp extends ToolOp<
         sm.program.defines.BLUR_MODE = null
         texture.glTex!.textureSlot = undefined
         this.blurfbo.fbo.texColor!.textureSlot = undefined
-
-        console.log('TEXTURE', texture.glTex)
 
         uniforms.rgba1 = texture.glTex
         uniforms.blurFBO = this.blurfbo.fbo.texColor
@@ -1107,7 +1100,6 @@ export class TexPaintOp extends ToolOp<
 
   undo(ctx: ViewContext): void {
     console.warn('undo: implement me!')
-    console.log(this._tiles)
 
     if (!ctx.mesh || !ctx.activeTexture) {
       return
@@ -1149,8 +1141,6 @@ export class TexPaintOp extends ToolOp<
 
     const gl: WebGL2RenderingContext = ctx.gl
 
-    console.log('texture paint undo!')
-
     const dbuf = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
     const rbuf = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
 
@@ -1179,8 +1169,6 @@ export class TexPaintOp extends ToolOp<
 
       w = Math.max(w + tile.x, texture.width - 1) - tile.x
       h = Math.max(h + tile.y, texture.height - 1) - tile.y
-
-      console.log(w, h, tile.x, tile.y)
 
       gl.blitFramebuffer(0, 0, w, h, tile.x, tile.y, tile.x + w, tile.y + h, gl.COLOR_BUFFER_BIT, gl.NEAREST)
     }
@@ -1216,192 +1204,3 @@ export class TexPaintOp extends ToolOp<
 }
 
 ToolOp.register(TexPaintOp)
-
-export const BrushBlurShader: {vertex: string; fragment: string; attributes: string[]; uniforms: object} = {
-  vertex: `precision mediump float;
-
-uniform mat4 projectionMatrix;
-uniform mat4 objectMatrix;
-uniform mat4 normalMatrix;
-uniform vec2 size;
-uniform vec2 vboxMin;
-uniform vec2 vboxMax;
-uniform float aspect;
-
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 uv;
-attribute float id;
-
-varying vec3 vNormal;
-varying vec2 vUv;
-varying float vId;
-
-void main() {
-  vec4 p = objectMatrix * vec4(position, 1.0);
-  p = projectionMatrix * vec4(p.xyz, 1.0);
-  vec4 n = normalMatrix * vec4(normal, 0.0);
-
-#if 1
-  vec2 scale = 1.0 / (vboxMax - vboxMin);
-
-  p.xy /= p.w;
-
-  p.xy = p.xy*0.5 + 0.5;
-
-  p.xy -= vboxMin;
-  p.xy *= scale;
-  p.xy += vboxMin/scale;
-
-  p.xy = p.xy*2.0 - 1.0;
-  //p.x *= aspect;
-  //p.y /= aspect;
-  p.xy *= p.w;
-#endif
-
-  gl_Position = p;
-
-  vUv = uv;
-  vNormal = n.xyz;
-}
-
-  `,
-  fragment: `
-precision highp float;
-
-uniform mat4 projectionMatrix;
-uniform mat4 objectMatrix;
-uniform mat4 normalMatrix;
-
-uniform float aspect, near, far;
-uniform vec2 size;
-
-varying vec3 vNormal;
-varying vec2 vUv;
-varying float vId;
-
-void main() {
-  gl_FragColor = vec4(vUv, vId, 1.0);
-  //gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
-}
-  `.trim(),
-  attributes: ['position', 'normal', 'uv', 'id'],
-  uniforms  : {},
-}
-
-export class BrushBlurFBO {
-  fbo: FBO
-  shader: ShaderProgram | undefined
-  vboxMin: Vector2 | undefined
-  vboxMax: Vector2 | undefined
-
-  constructor(gl?: WebGL2RenderingContext) {
-    this.fbo = new FBO(gl)
-    this.shader = undefined
-  }
-
-  update(gl: WebGL2RenderingContext, size: number): void {
-    this.fbo.update(gl, size, size)
-
-    if (!this.shader) {
-      this.compileShader(gl)
-    }
-  }
-
-  compileShader(gl: WebGL2RenderingContext): void {
-    this.shader = ShaderProgram.fromDef(gl, BrushBlurShader)
-  }
-
-  draw(
-    gl: WebGL2RenderingContext,
-    mpos: Vector3 | Vector2,
-    ob: SceneObject,
-    view3d: View3D,
-    bvh: BVH,
-    co: Vector3,
-    radius: number,
-    worldRadius: number
-  ): void {
-    const fbo = this.fbo
-    const camera = view3d.activeCamera
-
-    camera.regen_mats(view3d.glSize[0] / view3d.glSize[1])
-
-    radius *= 1.0
-
-    const size: number = ~~(radius * 2.0)
-    this.update(gl, size)
-
-    const dpi = window.devicePixelRatio
-
-    mpos = new Vector2(mpos).mulScalar(dpi)
-    mpos[1] = view3d.glSize[1] - mpos[1]
-
-    const vmin: Vector2 = new Vector2(mpos)
-    vmin.subScalar(radius).floor().div(view3d.glSize)
-
-    const vmax: Vector2 = new Vector2(mpos)
-    vmax.addScalar(radius).ceil().div(view3d.glSize)
-
-    console.log('VMIN', vmin)
-    console.log('VMAX', vmax)
-
-    this.vboxMin = vmin
-    this.vboxMax = vmax
-
-    const uniforms = {
-      projectionMatrix: camera.rendermat,
-      aspect          : camera.aspect,
-      near            : camera.near,
-      far             : camera.far,
-      objectMatrix    : ob.outputs.matrix.getValue(),
-      normalMatrix    : new Matrix4(),
-      size            : view3d.glSize,
-      vboxMin         : vmin,
-      vboxMax         : vmax,
-      alpha           : 1.0,
-    }
-
-    gl.disable(gl.DITHER)
-    gl.disable(gl.BLEND)
-    gl.enable(gl.DEPTH_TEST)
-    gl.disable(gl.SCISSOR_TEST)
-
-    fbo.bind(gl)
-
-    //gl.viewport(~~vmin[0], ~~vmin[1], ~~(vmax[0]-vmin[0]), ~~(vmax[1]-vmin[1]));
-
-    gl.depthMask(true)
-
-    gl.clearColor(0.0, 0.0, 0.0, 1.0)
-    gl.clearDepth(1000000.0)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    //gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.CULL_FACE)
-    //gl.disable(gl.DEPTH_TEST);
-
-    let ok: boolean = false
-
-    for (const node of bvh.nodes) {
-      if (!node.drawData) {
-        continue
-      }
-
-      ok = true
-      //if (aabb_sphere_isect(co, worldRadius*2.0, node.min, node.max)) {
-      console.log(node.drawData, node)
-      node.drawData.draw(gl, uniforms, this.shader)
-      //}
-    }
-
-    if (!ok) {
-      console.error('NO DRAW DATA!')
-    }
-
-    gl.finish()
-    fbo.unbind(gl)
-
-    getFBODebug(gl).pushFBO('brush temp', fbo)
-  }
-}

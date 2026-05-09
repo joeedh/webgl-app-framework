@@ -100,12 +100,9 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     toolmode.mpos[1] = e.y
     toolmode.drawBrush(view3d, true, e.x, e.y)
 
-    console.log('pointermove')
     const {brush, exec} = this.getBrush(e)
 
     const wasm = getWasmImmediate()!
-    //const vec = wasm.manager.construct('
-    //const vec
 
     return result
   }

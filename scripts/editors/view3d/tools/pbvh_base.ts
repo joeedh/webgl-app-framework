@@ -7,64 +7,6 @@ import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
 
-/*
-function myToFixed(n: number, places = 4) {
-  return n.toFixed(places)
-}
-
-function myToJSON(obj: any): string {
-  if (typeof obj === 'object') {
-    if (Array.isArray(obj) || typeof obj['length'] === 'number') {
-      let s = '['
-      for (let i = 0; i < obj.length; i++) {
-        if (i > 0) {
-          s += ','
-        }
-
-        s += myToJSON(obj[i])
-      }
-
-      s += ']'
-
-      return s
-    } else if (obj instanceof Matrix4) {
-      return myToJSON(obj.getAsArray())
-    } else {
-      let s = '{'
-      const keys = Object.keys(obj)
-
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i]
-        let v: any
-
-        try {
-          v = obj[k]
-        } catch (error) {
-          console.log('error with property ' + k)
-          continue
-        }
-
-        if (typeof v === 'function') {
-          continue
-        }
-
-        if (i > 0) {
-          s += ','
-        }
-
-        s += `"${k}" : ${myToJSON(v)}`
-      }
-      s += '}'
-
-      return s
-    }
-  } else if (typeof obj === 'number') {
-    return toFixed(obj)
-  } else {
-    return '' + obj
-  }
-}*/
-
 import {
   Curve1DProperty,
   Vec2Property,
@@ -648,7 +590,6 @@ export class SetBrushRadius extends ToolOp<
     }
 
     radius *= ratio
-    console.log('F', ratio, radius)
 
     this.last_mpos.load(mpos)
     this.inputs.radius.setValue(radius)
@@ -885,6 +826,13 @@ export abstract class PaintToolModeBase extends ToolMode {
 
   abstract drawBrush(view3d: View3D): void
   abstract getSurfaceSampler(mesh: Mesh, useGrids?: boolean): ISurfaceSampler
+
+  protected clearBrushLines(): void {
+    for (const l of this._brush_lines) {
+      l.remove()
+    }
+    this._brush_lines.length = 0
+  }
 }
 
 export abstract class PaintOpBase<
@@ -999,7 +947,7 @@ export abstract class PaintOpBase<
       return
     }
 
-    //XXX currently disabled
+    // TODO: paint timer queue is currently disabled; investigate before re-enabling.
     if (this.queue.length === 0) {
       return
     }
@@ -1085,8 +1033,6 @@ export abstract class PaintOpBase<
           p2.color = 'orange'
           p2.origco.load(p0.co).interp(p.co, s)
 
-          //console.log(p2.co);
-
           p2.vel.load(p2.co).sub(lastp.co)
           p2.acc.load(p2.vel).sub(lastp.vel)
           this.path.push(p2)
@@ -1113,8 +1059,6 @@ export abstract class PaintOpBase<
           p.vel.load(p.co).sub(p2.co)
           p.acc.load(p.vel).sub(p2.vel)
         }
-
-        //console.log("add points");
       }
     }
 
@@ -1189,8 +1133,6 @@ export abstract class PaintOpBase<
     let pi = this.path.length
 
     if (this.inputs.brush.getValue().spacingMode === BrushSpacingModes.EVEN) {
-      //console.log("Even spacing mode");
-
       //try to detect janky events and interpolate with a curve
       //note that this is not the EVEN spacing mode which happens in
       //subclases, it doesn't respect brush spacing when outputting the curve
@@ -1252,8 +1194,6 @@ export abstract class PaintOpBase<
       delayMode = mode === TexUserModes.VIEW_REPEAT
       delayMode = delayMode && !!(flag & TexUserFlags.FANCY_RAKE)
     }
-
-    //console.log("delayMode:", delayMode);
   }
 
   on_pointermove_intern(
@@ -1291,8 +1231,6 @@ export abstract class PaintOpBase<
     if (e.pointerType === 'touch' || e.pointerType === 'pen') {
       pressure = e.pressure
     }
-
-    //console.log(e.ctrlKey, view3d.size, x, y, e.targetTouches, pressure);
 
     const rendermat = view3d.activeCamera.rendermat
     const view = view3d.getViewVec(x, y)
@@ -1365,8 +1303,6 @@ export abstract class PaintOpBase<
     if (toolmode instanceof PaintToolModeBase) {
       toolmode._radius = radius
     }
-
-    //console.log("pressure", pressure, strength, dynmask);
 
     const ob = ctx.object
     const mesh = ob.data as OBDATA
@@ -1496,8 +1432,8 @@ export abstract class PaintOpBase<
     })
 
     return {
-      // XXX possible performance issue!
-      // allocating a vector3 here
+      // origco/p escape this scope as part of the returned struct, so
+      // they must be freshly allocated; do not try to pool these.
       origco: new Vector3(origco),
       p     : new Vector3().load3(isect.p),
       isect : isect.copy(),
@@ -1545,7 +1481,7 @@ export abstract class PaintOpBase<
 
     if (this.task) {
       //can't end modal
-      console.log('Waiting for task to finish')
+      console.warn('Waiting for task to finish')
       this.taskNext()
 
       window.setTimeout(() => {
@@ -1560,6 +1496,12 @@ export abstract class PaintOpBase<
     if (this.timer !== undefined) {
       window.clearInterval(this.timer)
       this.timer = undefined
+    }
+
+    const ctx = this.modal_ctx
+    if (ctx && ctx.toolmode instanceof PaintToolModeBase) {
+      //stop custom radius drawing for brush circle
+      ctx.toolmode._radius = undefined
     }
   }
 
