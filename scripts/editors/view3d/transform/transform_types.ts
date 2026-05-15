@@ -11,7 +11,7 @@ import {SpatialHash} from '../../../util/spatialhash.js'
 
 import {ConstraintSpaces} from './transform_base.js'
 import {ToolContext} from '../../../core/context.js'
-import {TransformOp} from './transform_ops.js'
+import type {TransformOp} from './transform_ops.js'
 
 interface MeshUndoData {
   cos: Map<number, Vector3>

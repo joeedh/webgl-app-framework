@@ -19,12 +19,13 @@ import type {View3D} from '../view3d.js'
 import {OptionalIf} from '../../../util/optionalIf.js'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {util, math, ToolOp, PropertySlots, IVector4} from '../../../path.ux/pathux.js'
+import {IUniformsBlock} from '../../../webgl/webgl.js'
 import {SelMask} from '../selectmode.js'
 
 export type IDistToMouse = [number, number, number?]
 
-export interface IFindNearestResult {
-  data: any
+export interface IFindNearestResult<T = WidgetBase> {
+  data: T
   dis: number
   z: number
   margin: number
@@ -61,7 +62,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
   extraMouseMargin: number
   destroyed: boolean
   flag: number
-  owner: any // Type could be more specific if known
+  owner: WidgetBase | undefined
   wireframe: boolean
   worldscale: boolean
   wscale: number
@@ -161,7 +162,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
     return b
   }
 
-  setUniforms(manager: WidgetManager, uniforms: any) {
+  setUniforms(manager: WidgetManager, uniforms: IUniformsBlock) {
     const view3d = manager.ctx.view3d
 
     uniforms.color = this.colortemp.load(this.color)
@@ -697,7 +698,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
   findNearest(view3d: View3D, x: number, y: number, limit = 8, matrix?: Matrix4): IFindNearestResult | undefined {
     let mindis: number | undefined
     let minz: number | undefined
-    let minret: this | undefined
+    let minret: WidgetBase | undefined
     let minf: number | undefined
     let minmargin: number | undefined
 
@@ -746,7 +747,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     }
 
     return {
-      data  : minret,
+      data  : minret!,
       dis   : mindis!,
       z     : minz!,
       margin: minmargin!,
@@ -1047,7 +1048,7 @@ export class WidgetManager {
     return key in this.nodes
   }
 
-  hasWidget(cls: any) {
+  hasWidget(cls: IWidgetConstructor) {
     for (const w of this.widgets) {
       if (w instanceof cls) return w
     }
@@ -1100,7 +1101,7 @@ export class WidgetManager {
   createCallbackNode<IN extends INodeSocketSet, OUT extends INodeSocketSet>(
     id: number | string,
     name: string,
-    callback: () => {},
+    callback: () => void,
     inputs: IN,
     outputs: OUT
   ) {

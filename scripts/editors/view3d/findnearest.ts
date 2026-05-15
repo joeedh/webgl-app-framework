@@ -150,7 +150,7 @@ export function castViewRay(
 
   //return closest item
   let mindis = 1e17
-  let ret2 = undefined
+  let ret2: FindNearestRet | undefined = undefined
 
   for (const item of ret) {
     if (item.dis !== undefined && (ret2 === undefined || (item.dis > 0 && item.dis < mindis))) {

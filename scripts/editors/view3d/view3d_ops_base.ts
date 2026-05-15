@@ -1,13 +1,13 @@
-import {PropertySlots, ToolOp, Vector2, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
+import {PropertySlots, Vector2, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
 import {ToolOpBase} from '../../core/toolopbase'
-import {DrawLine} from './view3d'
+import {DrawLine, DrawQuad} from './view3d_base'
 
 export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends PropertySlots> //
   extends ToolOpBase<InputSet, OutputSet>
 {
-  drawlines: any[]
-  drawquads: any[]
-  drawlines2d: any[]
+  drawlines: DrawLine[]
+  drawquads: DrawQuad[]
+  drawlines2d: SVGLineElement[]
 
   constructor() {
     super()
@@ -30,15 +30,14 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
   }
 
   addDrawLine(v1: Vector3, v2: Vector3, color: Vector4, useZ = true) {
-    const dl = this.modal_ctx!.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ)
+    const dl = this.modal_ctx!.view3d.makeDrawLine(v1, v2, color, useZ)
     this.drawlines.push(dl)
     return dl
   }
 
   addDrawLine2D(v1: Vector2, v2: Vector2, color: Vector4) {
-    const overdraw: any = this.modal_ctx!.view3d.overdraw as unknown as any
-
-    const dl = overdraw.line(v1, v2, color)
+    // overdraw.line() expects a CSS color string; existing callers pass a Vector4 — preserve behavior via a localized cast.
+    const dl = this.modal_ctx!.view3d.overdraw!.line(v1, v2, color as unknown as string)
     this.drawlines2d.push(dl)
 
     return dl
@@ -87,10 +86,12 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
     this.drawlines2d.length = 0
   }
 
-  removeDrawLine(dl: any) {
-    if (this.drawlines.includes(dl)) {
-      this.modal_ctx!.view3d.removeDrawLine(dl)
-      this.drawlines.remove(dl)
+  removeDrawLine(dl: DrawLine | SVGLineElement) {
+    if (dl instanceof DrawLine) {
+      if (this.drawlines.includes(dl)) {
+        this.modal_ctx!.view3d.removeDrawLine(dl)
+        this.drawlines.remove(dl)
+      }
     } else if (this.drawlines2d.includes(dl)) {
       this.drawlines2d.remove(dl)
       dl.remove()

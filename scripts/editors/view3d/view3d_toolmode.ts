@@ -17,6 +17,7 @@ import type {BlockLoader, BlockLoaderAddUser} from '../../core/lib_api'
 import {StandardTools} from '../../sceneobject/stdtools'
 import type {AppState} from '../../core/appstate'
 import {View3D} from '../all'
+import {DrawLine, ITempText} from './view3d'
 import {IUniformsBlock, ShaderProgram} from '../../webgl/webgl'
 import type {Mesh} from '../../mesh/mesh'
 import type {MeshDrawInterface} from './view3d_draw'
@@ -53,8 +54,8 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
   _uniqueWidgets: {[key: string]: WidgetBase} = {}
   transWidget: WidgetBase | undefined
 
-  drawlines: any[] = []
-  drawtexts: any[] = []
+  drawlines: DrawLine[] = []
+  drawtexts: ITempText[] = []
 
   selectMask: number = 0
   _transProp: EnumProperty
@@ -497,7 +498,7 @@ set view3d(val) {
   /**
    * draw any extra ids the toolmode needs
    * */
-  drawIDs(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any) {}
+  drawIDs(view3d: View3D, gl: WebGL2RenderingContext, uniforms: IUniformsBlock) {}
 
   /*
    * called for all objects;  returns true

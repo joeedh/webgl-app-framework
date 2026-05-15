@@ -85,7 +85,7 @@ export interface IBVHArgs {
   wireVerts?: boolean
   deformMode?: boolean
   useGrids?: boolean
-  onCreate?: () => void
+  onCreate?: (bvh: BVH) => void
 }
 
 declare global {

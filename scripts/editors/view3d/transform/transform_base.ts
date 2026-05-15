@@ -24,7 +24,7 @@ import {Vector3, Vector2, Matrix4} from '../../../util/vectormath.js'
 import {ToolOp, StringSetProperty, ToolOpAny} from '../../../path.ux/scripts/pathux.js'
 import type {ToolContext} from '../../../core/context.js'
 import type {Mesh} from '../../../mesh/mesh.js'
-import {TransformOp} from './transform_ops.js'
+import type {TransformOp} from './transform_ops.js'
 
 export interface TransformDefine {
   name: string

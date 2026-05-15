@@ -8,7 +8,7 @@ import {MeshLog} from '../../../mesh/mesh_log.js'
 import type {GridBase} from '../../../mesh/mesh_grids.js'
 import type {ViewContext} from '../../../core/context.js'
 
-export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: WeakSet<any>, lctx?: LogContext): void {
+export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: WeakSet<Vertex | Edge>, lctx?: LogContext): void {
   let count = 0
 
   let _i = 0
@@ -121,8 +121,8 @@ export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: We
   }
 }
 
-export function fillBoundaryHoles(mesh: any, bvh: any, vs: any, lctx: any): void {
-  const visit: WeakSet<any> = new WeakSet()
+export function fillBoundaryHoles(mesh: Mesh, bvh: BVH, vs: Iterable<Vertex>, lctx?: LogContext): void {
+  const visit: WeakSet<Vertex> = new WeakSet()
 
   for (const v of vs) {
     if (!v.isBoundary()) {

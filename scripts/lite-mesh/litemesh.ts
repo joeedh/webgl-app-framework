@@ -13,13 +13,14 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
-import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import {DrawBatch, float3, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl'
 import {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject'
 import {Shaders} from '../shaders/shaders'
 import {GenericIsect, IGenericIsect} from '../util/bvh'
+import {pointer} from '@litestl/typescript-runtime'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -225,7 +226,7 @@ export class LiteMesh extends SceneObjectData {
     f32[idx++] = dir[1]
     f32[idx++] = dir[2]
 
-    const result = this.spatial.castRay(origin, dir, isectOut)
+    const result = this.spatial.castRay(originPtr as unknown as float3, dirPtr as unknown as float3, isectOut)
 
     let isect: GenericIsect | undefined
     if (result) {
@@ -247,6 +248,14 @@ export class LiteMesh extends SceneObjectData {
     return isect
   }
 
+  regenTreeBatch() {
+    if (this.treeBatch) {
+      this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+      this.treeBatch = undefined
+    }
+    return this
+  }
+
   draw(
     view3d: View3D,
     gl: WebGL2RenderingContext,
@@ -261,6 +270,10 @@ export class LiteMesh extends SceneObjectData {
       }
     }
     this.drawBatch = this.spatial.getDrawBatch()
+
+    if (!this.treeBatch) {
+      this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+    }
 
     let exec = this.drawBatchExecutor
     if (exec === undefined) {

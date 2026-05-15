@@ -26,6 +26,7 @@ import {DynTopoSettings, SculptBrush} from '../../../brush'
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
+import {builSculptcoreBrush} from './sculptcore_bindings'
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -386,23 +387,23 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         const all = !brush || brush.dynTopo.overrideMask & DynTopoOverrides.NONE
 
         if (all) {
-          return this.dynTopo[key]
+          return (this.dynTopo as any)[key]
         }
 
         if (key !== 'flag') {
           const key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
           if (!key2) {
-            return brush.dynTopo[key]
+            return (brush.dynTopo as any)[key]
           }
 
-          let override = DynTopoOverrides[key2 as any] as unknown as number
+          let override = DynTopoOverrides[key2 as keyof typeof DynTopoOverrides] as unknown as number
           override = brush.dynTopo.overrideMask & override
 
           if (override) {
-            return brush.dynTopo[key]
+            return (brush.dynTopo as any)[key]
           } else {
-            return this.dynTopo[key]
+            return (this.dynTopo as any)[key]
           }
         } else {
           //create merged flags
@@ -434,17 +435,20 @@ export class SculptCorePaintMode extends PaintToolModeBase {
           brush.dynTopo.overrideMask = val
           return true
         } else if (all) {
-          this.dynTopo[key] = val
+          ;(this.dynTopo as any)[key] = val
           return true
         }
 
         if (key !== 'flag') {
           const key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
-          if (key2 && brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as any] as unknown as number)) {
-            brush.dynTopo[key] = val
+          if (
+            key2 &&
+            brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as keyof typeof DynTopoOverrides] as unknown as number)
+          ) {
+            ;(brush.dynTopo as any)[key] = val
           } else {
-            this.dynTopo[key] = val
+            ;(this.dynTopo as any)[key] = val
           }
         } else {
           const flag = 0
@@ -499,11 +503,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
   }
 
-  get _apiBrushHelper(): any {
+  get _apiBrushHelper(): SculptBrush | undefined {
     return this.getBrush()
   }
 
-  set _apiBrushHelper(brush: any) {
+  set _apiBrushHelper(brush: SculptBrush | undefined) {
     if (brush === undefined) {
       return
     }

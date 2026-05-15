@@ -183,57 +183,8 @@ export function loadShaders(gl: WebGL2RenderingContext) {
   }
 }
 
-export class DrawQuad {
-  v1: Vector3
-  v2: Vector3
-  v3: Vector3
-  v4: Vector3
-  color: Vector4
-  useZ: boolean
-
-  constructor(
-    v1: Vector3 | number[],
-    v2: Vector3 | number[],
-    v3: Vector3 | number[],
-    v4: Vector3 | number[],
-    color: Vector4 | number[],
-    useZ?: boolean
-  ) {
-    this.v1 = new Vector3(v1)
-    this.v2 = new Vector3(v2)
-    this.v3 = new Vector3(v3)
-    this.v4 = new Vector3(v4)
-    this.color = new Vector4(color)
-    this.useZ = !!useZ
-
-    const a = color.length > 3 ? color[3] : 1.0
-    this.color[3] = a
-  }
-}
-
-export class DrawLine {
-  v1: Vector3
-  v2: Vector3
-  color: Vector4
-  useZ: boolean
-
-  constructor(
-    v1: Vector3 | number[],
-    v2: Vector3 | number[],
-    color: IVector4 | number[] = [0, 0, 0, 1],
-    useZ?: boolean
-  ) {
-    const a = color.length > 3 ? color[3] : 1.0
-
-    this.color = new Vector4(color)
-    this.color[3] = a
-
-    this.useZ = !!useZ
-
-    this.v1 = new Vector3(v1)
-    this.v2 = new Vector3(v2)
-  }
-}
+import {DrawLine, DrawQuad} from './view3d_base.js'
+export {DrawLine, DrawQuad}
 
 type CanvasWithExtra = (HTMLCanvasElement | OffscreenCanvas) & {dpi: number}
 
@@ -1692,7 +1643,7 @@ View3D {
     sm.destroy(gl)
   }
 
-  makeDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4 | number[], useZ = true) {
+  makeDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4 | number[], useZ = true): DrawQuad {
     if (typeof color == 'string') {
       color = css2color(color)
     }
@@ -1701,7 +1652,7 @@ View3D {
     throw new Error('implement me!')
   }
 
-  removeDrawQuad(quad: any) {
+  removeDrawQuad(quad: DrawQuad) {
     //
   }
 

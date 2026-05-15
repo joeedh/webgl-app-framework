@@ -699,16 +699,18 @@ export class PaintToolSlot {
     this.brush = getblock_addUser(this.brush, owner)
   }
 
-  setBrush(brush: SculptBrush, scene: Scene) {
+  setBrush(brush: SculptBrush, scene: Scene | undefined) {
     if (brush === this.brush) {
       return
     }
 
-    if (this.brush !== undefined && typeof this.brush === 'object') {
+    if (this.brush !== undefined && typeof this.brush === 'object' && scene) {
       this.brush.lib_remUser(scene)
     }
 
-    brush.lib_addUser(scene)
+    if (scene) {
+      brush.lib_addUser(scene)
+    }
     this.brush = brush
   }
 

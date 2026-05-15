@@ -475,7 +475,7 @@ export class SetBrushRadius extends ToolOp<
   start_mpos: Vector2
   cent_mpos: Vector2
   first: boolean
-  _undo: any
+  _undo: {radius?: number; brushref?: DataRef} | undefined
   rand: util.MersenneRandom
 
   constructor() {
@@ -490,7 +490,7 @@ export class SetBrushRadius extends ToolOp<
     this.first = true
   }
 
-  static canRun(ctx: any): boolean {
+  static canRun(ctx: ToolContext): boolean {
     return ctx.toolmode instanceof PaintToolModeBase
   }
 
@@ -631,7 +631,7 @@ export class SetBrushRadius extends ToolOp<
   undo(ctx: ToolContext): void {
     const undo = this._undo
 
-    if (!undo.brushref) {
+    if (!undo?.brushref || undo.radius === undefined) {
       return
     }
 
@@ -741,7 +741,7 @@ export abstract class PaintToolModeBase extends ToolMode {
   sharedBrushRadius: number
   gridEditDepth: number
   enableMaxEditDepth: boolean
-  dynTopo: any
+  dynTopo: DynTopoSettings
   mpos: Vector2
   _radius: number | undefined
   debugSphere: Vector3
@@ -749,8 +749,8 @@ export abstract class PaintToolModeBase extends ToolMode {
   drawMask: boolean
   _last_cd_mask: number
   tool: number
-  slots: any
-  _brush_lines: any[]
+  slots: Record<number, PaintToolSlot>
+  _brush_lines: {remove(): void}[]
   drawColPatches: boolean
   symmetryAxes: number
   drawBVH: boolean
@@ -798,7 +798,7 @@ export abstract class PaintToolModeBase extends ToolMode {
     this._brush_lines = []
 
     for (const k in SculptTools) {
-      const tool = SculptTools[k]
+      const tool = (SculptTools as unknown as Record<string, number>)[k]
       this.slots[tool] = new PaintToolSlot(tool as unknown as SculptTools)
     }
 
@@ -844,15 +844,15 @@ export abstract class PaintOpBase<
     brush: BrushProperty //
     samples: PaintSampleProperty //
     symmetryAxes: FlagProperty //
-    falloff: any //
-    rendermat: any //
+    falloff: Curve1DProperty //
+    rendermat: Mat4Property //
     viewportSize: Vec2Property
   } & Inputs,
   Outputs,
   ToolContext,
   ViewContext
 > {
-  task: any | undefined
+  task: Generator<void, void, unknown> | undefined
   grabMode: boolean
   mfinished: boolean
   last_mpos: Vector2 | Vector3
@@ -860,17 +860,17 @@ export abstract class PaintOpBase<
   last_origco: Vector4
   _first: boolean
   last_draw: number
-  lastps1: any | undefined
-  lastps2: any | undefined
+  lastps1: PaintSample | undefined
+  lastps2: PaintSample | undefined
   last_radius: number
   last_vec: Vector3
-  rand: any
-  queue: any[]
+  rand: util.MersenneRandom
+  queue: [PointerEvent, PathPoint, number][]
   qlast_time: number
   timer: number | undefined
   path: PathPoint[]
   alast_time: number
-  _savedViewPoints: any[]
+  _savedViewPoints: {viewvec: Vector3; viewp: Vector3; rendermat: Matrix4; mpos: Vector2}[]
 
   constructor() {
     super()
@@ -1148,7 +1148,7 @@ export abstract class PaintOpBase<
     for (; pi < this.path.length; pi++) {
       const p = this.path[pi]
 
-      const e2 = copyMouseEvent(e)
+      const e2 = copyMouseEvent(e) as unknown as PointerEvent
 
       this.queue.push([e2, p, pi])
       //this.on_pointermove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
@@ -1159,7 +1159,7 @@ export abstract class PaintOpBase<
     }
   }
 
-  feedTask(e: PointerEvent, p: any, pi: any): Generator<void, void, unknown> | void {
+  feedTask(e: PointerEvent, p: PathPoint, pi: number): Generator<void, void, unknown> | void {
     this.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this.path.length - 1)
   }
 
@@ -1168,7 +1168,7 @@ export abstract class PaintOpBase<
 
     return (function* () {
       while (this2.queue.length > 0) {
-        const [e, p, pi] = this2.queue.shift()
+        const [e, p, pi] = this2.queue.shift()!
         const result = this2.feedTask(e, p, pi)
 
         // did pointermove return an asyncronous task generator?
@@ -1713,21 +1713,21 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
     window.redraw_viewport(true)
   }
 
-  getCDMask(mesh: any): number {
-    const cd_grid = GridBase.meshGridOffset(mesh)
+  getCDMask(mesh: Mesh | TetMesh): number {
+    const cd_grid = GridBase.meshGridOffset(mesh as Mesh)
 
     if (cd_grid >= 0) {
-      return mesh.loops.customData.getLayerIndex('mask')
+      return (mesh as Mesh).loops.customData.getLayerIndex('mask')
     } else {
       return mesh.verts.customData.getLayerIndex('mask')
     }
   }
 
-  execPre(ctx: any): void {
+  execPre(ctx: ToolContext): void {
     this.rand.seed(0)
   }
 
-  getVerts(mesh: any, updateBVHNodes: boolean = true): Generator<any, void, unknown> {
+  getVerts(mesh: Mesh | TetMesh, updateBVHNodes: boolean = true): Generator<Vertex, void, unknown> {
     const this2 = this
 
     const cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1)
@@ -1739,7 +1739,7 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
 
     return (function* () {
       const cd_mask = this2.getCDMask(mesh)
-      const cd_grid = GridBase.meshGridOffset(mesh)
+      const cd_grid = GridBase.meshGridOffset(mesh as Mesh)
 
       if (cd_mask < 0) {
         return
@@ -1804,7 +1804,7 @@ export class ClearMaskOp extends MaskOpBase<{value: FloatProperty}> {
     const value = this.inputs.value.getValue()
 
     for (const v of this.getVerts(mesh, true)) {
-      v.customData[cd_mask].value = value
+      ;(v.customData[cd_mask] as unknown as {value: number}).value = value
     }
   }
 }

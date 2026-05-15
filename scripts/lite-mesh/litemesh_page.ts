@@ -25,7 +25,7 @@ export abstract class AttrPage<T, TYPE extends AttrType> {
   abstract construct(): void
 }
 
-export class IntPage extends AttrPage<Int32Array, AttrType.INT> {
+export class IntPage extends AttrPage<Int32Array, AttrType.Int> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -35,7 +35,7 @@ export class IntPage extends AttrPage<Int32Array, AttrType.INT> {
     `
   )
   constructor(length: number) {
-    super(AttrType.INT, length)
+    super(AttrType.Int, length)
   }
 
   construct() {
@@ -52,17 +52,17 @@ export class IntPage extends AttrPage<Int32Array, AttrType.INT> {
   }
 }
 
-export class ShortPage extends AttrPage<Int16Array, AttrType.SHORT> {
+export class ShortPage extends AttrPage<Int16Array, AttrType.Short> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
-    litemesh.IntPage {
+    litemesh.ShortPage {
         data: iter(short) | this.data ?? [];
     }
     `
   )
   constructor(length: number) {
-    super(AttrType.SHORT, length)
+    super(AttrType.Short, length)
   }
 
   construct() {
@@ -79,7 +79,7 @@ export class ShortPage extends AttrPage<Int16Array, AttrType.SHORT> {
   }
 }
 
-export class BytePage extends AttrPage<Int8Array, AttrType.BYTE> {
+export class BytePage extends AttrPage<Int8Array, AttrType.Byte> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -89,7 +89,7 @@ export class BytePage extends AttrPage<Int8Array, AttrType.BYTE> {
     `
   )
   constructor(length: number) {
-    super(AttrType.BYTE, length)
+    super(AttrType.Byte, length)
   }
 
   construct() {
@@ -106,7 +106,7 @@ export class BytePage extends AttrPage<Int8Array, AttrType.BYTE> {
   }
 }
 
-export class FloatPage extends AttrPage<Float32Array, AttrType.FLOAT> {
+export class FloatPage extends AttrPage<Float32Array, AttrType.Float> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -116,7 +116,7 @@ export class FloatPage extends AttrPage<Float32Array, AttrType.FLOAT> {
     `
   )
   constructor(length: number) {
-    super(AttrType.FLOAT, length)
+    super(AttrType.Float, length)
   }
 
   construct() {
@@ -133,7 +133,7 @@ export class FloatPage extends AttrPage<Float32Array, AttrType.FLOAT> {
   }
 }
 
-export class Vec2Page extends AttrPage<Float32Array, AttrType.FLOAT2> {
+export class Vec2Page extends AttrPage<Float32Array, AttrType.Float2> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -143,7 +143,7 @@ export class Vec2Page extends AttrPage<Float32Array, AttrType.FLOAT2> {
     `
   )
   constructor(length: number) {
-    super(AttrType.FLOAT2, length)
+    super(AttrType.Float2, length)
   }
 
   construct() {
@@ -160,7 +160,7 @@ export class Vec2Page extends AttrPage<Float32Array, AttrType.FLOAT2> {
   }
 }
 
-export class Vec3Page extends AttrPage<Float32Array, AttrType.FLOAT3> {
+export class Vec3Page extends AttrPage<Float32Array, AttrType.Float3> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -170,7 +170,7 @@ export class Vec3Page extends AttrPage<Float32Array, AttrType.FLOAT3> {
     `
   )
   constructor(length: number) {
-    super(AttrType.FLOAT3, length)
+    super(AttrType.Float3, length)
   }
 
   construct() {
@@ -187,7 +187,7 @@ export class Vec3Page extends AttrPage<Float32Array, AttrType.FLOAT3> {
   }
 }
 
-export class Vec4Page extends AttrPage<Float32Array, AttrType.FLOAT4> {
+export class Vec4Page extends AttrPage<Float32Array, AttrType.Float4> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -197,7 +197,7 @@ export class Vec4Page extends AttrPage<Float32Array, AttrType.FLOAT4> {
     `
   )
   constructor(length: number) {
-    super(AttrType.FLOAT4, length)
+    super(AttrType.Float4, length)
   }
 
   construct() {
@@ -214,10 +214,7 @@ export class Vec4Page extends AttrPage<Float32Array, AttrType.FLOAT4> {
   }
 }
 
-
-
-
-export class Int2Page extends AttrPage<Int32Array, AttrType.INT2> {
+export class Int2Page extends AttrPage<Int32Array, AttrType.Int2> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -227,7 +224,7 @@ export class Int2Page extends AttrPage<Int32Array, AttrType.INT2> {
     `
   )
   constructor(length: number) {
-    super(AttrType.INT2, length)
+    super(AttrType.Int2, length)
   }
 
   construct() {
@@ -244,7 +241,7 @@ export class Int2Page extends AttrPage<Int32Array, AttrType.INT2> {
   }
 }
 
-export class Int3Page extends AttrPage<Int32Array, AttrType.INT3> {
+export class Int3Page extends AttrPage<Int32Array, AttrType.Int3> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -254,7 +251,7 @@ export class Int3Page extends AttrPage<Int32Array, AttrType.INT3> {
     `
   )
   constructor(length: number) {
-    super(AttrType.INT3, length)
+    super(AttrType.Int3, length)
   }
 
   construct() {
@@ -271,7 +268,7 @@ export class Int3Page extends AttrPage<Int32Array, AttrType.INT3> {
   }
 }
 
-export class Int4Page extends AttrPage<Int32Array, AttrType.INT4> {
+export class Int4Page extends AttrPage<Int32Array, AttrType.Int4> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -281,7 +278,7 @@ export class Int4Page extends AttrPage<Int32Array, AttrType.INT4> {
     `
   )
   constructor(length: number) {
-    super(AttrType.INT4, length)
+    super(AttrType.Int4, length)
   }
 
   construct() {
@@ -298,19 +295,27 @@ export class Int4Page extends AttrPage<Int32Array, AttrType.INT4> {
   }
 }
 
-
 export const AttrPageClasses = {
-  [AttrType.BOOL] : BytePage,
-  [AttrType.BYTE] : BytePage,
-  [AttrType.SHORT] : ShortPage,
-  [AttrType.INT]  : IntPage,
-  [AttrType.FLOAT]: FloatPage,
-  [AttrType.FLOAT2] : Vec2Page,
-  [AttrType.FLOAT3] : Vec3Page,
-  [AttrType.FLOAT4] : Vec4Page,
-  [AttrType.INT2] : Int2Page,
-  [AttrType.INT3] : Int3Page,
-  [AttrType.INT4] : Int4Page,
+  [AttrType.Bool]  : BytePage,
+  [AttrType.Byte]  : BytePage,
+  [AttrType.Short] : ShortPage,
+  [AttrType.Int]   : IntPage,
+  [AttrType.Float] : FloatPage,
+  [AttrType.Float2]: Vec2Page,
+  [AttrType.Float3]: Vec3Page,
+  [AttrType.Float4]: Vec4Page,
+  [AttrType.Int2]  : Int2Page,
+  [AttrType.Int3]  : Int3Page,
+  [AttrType.Int4]  : Int4Page,
 } as const
 
-export type AttrPageType = IntPage | BytePage | FloatPage | Vec2Page | Vec3Page | Vec4Page | Int2Page | Int3Page | Int4Page
+export type AttrPageType =
+  | IntPage
+  | BytePage
+  | FloatPage
+  | Vec2Page
+  | Vec3Page
+  | Vec4Page
+  | Int2Page
+  | Int3Page
+  | Int4Page

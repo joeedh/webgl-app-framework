@@ -12,7 +12,7 @@ import {
 } from '../../../path.ux/scripts/pathux.js'
 import {AttrRef} from '../../../mesh/customdata.js'
 import {Mesh, MeshFlags, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
-import {BVHFlags, CDNodeInfo, IsectRet} from '../../../util/bvh.js'
+import {BVH, BVHFlags, BVHNodeVertex, CDNodeInfo, IsectRet} from '../../../util/bvh.js'
 import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
 import type {ViewContext} from '../../../core/context.js'
@@ -50,10 +50,10 @@ import {GridBase} from '../../../mesh/mesh_grids.js'
 
 export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
   bvhfirst: boolean
-  bGrabVerts: Map<any, number> | undefined
+  bGrabVerts: Map<BVHNodeVertex, number> | undefined
   grabMode: boolean
   randSeed: number
-  rand: any
+  rand: util.MersenneRandom
   last_mpos: Vector3
   start_mpos: Vector3
   _undo: any
@@ -282,7 +282,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     ;(window as any).redraw_viewport(true)
   }
 
-  getBVH(mesh: any): any {
+  getBVH(mesh: Mesh): BVH {
     return mesh.getBVH({
       autoUpdate: false,
       deformMode: true,
@@ -290,7 +290,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     })
   }
 
-  onBind(bvh: any): void {
+  onBind(bvh: BVH): void {
     bvh.splitToUniformDepth()
 
     //abuse the velocity field of BVHNodeElem
@@ -322,8 +322,8 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     const ctx = this.modal_ctx ?? ((globalThis as any)._appstate.ctx as ViewContext)
     super.modalEnd(wascanceled)
 
-    if (!wascanceled) {
-      const bvh: any = this.getBVH(ctx.mesh)
+    if (!wascanceled && ctx.mesh) {
+      const bvh = this.getBVH(ctx.mesh)
 
       this._applyDef(bvh)
 
@@ -332,7 +332,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     }
   }
 
-  _applyDef(bvh: any): void {
+  _applyDef(bvh: BVH): void {
     //return;
     const cd_node: any = bvh.cd_node
 
