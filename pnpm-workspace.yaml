@@ -9,6 +9,7 @@ packages:
   - sculptcore/tests/testViewer3D
   - scripts
   - tests
+  - vendor/nstructjs
 
 ignoredBuiltDependencies:
   - '@swc/core'

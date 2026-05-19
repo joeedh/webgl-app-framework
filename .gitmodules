@@ -13,3 +13,6 @@
 [submodule "sculptcore"]
 	path = sculptcore
 	url = https://github.com/joeedh/sculptcore.git
+[submodule "vendor/nstructjs"]
+	path = vendor/nstructjs
+	url = https://github.com/joeedh/STRUCT.git

@@ -47,6 +47,7 @@ import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp} from './gen_default_file'
+import {MissingDataBlock} from './missing_addon'
 import './app_ops.js'
 
 declare let _appstate: AppState
@@ -309,6 +310,20 @@ export class AppState {
       }
 
       for (const block of lib) {
+        // If this block is a placeholder for an unloaded addon, re-emit the
+        // original class name + raw bytes so the file round-trips without
+        // loss. See plan §4 and scripts/core/missing_addon.ts.
+        if (block instanceof MissingDataBlock) {
+          file.string(BlockTypes.DATABLOCK)
+          const origBytes = block._origBytes
+          const len = block._origClsname.length + origBytes.length + 4
+          file.int32(len)
+          file.int32(block._origClsname.length)
+          file.string(block._origClsname)
+          file.bytes(origBytes)
+          continue
+        }
+
         const typeName = block.constructor.blockDefine().typeName
         const data: number[] = []
 
@@ -682,13 +697,16 @@ export class AppState {
       }
 
       if (cls === undefined) {
-        console.warn('Warning, unknown block type', clsname)
-        return undefined
+        // The addon that owns clsname isn't loaded. Preserve the bytes in a
+        // MissingDataBlock placeholder so the next save round-trips the data.
+        // See plan §4 and scripts/core/missing_addon.ts.
+        console.warn(`unknown block type "${clsname}" — preserving as MissingDataBlock`)
+        block = MissingDataBlock.fromUnknownBlock(clsname, new Uint8Array(data2))
       } else {
         block = istruct.readObject(data2, cls)
       }
 
-      if (cls.blockDefine().typeName === 'screen') {
+      if (cls?.blockDefine().typeName === 'screen') {
         ;(block as unknown as {screen: {_ctx: ViewContext}}).screen._ctx = this.ctx
       }
 
