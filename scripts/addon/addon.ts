@@ -1,5 +1,6 @@
 import {AddonAPI, IAddon} from './addon_base'
 import * as util from '../util/util'
+import {IAddonManifest, sortManifestsByDeps, validateManifest} from './manifest'
 
 export function getAddonPrefix() {
   if (window.haveElectron) {
@@ -17,6 +18,15 @@ export class AddonRecord<T extends IAddon> {
   forceEnabled: boolean
   key: string
   name: string
+
+  /**
+   * Parsed manifest if this record was loaded via the manifest-based pipeline
+   * (see plan §2). Undefined for legacy `addons/list.json` entries.
+   */
+  manifest?: IAddonManifest
+
+  /** True for first-party addons under `addons/builtin/`. See plan §2.4. */
+  builtin: boolean = false
 
   constructor(url: string, addon: T, addonAPI: AddonAPI<T>) {
     this.addon = addon
@@ -85,10 +95,128 @@ export class AddonRecord<T extends IAddon> {
 export class AddonManager {
   addons: AddonRecord<IAddon>[]
   urlmap: Map<string, AddonRecord<IAddon>>
+  /** Lookup by manifest id (only populated for manifest-loaded addons). */
+  idmap: Map<string, AddonRecord<IAddon>>
 
   constructor() {
     this.addons = []
     this.urlmap = new Map()
+    this.idmap = new Map()
+  }
+
+  /** Returns the AddonAPI for a loaded addon, keyed by manifest id. */
+  getAddonAPI(id: string): AddonAPI<unknown> | undefined {
+    return this.idmap.get(id)?.addonAPI as AddonAPI<unknown> | undefined
+  }
+
+  /**
+   * Loads a set of addons in topological dependency order. Each manifest is
+   * resolved against the given base URL: `<baseUrl>/<id>/<built-entry>`. The
+   * built entry is the entry path with `.ts` mapped to `.js`, since the
+   * runtime always loads JS.
+   *
+   * See plan §2.4. Used by `loadAddonIndex` for the project-wide load.
+   */
+  async loadFromManifests(
+    manifests: IAddonManifest[],
+    baseUrl: string,
+    options: {builtin?: boolean; register?: boolean} = {}
+  ): Promise<void> {
+    const sorted = sortManifestsByDeps(manifests)
+    const register = options.register ?? true
+
+    for (const m of sorted) {
+      const entryJs = m.entry.replace(/\.ts$/, '.js')
+      const url = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
+
+      let module: IAddon
+      try {
+        module = (await import(url)) as IAddon
+      } catch (err) {
+        console.error(`failed to import addon "${m.id}" from ${url}:`, err)
+        continue
+      }
+
+      const api = new AddonAPI<IAddon>()
+      api.addon = module
+      api.addonId = m.id
+
+      // Wire up resolved deps before register() runs.
+      for (const depId of m.dependencies ?? []) {
+        const depApi = this.getAddonAPI(depId)
+        if (depApi !== undefined) {
+          api.deps[depId] = depApi
+        } else {
+          console.warn(`addon "${m.id}": dep "${depId}" loaded as undefined`)
+        }
+      }
+
+      const rec = new AddonRecord(url, module, api)
+      rec.manifest = m
+      rec.builtin = options.builtin ?? false
+
+      try {
+        if (register) {
+          this._loadAddon(rec, (err) => {
+            console.error(`addon "${m.id}" register() failed:`, err)
+          })
+        }
+      } catch (err) {
+        console.error(`addon "${m.id}" load failed:`, err)
+      }
+
+      this.addons.push(rec)
+      this.urlmap.set(url, rec)
+      this.idmap.set(m.id, rec)
+    }
+  }
+
+  /**
+   * Fetches `build/addons/index.json` (the discovery index produced by
+   * tools/build-addons.js) and loads everything listed there in dependency
+   * order. Replaces the legacy `loadAddonList`-from-`addons/list.json` path
+   * for the addon-manifest world (see plan §2.1).
+   */
+  async loadAddonIndex(register = false): Promise<void> {
+    const indexUrl = window.haveElectron ? '../build/addons/index.json' : './build/addons/index.json'
+
+    let json: unknown
+    try {
+      const res = await fetch(indexUrl)
+      json = await res.json()
+    } catch (err) {
+      console.warn(`no addon index at ${indexUrl}:`, err)
+      return
+    }
+
+    if (!Array.isArray(json)) {
+      console.error(`addon index ${indexUrl} must be a JSON array`)
+      return
+    }
+
+    const builtinManifests: IAddonManifest[] = []
+    const thirdPartyManifests: IAddonManifest[] = []
+
+    for (const raw of json) {
+      try {
+        const m = validateManifest((raw as {manifest?: unknown}).manifest ?? raw)
+        if ((raw as {builtin?: boolean}).builtin) {
+          builtinManifests.push(m)
+        } else {
+          thirdPartyManifests.push(m)
+        }
+      } catch (err) {
+        console.error('invalid entry in addon index:', err)
+      }
+    }
+
+    const builtinBase = window.haveElectron ? '../build/addons' : './build/addons'
+    if (builtinManifests.length > 0) {
+      await this.loadFromManifests(builtinManifests, builtinBase, {builtin: true, register})
+    }
+    if (thirdPartyManifests.length > 0) {
+      await this.loadFromManifests(thirdPartyManifests, builtinBase, {builtin: false, register})
+    }
   }
 
   unload(addon_or_url: string | IAddon) {

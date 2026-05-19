@@ -195,8 +195,27 @@ export class AddonAPI<T> {
 
   addon?: T
 
+  /** Stable id from the addon's manifest. Set by the loader. */
+  addonId?: string
+
   classes = new AddonClasses<T>()
   _graphNodes = new Set<graph.Node['graph_id']>()
+
+  /**
+   * Namespaces exported by this addon for other addons to consume. Populated
+   * by `api.exportNamespace(name, exports)` from inside the addon's
+   * `register()`. Other addons reach these via `api.getAddon(id).exports[name]`
+   * — or via the typed `@addon/<id>/api` resolver at compile time. See plan §2.5.
+   */
+  exports: {[name: string]: unknown} = {}
+
+  /**
+   * Resolved dependency addons, keyed by manifest id. Populated by the loader
+   * before this addon's `register()` runs (deps are loaded first by topological
+   * sort). Addons can also use the typed `import * as mesh from '@addon/mesh/api'`
+   * shim which resolves to `api.deps.mesh.exports['mesh']` at runtime.
+   */
+  deps: {[id: string]: AddonAPI<unknown>} = {}
 
   readonly lib_api: {
     DataBlock: typeof DataBlock
@@ -225,6 +244,25 @@ export class AddonAPI<T> {
       DataRefProperty,
       DataRefListProperty,
     }
+  }
+
+  /**
+   * Publishes a namespace that other addons can import. Typical use from inside
+   * an addon's `register(api)`:
+   *
+   *   api.exportNamespace('mesh', {Mesh, MeshFlags, BVH, customdata: {...}})
+   *
+   * Consumers reach it as `api.getAddon('mesh').exports['mesh']` or, with full
+   * type-checking, via the `@addon/mesh/api` resolver baked into the addon
+   * build pipeline (see tools/build-addons.js).
+   */
+  exportNamespace(name: string, exports: Record<string, unknown>): void {
+    this.exports[name] = exports
+  }
+
+  /** Returns another loaded addon's API by manifest id, or undefined. */
+  getAddon(id: string): AddonAPI<unknown> | undefined {
+    return window._addons?.getAddonAPI(id)
   }
 
   get argv() {
