@@ -1,0 +1,10 @@
+{
+  "id": "curve",
+  "name": "Curve",
+  "version": "1.0.0",
+  "author": "joeedh",
+  "entry": "src/main.ts",
+  "dependencies": ["mesh"],
+  "description": "Bezier curve editing toolmode.",
+  "buildMode": "prebuilt"
+}

@@ -17,7 +17,12 @@
     "outDir": "types",
     "paths": {
       "@addon/mesh/api": ["./addons/builtin/mesh/src/api.ts"],
-      "@addon/subsurf/api": ["./addons/builtin/subsurf/src/api.ts"]
+      "@addon/subsurf/api": ["./addons/builtin/subsurf/src/api.ts"],
+      "@addon/mesh_edit/api": ["./addons/builtin/mesh_edit/src/api.ts"],
+      "@addon/curve/api": ["./addons/builtin/curve/src/api.ts"],
+      "@addon/pbvh_sculpt/api": ["./addons/builtin/pbvh_sculpt/src/api.ts"],
+      "@addon/sculptcore/api": ["./addons/builtin/sculptcore/src/api.ts"],
+      "@addon/tetmesh/api": ["./addons/builtin/tetmesh/src/api.ts"]
     },
   },
   "files": ["scripts/typescript_entry.ts"],
