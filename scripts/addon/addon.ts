@@ -1,6 +1,7 @@
 import {AddonAPI, IAddon} from './addon_base'
 import * as util from '../util/util'
 import {IAddonManifest, sortManifestsByDeps, validateManifest} from './manifest'
+import type {AddonStorage} from './storage'
 
 export function getAddonPrefix() {
   if (window.haveElectron) {
@@ -98,10 +99,116 @@ export class AddonManager {
   /** Lookup by manifest id (only populated for manifest-loaded addons). */
   idmap: Map<string, AddonRecord<IAddon>>
 
+  /**
+   * Storage backend for third-party addons. Set once at boot via setStorage().
+   * Built-in addons don't go through storage — they ship in the main bundle
+   * via registerInternalAddon. See plan §2.4 / §6 step 10.
+   */
+  storage: AddonStorage | undefined
+
   constructor() {
     this.addons = []
     this.urlmap = new Map()
     this.idmap = new Map()
+  }
+
+  /** Sets the storage backend for third-party addons. */
+  setStorage(storage: AddonStorage): void {
+    this.storage = storage
+  }
+
+  /**
+   * Loads every third-party addon previously installed into storage. Reads
+   * each manifest.json, topo-sorts, then dynamic-imports the entry through
+   * `storage.urlFor()` (which returns a blob: URL the loader can `import()`).
+   * No-op if no storage is set or storage is empty.
+   */
+  async loadInstalledAddons(register = true): Promise<void> {
+    const storage = this.storage
+    if (!storage) return
+
+    const ids = await storage.list()
+    if (ids.length === 0) return
+
+    const manifests: IAddonManifest[] = []
+    for (const id of ids) {
+      try {
+        const raw = await storage.readJSON(id, 'manifest.json')
+        const m = validateManifest(raw, `${id}/manifest.json`)
+        if (m.id !== id) {
+          console.error(`storage entry "${id}" has manifest.id "${m.id}" — skipping`)
+          continue
+        }
+        manifests.push(m)
+      } catch (err) {
+        console.error(`failed to read manifest for installed addon "${id}":`, err)
+      }
+    }
+
+    const sorted = sortManifestsByDeps(manifests)
+    for (const m of sorted) {
+      if (this.idmap.has(m.id)) {
+        console.warn(`installed addon "${m.id}" collides with already-loaded id; skipping`)
+        continue
+      }
+      const entryJs = m.entry.replace(/\.ts$/, '.js')
+      let url: string
+      try {
+        url = await storage.urlFor(m.id, entryJs)
+      } catch (err) {
+        console.error(`failed to make URL for installed addon "${m.id}":`, err)
+        continue
+      }
+      try {
+        const module = (await import(url)) as IAddon
+        const api = new AddonAPI<IAddon>()
+        api.addon = module
+        api.addonId = m.id
+        for (const depId of m.dependencies ?? []) {
+          const depApi = this.getAddonAPI(depId)
+          if (depApi) api.deps[depId] = depApi
+        }
+        const rec = new AddonRecord(url, module, api)
+        rec.manifest = m
+        rec.builtin = false
+        if (register) {
+          this._loadAddon(rec, (err) => console.error(`installed addon "${m.id}" register failed:`, err))
+        }
+        this.addons.push(rec)
+        this.urlmap.set(url, rec)
+        this.idmap.set(m.id, rec)
+      } catch (err) {
+        console.error(`failed to import installed addon "${m.id}" from ${url}:`, err)
+      }
+    }
+  }
+
+  /**
+   * Removes an installed (third-party) addon from disk + from the in-process
+   * registries. No-op for builtin addons (they can be disabled, not
+   * uninstalled).
+   */
+  async uninstall(id: string): Promise<boolean> {
+    const rec = this.idmap.get(id)
+    if (rec?.builtin) {
+      console.warn(`refusing to uninstall builtin addon "${id}"`)
+      return false
+    }
+    if (rec) {
+      try {
+        rec.addonAPI.unregisterAll()
+        rec.addon.unregister()
+      } catch (err) {
+        console.error(`addon "${id}" unregister threw:`, err)
+      }
+      this.addons = this.addons.filter((r) => r !== rec)
+      this.urlmap.delete(rec.url)
+      this.idmap.delete(id)
+    }
+    if (this.storage) {
+      await this.storage.remove(id)
+    }
+    return true
   }
 
   /** Returns the AddonAPI for a loaded addon, keyed by manifest id. */
@@ -393,12 +500,49 @@ export function startAddons(autoRegister?: boolean) {
   // New manifest-based pipeline: fetches build/addons/index.json and topo-loads
   // anything tools/build-addons.js produced. Failure is non-fatal (e.g. when
   // the dev hasn't run a build yet) and we still fall through to the legacy
-  // addons/list.json loader for now. The legacy path goes away in step 8 once
+  // addons/list.json loader for now. The legacy path goes away in step 12 once
   // all toolmodes/builtins live under addons/builtin/.
   manager.loadAddonIndex(autoRegister).catch((err) => {
     console.warn('addon index load failed:', err)
   })
+
+  // Pick a storage backend for third-party addons and load anything previously
+  // installed. The backend can be overridden by the host (e.g. tests) by
+  // calling manager.setStorage() before startAddons().
+  initAddonStorage()
+    .then((storage) => {
+      if (!storage) return
+      manager.setStorage(storage)
+      return manager.loadInstalledAddons(autoRegister ?? true)
+    })
+    .catch((err) => {
+      console.warn('installed-addon load failed:', err)
+    })
+
   manager.loadAddonList(autoRegister)
+}
+
+/**
+ * Picks a default storage backend: NodeFs (via Electron IPC) when running
+ * inside Electron, IndexedDB when in a real browser, or undefined in any
+ * environment that has neither. Hosts that need a different backend (e.g.
+ * tests) should bypass this and call manager.setStorage() directly.
+ */
+async function initAddonStorage(): Promise<AddonStorage | undefined> {
+  if (window.haveElectron) {
+    try {
+      const {createElectronAddonStorage} = await import('./storage_electron.js')
+      return await createElectronAddonStorage()
+    } catch (err) {
+      console.warn('Electron addon storage init failed:', err)
+      return undefined
+    }
+  }
+  if (typeof indexedDB !== 'undefined') {
+    const {IndexedDBAddonStorage} = await import('./storage.js')
+    return new IndexedDBAddonStorage()
+  }
+  return undefined
 }
 
 declare global {

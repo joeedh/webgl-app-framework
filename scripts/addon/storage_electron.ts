@@ -42,9 +42,15 @@ export async function createElectronAddonStorage(): Promise<NodeFsAddonStorage> 
     throw new Error('createElectronAddonStorage: require() not available — is nodeIntegration on?')
   }
 
-  const fsp = req('fs/promises') as import('fs/promises')
-  const pathlib = req('path') as import('path')
-  const {ipcRenderer} = req('electron') as typeof import('electron')
+  // We're inside Electron's renderer (nodeIntegration:true) so these requires
+  // succeed at runtime. TypeScript can't resolve them in this workspace
+  // without @types/node + electron typings; the casts are deliberate.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fsp = req('fs/promises') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pathlib = req('path') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const {ipcRenderer} = req('electron') as {ipcRenderer: {invoke: (channel: string, ...args: any[]) => Promise<any>}}
 
   // Main process owns app.getPath; ask once at init time.
   const userData = (await ipcRenderer.invoke('addon-storage:get-user-data')) as string

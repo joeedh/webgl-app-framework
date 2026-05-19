@@ -66,8 +66,7 @@ const config: Config = {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
 
-  // Run on ESM
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  extensionsToTreatAsEsm: ['.ts', '.tsx', '.mts'],
 }
 
 export default config
