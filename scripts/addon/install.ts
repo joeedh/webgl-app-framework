@@ -16,6 +16,7 @@
 
 import {IAddonManifest, ManifestValidationError, validateManifest} from './manifest.js'
 import type {AddonStorage} from './storage.js'
+import {transpileAddonSources, TranspileError} from './transpile.js'
 
 export class AddonInstallError extends Error {
   constructor(message: string) {
@@ -94,16 +95,7 @@ export async function installFromBlob(
     throw err
   }
 
-  // 2. Source-mode is gated until step 9d wires esbuild-wasm.
-  if (manifest.buildMode === 'source') {
-    throw new AddonInstallError(
-      `addon "${manifest.id}" uses buildMode "source"; install-time transpile not yet implemented`
-    )
-  }
-
-  // 3. Collect every file in the zip into a map. Strip leading "./" if present.
-  // We expect a flat layout — manifest.json + build/ — but accept anything
-  // the manifest's entry points at.
+  // 2. Collect every file in the zip into a map. Strip leading "./" if present.
   const files = new Map<string, Uint8Array>()
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir) continue
@@ -114,20 +106,38 @@ export async function installFromBlob(
     files.set(normalized, await entry.async('uint8array'))
   }
 
-  // 4. Sanity-check that the manifest's entry actually exists in the zip.
-  // For prebuilt addons the entry should already be the built .js path,
-  // typically "build/main.js" or similar. If the entry path ends in .ts,
-  // also accept the corresponding .js (we mirror this transformation at
-  // load time too — see AddonManager.loadFromManifests).
-  const entryJs = manifest.entry.replace(/\.ts$/, '.js')
-  if (!files.has(entryJs) && !files.has(manifest.entry)) {
-    throw new AddonInstallError(
-      `manifest entry "${manifest.entry}" (or "${entryJs}") not found in zip`
-    )
+  // 3. Source mode: transpile via esbuild-wasm. The output map contains a
+  // single bundled .js at the location the loader expects + the manifest.
+  // Prebuilt mode: the zip already contains the built JS; pass through.
+  let installFiles: Map<string, Uint8Array>
+  if (manifest.buildMode === 'source') {
+    if (!files.has(manifest.entry)) {
+      throw new AddonInstallError(
+        `source-mode addon "${manifest.id}" missing entry "${manifest.entry}" in zip`
+      )
+    }
+    try {
+      installFiles = await transpileAddonSources(manifest, files)
+    } catch (err) {
+      if (err instanceof TranspileError) {
+        throw new AddonInstallError(err.message)
+      }
+      throw err
+    }
+  } else {
+    // Prebuilt: sanity-check that the manifest's entry exists. If the entry
+    // ends in .ts, the loader normalizes to .js — accept either form.
+    const entryJs = manifest.entry.replace(/\.ts$/, '.js')
+    if (!files.has(entryJs) && !files.has(manifest.entry)) {
+      throw new AddonInstallError(
+        `manifest entry "${manifest.entry}" (or "${entryJs}") not found in zip`
+      )
+    }
+    installFiles = files
   }
 
-  // 5. Commit to storage. Replaces any previous install with the same id.
-  await storage.write(manifest.id, files)
+  // 4. Commit to storage. Replaces any previous install with the same id.
+  await storage.write(manifest.id, installFiles)
 
   return manifest
 }

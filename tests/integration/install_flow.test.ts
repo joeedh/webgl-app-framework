@@ -1,6 +1,16 @@
 /**
+ * @jest-environment node
+ *
  * Integration test for the addon install pipeline. Step 9 of the refactor
  * (plan §6 step 9, §7.2 Layer E).
+ *
+ * Forces the `node` test environment (overriding the project default of
+ * jsdom). Reason: esbuild-wasm asserts that
+ * `new TextEncoder().encode("") instanceof Uint8Array`, but Node's
+ * TextEncoder produces a Node-realm Uint8Array which fails the check
+ * against jsdom's Uint8Array constructor. Pure Node has no realm split.
+ * In real Electron/browser code there's also no split (both classes come
+ * from the same realm), so this is purely a test-environment fix.
  *
  * Approach:
  *   1. Build the test_addon fixture via tools/build-addons.js (same as
@@ -36,14 +46,15 @@ interface IFiles {
   [path: string]: string | Uint8Array
 }
 
-async function makeZipBlob(files: IFiles): Promise<Blob> {
+async function makeZipBlob(files: IFiles): Promise<Uint8Array> {
+  // Pure Uint8Array rather than Blob — JSZip accepts both, but the
+  // node-environment Blob doesn't expose what JSZip's loadAsync expects.
   const JSZip = await getJSZip()
   const zip = new JSZip()
   for (const [path, content] of Object.entries(files)) {
     zip.file(path, content)
   }
-  const bytes = (await zip.generateAsync({type: 'uint8array'})) as Uint8Array
-  return new Blob([bytes], {type: 'application/zip'})
+  return (await zip.generateAsync({type: 'uint8array'})) as Uint8Array
 }
 
 const BUILT_ENTRY_PATH = Path.join(REPO_ROOT, 'build/addons/test_addon/src/main.js')
@@ -109,18 +120,53 @@ describe('installFromBlob', () => {
     await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(/not found/)
   })
 
-  test('source-mode is gated until step 9d', async () => {
+  test('source-mode transpiles via esbuild-wasm', async () => {
+    // A multi-file source addon: main.ts imports a helper from ./helper.ts.
+    // Both files get bundled into a single transpiled .js the loader can
+    // import directly.
     const blob = await makeZipBlob({
       'manifest.json': JSON.stringify({
-        id        : 'src',
-        name      : 'Src',
+        id          : 'src_addon',
+        name        : 'Src',
+        version     : '1.0.0',
+        entry       : 'src/main.ts',
+        buildMode   : 'source',
+        dependencies: [],
+      }),
+      'src/main.ts'  : `
+        import {greet} from './helper'
+        export const message: string = greet('world')
+      `,
+      'src/helper.ts': `
+        export function greet(name: string): string { return 'hi ' + name }
+      `,
+    })
+
+    const storage = new InMemoryAddonStorage()
+    const manifest = await installFromBlob(blob, storage)
+    expect(manifest.id).toBe('src_addon')
+
+    // Output lands at <entry-stem>.js so the loader's
+    // manifest.entry.replace('.ts', '.js') resolution finds it.
+    const builtBytes = await storage.read('src_addon', 'src/main.js')
+    const builtJs = new TextDecoder().decode(builtBytes)
+    expect(builtJs).toContain('hi ')
+    expect(builtJs).not.toContain(': string') // type annotations stripped
+  }, 30000)
+
+  test('source-mode requires the entry file to exist in the zip', async () => {
+    const blob = await makeZipBlob({
+      'manifest.json': JSON.stringify({
+        id        : 'no_src',
+        name      : 'X',
         version   : '1.0.0',
         entry     : 'src/main.ts',
         buildMode : 'source',
       }),
-      'src/main.ts': 'export const x = 1',
     })
-    await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(/source/)
+    await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(
+      /missing entry/
+    )
   })
 
   test('reinstalling replaces the previous version', async () => {
