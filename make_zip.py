@@ -3,7 +3,17 @@ import zipfile, os, os.path, sys, glob
 outfile = "./app.zip"
 
 sources = [
+  # Legacy + new addon trees. addons/builtin/<id>/ ships its manifest + src/;
+  # the corresponding built JS comes from build/addons/<id>/.
   "./addons/**",
+  # Bundled output (main bundle + per-addon bundles + addon index).
+  "./build/**",
+  # Vendored nstructjs (with our onUnknownClass / onSerializeUnknown hooks).
+  # Ship the prebuilt JS so the bundled main resolves `nstructjs` at runtime.
+  "./vendor/nstructjs/build/**",
+  "./vendor/nstructjs/package.json",
+  # tools/ so a fresh unzip can rebuild via `npm run build`.
+  "./tools/**",
   "./scripts/*.js",
   "./scripts/core/**",
   "./scripts/config/**",
