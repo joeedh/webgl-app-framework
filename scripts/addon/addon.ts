@@ -343,6 +343,14 @@ const manager = new AddonManager()
 export default manager
 
 export function startAddons(autoRegister?: boolean) {
+  // New manifest-based pipeline: fetches build/addons/index.json and topo-loads
+  // anything tools/build-addons.js produced. Failure is non-fatal (e.g. when
+  // the dev hasn't run a build yet) and we still fall through to the legacy
+  // addons/list.json loader for now. The legacy path goes away in step 8 once
+  // all toolmodes/builtins live under addons/builtin/.
+  manager.loadAddonIndex(autoRegister).catch((err) => {
+    console.warn('addon index load failed:', err)
+  })
   manager.loadAddonList(autoRegister)
 }
 

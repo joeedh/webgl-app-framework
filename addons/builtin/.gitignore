@@ -1,0 +1,3 @@
+# Per-addon build outputs are produced by tools/build-addons.js into
+# build/addons/<id>/, not into the source directory. Keep this file so the
+# directory exists for fresh clones.
