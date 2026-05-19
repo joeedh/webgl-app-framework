@@ -201,7 +201,7 @@ export class LiteMesh extends SceneObjectData {
     // this code cannot run before wasm loads
     this.wasm = getWasmImmediate()!
 
-    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(100, 1.0, 1.0)
+    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(50, 1.0, 1.0)
     this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()

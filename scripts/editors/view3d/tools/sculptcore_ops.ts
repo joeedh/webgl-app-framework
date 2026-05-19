@@ -1,4 +1,4 @@
-import {CommandExecutor, SpatialNode, Brush as WasmBrush} from '@sculptcore/api'
+import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush} from '@sculptcore/api'
 import type {ToolContext} from '../../../core/context'
 import {LiteMesh} from '../../../lite-mesh'
 import {AttrRef, Vector3LayerElem} from '../../../mesh/mesh_customdata'
@@ -21,6 +21,8 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   wasmBrush?: WasmBrush
   executor?: CommandExecutor
 
+  static meshLog: MeshLog | undefined
+
   static tooldef() {
     return {
       toolpath: 'sculptcore.paint',
@@ -30,16 +32,35 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     }
   }
 
-  undoPre(ctx: ToolContext) {
-    //do nothing for now
+  constructor() {
+    super()
+    if (SculptPaintOp.meshLog === undefined) {
+      const wasm = getWasmImmediate()!
+      SculptPaintOp.meshLog = wasm.manager.construct('sculptcore::meshlog::MeshLog')
+    }
   }
 
-  redo(ctx: ToolContext) {
-    //do nothing for now
+  undoPre(ctx: ToolContext) {
+    if (SculptPaintOp.meshLog) {
+      SculptPaintOp.meshLog.beginStep()
+      window.redraw_viewport()
+    }
   }
 
   undo(ctx: ToolContext) {
-    //do nothing for now
+    if (SculptPaintOp.meshLog) {
+      const mesh = ctx.object!.data! as LiteMesh
+      SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+      window.redraw_viewport()
+    }
+  }
+
+  redo(ctx: ToolContext) {
+    if (SculptPaintOp.meshLog) {
+      const mesh = ctx.object!.data! as LiteMesh
+      SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
+      window.redraw_viewport()
+    }
   }
 
   calcMemSize(ctx: ToolContext): number {
@@ -92,6 +113,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     isInterp?: boolean
   ): undefined | ISampleViewRet {
     const result = super.on_pointermove_intern(e, x, y, in_timer, isInterp)
+
+    if (!this.modalRunning) {
+      return
+    }
 
     const ctx = this.modal_ctx!
     const view3d = ctx.view3d
@@ -156,15 +181,29 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       const boundNodes = wasm.manager.getBoundVector(vecCls!.buildFullName(), nodes.ptr) as any
 
       console.log('boundNodes', boundNodes, boundNodes.length, boundNodes.length > 0 ? boundNodes[0] : undefined)
+
       wasmBrush.strength = brush.strength * 0.2
       wasmBrush.radius = radius
       wasmBrush.writeProps()
+      wasmExec.meshLog = SculptPaintOp.meshLog
       wasmExec.execBrush(SculptBrushes.DRAW, boundNodes, wasm.float3(p), wasm.float3(normal))
     }
 
     mesh.regenTreeBatch()
     window.redraw_viewport()
     return result
+  }
+
+  modalEnd(was_cancelled: boolean): void {
+    const result = super.modalEnd(was_cancelled)
+    if (SculptPaintOp.meshLog) {
+      SculptPaintOp.meshLog.endStep()
+    }
+    return result
+  }
+
+  exec() {
+    console.error('TODO: support re-execution of sculptcore paint ops')
   }
 }
 ToolOp.register(SculptPaintOp)
