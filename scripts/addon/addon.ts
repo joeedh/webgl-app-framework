@@ -110,6 +110,53 @@ export class AddonManager {
   }
 
   /**
+   * Registers an "internal" addon whose code lives in the main bundle (not as
+   * a separately-built `build/addons/<id>/` artifact). Used during the
+   * mesh-into-addon transition: the mesh subsystem ships in the main bundle
+   * but announces itself to the addon registry so other addons can declare
+   * `dependencies: ['mesh']` and resolve its exports via
+   * `_addons.getAddonAPI('mesh').exports['mesh']`. See plan §6 step 6.
+   *
+   * Internal addons are always considered "builtin" and "enabled" — they
+   * cannot be unloaded.
+   */
+  registerInternalAddon(opts: {
+    manifest: IAddonManifest
+    exports: Record<string, Record<string, unknown>>
+  }): AddonRecord<IAddon> {
+    if (this.idmap.has(opts.manifest.id)) {
+      throw new Error(`internal addon "${opts.manifest.id}" is already registered`)
+    }
+
+    const api = new AddonAPI<IAddon>()
+    api.addonId = opts.manifest.id
+    api.exports = opts.exports
+
+    const stub: IAddon = {
+      addonDefine: {
+        name        : opts.manifest.name,
+        version     : 0,
+        author      : opts.manifest.author,
+        description : opts.manifest.description,
+      },
+      register() {},
+      unregister() {},
+      handleArgv() {},
+      validArgv() {},
+    }
+
+    const rec = new AddonRecord<IAddon>(`internal:${opts.manifest.id}`, stub, api)
+    rec.manifest = opts.manifest
+    rec.builtin = true
+    rec._enabled = true
+    rec.forceEnabled = true
+
+    this.addons.push(rec)
+    this.idmap.set(opts.manifest.id, rec)
+    return rec
+  }
+
+  /**
    * Loads a set of addons in topological dependency order. Each manifest is
    * resolved against the given base URL: `<baseUrl>/<id>/<built-entry>`. The
    * built entry is the entry path with `.ts` mapped to `.js`, since the

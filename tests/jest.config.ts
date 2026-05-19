@@ -31,13 +31,17 @@ const config: Config = {
       {
         jsc: {
           parser: {
-            syntax    : 'typescript',
-            tsx       : true,
-            decorators : true,
+            syntax       : 'typescript',
+            tsx          : true,
+            decorators   : true,
           },
           target     : 'es2022',
           transform  : {
             decoratorMetadata: true,
+            // Stage-3 decorators + auto-accessors (`accessor x = ...`) which
+            // pathux's widgets use. Without this, importing any module that
+            // transitively pulls in path.ux/scripts/widgets fails to parse.
+            decoratorVersion: '2022-03',
           },
         },
         module: {

@@ -20,6 +20,10 @@ import * as mesh_base from './mesh/mesh_base.js';
 // away and the addon's register() hook performs the registration.
 import './mesh/default_scene.js';
 
+// Announces the mesh subsystem to AddonManager as an internal builtin addon so
+// other addons can declare `dependencies: ['mesh']`. See plan §6 step 6.
+import './mesh/addon_register.js';
+
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
 
 import addon, {startAddons} from './addon/addon.js';

@@ -15,6 +15,9 @@
     "noImplicitThis": true,
     "listEmittedFiles": false,
     "outDir": "types",
+    "paths": {
+      "@addon/mesh/api": ["./addons/builtin/mesh/src/api.ts"]
+    },
   },
   "files": ["scripts/typescript_entry.ts"],
 }
