@@ -174,6 +174,7 @@ export class LiteMesh extends SceneObjectData {
       name      : 'LiteMesh',
       selectMask: SelMask.MESH,
       tools     : undefined,
+      dataKind  : 'mesh',
     }
   }
 

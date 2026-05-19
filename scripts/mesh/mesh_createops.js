@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js'
 import {SimpleMesh, LayerTypes} from '../webgl/simplemesh.ts'
 
-import {makeCube} from '../core/mesh_shapes.js'
+import {makeCube} from './mesh_shapes.js'
 import {
   IntProperty,
   BoolProperty,

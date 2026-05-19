@@ -15,6 +15,11 @@ import * as customdata from './mesh/customdata';
 import * as mesh_customdata from './mesh/mesh_customdata.js';
 import * as mesh_base from './mesh/mesh_base.js';
 
+// Registers the default-scene-with-cube builder against core/default_file. Once
+// mesh moves into a builtin addon (plan §6 step 6) this side-effect import goes
+// away and the addon's register() hook performs the registration.
+import './mesh/default_scene.js';
+
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
 
 import addon, {startAddons} from './addon/addon.js';

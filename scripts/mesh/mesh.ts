@@ -458,6 +458,7 @@ mesh.Mesh {
       name      : 'Mesh',
       selectMask: SelMask.MESH,
       tools     : MeshTools,
+      dataKind  : 'mesh',
     }
   }
 

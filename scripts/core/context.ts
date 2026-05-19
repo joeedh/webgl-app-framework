@@ -4,7 +4,8 @@ import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {Editor, editorAccessor, getContextArea} from '../editors/editor_base'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
-import {Mesh} from '../mesh/mesh.js'
+import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
+import type {Mesh} from '../mesh/mesh.js'
 import {Light} from '../light/light.js'
 import type {Scene} from '../scene/scene'
 import {BlockSet, DataBlock, DataRef, Library} from './lib_api'
@@ -221,8 +222,8 @@ export class ToolContext extends ContextExtraAPI {
     const ob = this.object
 
     if (ob) {
-      if (ob.data instanceof Mesh && ob.data.materials.length > 0) {
-        return ob.data.materials[0]
+      if (SceneObjectData.dataKindOf(ob.data) === 'mesh' && (ob.data as Mesh).materials.length > 0) {
+        return (ob.data as Mesh).materials[0]
       }
     }
   }
@@ -313,11 +314,12 @@ export class ToolContext extends ContextExtraAPI {
     }
   }
 
-  get mesh() {
+  get mesh(): Mesh | undefined {
     const ob = this.object
-    if (ob !== undefined && ob.data instanceof Mesh) {
-      return ob.data
+    if (ob !== undefined && SceneObjectData.dataKindOf(ob.data) === 'mesh') {
+      return ob.data as Mesh
     }
+    return undefined
   }
 
   get light() {
@@ -363,7 +365,7 @@ export class ToolContext extends ContextExtraAPI {
 
       for (const ob of this2.selectedObjects) {
         let bad = ob.data === undefined
-        bad = bad || !(ob.data instanceof Mesh)
+        bad = bad || SceneObjectData.dataKindOf(ob.data) !== 'mesh'
         bad = bad || visit.has(ob.data)
 
         if (bad) {
