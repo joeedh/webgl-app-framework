@@ -379,3 +379,115 @@ export class IndexedDBAddonStorage implements AddonStorage {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// NodeFsAddonStorage — filesystem backend for environments with Node access
+// (Electron renderer with nodeIntegration:true, pure Node tests, or any host
+// that wires up `fs` via a context bridge).
+//
+// Layout under the base directory: <baseDir>/<addonId>/<relPath>
+//
+// In Electron the caller picks baseDir as `path.join(app.getPath('userData'),
+// 'addons')` from main.js and passes it across (or computes via IPC; see
+// scripts/addon/storage_electron.ts in step 9c when it lands). See plan §6.
+// ---------------------------------------------------------------------------
+
+export interface INodeFs {
+  readdir(
+    path: string,
+    options: {withFileTypes: true}
+  ): Promise<Array<{name: string; isDirectory(): boolean}>>
+  readFile(path: string): Promise<Uint8Array>
+  writeFile(path: string, data: Uint8Array): Promise<void>
+  mkdir(path: string, options?: {recursive?: boolean}): Promise<string | undefined>
+  rm(path: string, options?: {recursive?: boolean; force?: boolean}): Promise<void>
+}
+
+export interface INodePath {
+  join(...parts: string[]): string
+  dirname(p: string): string
+}
+
+export class NodeFsAddonStorage implements AddonStorage {
+  private fs: INodeFs
+  private pathlib: INodePath
+  private baseDir: string
+
+  /** addonId|relPath -> object/data URL cache. */
+  private urls = new Map<string, string>()
+
+  constructor(opts: {baseDir: string; fs: INodeFs; pathlib: INodePath}) {
+    this.baseDir = opts.baseDir
+    this.fs = opts.fs
+    this.pathlib = opts.pathlib
+  }
+
+  async list(): Promise<string[]> {
+    try {
+      const entries = await this.fs.readdir(this.baseDir, {withFileTypes: true})
+      return entries.filter((e) => e.isDirectory()).map((e) => e.name)
+    } catch {
+      // baseDir doesn't exist yet — no addons installed.
+      return []
+    }
+  }
+
+  async read(addonId: string, relPath: string): Promise<Uint8Array> {
+    const normalized = normalizePath(relPath)
+    const fullPath = this.pathlib.join(this.baseDir, addonId, normalized)
+    try {
+      return await this.fs.readFile(fullPath)
+    } catch (err) {
+      throw new Error(
+        `addon "${addonId}": file "${relPath}" not found: ${(err as Error).message}`
+      )
+    }
+  }
+
+  async readJSON(addonId: string, relPath: string): Promise<unknown> {
+    const bytes = await this.read(addonId, relPath)
+    return JSON.parse(new TextDecoder().decode(bytes))
+  }
+
+  async write(addonId: string, files: Map<string, Uint8Array>): Promise<void> {
+    this.revokeAddonUrls(addonId)
+    const addonDir = this.pathlib.join(this.baseDir, addonId)
+    // Remove any previous install, then write the new file set.
+    await this.fs.rm(addonDir, {recursive: true, force: true})
+    await this.fs.mkdir(addonDir, {recursive: true})
+
+    for (const [relPath, bytes] of files) {
+      const normalized = normalizePath(relPath)
+      const fullPath = this.pathlib.join(this.baseDir, addonId, normalized)
+      await this.fs.mkdir(this.pathlib.dirname(fullPath), {recursive: true})
+      await this.fs.writeFile(fullPath, bytes)
+    }
+  }
+
+  async remove(addonId: string): Promise<void> {
+    this.revokeAddonUrls(addonId)
+    const addonDir = this.pathlib.join(this.baseDir, addonId)
+    await this.fs.rm(addonDir, {recursive: true, force: true})
+  }
+
+  async urlFor(addonId: string, relPath: string): Promise<string> {
+    const normalized = normalizePath(relPath)
+    const key = `${addonId}|${normalized}`
+    const existing = this.urls.get(key)
+    if (existing) return existing
+    const bytes = await this.read(addonId, normalized)
+    const url = makeBlobUrl(bytes, mimeFor(normalized))
+    this.urls.set(key, url)
+    return url
+  }
+
+  private revokeAddonUrls(addonId: string) {
+    const prefix = `${addonId}|`
+    for (const [key, url] of this.urls) {
+      if (key.startsWith(prefix)) {
+        revokeBlobUrl(url)
+        this.urls.delete(key)
+      }
+    }
+  }
+}

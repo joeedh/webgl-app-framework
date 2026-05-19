@@ -2,6 +2,14 @@ let win
 const {app, BrowserWindow, dialog, nativeTheme} = require('electron')
 
 const {ipcMain, Menu, MenuItem} = require('electron')
+const path = require('path')
+
+// Addon storage path lookup. The renderer (with nodeIntegration:true)
+// performs the actual fs reads/writes via NodeFsAddonStorage; it just needs
+// the userData root from the main process. See scripts/addon/storage_electron.ts.
+ipcMain.handle('addon-storage:get-user-data', async () => {
+  return app.getPath('userData')
+})
 
 ipcMain.handle("nativeTheme.setThemeSource", async (event, val) => {
   nativeTheme.themeSource = val;
