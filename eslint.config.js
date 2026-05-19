@@ -30,6 +30,52 @@ export default defineConfig([
       },
     },
   },
+  // Layer boundaries: prevent core/util from reaching into mesh, prevent cross-addon
+  // direct imports. Warn-level today (codebase has legacy violations);
+  // converted to error in the cleanup step (§6 step 12) once the mesh body has
+  // moved into addons/builtin/mesh/.
+  {
+    files: ['scripts/core/**/*.{ts,tsx,js,mjs,cjs}'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {group: ['*/mesh/*', '../mesh/*', '**/mesh/*'], message: 'core/ must not import scripts/mesh/* — use the data_kinds / default_file / file_migrations registries (see plan §3).'},
+            {group: ['*/subsurf/*', '../subsurf/*'], message: 'core/ must not import scripts/subsurf/* — subsurf is moving into an addon.'},
+            {group: ['../editors/view3d/tools/*'], message: 'core/ must not import view3d toolmode files — only the ToolMode base in view3d_toolmode is allowed.'},
+            {group: ['../../addons/**'], message: 'core/ must not import addon source — addons depend on core, not the other way around.'},
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['scripts/util/**/*.{ts,tsx,js,mjs,cjs}'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {group: ['*/mesh/*', '../mesh/*'], message: 'util/ must stay mesh-agnostic — extract any needed interfaces into util/spatial.ts (see plan §3).'},
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['addons/builtin/*/src/**/*.{ts,tsx,js,mjs,cjs}'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {group: ['../../../../addons/builtin/*'], message: 'Builtin addons must not reach into each other directly — declare a manifest dependency and use api.deps or @addon/<id>/api (see plan §2.5).'},
+          ],
+        },
+      ],
+    },
+  },
   {
     rules: {
       'no-unused-vars'                                            : 'off',
