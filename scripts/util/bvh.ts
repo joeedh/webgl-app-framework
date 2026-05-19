@@ -32,60 +32,29 @@ import {getFaceSets} from '../mesh/mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from '../mesh/mesh_customdata'
 import {Mesh} from '../mesh/mesh'
 
-export interface IGenericIsect {
-  p: Vector3
-  origp: Vector3
-  uv: Vector2
-  dis: number
-  normal: Vector3
-  vertex: number
-  tri: number
-  face: number
-  copy: () => this
-}
+// Mesh-agnostic spatial interfaces moved to ./spatial. Re-exported here so
+// existing consumers that import from '../util/bvh' keep compiling; new code
+// should import directly from '../util/spatial'. See plan §3.
+import {GenericIsect} from './spatial.js'
+import type {
+  IBVHCreateArgs as ISpatialBVHCreateArgs,
+  IBVHVertex as ISpatialBVHVertex,
+  IGenericIsect,
+  ISurfaceSampler,
+} from './spatial.js'
 
-// mesh agnostic sampler
-export interface ISurfaceSampler {
-  rayCast(origin: Vector3, direction: Vector3): IGenericIsect | undefined
-}
+export {GenericIsect}
+export type {IGenericIsect, ISurfaceSampler}
 
-export class GenericIsect {
-  dis = -1
-  normal = new Vector3()
-  vertex = -1
-  tri = -1
-  face = -1
-  p = new Vector3()
-  origp = new Vector3()
-  uv = new Vector2()
+/** BVH vertex specialized to mesh's concrete CDElemArray. */
+export type IBVHVertex = ISpatialBVHVertex<CDElemArray>
 
-  copy(): this {
-    const ret = new GenericIsect() as this
-    ret.dis = this.dis
-    ret.normal = this.normal
-    ret.tri = this.tri
-    ret.vertex = this.vertex
-    ret.face = this.face
-    ret.p = this.p
-    ret.uv = this.uv
-    return ret
-  }
-}
+/** BVH construction args specialized to the concrete BVH/BVHTri types. */
+export type IBVHCreateArgs = ISpatialBVHCreateArgs<BVHTri, BVH>
 
 const surfaceCastRets = util.cachering.fromConstructor(GenericIsect, 512)
 
 const safetimes = new Array<number>(32).map((f) => 0)
-
-export interface IBVHCreateArgs {
-  storeVerts?: boolean
-  leafLimit?: number
-  depthLimit?: number
-  addWireVerts?: boolean
-  deformMode?: boolean
-  useGrids?: boolean
-  freelist?: BVHTri[]
-  onCreate?: (bvh: BVH) => void
-}
 
 function safeprint(id: number, ...args: any[]) {
   if (util.time_ms() - safetimes[id] < 200) {
@@ -175,18 +144,7 @@ const FakeSet = Set //util.set; //FakeSet1;
 
 let _tri_idgen = 0
 
-export interface IBVHVertex {
-  eid: number
-  flag: number
-  index: number
-  co: Vector3
-  no: Vector3
-  neighbors: Iterable<IBVHVertex>
-  customData: CDElemArray
-  // exists in GridVertBase
-  loopEid?: number
-  readonly valence?: number
-}
+// IBVHVertex moved to ./spatial — re-exported at the top of this file.
 
 export class BVHTri<OPT extends {grid?: true | false; dead?: true | false} = {}> {
   seti: number

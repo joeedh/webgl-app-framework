@@ -19,7 +19,8 @@ import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl'
 import {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject'
 import {Shaders} from '../shaders/shaders'
-import {GenericIsect, IGenericIsect} from '../util/bvh'
+import {GenericIsect} from '../util/spatial'
+import type {IGenericIsect} from '../util/spatial'
 import {pointer} from '@litestl/typescript-runtime'
 
 export class VertexData extends AttrSet {
