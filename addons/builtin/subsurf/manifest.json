@@ -1,0 +1,10 @@
+{
+  "id": "subsurf",
+  "name": "Subsurf",
+  "version": "1.0.0",
+  "author": "joeedh",
+  "entry": "src/main.ts",
+  "dependencies": ["mesh"],
+  "description": "Catmull-Clark subdivision surfaces and patch tessellation.",
+  "buildMode": "prebuilt"
+}

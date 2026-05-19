@@ -24,6 +24,9 @@ import './mesh/default_scene.js';
 // other addons can declare `dependencies: ['mesh']`. See plan §6 step 6.
 import './mesh/addon_register.js';
 
+// Same pattern for subsurf (depends on mesh). See plan §6 step 7.
+import './subsurf/addon_register.js';
+
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
 
 import addon, {startAddons} from './addon/addon.js';
