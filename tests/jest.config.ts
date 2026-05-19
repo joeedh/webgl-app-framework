@@ -25,6 +25,9 @@ const config: Config = {
   // Don't try to load helpers as tests
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/lib/', '<rootDir>/fixtures/'],
 
+  // Per-file setup: polyfills jsdom-missing browser globals (URL.createObjectURL etc.)
+  setupFiles: ['<rootDir>/lib/jest-setup.ts'],
+
   transform: {
     '^.+\\.(t|j)sx?$': [
       '@swc/jest',
