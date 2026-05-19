@@ -28,6 +28,11 @@ const config: Config = {
   // Per-file setup: polyfills jsdom-missing browser globals (URL.createObjectURL etc.)
   setupFiles: ['<rootDir>/lib/jest-setup.ts'],
 
+  // fake-indexeddb leaves a few internal timers running on test teardown,
+  // so jest never voluntarily exits. forceExit terminates the worker after
+  // all tests resolve.
+  forceExit: true,
+
   transform: {
     '^.+\\.(t|j)sx?$': [
       '@swc/jest',

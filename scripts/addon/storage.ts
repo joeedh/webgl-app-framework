@@ -164,3 +164,218 @@ function mimeFor(relPath: string): string {
   if (relPath.endsWith('.html') || relPath.endsWith('.htm')) return 'text/html'
   return 'application/octet-stream'
 }
+
+function normalizePath(relPath: string): string {
+  if (relPath.includes('..') || relPath.startsWith('/')) {
+    throw new Error(`invalid addon relPath: ${relPath}`)
+  }
+  return relPath.replace(/\\/g, '/')
+}
+
+// ---------------------------------------------------------------------------
+// IndexedDBAddonStorage — persistent backend for web (browser + jsdom envs
+// with a polyfilled `indexedDB`). Schema:
+//
+//   db `webgl-app-framework-addons`, version 1
+//     objectStore `files`
+//       keyPath: `key` (string `${addonId}/${relPath}`)
+//       value:   {key, addonId, relPath, bytes: Uint8Array, mime}
+//       index `addonId`: non-unique
+//
+// All operations wrap the request-callback API in promises so the public
+// AddonStorage methods remain async. See plan §6 step 9b.
+// ---------------------------------------------------------------------------
+
+const DB_NAME = 'webgl-app-framework-addons'
+const DB_VERSION = 1
+const STORE = 'files'
+const ADDON_INDEX = 'addonId'
+
+interface IFileRow {
+  key: string
+  addonId: string
+  relPath: string
+  bytes: Uint8Array
+  mime: string
+}
+
+function reqAsPromise<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+function txDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error ?? new Error('transaction aborted'))
+  })
+}
+
+export class IndexedDBAddonStorage implements AddonStorage {
+  private dbName: string
+  private dbPromise: Promise<IDBDatabase> | null = null
+
+  /** addonId|relPath -> object URL (or data: URL) cache so urlFor is stable. */
+  private urls = new Map<string, string>()
+
+  constructor(dbName: string = DB_NAME) {
+    this.dbName = dbName
+  }
+
+  private openDB(): Promise<IDBDatabase> {
+    if (this.dbPromise) return this.dbPromise
+    if (typeof indexedDB === 'undefined') {
+      throw new Error('IndexedDBAddonStorage: no indexedDB in this environment')
+    }
+    this.dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(this.dbName, DB_VERSION)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(STORE)) {
+          const store = db.createObjectStore(STORE, {keyPath: 'key'})
+          store.createIndex(ADDON_INDEX, 'addonId', {unique: false})
+        }
+      }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    return this.dbPromise
+  }
+
+  async list(): Promise<string[]> {
+    const db = await this.openDB()
+    const tx = db.transaction(STORE, 'readonly')
+    const idx = tx.objectStore(STORE).index(ADDON_INDEX)
+    // Use openKeyCursor to enumerate distinct addonIds without loading row bodies.
+    const seen = new Set<string>()
+    await new Promise<void>((resolve, reject) => {
+      const req = idx.openKeyCursor()
+      req.onsuccess = () => {
+        const cursor = req.result
+        if (!cursor) {
+          resolve()
+          return
+        }
+        seen.add(cursor.key as string)
+        cursor.continue()
+      }
+      req.onerror = () => reject(req.error)
+    })
+    await txDone(tx).catch(() => {})
+    return Array.from(seen)
+  }
+
+  async read(addonId: string, relPath: string): Promise<Uint8Array> {
+    const normalized = normalizePath(relPath)
+    const db = await this.openDB()
+    const tx = db.transaction(STORE, 'readonly')
+    const row = (await reqAsPromise(tx.objectStore(STORE).get(`${addonId}/${normalized}`))) as
+      | IFileRow
+      | undefined
+    if (!row) {
+      throw new Error(`addon "${addonId}": file "${relPath}" not found`)
+    }
+    return row.bytes
+  }
+
+  async readJSON(addonId: string, relPath: string): Promise<unknown> {
+    const bytes = await this.read(addonId, relPath)
+    return JSON.parse(new TextDecoder().decode(bytes))
+  }
+
+  async write(addonId: string, files: Map<string, Uint8Array>): Promise<void> {
+    this.revokeAddonUrls(addonId)
+    const db = await this.openDB()
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+
+    // Delete all existing entries for this addon, then add the new set.
+    await new Promise<void>((resolve, reject) => {
+      const req = store.index(ADDON_INDEX).openKeyCursor(IDBKeyRange.only(addonId))
+      req.onsuccess = () => {
+        const cursor = req.result
+        if (!cursor) {
+          resolve()
+          return
+        }
+        store.delete(cursor.primaryKey)
+        cursor.continue()
+      }
+      req.onerror = () => reject(req.error)
+    })
+
+    for (const [relPath, bytes] of files) {
+      const normalized = normalizePath(relPath)
+      const row: IFileRow = {
+        key    : `${addonId}/${normalized}`,
+        addonId,
+        relPath: normalized,
+        bytes,
+        mime   : mimeFor(normalized),
+      }
+      store.put(row)
+    }
+    await txDone(tx)
+  }
+
+  async remove(addonId: string): Promise<void> {
+    this.revokeAddonUrls(addonId)
+    const db = await this.openDB()
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+    await new Promise<void>((resolve, reject) => {
+      const req = store.index(ADDON_INDEX).openKeyCursor(IDBKeyRange.only(addonId))
+      req.onsuccess = () => {
+        const cursor = req.result
+        if (!cursor) {
+          resolve()
+          return
+        }
+        store.delete(cursor.primaryKey)
+        cursor.continue()
+      }
+      req.onerror = () => reject(req.error)
+    })
+    await txDone(tx)
+  }
+
+  async urlFor(addonId: string, relPath: string): Promise<string> {
+    const normalized = normalizePath(relPath)
+    const key = `${addonId}|${normalized}`
+    const existing = this.urls.get(key)
+    if (existing) return existing
+    const bytes = await this.read(addonId, normalized)
+    const url = makeBlobUrl(bytes, mimeFor(normalized))
+    this.urls.set(key, url)
+    return url
+  }
+
+  /** Test helper — clears the database. Closes the connection so the next
+   * openDB() reads a fresh state. */
+  async _resetForTests(): Promise<void> {
+    const db = await this.openDB()
+    db.close()
+    this.dbPromise = null
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.deleteDatabase(this.dbName)
+      req.onsuccess = () => resolve()
+      req.onerror = () => reject(req.error)
+      req.onblocked = () => resolve() // best-effort
+    })
+    for (const url of this.urls.values()) revokeBlobUrl(url)
+    this.urls.clear()
+  }
+
+  private revokeAddonUrls(addonId: string) {
+    const prefix = `${addonId}|`
+    for (const [key, url] of this.urls) {
+      if (key.startsWith(prefix)) {
+        revokeBlobUrl(url)
+        this.urls.delete(key)
+      }
+    }
+  }
+}
