@@ -47,8 +47,12 @@ import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp} from './gen_default_file'
-import {MissingDataBlock} from './missing_addon'
+import {installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import './app_ops.js'
+
+// Install the nstructjs placeholder hooks before any file is loaded.
+// See plan §4 and scripts/core/missing_addon.ts.
+installMissingAddonHooks()
 
 declare let _appstate: AppState
 declare let JSZip: {

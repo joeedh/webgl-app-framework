@@ -4,29 +4,29 @@
  *
  * Goal: if a file references a DataBlock / ToolMode / CustomDataElem subclass
  * from an addon that's been disabled or uninstalled, the load path substitutes
- * a placeholder that stashes the raw bytes from the file. On the next save we
- * re-emit those bytes verbatim under the original class name. When the addon
- * is later re-enabled and the file is re-loaded, the data round-trips back to
- * the real class without loss.
+ * a placeholder that stores the original class name + all the field values
+ * deserialized via the file's schema. On the next save we re-emit those values
+ * under the original class's struct id + schema. When the addon is later
+ * re-enabled and the file is re-loaded, the data round-trips back to the real
+ * class without loss.
  *
- * Today this module provides:
- *   - `MissingDataBlock`: implementable purely at our load/save call sites in
- *     appstate.ts because the bytes + class name are already in hand there.
- *
- * Deferred (requires patching nstructjs's abstract-type reader; tracked in the
- * plan §4.2 — Add joeedh/STRUCT submodule):
- *   - `MissingToolMode`: scene.toolmodes is an `array(abstract(ToolMode))`,
- *     so the read failure happens inside nstructjs. Needs an `onUnknownClass`
- *     hook.
- *   - `OpaqueCustomDataElem`: customdata layers are `array(abstract(CustomDataElem))`,
- *     same story.
- *
- * The vendor/nstructjs submodule is in place; patching + rebuild lands as a
- * follow-up commit.
+ * Two read mechanisms:
+ *   1. MissingDataBlock — populated in `appstate.ts`'s explicit DataBlock
+ *      load path; the bytes + class name are already in hand there. Stored
+ *      as opaque bytes.
+ *   2. MissingToolMode / OpaqueCustomDataElem — populated via the patched
+ *      nstructjs `onUnknownClass` hook. The hook returns the placeholder
+ *      class; nstructjs then walks the *file's* schema fields, depositing
+ *      each value on the placeholder by name (so the placeholder carries
+ *      the original data as dynamic properties). The matching
+ *      `onSerializeUnknown` hook makes write_object emit the original
+ *      class's struct id + schema, not the placeholder's. See plan §4.
  */
 
 import {DataBlock} from './lib_api.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
+import {ToolMode} from '../editors/view3d/view3d_toolmode.js'
+import {CustomDataElem} from '../mesh/customdata.js'
 
 /**
  * Stand-in for a DataBlock whose class isn't registered (the addon that owned
@@ -76,3 +76,125 @@ MissingDataBlock {
 }
 
 DataBlock.register(MissingDataBlock)
+
+// ----------------------------------------------------------------------------
+// MissingToolMode — placeholder for a ToolMode subclass from an unloaded addon
+// ----------------------------------------------------------------------------
+
+/**
+ * Stand-in for a ToolMode whose subclass isn't registered. Carries the
+ * original struct name (set by nstructjs's abstract unpack hook) and any
+ * fields the loader deposited as dynamic properties. Filtered out of the
+ * runtime toolmode_map in scene.ts but kept in scene.toolmodes so re-save
+ * round-trips it.
+ */
+export class MissingToolMode extends ToolMode {
+  _origClsname: string = ''
+
+  static toolModeDefine() {
+    return {
+      name        : 'MissingToolMode',
+      uiname      : 'Missing (Addon Disabled)',
+      icon        : -1,
+      flag        : 0,
+      description : 'Placeholder for a tool mode whose addon is not loaded.',
+    }
+  }
+
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+MissingToolMode {
+  _origClsname : string;
+}
+  `
+  )
+}
+
+// MissingToolMode is intentionally NOT registered with ToolMode.register() —
+// it must not appear in the toolmode enum or be selectable; it's only ever
+// instantiated by the onUnknownClass hook for round-tripping serialized data.
+
+// ----------------------------------------------------------------------------
+// OpaqueCustomDataElem — placeholder for a CustomDataElem from an unloaded addon
+// ----------------------------------------------------------------------------
+
+/**
+ * Stand-in for a CustomDataElem subclass whose addon isn't loaded. Carries the
+ * original struct name + dynamic field values. Has no real implementation of
+ * setValue/getValue/copyTo — those throw if anything tries to use it as a real
+ * layer. The point is purely to keep the bytes alive across save/reload.
+ */
+export class OpaqueCustomDataElem extends CustomDataElem<unknown> {
+  _origClsname: string = ''
+
+  static define() {
+    return {
+      elemTypeMask: 0,
+      typeName    : 'OpaqueCustomDataElem',
+      uiTypeName  : 'Missing (Addon Disabled)',
+      defaultName : 'Missing',
+      valueSize   : undefined,
+      flag        : 0,
+    }
+  }
+
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+OpaqueCustomDataElem {
+  _origClsname : string;
+}
+  `
+  )
+}
+
+// OpaqueCustomDataElem is intentionally NOT registered via
+// CustomDataElem.register() — it must not appear in the customdata type menus.
+// nstructjs still knows about its struct schema via inlineRegister.
+
+// ----------------------------------------------------------------------------
+// nstructjs hooks
+// ----------------------------------------------------------------------------
+
+/**
+ * Installs the onUnknownClass + onSerializeUnknown hooks on nstructjs's
+ * global manager so that unknown ToolMode / CustomDataElem subclasses are
+ * preserved instead of crashing the load. Must be called once at app start,
+ * before any file is loaded.
+ *
+ * The choice of which placeholder is keyed by the missing class's NAMESPACE
+ * (parent module) embedded in the struct name — nstructjs stores names with
+ * dotted prefixes (e.g. "mesh.CustomDataElem"). We sniff the schema's parent
+ * declaration to pick the right placeholder; if we can't determine the kind,
+ * we don't return a placeholder and the original error fires (better to fail
+ * loud than silently corrupt unrelated data).
+ */
+export function installMissingAddonHooks(): void {
+  // The nstructjs typings don't expose the manager's hook fields publicly;
+  // cast to a permissive shape locally. The hook fields were added by the
+  // vendored-source patch in vendor/nstructjs (see plan §4).
+  const manager = nstructjs.manager as unknown as {
+    onUnknownClass?: (clsname: string, schema: unknown) => unknown
+    onSerializeUnknown?: (obj: unknown) => string | undefined
+  }
+
+  manager.onUnknownClass = (clsname: string) => {
+    // CustomDataElem subclasses live under the `mesh.*` namespace in their
+    // schema names; ToolMode subclasses are flat names. We pick
+    // OpaqueCustomDataElem for anything under the mesh.* namespace that
+    // mentions CustomData, MissingToolMode for everything else that
+    // reaches this hook. (Real DataBlock subclasses go through appstate's
+    // explicit MissingDataBlock path, not this hook.)
+    if (clsname.startsWith('mesh.') && clsname.includes('CustomData')) {
+      return OpaqueCustomDataElem
+    }
+    return MissingToolMode
+  }
+
+  manager.onSerializeUnknown = (obj: unknown) => {
+    const placeholder = obj as {_origClsname?: string} | null
+    return placeholder?._origClsname || undefined
+  }
+}
+

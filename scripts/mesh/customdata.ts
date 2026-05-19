@@ -711,7 +711,17 @@ mesh.CustomData {
       if (!ok) {
         const cls = CDElemMap[list.typeName]
         if (!cls) {
-          throw new Error('unregistered CustomData detected')
+          // The addon that owned this customdata type isn't loaded. The
+          // layer's elements were already deserialized into
+          // OpaqueCustomDataElem placeholders by nstructjs's onUnknownClass
+          // hook (see scripts/core/missing_addon.ts); we just need to make
+          // sure the layer is preserved in the flat list. The next save will
+          // round-trip the elements under their original struct id via the
+          // matching onSerializeUnknown hook. See plan §4.
+          console.warn(
+            `unregistered CustomData type "${list.typeName}" — preserving as opaque layer`
+          )
+          continue
         }
 
         const list2 = this.addLayer(cls, list.name)
