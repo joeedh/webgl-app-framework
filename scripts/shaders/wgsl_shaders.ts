@@ -81,6 +81,152 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 `
 
 /**
+ * ObjectLineShader — port of `ObjectLineShader` (shaders.ts:189-250).
+ * Wireframe overlay; per-object `shift` (vec2) offset in clip space.
+ */
+export const OBJECT_LINE_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  uColor       : vec4f,
+  shift        : vec2f,
+  alpha        : f32,
+  _pad0        : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) uv       : vec2f,
+  @location(2) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vUv : vec2f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  var p = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  p = vec4f(p.xy + object.shift * p.w, p.zw);
+  out.clipPos = p;
+  out.vUv = in.uv;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  return object.uColor * vec4f(1.0, 1.0, 1.0, object.alpha);
+}
+`
+
+/**
+ * WidgetMeshShader — port of `WidgetMeshShader` (shaders.ts:1411-1465).
+ * Solid-color widget mesh; used by NullObject, Light, Camera helpers.
+ */
+export const WIDGET_MESH_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  normalMatrix : mat4x4f,
+  color        : vec4f,
+  pointSize    : f32,
+  _pad0        : f32,
+  _pad1        : f32,
+  _pad2        : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+  @location(2) uv       : vec2f,
+  @location(3) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  return vec4f(object.color.rgb, object.color.a);
+}
+`
+
+/**
+ * BasicLitMesh — port of `BasicLitMesh` (shaders.ts:303-368). Default
+ * viewport shading. The `#ifdef HAVE_COLOR` variant is honoured by the
+ * preprocessor — pass `{HAVE_COLOR: true}` to `buildPipelineDescriptor`.
+ */
+export const BASIC_LIT_MESH_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  normalMatrix : mat4x4f,
+  alpha        : f32,
+  _pad0        : f32,
+  _pad1        : f32,
+  _pad2        : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+  @location(2) uv       : vec2f,
+  @location(3) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor : vec4f,
+  @location(1) vNormal : vec3f,
+  @location(2) vUv : vec2f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  let n = object.normalMatrix * vec4f(in.normal, 0.0);
+  out.vNormal = n.xyz;
+  out.vUv = in.uv;
+  out.vColor = in.color;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  let no = normalize(in.vNormal);
+  var f = no.y * 0.333 + no.z * 0.333 + no.x * 0.333;
+  if (f < 0.0) { f = -f * 0.2; }
+  f = f * 0.8 + 0.2;
+  let c = vec4f(f, f, f, 1.0);
+
+#ifdef HAVE_COLOR
+  let vcolor = in.vColor;
+#else
+  let vcolor = vec4f(1.0, 1.0, 1.0, 1.0);
+#endif
+
+  return c + (c * vcolor - c) * vcolor.a;
+}
+`
+
+/**
  * MeshIDShader — port of `MeshIDShader` (shaders.ts:1153-1220). Renders
  * (object_id+1, vertex_id+1, 0, 1) into a float framebuffer for picking.
  * Vertex attributes: position (vec3), uv (vec2), color (vec4), id (f32).
@@ -143,7 +289,7 @@ export const STANDARD_VERTEX_LAYOUT: GPUVertexBufferLayout = {
 
 /**
  * Variant of `STANDARD_VERTEX_LAYOUT` without the `id` attribute —
- * matches `BasicLineShader`. Stride = 36 bytes.
+ * matches `BasicLineShader` / `ObjectLineShader`. Stride = 36 bytes.
  */
 export const NO_ID_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 36,
@@ -151,6 +297,20 @@ export const NO_ID_VERTEX_LAYOUT: GPUVertexBufferLayout = {
     {shaderLocation: 0, offset: 0,  format: 'float32x3'},
     {shaderLocation: 1, offset: 12, format: 'float32x2'},
     {shaderLocation: 2, offset: 20, format: 'float32x4'},
+  ],
+}
+
+/**
+ * Lit-mesh layout: position + normal + uv + color. Matches
+ * `BasicLitMesh` / `WidgetMeshShader`. Stride = 48 bytes.
+ */
+export const LIT_MESH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
+  arrayStride: 48,
+  attributes: [
+    {shaderLocation: 0, offset: 0,  format: 'float32x3'}, // position
+    {shaderLocation: 1, offset: 12, format: 'float32x3'}, // normal
+    {shaderLocation: 2, offset: 24, format: 'float32x2'}, // uv
+    {shaderLocation: 3, offset: 32, format: 'float32x4'}, // color
   ],
 }
 
@@ -236,5 +396,29 @@ registerWgslShader({
   source       : MESH_ID_WGSL,
   vertexBuffers: [STANDARD_VERTEX_LAYOUT],
   colorTargets : [ID_PICKING_TARGET],
+  primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'ObjectLineShader',
+  source       : OBJECT_LINE_WGSL,
+  vertexBuffers: [NO_ID_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'line-list'},
+})
+
+registerWgslShader({
+  key          : 'WidgetMeshShader',
+  source       : WIDGET_MESH_WGSL,
+  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'BasicLitMesh',
+  source       : BASIC_LIT_MESH_WGSL,
+  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
