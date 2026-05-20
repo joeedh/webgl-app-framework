@@ -22,6 +22,7 @@
 
 import type {PipelineDescriptor} from '../webgpu/pipeline.js'
 import {FULLSCREEN_QUAD_LAYOUT} from '../webgpu/render_context.js'
+import {preprocess, type PreprocessOptions} from './preprocess.js'
 
 /**
  * Shared full-screen vertex shader. Pass-fragment WGSL is appended
@@ -158,6 +159,62 @@ fn fs_main(in : VsOut) -> FsOut {
 }
 `
 
+/**
+ * BlurPass — port of `BlurPass` (realtime_passes.ts:502-582). 1D
+ * gaussian-ish blur with `BLUR_AXIS` (x or y) and `BLUR_SAMPLES`
+ * (radius, default 3).
+ *
+ * GLSL writes `p2[BLUR_AXIS] += f` which can't survive a textual
+ * substitution into WGSL — vec2 isn't subscriptable by an integer
+ * literal in WGSL. The port uses `#ifdef BLUR_AXIS_Y` to gate the
+ * `.x` vs `.y` access instead; callers register one entry per axis
+ * (`BlurPassX`, `BlurPassY`) plus pick a sample count by passing
+ * `{BLUR_SAMPLES: n}` through `buildPassPipelineDescriptor`'s
+ * preprocess hook.
+ *
+ * Define: `BLUR_SAMPLES` (numeric, required); `BLUR_AXIS_Y` (Y axis
+ * variant — omit for X).
+ */
+export const BLUR_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp       : sampler;
+@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  var accum = vec4f(0.0);
+  var tot : f32 = 0.0;
+  var p = in.v_Uv * pass.size;
+
+  for (var i : i32 = -BLUR_SAMPLES; i < BLUR_SAMPLES; i = i + 1) {
+    let w = 1.0 - abs(f32(i) / f32(BLUR_SAMPLES));
+    var p2 = p;
+#ifdef BLUR_AXIS_Y
+    p2.y = p2.y + f32(i);
+#else
+    p2.x = p2.x + f32(i);
+#endif
+    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    accum = accum + color * w;
+    tot = tot + w;
+  }
+
+  accum = accum / tot;
+  out.color = accum;
+  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  return out;
+}
+`
+
 export interface WgslPassEntry {
   key: string
   source: string
@@ -177,10 +234,16 @@ export function lookupWgslPass(key: string): WgslPassEntry | undefined {
   return REGISTRY.get(key)
 }
 
-export function buildPassPipelineDescriptor(entry: WgslPassEntry): PipelineDescriptor {
+export function buildPassPipelineDescriptor(
+  entry: WgslPassEntry,
+  defines?: PreprocessOptions['defines']
+): PipelineDescriptor {
+  const wgsl = defines && Object.keys(defines).length > 0
+    ? preprocess(entry.source, {defines})
+    : entry.source
   return {
     label        : entry.key,
-    wgsl         : entry.source,
+    wgsl,
     vertexBuffers: entry.vertexBuffers,
     colorTargets : entry.colorTargets,
     primitive    : entry.primitive,
@@ -219,6 +282,20 @@ registerWgslPass({
 registerWgslPass({
   key          : 'AccumPass',
   source       : ACCUM_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+// BlurPass needs preprocess() defines (BLUR_SAMPLES, BLUR_AXIS_Y) —
+// callers run buildPassPipelineDescriptor with the right defines map
+// rather than registering a static variant. The raw source goes in
+// under a single key; consumers tag the resulting Pipeline by
+// (key, defines-hash) themselves.
+registerWgslPass({
+  key          : 'BlurPass',
+  source       : BLUR_PASS_WGSL,
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
