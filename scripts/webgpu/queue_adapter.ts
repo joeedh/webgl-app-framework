@@ -19,6 +19,7 @@
 
 import type {DrawQueue, FrameContext, Submission} from '../render/queue.js'
 import type {Pipeline, PipelineCache} from './pipeline.js'
+import {lookupWgslShader} from '../shaders/wgsl_shaders.js'
 
 export interface WebGPUFrameContext extends FrameContext {
   device: GPUDevice
@@ -41,21 +42,40 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
   }
 
   submit(s: Submission): void {
-    const pipeline = this.frame.pipelineBindings.get(s.pipeline)
+    let pipeline = this.frame.pipelineBindings.get(s.pipeline)
     if (!pipeline) {
-      const name = (s.pipeline as unknown as {name?: string}).name ?? '<unknown>'
+      // Fall back to the registry: a ShaderProgram tagged with `.wgslKey`
+      // resolves directly into a pipeline descriptor, no per-frame
+      // wiring required.
+      const key = (s.pipeline as unknown as {wgslKey?: string}).wgslKey
+      const entry = key ? lookupWgslShader(key) : undefined
+      if (!entry) {
+        const name = (s.pipeline as unknown as {name?: string}).name ?? '<unknown>'
+        throw new Error(
+          `WebGPUDrawQueueAdapter: pipeline "${name}" not yet ported to WGSL — ` +
+            `tag the ShaderProgram with .wgslKey or register it in ` +
+            `frame.pipelineBindings (Phase 4b).`
+        )
+      }
+      pipeline = this.frame.pipelineCache.get({
+        label        : entry.key,
+        wgsl         : entry.source,
+        vertexBuffers: entry.vertexBuffers,
+        colorTargets : entry.colorTargets,
+        primitive    : entry.primitive,
+        depthStencil : entry.depthStencil,
+      })
+      this.frame.pipelineBindings.set(s.pipeline, pipeline)
+    }
+    if (!s.mesh.drawGPU) {
+      const meshName = (s.mesh as unknown as {constructor?: {name?: string}}).constructor?.name ?? '<unknown>'
       throw new Error(
-        `WebGPUDrawQueueAdapter: pipeline "${name}" not yet ported to WGSL — ` +
-          `register it in frame.pipelineBindings (Phase 4b).`
+        `WebGPUDrawQueueAdapter: mesh "${meshName}" has no drawGPU() — ` +
+          `implement Drawable.drawGPU(pass, pipeline, uniforms) (Phase 4c).`
       )
     }
-    // Real implementation lands once SimpleIsland uploads to GpuBuffers
-    // and Drawable.drawGPU(passEncoder, pipeline) is defined.
-    const meshName = (s.mesh as unknown as {constructor?: {name?: string}}).constructor?.name ?? '<unknown>'
-    throw new Error(
-      `WebGPUDrawQueueAdapter: mesh "${meshName}" not yet ported — needs ` +
-        `Drawable.drawGPU(passEncoder, pipeline) (Phase 4c).`
-    )
+    const uniforms = s.uniforms ?? this.frame.uniforms
+    s.mesh.drawGPU(this.frame.passEncoder, pipeline.handle, uniforms)
   }
 
   scheduleRawGLPass(): void {

@@ -7,9 +7,16 @@ import {PrimitiveTypes} from '../webgl/simplemesh'
  * Anything that can be drawn by binding a program and calling its draw method.
  * SimpleMesh, ChunkedSimpleMesh, and the FancyMeshes line/tri batches all satisfy
  * this. Sculptcore's WebGLBatchExecutor outputs do too.
+ *
+ * `drawGPU` is the WebGPU sibling — implementers populate it once they know
+ * how to upload their vertex layout into a GpuBuffer and bind it against a
+ * `GPURenderPipeline`. The WebGPU adapter throws a targeted error when a
+ * Drawable lacks `drawGPU`, so the per-mesh port can land independently per
+ * Phase 4c.
  */
 export interface Drawable {
   draw(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program: ShaderProgram): void
+  drawGPU?(pass: GPURenderPassEncoder, pipeline: GPURenderPipeline, uniforms: IUniformsBlock): void
 }
 
 /**
