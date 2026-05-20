@@ -19,7 +19,8 @@ import {
 
 import './polyfill'
 
-import '../util/fbxloader'
+// fbxloader's side-effect import lives in entry_point.js now; was here as a
+// hangover from when fbxloader was in scripts/util/. Removed in plan §12.
 
 import {loadShapes} from '../webgl/simplemesh_shapes'
 
@@ -43,7 +44,7 @@ export class FileLoadError extends Error {}
 import {Collection} from '../scene/collection'
 import {PropsEditor} from '../editors/properties/PropsEditor'
 import '../light/light'
-import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush'
+import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/index'
 import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'

@@ -23,19 +23,19 @@
  */
 
 // ---- core types --------------------------------------------------------------
-export {Mesh, MeshFlags, MeshTypes} from '../../../../scripts/mesh/mesh.js'
-export type {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from '../../../../scripts/mesh/mesh_types.js'
+export {Mesh, MeshFlags, MeshTypes} from './mesh.js'
+export type {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from './mesh_types.js'
 
 // ---- custom data -------------------------------------------------------------
-export {CustomDataElem, CustomData, AttrRef, CDFlags} from '../../../../scripts/mesh/customdata.js'
-export type {CDRef, ICustomDataElemConstructor, ICustomDataElemDef} from '../../../../scripts/mesh/customdata.js'
-export {CDElemArray, EmptyCDArray} from '../../../../scripts/mesh/mesh_base.js'
-export type {ICustomDataCapable} from '../../../../scripts/mesh/mesh_base.js'
+export {CustomDataElem, CustomData, AttrRef, CDFlags} from './customdata.js'
+export type {CDRef, ICustomDataElemConstructor, ICustomDataElemDef} from './customdata.js'
+export {CDElemArray, EmptyCDArray} from './mesh_base.js'
+export type {ICustomDataCapable} from './mesh_base.js'
 
 // ---- spatial -----------------------------------------------------------------
-export {BVH, BVHFlags, BVHSettings, BVHTri} from '../../../../scripts/util/bvh.js'
-export type {IBVHCreateArgs, IBVHVertex} from '../../../../scripts/util/bvh.js'
+export {BVH, BVHFlags, BVHSettings, BVHTri} from './bvh.js'
+export type {IBVHCreateArgs, IBVHVertex} from './bvh.js'
 
 // ---- ops + utilities ---------------------------------------------------------
-export * as mesh_utils from '../../../../scripts/mesh/mesh_utils.js'
-export * as customdata from '../../../../scripts/mesh/customdata.js'
+export * as mesh_utils from './mesh_utils.js'
+export * as customdata from './customdata.js'

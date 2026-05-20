@@ -1,10 +1,10 @@
 import {Number3, Vector3} from '../util/vectormath.js'
 import * as util from '../util/util.js'
 import {PCOS, PTOT, PatchList} from './subsurf_base.js'
-import {MeshTypes, MeshFlags} from '../mesh/mesh_base.js'
-import {BVHVertFlags, MDynVert} from '../util/bvh.js'
-import {Edge, Face, Loop, Mesh, Vertex} from '../mesh/mesh.js'
-import {CustomDataElem} from '../mesh/customdata.js'
+import {MeshTypes, MeshFlags} from '../../addons/builtin/mesh/src/mesh_base.js'
+import {BVHVertFlags, MDynVert} from '../../addons/builtin/mesh/src/bvh.js'
+import {Edge, Face, Loop, Mesh, Vertex} from '../../addons/builtin/mesh/src/mesh.js'
+import {CustomDataElem} from '../../addons/builtin/mesh/src/customdata.js'
 
 const eco = new Vector3()
 const ccSmoothRets = util.cachering.fromConstructor(Vector3, 128)

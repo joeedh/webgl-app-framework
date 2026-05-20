@@ -1,5 +1,5 @@
 import {FBO} from '../../webgl/fbo'
-import {getShader} from '../../webgl'
+import {getShader} from '../../webgl/index'
 //import {getWebGL} from '../view3d/view3d'
 
 export let DisplayShader = {

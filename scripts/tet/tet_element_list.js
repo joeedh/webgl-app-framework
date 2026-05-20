@@ -4,8 +4,8 @@ import * as math from '../util/math.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 
 import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js';
-import {CustomData, CustomDataElem} from '../mesh/customdata.js';
-import {getArrayTemp} from '../mesh/mesh_base.js';
+import {CustomData, CustomDataElem} from '../../addons/builtin/mesh/src/customdata.js';
+import {getArrayTemp} from '../../addons/builtin/mesh/src/mesh_base.js';
 import {TetElement} from './tetgen_types.js';
 
 export class TetSelectSet extends Set {

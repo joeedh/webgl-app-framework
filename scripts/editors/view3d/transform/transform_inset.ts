@@ -2,9 +2,9 @@ import {isect_ray_plane, Matrix4, ToolOp, Vector2, Vector3, Vector4} from '../..
 import {castViewRay} from '../findnearest.js'
 import {SelMask} from '../selectmode.js'
 import {SnapModes, TransformOp} from './transform_ops.js'
-import {MeshFlags, MeshTypes} from '../../../mesh/mesh_base.js'
-import {Edge, Face, Vertex} from '../../../mesh/mesh_types.js'
-import {Mesh} from '../../../mesh/mesh.js'
+import {MeshFlags, MeshTypes} from '../../../../addons/builtin/mesh/src/mesh_base.js'
+import {Edge, Face, Vertex} from '../../../../addons/builtin/mesh/src/mesh_types.js'
+import {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
 import type {ViewContext} from '../../../core/context.js'
 
 class Region {

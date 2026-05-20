@@ -1,4 +1,4 @@
-import {EventBase} from '../core/eventbase.js'
+import {EventBase} from './eventbase.js'
 import {EnumProperty, ToolProperty} from '../path.ux/scripts/pathux.js'
 
 /**

@@ -1,7 +1,7 @@
-import {CustomDataElem, ICustomDataElemDef} from '../mesh/customdata'
+import {CustomDataElem, ICustomDataElemDef} from '../../addons/builtin/mesh/src/customdata'
 import {DataAPI, DataStruct, nstructjs} from '../path.ux/scripts/pathux.js'
-import {MeshTypes} from '../mesh/mesh_base'
-import {Vertex} from '../mesh/mesh'
+import {MeshTypes} from '../../addons/builtin/mesh/src/mesh_base'
+import {Vertex} from '../../addons/builtin/mesh/src/mesh'
 
 export enum KnotFlags {}
 

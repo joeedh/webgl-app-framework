@@ -30,9 +30,9 @@ import {calcTransCenter, type TransCenterResult} from '../transform/transform_qu
 import {Icons} from '../../icon_enum.js'
 import {ConstraintSpaces} from '../transform/transform_base.js'
 import {InsetTransformOp} from '../transform/transform_inset.js'
-import {InsetHoleOp} from '../../../mesh/mesh_extrudeops.js'
+import {InsetHoleOp} from '../../../../addons/builtin/mesh/src/mesh_extrudeops.js'
 import type {ViewContext} from '../../../core/context.js'
-import type {Mesh} from '../../../mesh/mesh.js'
+import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
 
 const update_temps = util.cachering.fromConstructor(Vector3, 64)
 const update_temps4 = util.cachering.fromConstructor(Vector4, 64)

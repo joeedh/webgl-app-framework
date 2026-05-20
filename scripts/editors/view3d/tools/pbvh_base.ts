@@ -26,17 +26,17 @@ import {
   Number3,
 } from '../../../path.ux/scripts/pathux.js'
 
-import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings, PaintToolSlot} from '../../../brush'
+import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings, PaintToolSlot} from '../../../brush/index'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
-import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
+import {AttrRef, CDFlags} from '../../../../addons/builtin/mesh/src/customdata.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {Mesh, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
-import {GridBase} from '../../../mesh/mesh_grids.js'
-import {BVH, BVHFlags, IBVHVertex, IsectRet} from '../../../util/bvh.js'
+import {Mesh, Vector3LayerElem, Vertex} from '../../../../addons/builtin/mesh/src/mesh.js'
+import {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
+import {BVH, BVHFlags, IBVHVertex, IsectRet} from '../../../../addons/builtin/mesh/src/bvh.js'
 import {GenericIsect} from '../../../util/spatial.js'
 import type {IGenericIsect, ISurfaceSampler} from '../../../util/spatial.js'
-import {MeshFlags} from '../../../mesh/mesh.js'
+import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh.js'
 
 import * as util from '../../../util/util.js'
 import {SceneObject, SceneObjectData} from '../../../sceneobject/index.js'

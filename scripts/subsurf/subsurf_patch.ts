@@ -1,6 +1,6 @@
 import {Vector3, Matrix4, util} from '../path.ux/scripts/pathux.js'
 import {BinomialTable} from '../util/binomial_table'
-import {Loop} from '../mesh/mesh_types'
+import {Loop} from '../../addons/builtin/mesh/src/mesh_types'
 
 let KPOINTS = 0,
   KTOT = KPOINTS + 16 * 3

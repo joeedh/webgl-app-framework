@@ -1,6 +1,6 @@
 import {ViewContext} from '../../../core/context'
 import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'
-import type {Mesh} from '../../../mesh/mesh'
+import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
 
 export class CurveToolOverlay extends ViewContext {

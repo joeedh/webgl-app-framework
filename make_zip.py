@@ -20,7 +20,7 @@ sources = [
   "./scripts/scene/**",
   "./scripts/curve/**",
   "./scripts/brush/**",
-  "./scripts/mesh/**",
+  # scripts/mesh/ no longer exists — moved into addons/builtin/mesh/src/.
   "./scripts/editors/**",
   "./scripts/data_api/**",
   "./scripts/light/**",

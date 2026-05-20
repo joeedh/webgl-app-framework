@@ -1,4 +1,4 @@
-import {MeshTypes} from '../../mesh/mesh_base.js'
+import {MeshTypes} from '../../../addons/builtin/mesh/src/mesh_base.js'
 
 declare global {
   interface Window {

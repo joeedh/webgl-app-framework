@@ -1,4 +1,4 @@
-import {LogContext} from '../mesh/mesh_base.js';
+import {LogContext} from '../../addons/builtin/mesh/src/mesh_base.js';
 
 export const TetFlags = {
   SELECT           : 1,

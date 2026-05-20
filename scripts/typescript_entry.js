@@ -1,3 +1,3 @@
 export const TS_BLEH = 1;
-import './mesh/customdata';
+import '../addons/builtin/mesh/src/customdata';
 //# sourceMappingURL=typescript_entry.js.map

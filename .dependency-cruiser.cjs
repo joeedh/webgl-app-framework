@@ -48,9 +48,13 @@ module.exports = {
     {
       name    : 'core-no-addons',
       severity: 'warn',
-      comment : 'Core must not import addon source. Addons depend on core, never the reverse.',
-      from    : {path: '^scripts/(core|util|scene|sceneobject|editors)/'},
-      to      : {path: '^addons/'},
+      comment :
+        'Core must not import addon source. Addons depend on core, never the reverse. ' +
+        'Editors and editors/view3d/tools/* are intentionally excluded — they are ' +
+        'tool-like layers that consume the mesh addon API and themselves move into ' +
+        'addons in a follow-up; tracked separately under core-no-view3d-tools.',
+      from: {path: '^scripts/(core|util|scene|sceneobject)/'},
+      to  : {path: '^addons/'},
     },
     {
       name    : 'no-circular',

@@ -1,5 +1,5 @@
 import { Vector4 } from '../path.ux/pathux'
-import {Texture} from '../webgl'
+import {Texture} from '../webgl/index'
 
 ///XXX truly ancient code
 export const PCOS = 0

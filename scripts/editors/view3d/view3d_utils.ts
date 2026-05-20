@@ -9,7 +9,7 @@ export enum OrbitTargetModes {
   CURSOR = 1,
 }
 
-import {Mesh} from '../../mesh/mesh'
+import {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 import * as util from '../../util/util.js'
 import {IVectorOrHigher, Matrix4, Number3, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'

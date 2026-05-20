@@ -1,6 +1,6 @@
 import {getWasm, getWasmImmediate, type IWasmInterface} from '@sculptcore/api/api'
 import type {DrawBatch, Mesh, SpatialTree} from '@sculptcore/api/index'
-import {IUniformsBlock, WebGLBatchExecutor} from './webgl'
+import {IUniformsBlock, WebGLBatchExecutor} from './webgl/index'
 import {Shaders} from './shaders/shaders'
 import {Matrix4} from './path.ux/pathux'
 import {StructType} from '@litestl/typescript-runtime'

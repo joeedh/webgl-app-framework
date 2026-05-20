@@ -1,5 +1,5 @@
 import {Vector2, Matrix4} from '../../util/vectormath.js'
-import {FBO} from '../../webgl'
+import {FBO} from '../../webgl/index'
 import {FindNearestTypes} from './findnearest.js'
 import type {IFindnearestConstructor} from './findnearest.js'
 import type {IUniformsBlock} from '../../webgl/webgl.js'

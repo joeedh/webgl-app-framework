@@ -26,7 +26,7 @@
 import {DataBlock} from './lib_api.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js'
-import {CustomDataElem} from '../mesh/customdata.js'
+import {CustomDataElem} from '../../addons/builtin/mesh/src/customdata.js'
 
 /**
  * Stand-in for a DataBlock whose class isn't registered (the addon that owned
