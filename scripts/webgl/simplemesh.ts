@@ -8,6 +8,7 @@ import '../core/const'
 import {loadShader, Shaders} from '../shaders/shaders'
 import {RenderBuffer} from './webgl'
 import {OptionalIf} from '../util/optionalIf'
+import {GpuBuffer} from '../webgpu/buffer.js'
 
 type OpenVector = number[] | Float32Array | Float64Array | Vector2Like | Vector3Like | Vector4Like
 
@@ -1068,6 +1069,12 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
   uniforms: IUniformsBlock
   _uniforms_temp: IUniformsBlock
   private extraLayerFlag: number = 0
+  /** WebGPU buffer cache keyed by `layer.bufferKey` — populated by
+   *  `_uploadGpuBuffers`, the WebGPU sibling of `gen_buffers`. */
+  private _gpuBuffers: Map<string, GpuBuffer> = new Map()
+  /** Owning device pointer — used to detect device swaps and reset
+   *  the GPU buffer cache. */
+  private _gpuDevice: GPUDevice | undefined = undefined
 
   constructor(mesh: SimpleMesh) {
     this.layers = new GeoLayerManager()
@@ -1881,30 +1888,120 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
   }
 
   /**
-   * WebGPU draw entry — placeholder per Phase 4c. The full port needs:
+   * WebGPU mirror of `gen_buffers(gl)`. Packs each non-CUSTOM,
+   * non-INDEX `GeoLayer` in `layerflag` into its own `GpuBuffer`,
+   * keyed by `layer.bufferKey`. Re-runs only when `regen` is set or
+   * the device pointer changes. INDEX layers (uint16) get an
+   * 'index'-usage `GpuBuffer` so callers can `setIndexBuffer` them.
    *
-   *   1. An `_uploadGpuBuffers(device)` mirror of `gen_buffers(gl)`,
-   *      packing each `GeoLayer` into either an interleaved
-   *      `GpuBuffer` per primtype (matching the registry layouts in
-   *      `scripts/shaders/wgsl_shaders.ts`) or a buffer-per-attribute
-   *      with shader-side `arrayStride`/`shaderLocation` adjustments.
-   *   2. Shader-specific bind group construction — frame uniforms
-   *      (@group 0), per-material samplers/textures (@group 1), and
-   *      per-object matrices (@group 2). Sculpt shaders pull a
-   *      sampler+texture at @group(1); simple ones don't.
-   *   3. Index buffer support for `indexedMode === true`.
-   *   4. A draw call per primtype (tris/lines/points/tristrip-lines)
-   *      mirroring the GL `_draw_tris` / `_draw_lines` split.
-   *
-   * Throwing here means the WebGPU adapter surfaces a clear error
-   * instead of silently no-op'ing. Lift this stub when the buffer
-   * upload lands.
+   * Caller (WebGPUDrawQueueAdapter / queue_adapter.ts) wires the
+   * resulting buffers to the active shader's vertex layout slots —
+   * the slot↔layer mapping is shader-side, not island-side.
    */
-  drawGPU(_pass: GPURenderPassEncoder, _pipeline: GPURenderPipeline, _uniforms: IUniformsBlock): void {
-    throw new Error(
-      'SimpleIsland.drawGPU: vertex upload path not implemented yet — ' +
-        'see Phase 4c TODO in simplemesh.ts.'
-    )
+  _uploadGpuBuffers(device: GPUDevice): void {
+    if (this._gpuDevice !== device) {
+      for (const buf of this._gpuBuffers.values()) buf.destroy()
+      this._gpuBuffers.clear()
+      this._gpuDevice = device
+    }
+
+    const layerflag = this.layerflag
+
+    for (const layer of this.layers) {
+      if (layer.dataUsed === 0) continue
+      if (!(layer.type & layerflag) && layer.type !== LayerTypes.INDEX) continue
+      if (!layer.f32Ready || !layer.data_f32) continue
+
+      const data = layer.data_f32 as Float32Array
+      const byteLength = data.byteLength
+      if (byteLength === 0) continue
+      const view = new Uint8Array(data.buffer as ArrayBuffer, data.byteOffset, byteLength)
+
+      let gpu = this._gpuBuffers.get(layer.bufferKey)
+      if (!gpu || gpu.size < byteLength) {
+        gpu?.destroy()
+        gpu = new GpuBuffer(device, {
+          label: `SimpleIsland.${layer.bufferKey}`,
+          size : Math.max(byteLength, 16),
+          usage: layer.type === LayerTypes.INDEX ? 'index' : 'vertex',
+        })
+        this._gpuBuffers.set(layer.bufferKey, gpu)
+      }
+      gpu.write(view as unknown as BufferSource)
+    }
+  }
+
+  /** Look up an uploaded `GpuBuffer` by `layer.bufferKey`. */
+  getGpuBuffer(bufferKey: string): GpuBuffer | undefined {
+    return this._gpuBuffers.get(bufferKey)
+  }
+
+  /**
+   * WebGPU draw entry. Uploads any dirty `GeoLayer`s into `GpuBuffer`s
+   * (one per layer, matching the WebGL per-attribute VBO layout), then
+   * binds the non-CUSTOM/non-INDEX layers to vertex slots in the
+   * canonical order LOC, NORMAL, UV, COLOR, ID — the WGSL shaders in
+   * `wgsl_shaders.ts` declare `@location(n)` slots in this same order.
+   *
+   * The `pipeline` argument is unused at this layer (the caller
+   * already bound it before invoking us) but kept in the signature to
+   * match the `Drawable.drawGPU` contract.
+   */
+  drawGPU(pass: GPURenderPassEncoder, _pipeline: GPURenderPipeline, _uniforms: IUniformsBlock): void {
+    if (!this._gpuDevice) {
+      throw new Error('SimpleIsland.drawGPU: call _uploadGpuBuffers(device) before drawGPU.')
+    }
+
+    const layerflag = this.layerflag
+    const slotOrder: LayerTypes[] = [
+      LayerTypes.LOC,
+      LayerTypes.NORMAL,
+      LayerTypes.UV,
+      LayerTypes.COLOR,
+      LayerTypes.ID,
+    ]
+
+    let slot = 0
+    for (const type of slotOrder) {
+      if (!(type & layerflag)) continue
+      const name = LayerTypeNames[type as keyof typeof LayerTypeNames]
+      if (!name) continue
+      for (const layer of this.layers) {
+        if (layer.type !== type) continue
+        const buf = this._gpuBuffers.get(layer.bufferKey)
+        if (!buf) continue
+        pass.setVertexBuffer(slot, buf.handle)
+        slot += 1
+        break
+      }
+    }
+
+    const primflag = this.primflag ?? this.mesh.primflag
+    const indexedMode = this.getIndexedMode()
+
+    if (this.tottri && primflag & PrimitiveTypes.TRIS) {
+      const count = this.tottri * 3
+      if (indexedMode) {
+        const idx = this.getIndexBuffer(PrimitiveTypes.TRIS)
+        const buf = this._gpuBuffers.get(idx.bufferKey)
+        if (buf) {
+          pass.setIndexBuffer(buf.handle, 'uint16')
+          pass.drawIndexed(count, 1, 0, 0, 0)
+        }
+      } else {
+        pass.draw(count, 1, 0, 0)
+      }
+    }
+    if (this.totline && primflag & PrimitiveTypes.LINES) {
+      const count = this.totline * 2
+      pass.draw(count, 1, 0, 0)
+    }
+    if (this.totpoint && primflag & PrimitiveTypes.POINTS) {
+      pass.draw(this.totpoint, 1, 0, 0)
+    }
+    if (this.totline_tristrip && primflag & PrimitiveTypes.ADVANCED_LINES) {
+      pass.draw(this.totline_tristrip * 6, 1, 0, 0)
+    }
   }
 }
 
@@ -2063,6 +2160,12 @@ export class SimpleMesh {
 
     for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
+    }
+  }
+
+  _uploadGpuBuffers(device: GPUDevice): void {
+    for (const island of this.islands) {
+      island._uploadGpuBuffers(device)
     }
   }
 

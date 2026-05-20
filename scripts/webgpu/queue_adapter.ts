@@ -74,6 +74,12 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
           `implement Drawable.drawGPU(pass, pipeline, uniforms) (Phase 4c).`
       )
     }
+    // SimpleMesh / SimpleIsland exposes `_uploadGpuBuffers(device)` — call
+    // it ahead of drawGPU so the per-attribute GpuBuffers are populated.
+    // Other Drawable implementers manage their own uploads internally and
+    // skip this hook.
+    const uploader = (s.mesh as unknown as {_uploadGpuBuffers?: (device: GPUDevice) => void})._uploadGpuBuffers
+    if (uploader) uploader.call(s.mesh, this.frame.device)
     const uniforms = s.uniforms ?? this.frame.uniforms
     s.mesh.drawGPU(this.frame.passEncoder, pipeline.handle, uniforms)
   }
