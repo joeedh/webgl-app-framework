@@ -21,6 +21,8 @@ import fs from 'fs'
 import Path from 'path'
 import {fileURLToPath} from 'url'
 
+import {addonApiPlugin} from './addon_api_plugin.js'
+
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
 
@@ -79,6 +81,9 @@ function buildOptionsFor(entries) {
     keepNames  : true,
     chunkNames : '_chunks/[name]-[hash]',
     logOverride: {'direct-eval': 'silent'},
+    // @addon/<id>/api imports get resolved to a tiny runtime-lookup stub
+    // instead of inlining the upstream addon's code. See plan §2.5.
+    plugins: [addonApiPlugin(REPO_ROOT)],
   }
 }
 
