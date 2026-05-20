@@ -1,10 +1,10 @@
 export const FloatArrayClass = Float64Array
 
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js'
-import {nstructjs} from '../../../../scripts/path.ux/pathux.js'
+import {nstructjs} from '@framework/pathux'
 
 export const DerivFlags = {
   FIRST  : 1,
@@ -25,7 +25,6 @@ SolverSettings.STRUCT =
   speed : float;
 }
 `
-nstructjs.register(SolverSettings)
 
 export class SolverElem extends CustomDataElem {
   constructor() {
@@ -84,8 +83,6 @@ SolverElem.STRUCT =
   `
 }
 `
-nstructjs.register(SolverElem)
-CustomDataElem.register(SolverElem)
 
 export class Constraint {
   constructor(klst, params, wlst = undefined, vel_lst = undefined, force_lst = undefined, scratch_lst) {

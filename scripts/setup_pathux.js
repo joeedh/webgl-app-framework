@@ -3,6 +3,9 @@ import config from './config/config.js'
 import {IconManager, setBaseUnit, setIconManager, setIconMap, setMetric, UIBase} from './path.ux/scripts/pathux.js'
 import {Icons} from './editors/icon_enum.js'
 import {resolvePath} from './config.js'
+import { _setUIBase } from './framework_api.js';
+
+_setUIBase(UIBase)
 
 export var iconmanager
 

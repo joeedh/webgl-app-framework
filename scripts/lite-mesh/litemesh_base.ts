@@ -1,4 +1,4 @@
-import {MeshTypes} from '../../addons/builtin/mesh/src/mesh'
+import {MeshTypes} from '../../addons/builtin/mesh/src/mesh_base'
 export {AttrType} from '@sculptcore/api/sculptcore/mesh/AttrType'
 
 export const LTMeshTypes = MeshTypes

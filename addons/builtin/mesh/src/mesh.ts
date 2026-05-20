@@ -14,15 +14,16 @@ import {
   SAVE_DEAD_VERTS,
 } from './mesh_base'
 
-import {NodeFlags} from '../../../../scripts/core/graph'
+import {NodeFlags} from '@framework/api'
 
-import {Shaders} from '../../../../scripts/shaders/shaders.js'
+import {Shaders} from '@framework/api'
 
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../../../../scripts/webgl/simplemesh'
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '@framework/api'
 
-import {DataBlock} from '../../../../scripts/core/lib_api'
-import {IDataDefine, SceneObjectData} from '../../../../scripts/sceneobject/sceneobject_base'
-import {math, Matrix4, nstructjs, Number3, util, Vector2, Vector3, Vector3Like, Vector4} from '../../../../scripts/path.ux/pathux.js'
+import {DataBlock} from '@framework/api'
+import {IDataDefine, SceneObjectData} from '@framework/api'
+import {math, Matrix4, Number3, util, Vector2, Vector3, Vector3Like, Vector4} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 
 import {
   CDFlags,
@@ -34,7 +35,17 @@ import {
   LayerSet,
 } from './customdata'
 
-import {MeshTools} from './mesh_stdtools'
+import type {MeshTools as MeshToolsType} from './mesh_stdtools'
+
+// MeshTools is injected via setMeshTools() from addon_register, so this file
+// does not statically import mesh_stdtools.ts. That import would otherwise
+// pull select_ops.js → mesh_ops_base.ts → mesh.ts and reintroduce a cycle
+// whose `class SelectOpBase extends MeshOp` line is a real TDZ hazard.
+let _meshTools: typeof MeshToolsType | undefined
+
+export function setMeshTools(tools: typeof MeshToolsType): void {
+  _meshTools = tools
+}
 import {
   LogTags,
   MAX_EDGE_FACES,
@@ -49,12 +60,12 @@ import {
   RecalcFlags,
   ReusableIter,
 } from './mesh_base'
-import {EDGE_LINKED_LISTS} from '../../../../scripts/core/const.js'
+import {EDGE_LINKED_LISTS} from '@framework/api'
 
 import {NormalLayerElem, OrigIndexElem, UVLayerElem} from './mesh_customdata.js'
 import {Edge, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from './mesh_types.js'
 import {ElementList} from './mesh_element_list.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
+import {SelMask} from '@framework/api'
 import {BVH, BVHSettings} from './bvh.js'
 import {drawMeshElements, genRenderMesh} from './mesh_draw.js'
 import {GridBase} from './mesh_grids.js'
@@ -69,14 +80,14 @@ import {
   updateDispLayers,
 } from './mesh_displacement'
 import type {IGridConstructor} from './mesh_grids.js'
-import type {View3D} from '../../../../scripts/editors/view3d/view3d'
-import type {SceneObject} from '../../../../scripts/sceneobject/sceneobject'
-//import {Utf8DecodeWorker} from '../../../../scripts/extern/jszip/jszip'
-import type {ToolContext} from '../../../../scripts/core/context'
-import type {Material} from '../../../../scripts/core/material'
-import type {IUniformsBlock, ShaderProgram} from '../../../../scripts/webgl/webgl'
-import type {Scene} from '../../../../scripts/scene/scene'
-import type {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs'
+import type {View3D} from '@framework/api'
+import type {SceneObject} from '@framework/api'
+//import {Utf8DecodeWorker} from '@framework/api'
+import type {ToolContext} from '@framework/api'
+import type {Material} from '@framework/api'
+import type {IUniformsBlock, ShaderProgram} from '@framework/api'
+import type {Scene} from '@framework/api'
+import type {StructReader} from '@framework/api'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -454,10 +465,13 @@ mesh.Mesh {
   }
 
   static dataDefine(): IDataDefine {
+    if (!_meshTools) {
+      throw new Error('Mesh.dataDefine() called before setMeshTools(); ensure addon_register has run.')
+    }
     return {
       name      : 'Mesh',
       selectMask: SelMask.MESH,
-      tools     : MeshTools,
+      tools     : _meshTools,
       dataKind  : 'mesh',
     }
   }
@@ -6590,8 +6604,6 @@ mesh.Mesh {
   }
 }
 
-DataBlock.register(Mesh)
-SceneObjectData.register(Mesh)
 setMeshClass(Mesh)
 
 const g = window as unknown as any

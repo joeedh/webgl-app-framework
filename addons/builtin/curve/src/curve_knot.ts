@@ -1,7 +1,7 @@
-import {CustomDataElem, ICustomDataElemDef} from '../../addons/builtin/mesh/src/customdata'
-import {DataAPI, DataStruct, nstructjs} from '../path.ux/scripts/pathux.js'
-import {MeshTypes} from '../../addons/builtin/mesh/src/mesh_base'
-import {Vertex} from '../../addons/builtin/mesh/src/mesh'
+import {CustomDataElem, ICustomDataElemDef} from '../../mesh/src/customdata'
+import {DataAPI, DataStruct, nstructjs} from '@framework/pathux'
+import {MeshTypes} from '../../mesh/src/mesh_base'
+import {Vertex} from '../../mesh/src/mesh'
 
 export enum KnotFlags {}
 
@@ -92,8 +92,6 @@ mesh.KnotDataLayer {
     }
   }
 }
-
-CustomDataElem.register(KnotDataLayer)
 
 export function getKnot(v: Vertex): KnotDataLayer {
   for (let cd of v.customData) {

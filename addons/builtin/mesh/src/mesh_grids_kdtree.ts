@@ -1,18 +1,8 @@
-import {
-  Matrix4,
-  nstructjs,
-  Vector2,
-  Vector3,
-  Vector4,
-  util,
-  math,
-  Number2,
-  DataAPI,
-  Number3,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {Matrix4, Vector2, Vector3, Vector4, util, math, Number2, Number3} from '@framework/api'
+import {nstructjs, DataAPI} from '@framework/pathux'
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base'
 import {AttrRef, CustomDataElem} from './customdata'
-import {ChunkedSimpleMesh, SimpleMesh} from '../../../../scripts/webgl/simplemesh'
+import {ChunkedSimpleMesh, SimpleMesh} from '@framework/api'
 import {
   BLink,
   GridBase,
@@ -27,7 +17,7 @@ import '../../../../scripts/util/numeric.js'
 import {Loop} from './mesh_types'
 import {ColorLayerElem, Mesh} from './mesh'
 import {BVH} from './bvh.js'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 
 export const VMAXE = 16,
   VMAXN = 16
@@ -4583,5 +4573,3 @@ KdTreeGrid.STRUCT =
   loopEid             : int;
   nodeFieldSize       : int;
 }`
-nstructjs.register(KdTreeGrid)
-CustomDataElem.register(KdTreeGrid)

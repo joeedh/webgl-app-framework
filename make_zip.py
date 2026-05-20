@@ -18,9 +18,8 @@ sources = [
   "./scripts/core/**",
   "./scripts/config/**",
   "./scripts/scene/**",
-  "./scripts/curve/**",
   "./scripts/brush/**",
-  # scripts/mesh/ no longer exists — moved into addons/builtin/mesh/src/.
+  # scripts/curve/ and scripts/mesh/ no longer exist — moved into addons/builtin/{curve,mesh}/src/.
   "./scripts/editors/**",
   "./scripts/data_api/**",
   "./scripts/light/**",
@@ -40,7 +39,6 @@ sources = [
   "./scripts/shaders/**",
   "./scripts/camera/**",
   "./scripts/image/**",
-  "./scripts/subsurf/**",
   "./scripts/path.ux/scripts/**",
   "./scripts/extern/**",
   "*.html",

@@ -9,26 +9,16 @@ import {
   ILayerSettingsConstructor,
   LayerSettingsBase,
 } from './customdata'
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../../../../scripts/webgl/simplemesh.js'
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '@framework/api'
 import {AttrRef, ColorLayerElem, FloatElem, UVLayerElem} from './mesh_customdata.js'
 import {PatchBuilder} from './mesh_grids_subsurf.js'
-import {BasicLineShader, Shaders} from '../../../../scripts/shaders/shaders.js'
+import {BasicLineShader, Shaders} from '@framework/api'
 import {Handle, Loop, traceget, traceset, Vertex} from './mesh_types.js'
 
-import {
-  Vector2,
-  Vector3,
-  Vector4,
-  Quat,
-  Matrix4,
-  util,
-  math,
-  nstructjs,
-  DataAPI,
-  DataStruct,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {Mesh} from './mesh'
-import type {SceneObject} from '../../../../scripts/sceneobject/sceneobject'
+import {Vector2, Vector3, Vector4, Quat, Matrix4, util, math} from '@framework/api'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
+import type {Mesh} from './mesh'
+import type {SceneObject} from '@framework/api'
 import {BVH, IBVHVertex} from './bvh'
 
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
@@ -38,9 +28,9 @@ for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 import '../../../../scripts/util/polyfill.d.ts'
-import {PatchBase} from '../../../../scripts/subsurf/subsurf_patch.js'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
-import { IUniformsBlock } from '../../../../scripts/webgl/webgl.js'
+import {PatchBase} from '../../subsurf/src/subsurf_patch.js'
+import {StructReader} from '@framework/api'
+import { IUniformsBlock } from '@framework/api'
 
 export enum QRecalcFlags {
   NONE = 0,
@@ -2047,4 +2037,3 @@ mesh.Grid {
   }
 }
 
-CustomDataElem.register(Grid)

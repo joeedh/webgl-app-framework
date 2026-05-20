@@ -1,3 +1,9 @@
+// Side-effect: assigns globalThis._framework so externalized addon bundles
+// (which see `@framework/api` as a stub looking up globalThis._framework.api)
+// resolve to the main bundle's namespace. Must run before any addon's
+// addon_register side effects below.
+import './_framework_runtime.js'
+
 import './typescript_entry.js'
 import './camera/camera.js'
 
@@ -25,7 +31,13 @@ import '../addons/builtin/mesh/src/default_scene.js';
 import '../addons/builtin/mesh/src/addon_register.js';
 
 // Same pattern for subsurf (depends on mesh). See plan §6 step 7.
-import './subsurf/addon_register.js';
+import '../addons/builtin/subsurf/src/addon_register.js';
+
+// Same pattern for mesh_edit toolmode (depends on mesh). See plan §6 step 8.
+import '../addons/builtin/mesh_edit/src/addon_register.js';
+
+// Same pattern for curve toolmode (depends on mesh + mesh_edit). See plan §6 step 8.
+import '../addons/builtin/curve/src/addon_register.js';
 
 // Registers mesh-grid file-version migrations against core/file_migrations.
 // Once mesh moves out of the main bundle this side-effect import disappears.

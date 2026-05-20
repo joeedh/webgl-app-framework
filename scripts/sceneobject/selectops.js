@@ -11,7 +11,6 @@ import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {Icons} from '../editors/icon_enum.js';
 import {SceneObject, ObjectFlags} from './sceneobject.js';
-import {subdivide} from '../subsurf/subsurf_mesh.js';
 
 import {SelMask, SelToolModes, SelOneToolModes} from "../editors/view3d/selectmode.js";
 

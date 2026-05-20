@@ -160,13 +160,13 @@ SceneObjectData {
     this.materials = mats
   }
 
-  // TS doesn't like us overriding static properties from
-  // parent classes with unrelated behavior
-  // XXX: temporary hack, TODO: rename this to objectDataRegister
   static unregister(cls: IDataBlockConstructor<any, {}, {}>) {
     ObjectDataTypes.remove(cls as unknown as IObjectDataConstructor)
   }
 
+  // TS doesn't like us overriding static properties from
+  // parent classes with unrelated behavior
+  // XXX: temporary hack, TODO: rename this to objectDataRegister
   static register(cls: IDataBlockConstructor<any, {}, {}>) {
     if (!cls.hasOwnProperty('dataDefine')) {
       throw new Error('missing .dataDefine static method')

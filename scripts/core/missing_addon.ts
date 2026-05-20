@@ -26,7 +26,20 @@
 import {DataBlock} from './lib_api.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js'
-import {CustomDataElem} from '../../addons/builtin/mesh/src/customdata.js'
+
+// Constructor for the mesh-addon's `OpaqueCustomDataElem` placeholder.
+// Registered at addon-load time via `registerOpaqueCustomDataElem` so this
+// module stays mesh-agnostic (see plan §3).
+let opaqueCustomDataElemCls: (new () => unknown) | null = null
+
+/**
+ * Called by the mesh addon to publish its `OpaqueCustomDataElem` placeholder
+ * class. The class must extend mesh's `CustomDataElem` — core does not
+ * reference that base directly to keep the `core-no-addons` layer rule clean.
+ */
+export function registerOpaqueCustomDataElem(cls: new () => unknown): void {
+  opaqueCustomDataElemCls = cls
+}
 
 /**
  * Stand-in for a DataBlock whose class isn't registered (the addon that owned
@@ -116,43 +129,11 @@ MissingToolMode {
 // instantiated by the onUnknownClass hook for round-tripping serialized data.
 
 // ----------------------------------------------------------------------------
-// OpaqueCustomDataElem — placeholder for a CustomDataElem from an unloaded addon
-// ----------------------------------------------------------------------------
-
-/**
- * Stand-in for a CustomDataElem subclass whose addon isn't loaded. Carries the
- * original struct name + dynamic field values. Has no real implementation of
- * setValue/getValue/copyTo — those throw if anything tries to use it as a real
- * layer. The point is purely to keep the bytes alive across save/reload.
- */
-export class OpaqueCustomDataElem extends CustomDataElem<unknown> {
-  _origClsname: string = ''
-
-  static define() {
-    return {
-      elemTypeMask: 0,
-      typeName    : 'OpaqueCustomDataElem',
-      uiTypeName  : 'Missing (Addon Disabled)',
-      defaultName : 'Missing',
-      valueSize   : undefined,
-      flag        : 0,
-    }
-  }
-
-  static STRUCT = nstructjs.inlineRegister(
-    this,
-    `
-OpaqueCustomDataElem {
-  _origClsname : string;
-}
-  `
-  )
-}
-
-// OpaqueCustomDataElem is intentionally NOT registered via
-// CustomDataElem.register() — it must not appear in the customdata type menus.
-// nstructjs still knows about its struct schema via inlineRegister.
-
+// OpaqueCustomDataElem placeholder lives in the mesh addon
+// (`addons/builtin/mesh/src/missing_customdata.ts`) since its base class
+// `CustomDataElem` is mesh-defined. The mesh addon calls
+// `registerOpaqueCustomDataElem` (above) at load time so the hook below can
+// hand it back from `onUnknownClass` — keeping core mesh-agnostic.
 // ----------------------------------------------------------------------------
 // nstructjs hooks
 // ----------------------------------------------------------------------------
@@ -187,7 +168,11 @@ export function installMissingAddonHooks(): void {
     // reaches this hook. (Real DataBlock subclasses go through appstate's
     // explicit MissingDataBlock path, not this hook.)
     if (clsname.startsWith('mesh.') && clsname.includes('CustomData')) {
-      return OpaqueCustomDataElem
+      // Falls through to MissingToolMode if the mesh addon hasn't registered
+      // its placeholder yet (e.g. mesh disabled before any file load).
+      if (opaqueCustomDataElemCls) {
+        return opaqueCustomDataElemCls
+      }
     }
     return MissingToolMode
   }

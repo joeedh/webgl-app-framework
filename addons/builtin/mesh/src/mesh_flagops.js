@@ -1,24 +1,16 @@
 'use strict'
 
-import {
-  IntProperty,
-  ToolOp,
-  UndoFlags,
-  EnumProperty,
-  BoolProperty,
-  FloatProperty,
-  FlagProperty,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {IntProperty, ToolOp, UndoFlags, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from '@framework/pathux'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
-import * as util from '../../../../scripts/util/util.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import {SelMask, SelOneToolModes, SelToolModes} from '../../../../scripts/editors/view3d/selectmode.js'
-import {DataRefListProperty, DataRefProperty} from '../../../../scripts/core/lib_api.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {util} from '@framework/api'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {SelMask, SelOneToolModes, SelToolModes} from '@framework/api'
+import {DataRefListProperty, DataRefProperty} from '@framework/api'
+import {Icons} from '@framework/api'
 import {MeshOp} from './mesh_ops_base.js'
-import {SceneObject} from '../../../../scripts/sceneobject/sceneobject.js'
+import {SceneObject} from '@framework/api'
 import {Element} from './mesh_types.js'
-import {FindNearest} from '../../../../scripts/editors/view3d/findnearest.js'
+import {FindNearest} from '@framework/api'
 
 export class MeshFlagOpBase extends MeshOp {
   constructor() {
@@ -166,7 +158,6 @@ export class ToggleFlagOp extends MeshFlagOpBase {
     window.redraw_viewport(true)
   }
 }
-ToolOp.register(ToggleFlagOp)
 
 export class SetFlagOp extends MeshFlagOpBase {
   static tooldef() {
@@ -201,7 +192,6 @@ export class SetFlagOp extends MeshFlagOpBase {
     window.redraw_viewport(true)
   }
 }
-ToolOp.register(SetFlagOp)
 
 export class ClearFlagOp extends MeshFlagOpBase {
   static tooldef() {
@@ -236,4 +226,3 @@ export class ClearFlagOp extends MeshFlagOpBase {
     window.redraw_viewport(true)
   }
 }
-ToolOp.register(ClearFlagOp)

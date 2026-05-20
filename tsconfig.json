@@ -16,6 +16,8 @@
     "listEmittedFiles": false,
     "outDir": "types",
     "paths": {
+      "@framework/api": ["./scripts/framework_api.ts"],
+      "@framework/pathux": ["./scripts/path.ux/scripts/pathux.ts"],
       "@addon/mesh/api": ["./addons/builtin/mesh/src/api.ts"],
       "@addon/subsurf/api": ["./addons/builtin/subsurf/src/api.ts"],
       "@addon/mesh_edit/api": ["./addons/builtin/mesh_edit/src/api.ts"],

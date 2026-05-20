@@ -1,10 +1,11 @@
 import {CustomDataElem, ICustomDataElemDef} from './customdata'
 import {MeshTypes} from './mesh_base'
 import '../../../../scripts/util/floathalf.js'
-import {nstructjs, Vector2, Vector3, Vector4, DataAPI, DataStruct, Number4} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Vector4, Number4} from '@framework/api'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
-import {half2float} from '../../../../scripts/util/floathalf'
-import { StructReader } from '../../../../scripts/path.ux/scripts/util/nstructjs'
+import {half2float} from '@framework/api'
+import { StructReader } from '@framework/api'
 
 export enum UVFlags {
   PIN = 2,
@@ -101,7 +102,6 @@ mesh.UVLayerElem {
   }
 }
 
-CustomDataElem.register(UVLayerElem)
 
 export class Vector2LayerElem extends CustomDataElem<Vector2> {
   value: Vector2
@@ -190,7 +190,6 @@ mesh.Vector2LayerElem {
   }
 }
 
-CustomDataElem.register(Vector2LayerElem)
 
 export const ORIGINDEX_NONE = -1
 
@@ -248,7 +247,6 @@ mesh.OrigIndexElem {
   }
 }
 
-CustomDataElem.register(OrigIndexElem)
 
 export class FloatElem extends CustomDataElem<number> {
   static STRUCT = nstructjs.inlineRegister(
@@ -329,7 +327,6 @@ mesh.FloatElem {
   }
 }
 
-CustomDataElem.register(FloatElem)
 
 export class IntElem extends CustomDataElem<number> {
   static STRUCT = nstructjs.inlineRegister(
@@ -395,7 +392,6 @@ mesh.IntElem {
   }
 }
 
-CustomDataElem.register(IntElem)
 
 export class NormalLayerElem extends CustomDataElem<Vector3> {
   static STRUCT = nstructjs.inlineRegister(
@@ -464,7 +460,6 @@ mesh.NormalLayerElem {
   }
 }
 
-CustomDataElem.register(NormalLayerElem)
 
 export class ColorLayerElem extends CustomDataElem<Vector4> {
   static STRUCT = nstructjs.inlineRegister(
@@ -576,7 +571,6 @@ mesh.ColorLayerElem {
   }
 }
 
-CustomDataElem.register(ColorLayerElem)
 
 export class Vector3LayerElem extends CustomDataElem<Vector3> {
   static STRUCT = nstructjs.inlineRegister(
@@ -648,7 +642,6 @@ mesh.Vector3LayerElem {
   }
 }
 
-CustomDataElem.register(Vector3LayerElem)
 
 export class Vector4LayerElem extends CustomDataElem<Vector4> {
   static STRUCT = nstructjs.inlineRegister(
@@ -720,7 +713,6 @@ mesh.Vector4LayerElem {
   }
 }
 
-CustomDataElem.register(Vector4LayerElem)
 
 export class MaskElem extends FloatElem {
   static STRUCT = nstructjs.inlineRegister(
@@ -747,7 +739,6 @@ mesh.MaskElem {
   }
 }
 
-CustomDataElem.register(MaskElem)
 
 export {AttrRef} from './customdata'
 

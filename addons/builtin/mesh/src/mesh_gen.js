@@ -1,14 +1,14 @@
-import {SceneObjectData} from '../../../../scripts/sceneobject/sceneobject_base.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
-import {MeshIDShader, Shaders} from '../../../../scripts/shaders/shaders.js'
-import {Node, NodeFlags} from '../../../../scripts/core/graph.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
-import {DataBlock} from '../../../../scripts/core/lib_api.js'
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../../scripts/webgl/simplemesh.ts'
+import {SceneObjectData} from '@framework/api'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
+import {MeshIDShader, Shaders} from '@framework/api'
+import {Node, NodeFlags} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {DataBlock} from '@framework/api'
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '@framework/api'
 
-import {nstructjs} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {nstructjs} from '@framework/pathux'
 
 export const Generators = []
 export const GenTypes = {}
@@ -95,7 +95,6 @@ mesh.ProceduralGen {
 
 }
 `
-nstructjs.register(ProceduralGen)
 
 let VX = 0
 let VY = 1
@@ -103,6 +102,15 @@ let VZ = 2
 let VTOT = 3
 
 export class CubeGenerator extends ProceduralGen {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+    mesh.CubeGenerator {
+      dimen    : int;
+      toSphere : float;
+    }`
+  )
+
   constructor() {
     super()
 
@@ -408,14 +416,6 @@ export class CubeGenerator extends ProceduralGen {
   }
 }
 
-CubeGenerator.STRUCT =
-  nstructjs.inherit(CubeGenerator, ProceduralGen, 'mesh.CubeGenerator') +
-  `
-  dimen    : int;
-  toSphere : float;
-}
-`
-nstructjs.register(CubeGenerator)
 ProceduralGen.register(CubeGenerator)
 
 export class ProceduralMesh extends SceneObjectData {
@@ -478,9 +478,6 @@ ProceduralMesh.STRUCT =
   `
   generator : abstract(mesh.ProceduralGen);
 }`
-nstructjs.register(ProceduralMesh)
-SceneObjectData.register(ProceduralMesh)
-DataBlock.register(ProceduralMesh)
 
 export function buildProcMeshAPI(api) {
   for (let cls of Generators) {

@@ -8,7 +8,7 @@ import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import * as util from '../../../util/util.js'
 
-import '../../../subsurf/subsurf_loop_stencil.js'
+import '../../../../addons/builtin/subsurf/src/subsurf_loop_stencil.js'
 
 import {
   AttrRef,

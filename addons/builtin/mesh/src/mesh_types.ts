@@ -26,10 +26,11 @@ import {
   STORE_DELAY_CACHE_INDEX,
 } from './mesh_base'
 import {UVLayerElem} from './mesh_customdata'
-import {nstructjs, Vector3, Quat, Matrix4, util, Vector2, Number3} from '../../../../scripts/path.ux/pathux.js'
+import {Vector3, Quat, Matrix4, util, Vector2, Number3} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 
-import {EDGE_LINKED_LISTS} from '../../../../scripts/core/const.js'
-export {EDGE_LINKED_LISTS} from '../../../../scripts/core/const.js'
+import {EDGE_LINKED_LISTS} from '@framework/api'
+export {EDGE_LINKED_LISTS} from '@framework/api'
 
 const quat_temps = util.cachering.fromConstructor(Quat, 512)
 const mat_temps = util.cachering.fromConstructor(Matrix4, 256)
@@ -345,11 +346,11 @@ for (let i = 0; i < vnistack.length; i++) {
 }
 
 import {EmptyCDArray} from './mesh_base.js'
-import {KnotDataLayer} from '../../../../scripts/curve/curve_knot'
+import {KnotDataLayer} from '../../curve/src/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
 import {CDRef} from './customdata'
-import type {View3D} from '../../../../scripts/editors/all'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs'
+import type {View3D} from '@framework/api'
+import {StructReader} from '@framework/api'
 
 class ElementBase<TYPE extends number = -1> {
   static STRUCT = nstructjs.inlineRegister(

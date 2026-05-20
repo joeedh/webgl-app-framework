@@ -1,17 +1,16 @@
-import {nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 
-import {Vertex, Edge} from '../../addons/builtin/mesh/src/mesh_types'
-import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
-import {MeshTypes, MeshFlags, MeshFeatures, MeshFeatureError, MeshDrawFlags, MeshError} from '../../addons/builtin/mesh/src/mesh_base.js'
-import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
-import {NodeFlags} from '../core/graph.js'
-import {DataBlock} from '../core/lib_api.js'
-import {MeshTools} from '../../addons/builtin/mesh/src/mesh_stdtools.js'
-import {SelMask} from '../editors/view3d/selectmode.js'
-import {LayerTypes, SimpleMesh} from '../webgl/simplemesh.js'
+import {Vertex, Edge} from '../../mesh/src/mesh_types'
+import {Mesh} from '../../mesh/src/mesh.js'
+import {MeshTypes, MeshFlags, MeshFeatures, MeshFeatureError, MeshDrawFlags, MeshError} from '../../mesh/src/mesh_base.js'
+import {NodeFlags} from '@framework/api'
+import {MeshTools} from '../../mesh/src/mesh_stdtools.js'
+import {SelMask} from '@framework/api'
+import {LayerTypes, SimpleMesh} from '@framework/api'
 
-import * as util from '../util/util.js'
-import type {View3D} from '../editors/view3d/view3d'
+import {util} from '@framework/api'
+import type {View3D} from '@framework/api'
 
 export function basis(ks: number[], t: number, i: number, deg: number) {
   let len = ks.length
@@ -59,10 +58,10 @@ export class WalkRet {
 
 export * from './curve_knot'
 import {KnotDataLayer, KnotFlags, getKnot} from './curve_knot'
-import type {IUniformsBlock, ShaderProgram} from '../webgl/webgl.js'
-import type {ViewContext} from '../core/context.js'
-import {SceneObject} from '../sceneobject/sceneobject.js'
-import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import type {IUniformsBlock, ShaderProgram} from '@framework/api'
+import type {ViewContext} from '@framework/api'
+import {SceneObject} from '@framework/api'
+import type {StructReader} from '@framework/api'
 
 let WalkRets = util.cachering.fromConstructor(WalkRet, 1024)
 
@@ -726,5 +725,3 @@ CurveSpline {
   }
 }
 
-DataBlock.register(CurveSpline)
-SceneObjectData.register(CurveSpline)

@@ -1,4 +1,4 @@
-import * as vectormath from '../../../../scripts/util/vectormath.js'
+import {vectormath} from '@framework/api'
 
 import {Mesh, MeshFlags} from './mesh.js'
 

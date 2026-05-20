@@ -1,12 +1,19 @@
 import * as esbuild from 'esbuild'
 import fs from 'fs'
 import Path from 'path'
+import {fileURLToPath} from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
 
 let options = {
   entryPoints: [
     './scripts/entry_point.js',
     {in: './sculptcore/typescript/build/sculptcore-browser.wasm', out: 'sculptcore-browser'},
   ],
+  alias      : {
+    '@framework/api': Path.join(REPO_ROOT, 'scripts', 'framework_api.ts'),
+  },
   outdir     : "./build",
   bundle     : true,
   target     : "es2022",

@@ -1,10 +1,10 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
 import {LogContext} from './mesh_base.js'
 import {CotanVert, CotanVertFlags} from './mesh_cotan.js'
 
-import {nstructjs} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {nstructjs} from '@framework/pathux'
 
 import {MeshFlags} from './mesh_base.js'
 import {CustomDataElem, CDFlags} from './customdata.js'
@@ -723,8 +723,6 @@ CurvVert.STRUCT =
 }
 `
 
-nstructjs.register(CurvVert)
-CustomDataElem.register(CurvVert)
 
 export function getCurveVerts(mesh) {
   let cd_cotan = mesh.verts.customData.getLayerIndex('cotan')

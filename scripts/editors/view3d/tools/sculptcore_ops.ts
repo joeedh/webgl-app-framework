@@ -182,7 +182,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
       console.log('boundNodes', boundNodes, boundNodes.length, boundNodes.length > 0 ? boundNodes[0] : undefined)
 
-      wasmBrush.strength = brush.strength * 0.2
+      wasmBrush.strength = brush.strength * 0.01
       wasmBrush.radius = radius
       wasmBrush.writeProps()
       wasmExec.meshLog = SculptPaintOp.meshLog

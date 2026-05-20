@@ -1,6 +1,6 @@
 import {Icons} from '../icon_enum'
 import {MeshFlags} from '../../../addons/builtin/mesh/src/mesh_base'
-import {Mesh} from '../../../addons/builtin/mesh/src/mesh'
+import type {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 
 import {DataBlockBrowser, Editor, MeshMaterialPanel} from '../editor_base'
 import {
@@ -595,7 +595,7 @@ export class ObjectPanel extends ColumnFrame<ViewContext> {
     ]
 
     const data = ob.data
-    if (data instanceof Mesh) {
+    if (data?.lib_type === 'mesh') {
       panel = this.panel('Data Layers')
 
       for (const cdp of cdpanels) {

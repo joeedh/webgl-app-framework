@@ -1,35 +1,19 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import {SimpleMesh, LayerTypes} from '../../../../scripts/webgl/simplemesh.ts'
-import {
-  IntProperty,
-  BoolProperty,
-  FloatProperty,
-  EnumProperty,
-  FlagProperty,
-  ToolProperty,
-  Vec3Property,
-  Mat4Property,
-  StringProperty,
-  PropFlags,
-  PropTypes,
-  PropSubTypes,
-  ToolOp,
-  ToolMacro,
-  ToolFlags,
-  UndoFlags,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {TranslateOp} from '../../../../scripts/editors/view3d/transform/transform_ops.js'
-import {dist_to_line_2d} from '../../../../scripts/path.ux/scripts/util/math.js'
-import {CallbackNode, NodeFlags} from '../../../../scripts/core/graph.js'
-import {DependSocket} from '../../../../scripts/core/graphsockets.js'
-import * as util from '../../../../scripts/util/util.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {SimpleMesh, LayerTypes} from '@framework/api'
+import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty, PropFlags, PropTypes, PropSubTypes, ToolOp, ToolMacro, ToolFlags, UndoFlags} from '@framework/pathux'
+import {TranslateOp} from '@framework/api'
+import {dist_to_line_2d} from '@framework/api'
+import {CallbackNode, NodeFlags} from '@framework/api'
+import {DependSocket} from '@framework/api'
+import {util} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {Icons} from '@framework/api'
 
 import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js'
 import {MeshOp} from './mesh_ops_base.js'
-import {subdivide} from '../../../../scripts/subsurf/subsurf_mesh.js'
-import {MeshToolBase} from '../../../../scripts/editors/view3d/tools/meshtool.ts'
+import {subdivide} from '../../subsurf/src/subsurf_mesh.js'
+// MeshToolBase lives in the mesh_edit addon — referenced via runtime lookup
+// below to avoid a mesh → mesh_edit source-level cycle. See plan §6 step 8.
 import {GridBase, Grid, gridSides, GridSettingFlags} from './mesh_grids.js'
 import {QuadTreeGrid, QuadTreeFields} from './mesh_grids_quadtree.js'
 import {CustomDataElem} from './customdata'
@@ -37,11 +21,11 @@ import {bisectMesh, symmetrizeMesh} from './mesh_utils.js'
 import {QRecalcFlags} from './mesh_grids.js'
 
 import {buildGridsSubSurf} from './mesh_grids_subsurf.js'
-import {FindNearest} from '../../../../scripts/editors/view3d/findnearest.js'
+import {FindNearest} from '@framework/api'
 import {walkFaceLoop} from './mesh_utils.js'
 
 import '../../../../scripts/util/floathalf.js'
-import {DataRefProperty} from '../../../../scripts/core/lib_api.js'
+import {DataRefProperty} from '@framework/api'
 
 import {splitEdgesSmart} from './mesh_subdivide.js'
 
@@ -261,4 +245,3 @@ export class EdgeCutOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-ToolOp.register(EdgeCutOp)

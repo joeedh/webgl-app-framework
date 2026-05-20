@@ -1,6 +1,7 @@
-import {nstructjs, util, math, Vector3Like, DataAPI, DataStruct, Number3} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, math, Vector3Like, Number3} from '@framework/api'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 import {CustomDataElem, LayerSettingsBase} from './customdata.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
 import '../../../../scripts/util/numeric.js'
 
 const Queue = util.Queue
@@ -8,7 +9,7 @@ import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {buildCotanVerts, getCotanData, VAREA, VCTAN1, VCTAN2, VW, VETOT, vertexSmooth} from './mesh_utils.js'
 import {AttrRef, Edge, Face, Loop, Mesh, Vertex} from './mesh.js'
 import {DispLayerVert} from './mesh_displacement.js'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 
 export const ParamizeModes = {
   SELECTED: 1,
@@ -158,7 +159,6 @@ ParamVertSettings.STRUCT =
   smoothTangents : bool;
   weightMode     : int;
 }`
-nstructjs.register(ParamVertSettings)
 
 const tmp = new Vector3()
 
@@ -589,8 +589,6 @@ ParamVert.STRUCT =
     wlist        : array(float);
     totarea      : float;
   }`
-nstructjs.register(ParamVert)
-CustomDataElem.register(ParamVert)
 
 export function calcGeoDist(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, shell: Face[], mode: number) {
   const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings

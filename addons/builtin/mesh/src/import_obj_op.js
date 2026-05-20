@@ -3,8 +3,8 @@
 // because it's a mesh-specific feature — keeping it here lets
 // scripts/core/app_ops.js stop importing from mesh. See plan §3 / §12.
 
-import {ToolOp, UndoFlags} from '../../../../scripts/path.ux/scripts/pathux.js'
-import * as platform from '../../../../scripts/core/platform.js'
+import {ToolOp, UndoFlags} from '@framework/pathux'
+import {platform} from '@framework/api'
 import {ImportOBJOp} from './mesh_createops.js'
 
 export class AppImportOBJOp extends ToolOp {
@@ -47,4 +47,3 @@ export class AppImportOBJOp extends ToolOp {
   }
 }
 
-ToolOp.register(AppImportOBJOp)

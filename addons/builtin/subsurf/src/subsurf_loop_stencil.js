@@ -1,9 +1,9 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import * as math from '../util/math.js';
-import {MeshTypes, MeshFlags} from '../../addons/builtin/mesh/src/mesh_base.js';
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api';
+import {util} from '@framework/api';
+import {math} from '@framework/api';
+import {MeshTypes, MeshFlags} from '../../mesh/src/mesh_base.js';
 
-import {sym, binop, checksym, unaryop, call} from '../mathl/transform/sym.js';
+import {sym, binop, checksym, unaryop, call} from '@framework/api';
 
 export class SymVector3 extends Array {
   constructor(val) {

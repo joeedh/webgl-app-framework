@@ -17,12 +17,9 @@ import addonManager from '../../../addon/addon.js'
 // at import time, so by the time we register the addon below the classes are
 // in the ToolModes[] enum.
 //
-// tetmesh is intentionally absent: it converted to a real out-of-bundle
-// per-addon build (see addons/builtin/tetmesh/) and is loaded via the
-// addon pipeline at startup. See plan §12 deferred follow-up #3.
-import {MeshToolBase} from './meshtool.js'
-import {MeshEditor} from './mesheditor.js'
-import {CurveToolBase} from './curvetool.js'
+// tetmesh + mesh_edit + curve are intentionally absent: each converted to its
+// own out-of-bundle per-addon build (see addons/builtin/{tetmesh,mesh_edit,curve}/)
+// and is loaded via the addon pipeline at startup. See plan §6 step 8.
 import {BVHToolMode} from './pbvh.js'
 import {PaintToolModeBase} from './pbvh_base.js'
 import {SculptCorePaintMode} from './sculptcore.js'
@@ -35,36 +32,6 @@ function maybeRegister(
   if (addonManager.idmap.has(id)) return
   addonManager.registerInternalAddon({manifest, exports})
 }
-
-maybeRegister(
-  'mesh_edit',
-  {
-    id          : 'mesh_edit',
-    name        : 'Mesh Edit',
-    version     : '1.0.0',
-    entry       : 'internal',
-    dependencies: ['mesh'],
-    buildMode   : 'prebuilt',
-    author      : 'joeedh',
-    description : 'Mesh-editing toolmode.',
-  },
-  {mesh_edit: {MeshToolBase, MeshEditor}}
-)
-
-maybeRegister(
-  'curve',
-  {
-    id          : 'curve',
-    name        : 'Curve',
-    version     : '1.0.0',
-    entry       : 'internal',
-    dependencies: ['mesh'],
-    buildMode   : 'prebuilt',
-    author      : 'joeedh',
-    description : 'Bezier curve editing toolmode.',
-  },
-  {curve: {CurveToolBase}}
-)
 
 maybeRegister(
   'pbvh_sculpt',

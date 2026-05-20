@@ -30,9 +30,17 @@ import {calcTransCenter, type TransCenterResult} from '../transform/transform_qu
 import {Icons} from '../../icon_enum.js'
 import {ConstraintSpaces} from '../transform/transform_base.js'
 import {InsetTransformOp} from '../transform/transform_inset.js'
-import {InsetHoleOp} from '../../../../addons/builtin/mesh/src/mesh_extrudeops.js'
 import type {ViewContext} from '../../../core/context.js'
 import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
+
+// Late-bound by the mesh addon's register hook so this file does not
+// statically depend on the mesh addon (which would cycle back through
+// mesh_ops_base.ts → mesh.ts). See addons/builtin/mesh/src/addon_register.ts.
+import type {ToolOpAny} from '../../../path.ux/scripts/path-controller/controller/controller_abstract.js'
+let _InsetHoleOp: {invoke(ctx: unknown, args: object): ToolOpAny} | undefined
+export function setInsetHoleOp(op: typeof _InsetHoleOp): void {
+  _InsetHoleOp = op
+}
 
 const update_temps = util.cachering.fromConstructor(Vector3, 64)
 const update_temps4 = util.cachering.fromConstructor(Vector4, 64)
@@ -568,7 +576,10 @@ export class InflateWidget extends TransformWidget {
 
   _handleClick(e: PointerEvent) {
     const macro = new ToolMacro()
-    macro.add(InsetHoleOp.invoke(this.ctx!, {}))
+    if (!_InsetHoleOp) {
+      throw new Error('InsetHoleOp not registered — mesh addon must register before widget use')
+    }
+    macro.add(_InsetHoleOp.invoke(this.ctx!, {}))
     macro.add(InsetTransformOp.invoke(this.ctx!, {selmask: this.ctx!.selectMask}))
 
     this.execTool(this.ctx!, macro)

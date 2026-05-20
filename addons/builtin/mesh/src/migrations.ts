@@ -10,8 +10,8 @@
  * register() hook.
  */
 
-import {registerFileMigrator} from '../../../../scripts/core/file_migrations.js'
-import type {Library} from '../../../../scripts/core/lib_api.js'
+import {registerFileMigrator} from '@framework/api'
+import type {Library} from '@framework/api'
 import {GridBase} from './mesh_grids.js'
 
 function forEachGriddedMesh(

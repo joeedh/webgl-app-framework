@@ -4,7 +4,7 @@ import {SelMask} from '../selectmode.js'
 import {SnapModes, TransformOp} from './transform_ops.js'
 import {MeshFlags, MeshTypes} from '../../../../addons/builtin/mesh/src/mesh_base.js'
 import {Edge, Face, Vertex} from '../../../../addons/builtin/mesh/src/mesh_types.js'
-import {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
+import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
 import type {ViewContext} from '../../../core/context.js'
 
 class Region {

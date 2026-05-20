@@ -15,16 +15,17 @@ lengths using the same smoothed coordinates.
 */
 
 import {CDFlags, CustomDataLayer, LayerSet, LayerSettingsBase} from './customdata.js'
-import {nstructjs, util, DataAPI, DataStruct, Number3} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, Number3} from '@framework/api'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 import {CustomDataElem} from './customdata'
-import {Vector3, Matrix4} from '../../../../scripts/util/vectormath.js'
+import {Vector3, Matrix4} from '@framework/api'
 
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {paramizeMesh, ParamizeModes, ParamVert, ParamVertSettings} from './mesh_paramizer'
 import {BVHVertFlags, MDynVert} from './bvh.js'
 import {getCornerFlag, getFaceSetsAttr, getSmoothBoundFlag} from './mesh_facesets.js'
 import {AttrRef, IntElem, Mesh, Vector2LayerElem, Vector3LayerElem, Vertex} from './mesh'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 
 function smoothno(v: Vertex, dv: DispLayerVert) {
   dv.no.load(v.no)
@@ -495,7 +496,6 @@ DispLayerSettings.STRUCT =
   updateGen     : int;
   lastUpdateGen : int;
 }`
-nstructjs.register(DispLayerSettings)
 
 export enum DispVertFlags {
   NONE = 0,
@@ -1075,8 +1075,6 @@ DispLayerVert.STRUCT =
 
   smoothco    : vec3;
 }`
-nstructjs.register(DispLayerVert)
-CustomDataElem.register(DispLayerVert)
 
 export function initDispLayers(mesh: Mesh) {
   if (!mesh.verts.customData.hasLayer('displace')) {

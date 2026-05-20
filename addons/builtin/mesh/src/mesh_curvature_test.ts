@@ -1,7 +1,8 @@
-import {nstructjs, util, math, DataAPI, DataStruct} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, math} from '@framework/api'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 import {CustomDataElem, LayerSettingsBase} from './customdata'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
+import {StructReader} from '@framework/api'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
 import '../../../../scripts/util/numeric.js'
 
 declare const numeric: {
@@ -88,7 +89,6 @@ CurvVert2Settings.STRUCT =
   smoothTangents : bool;
   weightMode     : int;
 }`
-nstructjs.register(CurvVert2Settings)
 
 const tmp = new Vector3()
 const itmp1 = new Vector3()
@@ -488,8 +488,6 @@ CurvVert2.STRUCT =
     wlist        : array(float);
     totarea      : float;
   }`
-nstructjs.register(CurvVert2)
-CustomDataElem.register(CurvVert2)
 
 export function curvatureTest(mesh: Mesh, cd_curvt: number, shell: Face[], mode: number) {
   let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings() as CurvVert2Settings

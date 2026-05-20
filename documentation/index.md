@@ -31,6 +31,7 @@ See [Path.UX Architecture](../scripts/path.ux/docs_src/architecture.md)
 - [Tool System](../scripts/path.ux/docs_src/toolsystem.md)
 - [Data Graph](datagraph.md)
 - [ToolMode](toolmode.md)
+- [Addons](addons.md)
 
 ## View
 

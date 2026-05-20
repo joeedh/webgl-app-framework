@@ -1,14 +1,5 @@
-import {
-  nstructjs,
-  util,
-  Vector2,
-  Vector3,
-  Vector4,
-  Matrix4,
-  Quat,
-  Number3,
-  IVectorOrHigher,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, Vector2, Vector3, Vector4, Matrix4, Quat, Number3, IVectorOrHigher} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 
 import '../../../../scripts/path.ux/scripts/global.d.ts'
 
@@ -16,8 +7,8 @@ const DYNAMIC_SHUFFLE_NODES = false //attempt fast debalancing of tree dynamical
 
 const normalRets = util.cachering.fromConstructor(Vector3, 512)
 
-import * as math from '../../../../scripts/util/math.js'
-import {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from '../../../../scripts/util/isect.js'
+import {math} from '@framework/api'
+import {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from '@framework/api'
 
 import {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from './mesh_types.js'
 
@@ -26,22 +17,22 @@ import {MeshTypes, MeshFlags, ENABLE_CACHING, CDElemArray} from './mesh_base.js'
 import {GenericGridVert, GridBase, GridVert} from './mesh_grids'
 
 import {QRecalcFlags} from './mesh_grids'
-import {EDGE_LINKED_LISTS} from '../../../../scripts/core/const.js'
-import {aabb_sphere_dist, closest_point_on_tri} from '../../../../scripts/util/math.js'
+import {EDGE_LINKED_LISTS} from '@framework/api'
+import {aabb_sphere_dist, closest_point_on_tri} from '@framework/api'
 import {getFaceSets} from './mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from './mesh_customdata'
-import {Mesh} from './mesh'
+import type {Mesh} from './mesh'
 
 // Mesh-agnostic spatial interfaces moved to ./spatial. Re-exported here so
 // existing consumers that import from '../util/bvh' keep compiling; new code
-// should import directly from '../../../../scripts/util/spatial'. See plan §3.
-import {GenericIsect} from '../../../../scripts/util/spatial.js'
+// should import {directly} from '@framework/api'. See plan §3.
+import {GenericIsect} from '@framework/api'
 import type {
   IBVHCreateArgs as ISpatialBVHCreateArgs,
   IBVHVertex as ISpatialBVHVertex,
   IGenericIsect,
   ISurfaceSampler,
-} from '../../../../scripts/util/spatial.js'
+} from '@framework/api'
 
 export {GenericIsect}
 export type {IGenericIsect, ISurfaceSampler}
@@ -340,7 +331,6 @@ MDynVert {
   }
 }
 
-CustomDataElem.register(MDynVert)
 
 export function getDynVerts(mesh: Mesh): CDRef<MDynVert> {
   let cd_dyn_vert = mesh.verts.customData.getLayerIndex('dynvert')
@@ -445,7 +435,6 @@ CDNodeInfo {
   }
 }
 
-CustomDataElem.register(CDNodeInfo)
 
 const cvstmps = util.cachering.fromConstructor<Vector3>(Vector3, 64)
 const cvstmps2 = util.cachering.fromConstructor<Vector3>(Vector3, 64)
@@ -535,7 +524,7 @@ export class BVHNodeEdge {
 export const DEFORM_BRIDGE_TRIS = false
 
 export type OrigCoType = Vector3LayerElem
-import {BoolOr, OptionalIf, OptionalIfNot} from '../../../../scripts/util/optionalIf'
+import {BoolOr, OptionalIf, OptionalIfNot} from '@framework/api'
 
 export class BVHNode<
   OPT extends {

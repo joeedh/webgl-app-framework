@@ -1,4 +1,4 @@
-import {Vector3, Vector4, Matrix4, util, math, Number3} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {Vector3, Vector4, Matrix4, util, math, Number3} from '@framework/api'
 const {winding} = math
 import {
   MeshFlags,
@@ -15,7 +15,7 @@ import {getArrayTemp} from './mesh_base.js'
 import {applyTriangulation} from './mesh_tess.js'
 import {getFaceSets, getFaceSetsAttr} from './mesh_facesets.js'
 import {BVHVertFlags, getDynVerts, MDynVert} from './bvh.js'
-import {INumberList} from '../../../../scripts/util/polyfill.d'
+import {INumberList} from '@framework/api'
 import {Edge, Element, Face, Loop, Vertex} from './mesh_types'
 import {AttrRef, ColorLayerElem, IntElem, Mesh, UVLayerElem} from './mesh'
 

@@ -1,13 +1,13 @@
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {Mesh} from './mesh.js'
-import {Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as parseutil from '../../../../scripts/util/parseutil.js'
-import {BinaryReader} from '../../../../scripts/util/binarylib.js'
+import {Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
+import {parseutil} from '@framework/api'
+import {BinaryReader} from '@framework/api'
 import '../../../../scripts/extern/jszip/jszip.js'
 import {UVLayerElem, FloatElem, NormalLayerElem, OrigIndexElem, IntElem} from './mesh.js'
-import {SceneObject} from '../../../../scripts/sceneobject/sceneobject.js'
-import {NullObject} from '../../../../scripts/nullobject/nullobject.js'
+import {SceneObject} from '@framework/api'
+import {NullObject} from '@framework/api'
 
 export class FBXFileError extends Error {}
 

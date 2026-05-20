@@ -1,6 +1,6 @@
-import * as util from '../../../../scripts/util/util.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import * as math from '../../../../scripts/util/math.js'
+import {util} from '@framework/api'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {math} from '@framework/api'
 import '../../../../scripts/util/numeric.js'
 import {applyTriangulation, triangulateFace} from './mesh_tess.js'
 
@@ -1267,7 +1267,7 @@ export function splitEdgesSmart(mesh, es, lctx) {
   }
 }
 
-import {ccSmooth, subdivide} from '../../../../scripts/subsurf/subsurf_mesh.js'
+import {ccSmooth, subdivide} from '../../subsurf/src/subsurf_mesh.js'
 import {Loop, Vertex} from './mesh_types.js'
 import {MeshFlags} from './mesh_base.js'
 

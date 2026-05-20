@@ -1,9 +1,9 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
 import {MeshTypes, MeshFlags, LogContext, MeshError, getArrayTemp, ReusableIter} from './mesh_base.js'
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js'
-import {nstructjs} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {nstructjs} from '@framework/pathux'
 import {applyTriangulation} from './mesh_tess.js'
 import {
   dissolveEdgeLoops,

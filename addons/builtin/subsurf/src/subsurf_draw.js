@@ -1,9 +1,9 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import {MeshDrawInterface, OrigRef} from "../editors/view3d/view3d_draw.js";
-import {Mesh, MeshTypes, MeshFlags} from '../../addons/builtin/mesh/src/mesh.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api';
+import {util} from '@framework/api';
+import {MeshDrawInterface, OrigRef} from '@framework/api';
+import {Mesh, MeshTypes, MeshFlags} from '../../mesh/src/mesh.js';
 import {createPatches} from './subsurf_mesh.js';
-import {Texture} from '../webgl/webgl.js';
+import {Texture} from '@framework/api';
 
 let orig_rets = util.cachering.fromConstructor(OrigRef, 128);
 

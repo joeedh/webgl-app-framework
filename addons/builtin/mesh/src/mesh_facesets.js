@@ -1,5 +1,5 @@
 import {CustomDataElem, AttrRef} from './customdata.js'
-import {util, Vector4} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, Vector4} from '@framework/api'
 import {BVHVertFlags} from './bvh.js'
 
 export function getFaceSetsAttr(mesh, autoCreate = true) {

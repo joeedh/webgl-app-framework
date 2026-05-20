@@ -1,10 +1,10 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
 import {MeshOp} from './mesh_ops_base'
-import {ToolOp} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {ToolOp} from '@framework/pathux'
 import {getArrayTemp, MAX_FACE_VERTS, MeshFlags, MeshTypes} from './mesh_base'
 import {Edge, EID, Element, Face, LogContext, Loop, Mesh, Vertex} from './mesh'
-import type {ToolContext} from '../../../../scripts/core/context'
+import type {ToolContext} from '@framework/api'
 
 export function splitEdgeLoops_pre(
   mesh: Mesh,
@@ -760,4 +760,3 @@ export class BevelOp extends MeshOp {
     }
   }
 }
-ToolOp.register(BevelOp)

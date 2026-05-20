@@ -50,18 +50,22 @@ describe('tetmesh as a real per-addon bundle', () => {
     // The class is inlined because tetmesh.ts is the addon's local source —
     // not routed through @addon/*. Spot-check a hallmark string.
     expect(built).toContain('TetMeshTool')
-    expect(built).toContain('ToolMode.register')
+    // Registration now goes through `api.register(TetMeshTool)` in the
+    // addon's `register(api)` hook instead of module-scope
+    // `ToolMode.register(TetMeshTool)` — see the addon-api migration.
+    expect(built).toMatch(/api\.register\s*\(\s*TetMeshTool/)
   })
 
   test('addon_register.ts no longer mentions TetMeshTool', () => {
     const src = fs.readFileSync(ADDON_REGISTER_TS, 'utf-8')
     // The import block keeps the class names for the still-in-bundle
-    // toolmodes (MeshToolBase, MeshEditor, ...) but tetmesh.js should be
-    // gone entirely.
+    // toolmodes (SculptCorePaintMode, ...) but tetmesh.js should be gone
+    // entirely. mesh_edit and curve have likewise moved into their own
+    // addon directories (plan §6 step 8) and are no longer referenced here.
     expect(src).not.toMatch(/\bTetMeshTool\b/)
     expect(src).not.toContain(`from './tetmesh.js'`)
+    expect(src).not.toMatch(/\bCurveToolBase\b/)
     // sanity-check the other toolmodes are still referenced
-    expect(src).toMatch(/MeshToolBase/)
     expect(src).toMatch(/SculptCorePaintMode/)
   })
 

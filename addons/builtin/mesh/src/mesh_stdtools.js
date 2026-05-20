@@ -1,5 +1,5 @@
-import {StandardTools} from '../../../../scripts/sceneobject/stdtools.js'
-import {SelMask, SelOneToolModes} from '../../../../scripts/editors/view3d/selectmode.js'
+import {StandardTools} from '@framework/api'
+import {SelMask, SelOneToolModes} from '@framework/api'
 import {MeshFlags} from './mesh_base.js'
 import {SelectOneOp} from './select_ops.js'
 

@@ -23,13 +23,6 @@ module.exports = {
       to  : {path: '^scripts/mesh/'},
     },
     {
-      name    : 'core-no-subsurf',
-      severity: 'warn',
-      comment : 'scripts/core/ must not depend on scripts/subsurf/. Subsurf is moving into an addon.',
-      from    : {path: '^scripts/core/'},
-      to      : {path: '^scripts/subsurf/'},
-    },
-    {
       name    : 'core-no-view3d-tools',
       severity: 'warn',
       comment :
@@ -52,9 +45,11 @@ module.exports = {
         'Core must not import addon source. Addons depend on core, never the reverse. ' +
         'Editors and editors/view3d/tools/* are intentionally excluded — they are ' +
         'tool-like layers that consume the mesh addon API and themselves move into ' +
-        'addons in a follow-up; tracked separately under core-no-view3d-tools.',
+        'addons in a follow-up; tracked separately under core-no-view3d-tools. ' +
+        'Type-only imports are permitted: they erase at compile time and create no ' +
+        'runtime dependency (see lib_api.ts / context.ts mesh type references).',
       from: {path: '^scripts/(core|util|scene|sceneobject)/'},
-      to  : {path: '^addons/'},
+      to  : {path: '^addons/', dependencyTypesNot: ['type-only']},
     },
     {
       name    : 'no-circular',

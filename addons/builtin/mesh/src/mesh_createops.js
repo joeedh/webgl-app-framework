@@ -1,44 +1,34 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import {SimpleMesh, LayerTypes} from '../../../../scripts/webgl/simplemesh.ts'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {SimpleMesh, LayerTypes} from '@framework/api'
 
 import {makeCube} from './mesh_shapes.js'
-import {
-  IntProperty,
-  BoolProperty,
-  FloatProperty,
-  EnumProperty,
-  FlagProperty,
-  ToolProperty,
-  Vec3Property,
-  Mat4Property,
-  StringProperty,
-  StringSetProperty,
-  ListProperty,
-  PropFlags,
-  PropTypes,
-  PropSubTypes,
-  ToolOp,
-  ToolFlags,
-  UndoFlags,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {dist_to_line_2d} from '../../../../scripts/path.ux/scripts/util/math.js'
-import {CallbackNode, NodeFlags} from '../../../../scripts/core/graph.js'
-import {DataRefProperty} from '../../../../scripts/core/lib_api.js'
-import {DependSocket} from '../../../../scripts/core/graphsockets.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty, StringSetProperty, ListProperty, PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags} from '@framework/pathux'
+import {dist_to_line_2d} from '@framework/api'
+import {CallbackNode, NodeFlags} from '@framework/api'
+import {DataRefProperty} from '@framework/api'
+import {DependSocket} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {Icons} from '@framework/api'
 
 import {Mesh, MeshTypes, MeshFlags, LogContext} from './mesh.js'
-import {loopSubdivide, subdivide} from '../../../../scripts/subsurf/subsurf_mesh.js'
-import {SceneObject} from '../../../../scripts/sceneobject/sceneobject.js'
-import {MeshToolBase} from '../../../../scripts/editors/view3d/tools/meshtool.ts'
+import {loopSubdivide, subdivide} from '../../subsurf/src/subsurf_mesh.js'
+import {SceneObject} from '@framework/api'
 import {MeshOp} from './mesh_ops_base.js'
+
+// MeshToolBase lives in the mesh_edit addon, which depends on mesh — looked up
+// at use time so we don't introduce a mesh → mesh_edit source-level cycle.
+// See plan §6 step 8.
+function _isMeshToolMode(toolmode) {
+  if (!toolmode) return false
+  const Cls = window._addons?.getAddonAPI?.('mesh_edit')?.exports?.mesh_edit?.MeshToolBase
+  return Cls ? toolmode instanceof Cls : false
+}
 import {GenTypes, ProceduralMesh} from './mesh_gen.js'
-import {DefaultMat, Material} from '../../../../scripts/core/material.js'
+import {DefaultMat, Material} from '@framework/api'
 import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js'
-import {css2matrix} from '../../../../scripts/path.ux/scripts/path-controller/util/cssutils.js'
+import {css2matrix} from '@framework/api'
 import {splitEdgesSmart2} from './mesh_subdivide.js'
 import {dissolveFaces, triangulateMesh} from './mesh_utils.js'
 import {readOBJ} from './objloader.js'
@@ -52,7 +42,7 @@ export class MeshCreateOp extends MeshOp {
     let tool = super.invoke(ctx, args)
 
     if (!('makeNewObject' in args)) {
-      if (ctx.toolmode && !(ctx.toolmode instanceof MeshToolBase)) {
+      if (ctx.toolmode && !_isMeshToolMode(ctx.toolmode)) {
         tool.inputs.makeNewObject.setValue(true)
       } else {
         tool.inputs.makeNewObject.setValue(false)
@@ -94,7 +84,7 @@ export class MeshCreateOp extends MeshOp {
     if (ctx.scene && ctx.scene.toolmode) {
       let toolmode = ctx.scene.toolmode
 
-      if (!(toolmode instanceof MeshToolBase)) {
+      if (!_isMeshToolMode(toolmode)) {
         this.inputs.makeNewObject.setValue(true)
       }
     }
@@ -312,7 +302,6 @@ export class MakePlaneOp extends MeshCreateOp {
   }
 }
 
-ToolOp.register(MakePlaneOp)
 
 export class MakeCubeOp extends MeshCreateOp {
   constructor() {
@@ -350,7 +339,6 @@ export class MakeCubeOp extends MeshCreateOp {
   }
 }
 
-ToolOp.register(MakeCubeOp)
 
 export class MakeSphere extends MeshCreateOp {
   constructor() {
@@ -433,7 +421,6 @@ export class MakeSphere extends MeshCreateOp {
   }
 }
 
-ToolOp.register(MakeSphere)
 
 export class MakeCylinder extends MeshCreateOp {
   constructor() {
@@ -503,7 +490,6 @@ export class MakeCylinder extends MeshCreateOp {
   }
 }
 
-ToolOp.register(MakeCylinder)
 
 export class MakeIcoSphere extends MeshCreateOp {
   constructor() {
@@ -640,7 +626,6 @@ export class MakeIcoSphere extends MeshCreateOp {
   }
 }
 
-ToolOp.register(MakeIcoSphere)
 
 export class CreateFaceOp extends MeshOp {
   constructor() {
@@ -872,7 +857,6 @@ export class CreateFaceOp extends MeshOp {
   }
 }
 
-ToolOp.register(CreateFaceOp)
 
 export class CreateMeshGenOp extends ToolOp {
   static tooldef() {
@@ -969,7 +953,6 @@ export class CreateMeshGenOp extends ToolOp {
   }
 }
 
-ToolOp.register(CreateMeshGenOp)
 
 export class ProceduralToMesh extends ToolOp {
   static tooldef() {
@@ -1036,7 +1019,6 @@ export class ProceduralToMesh extends ToolOp {
   }
 }
 
-ToolOp.register(ProceduralToMesh)
 
 export class ImportOBJOp extends MeshCreateOp {
   static tooldef() {

@@ -1,9 +1,9 @@
-import * as util from '../../../../scripts/util/util.js'
-import {DataAPI, nstructjs, ToolProperty, DataStruct} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util} from '@framework/api'
+import {DataAPI, nstructjs, ToolProperty, DataStruct} from '@framework/pathux'
 import {EmptyCDArray, ICustomDataCapable} from './mesh_base.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {Icons} from '@framework/api'
 import {CDElemArray} from './mesh_base.js'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 import type {Element} from './mesh_types'
 
 /* @deprecated */

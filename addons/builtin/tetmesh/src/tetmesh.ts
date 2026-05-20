@@ -1,12 +1,12 @@
-import {nstructjs, KeyMap, HotKey} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {ToolMode} from '../../../../scripts/editors/view3d/view3d_toolmode.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
+import {nstructjs, KeyMap, HotKey} from '@framework/pathux'
+import {ToolMode} from '@framework/api'
+import {Icons} from '@framework/api'
+import {SelMask} from '@framework/api'
 
 import '../../../../scripts/tet/tet_ops.js'
 import '../../../../scripts/tet/tet_selectops.js'
-import type {ViewContext} from '../../../../scripts/core/context.js'
-import type {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import type {ViewContext} from '@framework/api'
+import type {StructReader} from '@framework/api'
 
 export class TetMeshTool extends ToolMode {
   constructor(ctx: ViewContext) {
@@ -75,5 +75,3 @@ TetMeshTool.STRUCT =
   nstructjs.inherit(TetMeshTool, ToolMode) +
   `
 }`
-nstructjs.register(TetMeshTool)
-ToolMode.register(TetMeshTool)

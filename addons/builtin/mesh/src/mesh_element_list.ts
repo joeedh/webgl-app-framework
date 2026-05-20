@@ -1,5 +1,6 @@
 import {Edge, Element, MeshIterStack} from './mesh_types'
-import {nstructjs, util} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 import {
   DEBUG_BAD_LOOPS,
   getArrayTemp,
@@ -13,7 +14,7 @@ import {
 
 import {CDFlags, CustomData, CustomDataElem, CustomDataLayer, ICustomDataElemConstructor} from './customdata'
 import {Vertex, Loop, Face, Handle} from './mesh_types.js'
-import { StructReader } from '../../../../scripts/path.ux/scripts/util/nstructjs'
+import { StructReader } from '@framework/api'
 
 const typemap = {
   [MeshTypes.VERTEX]: Vertex,

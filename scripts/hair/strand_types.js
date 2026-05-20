@@ -1,4 +1,4 @@
-import {CurveSpline} from '../curve/curve.js';
+import {CurveSpline} from '../../addons/builtin/curve/src/curve.js';
 import {AttachFlags, AttachTypes} from './strand_base.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 

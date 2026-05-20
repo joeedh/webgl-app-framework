@@ -1,28 +1,29 @@
-import {FindNearest, FindNearestRet} from '../findnearest.js'
-import {ToolMode} from '../view3d_toolmode.js'
-import {HotKey, KeyMap} from '../../editor_base'
-import {Icons} from '../../icon_enum.js'
-import {SelMask} from '../selectmode.js'
-import '../../../path.ux/scripts/util/struct.js'
+import {FindNearest, FindNearestRet} from '@framework/api'
+import {ToolMode} from '@framework/api'
+import {HotKey, KeyMap} from '@framework/pathux'
+import {Icons} from '@framework/api'
+import {SelMask} from '@framework/api'
+import '../../../../scripts/path.ux/scripts/util/struct.js'
 import {MeshToolBase} from './meshtool'
-import {Vector2, Vector3, Matrix4} from '../../../util/vectormath.js'
-import {Shaders} from '../../../shaders/shaders.js'
-import * as util from '../../../util/util.js'
+import {Vector2, Vector3, Matrix4} from '@framework/api'
+import {Shaders} from '@framework/api'
+import {util} from '@framework/api'
 
-import {AttrRef, ColorLayerElem, Mesh, Vertex} from '../../../../addons/builtin/mesh/src/mesh.js'
-import {ToolMacro, startMenu, createMenu, nstructjs, Vector4, Number3} from '../../../path.ux/scripts/pathux.js'
-import {PackFlags} from '../../../path.ux/scripts/core/ui_base.js'
-import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js'
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../webgl/simplemesh'
-import {CurvVert, getCurveVerts} from '../../../../addons/builtin/mesh/src/mesh_curvature.js'
-import {getFaceSets} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
-import type {SceneObject} from '../../../sceneobject/sceneobject.js'
-import {UniformTriRemesher} from '../../../../addons/builtin/mesh/src/mesh_remesh.js'
-import type {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api.js'
-import type {Scene} from '../../../scene/scene.js'
-import type {ViewContext} from '../../../core/context.js'
-import type {View3D} from '../view3d.js'
-import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
+import {AttrRef, ColorLayerElem, Mesh, Vertex} from '../../mesh/src/mesh.js'
+import {Vector4, Number3} from '@framework/api'
+import {ToolMacro, startMenu, createMenu, nstructjs} from '@framework/pathux'
+import {PackFlags} from '@framework/api'
+import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '@framework/api'
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '@framework/api'
+import {CurvVert, getCurveVerts} from '../../mesh/src/mesh_curvature.js'
+import {getFaceSets} from '../../mesh/src/mesh_facesets.js'
+import type {SceneObject} from '@framework/api'
+import {UniformTriRemesher} from '../../mesh/src/mesh_remesh.js'
+import type {BlockLoader, BlockLoaderAddUser, DataRef} from '@framework/api'
+import type {Scene} from '@framework/api'
+import type {ViewContext} from '@framework/api'
+import type {View3D} from '@framework/api'
+import type {StructReader} from '@framework/api'
 
 export class MeshEditor extends MeshToolBase {
   drawflag = 0
@@ -862,5 +863,3 @@ MeshEditor.STRUCT =
   drawCurvatures      : bool;
   drawNormals         : bool;
 }`
-nstructjs.register(MeshEditor)
-ToolMode.register(MeshEditor)

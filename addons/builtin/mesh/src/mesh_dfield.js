@@ -1,6 +1,7 @@
 import {CustomDataElem, LayerSettingsBase} from './customdata.js'
-import {nstructjs, util} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../../scripts/util/vectormath.js'
+import {util} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
 
 export class DFieldSettings extends LayerSettingsBase {
   constructor() {
@@ -20,7 +21,6 @@ DFieldSettings.STRUCT =
   nstructjs.inherit(DFieldSettings, LayerSettingsBase) +
   `
 }`
-nstructjs.register(DFieldSettings)
 
 let interp_v1 = new Vector3()
 let interp_v2 = new Vector3()
@@ -119,8 +119,6 @@ DFieldElem.STRUCT =
   flag               : int;
   vec                : vec3;
 }`
-nstructjs.register(DFieldElem)
-CustomDataElem.register(DFieldElem)
 
 export function getCDFieldOffsets(mesh) {
   let cd_vfield = mesh.verts.customData.getLayerIndex('dfield')

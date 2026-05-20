@@ -1,19 +1,9 @@
-import {
-  Matrix4,
-  nstructjs,
-  Vector2,
-  Vector3,
-  Vector4,
-  util,
-  math,
-  Number2,
-  IVector2,
-  Number3,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {Matrix4, Vector2, Vector3, Vector4, util, math, Number2, IVector2, Number3} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base.js'
 import {AttrRef, CustomDataElem} from './customdata'
-import {ChunkedSimpleMesh, SimpleMesh} from '../../../../scripts/webgl/simplemesh.js'
+import {ChunkedSimpleMesh, SimpleMesh} from '@framework/api'
 import {
   BLink,
   GridBase,
@@ -28,7 +18,7 @@ import '../../../../scripts/util/numeric.js'
 import {Loop} from './mesh_types'
 import {ColorLayerElem, Mesh, UVLayerElem} from './mesh'
 import {BVH} from './bvh.js'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 
 interface ITopoVert {
   edges: any[]
@@ -287,7 +277,6 @@ const tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
 
 CompressedQuadNode.fields = makeCompressedNodeStruct().fields
 CompressedQuadNode.STRUCT = makeCompressedNodeStruct().nstruct
-nstructjs.register(CompressedQuadNode)
 
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
@@ -3958,5 +3947,3 @@ QuadTreeGrid.STRUCT =
   loopEid             : int;
   nodeFieldSize       : int;
 }`
-nstructjs.register(QuadTreeGrid)
-CustomDataElem.register(QuadTreeGrid)

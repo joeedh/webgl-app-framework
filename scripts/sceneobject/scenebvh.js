@@ -1,8 +1,13 @@
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js';
-import {MeshFeatures} from '../../addons/builtin/mesh/src/mesh_base.js';
 import {ObjectFlags} from './sceneobject.js';
+
+// Mesh + MeshFeatures live in the mesh addon and are looked up at use time so
+// this file stays mesh-agnostic. See plan §3.2.
+function _meshExports() {
+  return window._addons?.getAddonAPI('mesh')?.exports?.mesh;
+}
 
 let vtmps = util.cachering.fromConstructor(Vector3, 512);
 let mtmps = util.cachering.fromConstructor(Matrix4, 1024);
@@ -17,7 +22,9 @@ export class SceneBVH {
   }
 
   _castRay(matrix, ob, origin, ray) {
-    if (!(ob.data instanceof Mesh && (ob.data.flag & MeshFeatures.BVH))) {
+    const meshApi = _meshExports();
+    if (!meshApi) return undefined;
+    if (!(ob.data instanceof meshApi.Mesh && (ob.data.flag & meshApi.MeshFeatures.BVH))) {
       return undefined;
     }
 

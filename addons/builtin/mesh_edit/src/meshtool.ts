@@ -1,29 +1,26 @@
-import {Shapes} from '../../../webgl/simplemesh_shapes.js'
-import {FindNearest} from '../findnearest.js'
-import {ToolMode} from '../view3d_toolmode.js'
-import {HotKey, KeyMap} from '../../editor_base'
-import {Icons} from '../../icon_enum.js'
-import {SelMask} from '../selectmode.js'
-import {resolveMeshes} from '../../../../addons/builtin/mesh/src/mesh_ops_base.js'
-import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
-import {Shaders} from '../../../shaders/shaders.js'
-import {TranslateOp} from '../transform/transform_ops.js'
-import {SelOneToolModes} from '../selectmode.js'
+import {Shapes} from '@framework/api'
+import {FindNearest} from '@framework/api'
+import {ToolMode} from '@framework/api'
+import {HotKey, KeyMap} from '@framework/pathux'
+import {Icons} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {resolveMeshes} from '../../mesh/src/mesh_ops_base.js'
+import {Vector2, Vector3, Vector4, Matrix4} from '@framework/api'
+import {Shaders} from '@framework/api'
+import {TranslateOp} from '@framework/api'
+import {SelOneToolModes} from '@framework/api'
 
-import {ObjectFlags, SceneObject} from '../../../sceneobject/sceneobject.js'
-import {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
-import {DataAPI, DataStruct, eventWasMouseDown, nstructjs} from '../../../path.ux/scripts/pathux.js'
-import '../../../../addons/builtin/mesh/src/mesh_flagops.js'
+import {ObjectFlags, SceneObject} from '@framework/api'
+import {Mesh} from '../../mesh/src/mesh.js'
+import {DataAPI, DataStruct, eventWasMouseDown, nstructjs} from '@framework/pathux'
+import '../../mesh/src/mesh_flagops.js'
 
-//import '../../../../addons/builtin/mesh/src/select_ops.js';
-//import '../../../../addons/builtin/mesh/src/mesh_ops.js';
-
-import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh_base.js'
-import {SelectEdgeLoopOp, type SelectOneOp} from '../../../../addons/builtin/mesh/src/select_ops.js'
-import type {ViewContext} from '../../../core/context.js'
-import type {BoundingBox} from '../view3d_utils.js'
-import type {View3D} from '../view3d.js'
-import {IUniformsBlock} from '../../../webgl/webgl.js'
+import {MeshFlags} from '../../mesh/src/mesh_base.js'
+import {SelectEdgeLoopOp, type SelectOneOp} from '../../mesh/src/select_ops.js'
+import type {ViewContext} from '@framework/api'
+import type {BoundingBox} from '@framework/api'
+import type {View3D} from '@framework/api'
+import {IUniformsBlock} from '@framework/api'
 
 export class MeshToolBase extends ToolMode {
   transformConstraint: string | undefined
@@ -623,5 +620,3 @@ MeshToolBase.STRUCT =
   nstructjs.inherit(MeshToolBase, ToolMode) +
   `
 }`
-nstructjs.register(MeshToolBase)
-//ToolMode.register(MeshToolBase);

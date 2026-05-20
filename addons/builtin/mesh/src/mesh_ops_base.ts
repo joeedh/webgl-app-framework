@@ -1,11 +1,13 @@
-import {ListProperty, StringProperty, ToolOp, nstructjs, ToolDef, PropertySlots} from '../../../../scripts/path.ux/scripts/pathux.js'
-import * as util from '../../../../scripts/util/util.js'
+import {ToolDef, PropertySlots} from '@framework/api'
+import {ListProperty, StringProperty, ToolOp, nstructjs} from '@framework/pathux'
 
-import {Mesh, MeshDrawFlags, MeshFlags, MeshTypes, Vertex} from './mesh.js'
-import {View3DOp} from '../../../../scripts/editors/view3d/view3d_ops.js'
-import {SceneObject} from '../../../../scripts/sceneobject/sceneobject.js'
-import {BlockLoader, DataBlock, DataRef} from '../../../../scripts/core/lib_api'
-import type {ToolContext} from '../../../../scripts/core/context.js'
+import {Mesh} from './mesh.js'
+import {MeshDrawFlags, MeshFlags, MeshTypes} from './mesh_base.js'
+import type {Vertex} from './mesh_types.js'
+import {View3DOp} from '@framework/api'
+import {SceneObject} from '@framework/api'
+import {BlockLoader, DataBlock, DataRef} from '@framework/api'
+import type {ToolContext} from '@framework/api'
 
 /**
  *

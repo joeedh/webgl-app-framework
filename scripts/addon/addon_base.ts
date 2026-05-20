@@ -19,17 +19,10 @@ import {
   HotKey,
 } from '../path.ux/scripts/pathux'
 import * as pathux from '../path.ux/scripts/pathux'
-import * as mesh from '../../addons/builtin/mesh/src/mesh'
-import * as mesh_utils from '../../addons/builtin/mesh/src/mesh_utils'
-import * as mesh_types from '../../addons/builtin/mesh/src/mesh_utils'
-import * as mesh_base from '../../addons/builtin/mesh/src/mesh_utils'
-import * as unwrapping from '../../addons/builtin/mesh/src/unwrapping'
-import {KDrawModes} from '../../addons/builtin/mesh/src/mesh_curvature_test'
 import {DataBlock, DataRef, DataRefProperty, DataRefListProperty, IDataBlockConstructor} from '../core/lib_api'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {ToolMode} from '../editors/view3d/view3d_toolmode'
 import {SceneObject, composeObjectMatrix} from '../sceneobject/sceneobject'
-import * as customdata from '../../addons/builtin/mesh/src/customdata'
 import {
   Editor,
   VelPan,
@@ -45,25 +38,13 @@ import {
   IEditorConstructor,
 } from '../editors/editor_base'
 import {Icons} from '../editors/icon_enum'
-import {MeshToolBase} from '../editors/view3d/tools/meshtool'
-import {MeshEditor} from '../editors/view3d/tools/mesheditor'
 import {SelMask} from '../editors/view3d/selectmode'
-import {MeshOp, MeshDeformOp} from '../../addons/builtin/mesh/src/mesh_ops_base'
-import {MeshOpBaseUV} from '../../addons/builtin/mesh/src/mesh_uvops_base'
 import {TransformOp} from '../editors/view3d/transform/transform_ops'
 import * as widget_tools from '../editors/view3d/widgets/widget_tools'
 import * as widgets from '../editors/view3d/widgets/widgets'
 import * as simplemesh from '../webgl/simplemesh'
-import * as paramizer from '../../addons/builtin/mesh/src/mesh_paramizer'
-import * as displacement from '../../addons/builtin/mesh/src/mesh_displacement'
-import * as curvature from '../../addons/builtin/mesh/src/mesh_curvature'
-import * as curvature_test from '../../addons/builtin/mesh/src/mesh_curvature_test'
-import * as utils from '../../addons/builtin/mesh/src/mesh_utils'
-import * as subdivide from '../../addons/builtin/mesh/src/mesh_subdivide'
-import * as bvh from '../../addons/builtin/mesh/src/bvh'
 import * as bezier from '../util/bezier'
 import * as shaders from '../shaders/shaders'
-import * as subsurf from '../subsurf/index'
 import * as graph from '../core/graph'
 import * as graphsockets from '../core/graphsockets'
 import * as sceneobject from '../sceneobject/index'
@@ -102,7 +83,7 @@ export interface IAddon {
   validArgv(api: AddonAPI<this>, argv: string[]): void
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GenericConstructor = Function
 
 export class AddonClasses<T> {
@@ -116,35 +97,58 @@ export class AddonClasses<T> {
   other: GenericConstructor[] = []
 }
 
+/**
+ * Looks up an addon's exported namespace via `window._addons`. Returns
+ * undefined if the addon manager isn't initialized yet or the addon hasn't
+ * registered. Used by the mesh/bvh/subsurf getters below so this file no
+ * longer imports addon source directly (see plan §3.2).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lookupAddonExport(addonId: string, exportName: string): any {
+  const manager = (typeof window !== 'undefined' ? window._addons : undefined) as
+    | {getAddonAPI: (id: string) => {exports?: Record<string, unknown>} | undefined}
+    | undefined
+  return manager?.getAddonAPI(addonId)?.exports?.[exportName]
+}
+
 export class AddonAPI<T> {
   readonly shaders = shaders
   readonly nstructjs = nstructjs
   readonly util = util
   readonly vectormath = vectormath
   readonly math = math
-  readonly subsurf = subsurf
 
   readonly simplemesh = simplemesh
   readonly pathux = pathux
-  readonly mesh_utils = mesh_utils
-  readonly unwrapping = unwrapping
 
   readonly sceneobject = sceneobject
 
-  readonly mesh = {
-    ...mesh,
-    ...mesh_base,
-    ...mesh_types,
-    ...customdata,
-    utils: mesh_utils,
-    paramizer,
-    displacement,
-    curvature,
-  } as const
+  // Mesh-shaped namespaces are resolved lazily through the addon registry so
+  // this file stays mesh-agnostic. The mesh addon publishes the full surface
+  // from `addons/builtin/mesh/src/addon_register.ts`. See plan §3.2.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get mesh(): any {
+    return lookupAddonExport('mesh', 'mesh')
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get mesh_utils(): any {
+    return lookupAddonExport('mesh', 'mesh_utils')
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get bvh(): any {
+    return lookupAddonExport('mesh', 'bvh')
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get unwrapping(): any {
+    return lookupAddonExport('mesh', 'unwrapping')
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get subsurf(): any {
+    return lookupAddonExport('subsurf', 'subsurf')
+  }
 
   readonly KeyMap = KeyMap
   readonly HotKey = HotKey
-  readonly bvh = bvh
   readonly bezier = bezier
   readonly Icons = Icons
   readonly SelMask = SelMask
@@ -167,7 +171,18 @@ export class AddonAPI<T> {
     ...widget_tools,
   } as const
 
-  readonly toolmode = {ToolMode, MeshToolBase, MeshEditor} as const
+  readonly toolmode = {
+    ToolMode,
+    // MeshToolBase / MeshEditor live in the `mesh_edit` builtin addon. They
+    // are looked up at access time so this file holds no source-level import
+    // into addons/builtin/. See plan §3.2 / §6 step 8.
+    get MeshToolBase(): any {
+      return lookupAddonExport('mesh_edit', 'mesh_edit')?.MeshToolBase
+    },
+    get MeshEditor(): any {
+      return lookupAddonExport('mesh_edit', 'mesh_edit')?.MeshEditor
+    },
+  } as const
   readonly toolop = {
     ToolOp,
     ToolProperty,
@@ -182,11 +197,10 @@ export class AddonAPI<T> {
     Mat4Property,
     DataRefProperty,
     DataRefListProperty,
-    MeshOp,
-    MeshDeformOp,
-    MeshOpBaseUV,
     TransformOp,
     BoolProperty,
+    // MeshOp / MeshDeformOp / MeshOpBaseUV are no longer re-exposed here.
+    // Consumers use `api.mesh.MeshOp` / `api.deps.mesh.exports.mesh.MeshOp`.
   } as const
   readonly graph = {
     ...graph,
@@ -279,7 +293,7 @@ export class AddonAPI<T> {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (!nstructjs.isRegistered(cls as any)) {
+    if (Object.hasOwnProperty.call(cls, 'STRUCT') && !nstructjs.isRegistered(cls as any)) {
       nstructjs.register(cls)
     }
 
@@ -289,20 +303,20 @@ export class AddonAPI<T> {
       //ensure tooldef doesn't raise any errors
       cls.tooldef()
 
-      this.classes.toolOpClasses.push(cls)
       ToolOp.register(cls)
+      this.classes.toolOpClasses.push(cls)
       addToOther = false
     }
 
     if (subclassOf(cls, DataBlock)) {
-      this.classes.dataBlockClasses.push(cls)
       DataBlock.register(cls)
+      this.classes.dataBlockClasses.push(cls)
       addToOther = false
     }
 
     if (subclassOf(cls, ToolMode)) {
-      this.classes.toolModeClasses.push(cls)
       ToolMode.register(cls)
+      this.classes.toolModeClasses.push(cls)
       addToOther = false
 
       if (window._appstate) {
@@ -321,15 +335,18 @@ export class AddonAPI<T> {
       }
     }
 
-    if (subclassOf(cls, customdata.CustomDataElem)) {
+    // CustomDataElem lives in the mesh addon; resolve at use time so this
+    // file doesn't import from addons/builtin/mesh/. See plan §3.2.
+    const CustomDataElem = lookupAddonExport('mesh', 'mesh')?.CustomDataElem
+    if (CustomDataElem && subclassOf(cls, CustomDataElem)) {
+      CustomDataElem.register(cls)
       this.classes.customDataClasses.push(cls)
-      customdata.CustomDataElem.register(cls)
       addToOther = false
     }
 
     if (subclassOf(cls, Editor)) {
-      this.classes.editorClasses.push(cls)
       Editor.register(cls as unknown as IEditorConstructor)
+      this.classes.editorClasses.push(cls)
       addToOther = false
     }
 
@@ -341,6 +358,20 @@ export class AddonAPI<T> {
 
     if (addToOther) {
       this.classes.other.push(cls)
+    }
+  }
+
+  /**
+   * Bulk variant of {@link register}. Use from `register(api)`:
+   *
+   *   api.registerAll(MyToolMode, MyToolOp, MyDataBlock, MyCustomData)
+   *
+   * Each argument is forwarded to `register(cls)` individually, so the
+   * dispatcher picks the right global registry per class.
+   */
+  registerAll(...classes: unknown[]): void {
+    for (const cls of classes) {
+      this.register(cls)
     }
   }
 
@@ -383,7 +414,6 @@ export class AddonAPI<T> {
 
   graphRemove(node: graph.Node) {
     const id = node.graph_id
-
     this.ctx.graph.remove(node)
     this._graphNodes.delete(id)
   }
@@ -401,7 +431,7 @@ export class AddonAPI<T> {
     consolelog('unregistered', cls.name)
 
     if (nstructjs.isRegistered(cls)) {
-      nstructjs.unregister(cls);
+      nstructjs.unregister(cls)
     }
 
     if (subclassOf(cls, ToolMode)) {
@@ -410,10 +440,11 @@ export class AddonAPI<T> {
       ToolMode.unregister(cls)
     }
 
-    if (subclassOf(cls, customdata.CustomDataElem)) {
-      consolelog('unregistering a toolmode', cls)
+    const CustomDataElem = lookupAddonExport('mesh', 'mesh')?.CustomDataElem
+    if (CustomDataElem && subclassOf(cls, CustomDataElem)) {
+      consolelog('unregistering a customdata elem', cls)
 
-      customdata.CustomDataElem.unregister(cls)
+      CustomDataElem.unregister(cls)
     }
 
     if (subclassOf(cls, ToolOp)) {

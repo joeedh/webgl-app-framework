@@ -22,6 +22,7 @@ import Path from 'path'
 import {fileURLToPath} from 'url'
 
 import {addonApiPlugin} from './addon_api_plugin.js'
+import {frameworkApiPlugin} from './framework_api_plugin.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
@@ -81,6 +82,11 @@ function buildOptionsFor(entries) {
     keepNames  : true,
     chunkNames : '_chunks/[name]-[hash]',
     logOverride: {'direct-eval': 'silent'},
+    // `@framework/api` and `@framework/pathux` are NOT aliased to local files
+    // here — the frameworkApiPlugin below resolves them to runtime-lookup
+    // stubs against globalThis._framework so framework source is not
+    // duplicated into addon bundles. The tsconfig paths still alias them
+    // for typecheck purposes.
     // Mirror the main esbuilder's externals — pathux references `electron`
     // and `fs` for its Node/Electron path-controller backend. Real addon
     // code never reaches those modules at runtime in the browser.
@@ -95,10 +101,18 @@ function buildOptionsFor(entries) {
       './scripts/extern/Math.js',
       './scripts/extern/Math',
       './scripts/extern/jszip/*',
+      // Match main esbuilder — sculptcore wasm glue does node-only `import
+      // 'node:module'` / `node:worker_threads` at the top. The runtime never
+      // hits those code paths in the browser; the main bundle externalizes
+      // this file and we mirror that here so addons that transitively reach
+      // scripts/webgl/batch.ts (via Mesh / SimpleMesh chains) don't choke.
+      '*/build/sculptcore.js',
     ],
     // @addon/<id>/api imports get resolved to a tiny runtime-lookup stub
     // instead of inlining the upstream addon's code. See plan §2.5.
-    plugins: [addonApiPlugin(REPO_ROOT)],
+    // @framework/api and @framework/pathux are resolved similarly against
+    // globalThis._framework (set in scripts/_framework_runtime.ts).
+    plugins: [frameworkApiPlugin(REPO_ROOT), addonApiPlugin(REPO_ROOT)],
   }
 }
 

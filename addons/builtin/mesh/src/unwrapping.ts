@@ -1,4 +1,5 @@
-import {nstructjs, math, PackNode, Vector2, Vector3, Vector4, Matrix4, util} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {math, Vector2, Vector3, Vector4, Matrix4, util} from '@framework/api'
+import {nstructjs, PackNode} from '@framework/pathux'
 import '../../../../scripts/util/numeric.js'
 
 import {MeshTypes, MeshFlags, MAX_FACE_VERTS} from './mesh_base.js'
@@ -6,11 +7,11 @@ import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_cus
 import {BVH, BVHNode, BVHTri} from './bvh.js'
 import {CustomDataElem} from './customdata.js'
 import {Edge, Face, Loop, Mesh, RecalcFlags, Vertex} from './mesh'
-import {INumberList} from '../../../../scripts/util/polyfill.d'
-import bus from '../../../../scripts/core/bus.js'
+import {INumberList} from '@framework/api'
+import {bus} from '@framework/api'
 import type {SolveTri} from './unwrapping_solve.js'
-import {OptionalIf, OptionalIfNot} from '../../../../scripts/util/optionalIf.js'
-import {ImageBus} from '../../../../scripts/editors/image/ImageBus.js'
+import {OptionalIf, OptionalIfNot} from '@framework/api'
+import {ImageBus} from '@framework/api'
 
 const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
@@ -90,7 +91,6 @@ CVElem {
   }
 }
 
-CustomDataElem.register(CVElem)
 
 export class UVIsland extends Set {
   hasPins: boolean

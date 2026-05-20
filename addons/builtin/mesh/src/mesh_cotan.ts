@@ -1,9 +1,10 @@
-import {Vector3} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
-import {nstructjs, Vector3Like} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {Vector3} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
+import {Vector3Like} from '@framework/api'
+import {nstructjs} from '@framework/pathux'
 import {CustomDataElem} from './customdata'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 import type {Vertex} from './mesh_types'
 
 export const CotanVertFlags = {
@@ -233,5 +234,3 @@ CotanVert.STRUCT =
   _last_hash   : int;
 }`
 
-nstructjs.register(CotanVert)
-CustomDataElem.register(CotanVert)

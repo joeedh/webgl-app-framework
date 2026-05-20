@@ -229,7 +229,13 @@ export class AddonManager {
    */
   registerInternalAddon(opts: {
     manifest: IAddonManifest
-    exports: Record<string, Record<string, unknown>>
+    exports?: Record<string, Record<string, unknown>>
+    /**
+     * Optional lifecycle hook. Called immediately after the addon record is
+     * wired in. Use this to dispatch the addon's classes through
+     * `api.register(...)` instead of registering them at module scope.
+     */
+    register?: (api: AddonAPI<IAddon>) => void
   }): AddonRecord<IAddon> {
     if (this.idmap.has(opts.manifest.id)) {
       throw new Error(`internal addon "${opts.manifest.id}" is already registered`)
@@ -237,16 +243,26 @@ export class AddonManager {
 
     const api = new AddonAPI<IAddon>()
     api.addonId = opts.manifest.id
-    api.exports = opts.exports
 
+    // Funnel pre-populated exports through exportNamespace so the contract
+    // matches what external addons do from their register(api) hook.
+    if (opts.exports) {
+      for (const name of Object.keys(opts.exports)) {
+        api.exportNamespace(name, opts.exports[name])
+      }
+    }
+
+    const userRegister = opts.register
     const stub: IAddon = {
       addonDefine: {
-        name        : opts.manifest.name,
-        version     : 0,
-        author      : opts.manifest.author,
-        description : opts.manifest.description,
+        name       : opts.manifest.name,
+        version    : 0,
+        author     : opts.manifest.author,
+        description: opts.manifest.description,
       },
-      register() {},
+      register(api) {
+        userRegister?.(api)
+      },
       unregister() {},
       handleArgv() {},
       validArgv() {},
@@ -260,6 +276,17 @@ export class AddonManager {
 
     this.addons.push(rec)
     this.idmap.set(opts.manifest.id, rec)
+
+    if (userRegister) {
+      try {
+        userRegister(api)
+      } catch (err) {
+        console.error(`internal addon "${opts.manifest.id}" register threw:`, err)
+        api.unregisterAll()
+        throw err
+      }
+    }
+
     return rec
   }
 
@@ -284,6 +311,9 @@ export class AddonManager {
     const preLoadedIds = new Set(this.idmap.keys())
     const stubs: IAddonManifest[] = []
     for (const id of preLoadedIds) {
+      if (manifests.find((m) => m.id === id)) {
+        continue
+      }
       const rec = this.idmap.get(id)
       if (rec?.manifest) {
         stubs.push(rec.manifest)

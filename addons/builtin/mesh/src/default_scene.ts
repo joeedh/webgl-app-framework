@@ -9,15 +9,15 @@
  * `register()` hook.
  */
 
-import type {Library} from '../../../../scripts/core/lib_api'
-import type {Scene} from '../../../../scripts/scene/scene'
-import type {ToolContext} from '../../../../scripts/core/context'
+import type {Library} from '@framework/api'
+import type {Scene} from '@framework/api'
+import type {ToolContext} from '@framework/api'
 
-import {setDefaultSceneBuilder} from '../../../../scripts/core/default_file.js'
-import {SceneObject} from '../../../../scripts/sceneobject/index.js'
-import {makeDefaultMaterial} from '../../../../scripts/core/material.js'
-import {Light} from '../../../../scripts/light/light.js'
-import {LiteMesh} from '../../../../scripts/lite-mesh/index.js'
+import {setDefaultSceneBuilder} from '@framework/api'
+import {SceneObject} from '@framework/api'
+import {makeDefaultMaterial} from '@framework/api'
+import {Light} from '@framework/api'
+import {LiteMesh} from '@framework/api'
 
 setDefaultSceneBuilder((ctx: ToolContext, lib: Library, scene: Scene) => {
   const mesh = new LiteMesh()

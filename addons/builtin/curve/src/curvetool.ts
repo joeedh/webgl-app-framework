@@ -1,22 +1,22 @@
-import {Shapes} from '../../../webgl/simplemesh_shapes'
-import {FindNearest} from '../findnearest'
-import {ToolMode} from '../view3d_toolmode'
-import {Icons} from '../../icon_enum'
-import {SelMask} from '../selectmode'
-import {MeshToolBase} from './meshtool'
+import {Shapes} from '@framework/api'
+import {FindNearest} from '@framework/api'
+import {ToolMode} from '@framework/api'
+import {Icons} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {MeshToolBase} from '../../mesh_edit/src/meshtool'
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath'
-import {Shaders} from '../../../shaders/shaders'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {Shaders} from '@framework/api'
 
-import {Mesh, MeshDrawFlags} from '../../../../addons/builtin/mesh/src/mesh'
-import {CurveSpline} from '../../../curve/curve'
-import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux'
-import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'
-import type {ViewContext} from '../../../core/context'
-import type {View3D} from '../view3d'
-import type {Scene} from '../../../scene/scene'
-import type {StructReader} from '../../../path.ux/scripts/util/nstructjs'
-import type {SceneObject} from '../../../sceneobject/sceneobject'
+import {Mesh, MeshDrawFlags} from '../../mesh/src/mesh'
+import {CurveSpline} from './curve'
+import {ContextOverlay, nstructjs} from '@framework/pathux'
+import {BlockLoader, BlockLoaderAddUser, DataRef} from '@framework/api'
+import type {ViewContext} from '@framework/api'
+import type {View3D} from '@framework/api'
+import type {Scene} from '@framework/api'
+import type {StructReader} from '@framework/api'
+import type {SceneObject} from '@framework/api'
 import type {CurveToolOverlay} from './curvetool_overlay'
 
 declare global {
@@ -225,5 +225,3 @@ CurveToolBase.STRUCT =
   curve    : DataRef | DataRef.fromBlock(obj.curve);
   drawflag : int;
 }`
-nstructjs.register(CurveToolBase)
-ToolMode.register(CurveToolBase)

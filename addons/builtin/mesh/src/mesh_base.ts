@@ -1,5 +1,4 @@
-import {clearAspectCallbacks, initAspectClass, _setUIBase} from '../../../../scripts/path.ux/scripts/core/aspect.js'
-import {UIBase, nstructjs, util} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {UIBase, nstructjs, util} from '@framework/pathux'
 
 export const REUSE_EIDS = true
 
@@ -21,8 +20,6 @@ export const SAVE_DEAD_VERTS = ENABLE_CACHING
 export const SAVE_DEAD_EDGES = ENABLE_CACHING
 
 export const WITH_EIDMAP_MAP = true
-
-_setUIBase(UIBase)
 
 export const MAX_FACE_VERTS = 1000000
 export const MAX_VERT_EDGES = 1000
@@ -358,7 +355,7 @@ export function reallocArrayTemp<type>(arr: type[], newSize: number): type[] {
 import type {CustomDataElem, AttrRef} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
 import type {Edge, Element, Face, Handle, Loop, Vertex} from './mesh_types'
-import {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '@framework/api'
 
 export class CDElemArray extends Array<CustomDataElem> {
   static STRUCT = nstructjs.inlineRegister(

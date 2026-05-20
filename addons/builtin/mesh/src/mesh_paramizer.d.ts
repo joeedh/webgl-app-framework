@@ -96,5 +96,5 @@ export namespace ParamVert {
 }
 import {LayerSettingsBase} from './customdata.js'
 import {CustomDataElem} from './customdata.js'
-import {Vector4} from '../../../../scripts/util/vectormath.js'
-import {Vector3} from '../../../../scripts/util/vectormath.js'
+import {Vector4} from '@framework/api'
+import {Vector3} from '@framework/api'

@@ -9,7 +9,7 @@ export enum OrbitTargetModes {
   CURSOR = 1,
 }
 
-import {Mesh} from '../../../addons/builtin/mesh/src/mesh'
+import type {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 import * as util from '../../util/util.js'
 import {IVectorOrHigher, Matrix4, Number3, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'
@@ -65,8 +65,8 @@ export function calcUpdateHash(view3d: View3D, do_objects = true) {
 
       //console.log("UPDATEGEN:", ob.updateGen, ob.data.updateGen);
 
-      if (ob.data instanceof Mesh) {
-        const mesh = ob.data
+      if (ob.data?.lib_type === 'mesh') {
+        const mesh = ob.data as Mesh
 
         thehash.add(mesh.verts.length)
         thehash.add(mesh.faces.length)

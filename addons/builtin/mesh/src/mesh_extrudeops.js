@@ -1,19 +1,11 @@
 import {MeshOp} from './mesh_ops_base.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
-import {
-  BoolProperty,
-  IntProperty,
-  Mat4Property,
-  Matrix4,
-  ToolMacro,
-  ToolOp,
-  Vec3Property,
-  Vector3,
-} from '../../../../scripts/path.ux/pathux.js'
+import {Icons} from '@framework/api'
+import {Matrix4, Vector3} from '@framework/api'
+import {BoolProperty, IntProperty, Mat4Property, ToolMacro, ToolOp, Vec3Property} from '@framework/pathux'
 import {LogContext, MeshFeatures, MeshFlags, ReusableIter} from './mesh_base.js'
-import {InflateOp, TranslateOp} from '../../../../scripts/editors/view3d/transform/transform_ops.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
-import * as util from '../../../../scripts/util/util.js'
+import {InflateOp, TranslateOp} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {util} from '@framework/api'
 import {vertexSmooth} from './mesh_utils.js'
 
 export class ExtrudeOneVertexOp extends MeshOp {
@@ -77,7 +69,6 @@ export class ExtrudeOneVertexOp extends MeshOp {
   }
 }
 
-ToolOp.register(ExtrudeOneVertexOp)
 
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {
@@ -304,7 +295,6 @@ export class ExtrudeRegionsOp extends MeshOp {
   }
 }
 
-ToolOp.register(ExtrudeRegionsOp)
 
 export function extrudeIndivFaces(mesh, faces, lctx) {
   faces = ReusableIter.getSafeIter(faces)
@@ -434,7 +424,6 @@ export class ExtrudeFaceIndivOp extends MeshOp {
   }
 }
 
-ToolOp.register(ExtrudeFaceIndivOp)
 
 export class InsetHoleOp extends MeshOp {
   constructor() {
@@ -688,4 +677,3 @@ export class InsetHoleOp extends MeshOp {
   }
 }
 
-ToolOp.register(InsetHoleOp)

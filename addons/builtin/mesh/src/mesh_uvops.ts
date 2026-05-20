@@ -1,20 +1,12 @@
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base'
-import {
-  util,
-  BoolProperty,
-  FloatProperty,
-  IntProperty,
-  ToolOp,
-  Vector2,
-  ToolDef,
-  PropertySlots,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, Vector2, ToolDef, PropertySlots} from '@framework/api'
+import {BoolProperty, FloatProperty, IntProperty, ToolOp} from '@framework/pathux'
 import {UVWrangler, voxelUnwrap} from './unwrapping.js'
 import {fixSeams, relaxUVs, UnWrapSolver} from './unwrapping_solve'
 import {MeshOp} from './mesh_ops_base'
 import {MeshFlags} from './mesh_base'
 import {UVLayerElem} from './mesh_customdata'
-import type {ViewContext} from '../../../../scripts/core/context'
+import type {ViewContext} from '@framework/api'
 
 export class VoxelUnwrapOp<
   InputSet extends PropertySlots = {},
@@ -65,7 +57,6 @@ export class VoxelUnwrapOp<
   }
 }
 
-ToolOp.register(VoxelUnwrapOp)
 
 export class RandomizeUVsOp<
   InputSet extends PropertySlots = {},
@@ -148,7 +139,6 @@ export class RandomizeUVsOp<
   }
 }
 
-ToolOp.register(RandomizeUVsOp)
 
 let unwrap_solvers = (window._unwrap_solvers = new Map())
 unwrap_solvers.clear = function () {
@@ -256,7 +246,6 @@ export class UnwrapSolveOp<
   }
 }
 
-ToolOp.register(UnwrapSolveOp)
 
 export class RelaxUVsOp<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOpBaseUV<
   InputSet & {
@@ -329,7 +318,6 @@ export class RelaxUVsOp<InputSet extends PropertySlots = {}, OutputSet extends P
   }
 }
 
-ToolOp.register(RelaxUVsOp)
 
 export class FixUvSeamsOp<
   InputSet extends PropertySlots = {},
@@ -370,7 +358,6 @@ export class FixUvSeamsOp<
   }
 }
 
-ToolOp.register(FixUvSeamsOp)
 
 export class ResetUVs<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet,
@@ -434,7 +421,6 @@ export class ResetUVs<InputSet extends PropertySlots = {}, OutputSet extends Pro
   }
 }
 
-ToolOp.register(ResetUVs)
 
 export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet,
@@ -529,7 +515,6 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
   }
 }
 
-ToolOp.register(GridUVs)
 
 export class PackIslandsOp<
   InputSet extends PropertySlots = {},
@@ -574,4 +559,3 @@ export class PackIslandsOp<
   }
 }
 
-ToolOp.register(PackIslandsOp)

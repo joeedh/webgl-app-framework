@@ -42,9 +42,8 @@ export default defineConfig([
         {
           patterns: [
             {group: ['*/mesh/*', '../mesh/*', '**/mesh/*'], message: 'core/ must not import scripts/mesh/* — use the data_kinds / default_file / file_migrations registries (see plan §3).'},
-            {group: ['*/subsurf/*', '../subsurf/*'], message: 'core/ must not import scripts/subsurf/* — subsurf is moving into an addon.'},
             {group: ['../editors/view3d/tools/*'], message: 'core/ must not import view3d toolmode files — only the ToolMode base in view3d_toolmode is allowed.'},
-            {group: ['../../addons/**'], message: 'core/ must not import addon source — addons depend on core, not the other way around.'},
+            {group: ['../../addons/**'], allowTypeImports: true, message: 'core/ must not import addon source — addons depend on core, not the other way around. Type-only imports are allowed (they erase at compile time).'},
           ],
         },
       ],

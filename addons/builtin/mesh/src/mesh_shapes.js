@@ -1,8 +1,8 @@
 import {MeshTypes, MeshFlags, Mesh} from './mesh.js'
-import * as math from '../../../../scripts/util/math.js'
-import * as util from '../../../../scripts/util/util.js'
+import {math} from '@framework/api'
+import {util} from '@framework/api'
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
 
 export function makeCube(mesh) {
   mesh = mesh === undefined ? new Mesh() : mesh

@@ -1,26 +1,17 @@
 'use strict'
 
-import {
-  IntProperty,
-  EnumProperty,
-  BoolProperty,
-  FloatProperty,
-  FlagProperty,
-  ToolOp,
-  ReportProperty,
-  ListProperty,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty, ToolOp, ReportProperty, ListProperty} from '@framework/pathux'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
-import {Vector3} from '../../../../scripts/util/vectormath.js'
-import {SelMask, SelOneToolModes, SelToolModes} from '../../../../scripts/editors/view3d/selectmode.js'
-import {DataRefProperty} from '../../../../scripts/core/lib_api.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {Vector3} from '@framework/api'
+import {SelMask, SelOneToolModes, SelToolModes} from '@framework/api'
+import {DataRefProperty} from '@framework/api'
+import {Icons} from '@framework/api'
 import {MeshOp} from './mesh_ops_base.js'
-import {SceneObject} from '../../../../scripts/sceneobject/sceneobject.js'
+import {SceneObject} from '@framework/api'
 import {Element} from './mesh_types.js'
-import {FindNearest} from '../../../../scripts/editors/view3d/findnearest.js'
+import {FindNearest} from '@framework/api'
 import {getEdgeLoop} from './mesh_utils.js'
-import {FindnearestMesh} from '../../../../scripts/editors/view3d/findnearest/findnearest_mesh.js'
+import {FindnearestMesh} from '@framework/api'
 
 export class SelectOpBase extends MeshOp {
   constructor() {
@@ -258,7 +249,6 @@ export class SelectLinkedOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectLinkedOp)
 
 export class SelectLinkedPickOp extends SelectLinkedOp {
   static tooldef() {
@@ -342,7 +332,6 @@ export class SelectLinkedPickOp extends SelectLinkedOp {
   }
 }
 
-ToolOp.register(SelectLinkedPickOp)
 
 export class SelectMoreLess extends SelectOpBase {
   constructor() {
@@ -478,7 +467,6 @@ export class SelectMoreLess extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectMoreLess)
 
 export class SelectOneOp extends SelectOpBase {
   constructor() {
@@ -529,7 +517,6 @@ export class SelectOneOp extends SelectOpBase {
     mesh.regenRender()
   }
 }
-ToolOp.register(SelectOneOp)
 
 export class ToggleSelectAll extends SelectOpBase {
   constructor() {
@@ -610,7 +597,6 @@ export class ToggleSelectAll extends SelectOpBase {
   }
 }
 
-ToolOp.register(ToggleSelectAll)
 
 export class SetFaceSmoothOp extends ToolOp {
   static tooldef() {
@@ -710,7 +696,6 @@ export class SetFaceSmoothOp extends ToolOp {
   }
 }
 
-ToolOp.register(SetFaceSmoothOp)
 
 export class SelectEdgeLoopOp extends SelectOpBase {
   constructor() {
@@ -856,7 +841,6 @@ export class SelectEdgeLoopOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectEdgeLoopOp)
 
 export class SelectInverse extends SelectOpBase {
   constructor() {
@@ -897,7 +881,6 @@ export class SelectInverse extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectInverse)
 
 export class SelectNonManifold extends SelectOpBase {
   constructor() {
@@ -952,7 +935,6 @@ export class SelectNonManifold extends SelectOpBase {
     }
   }
 }
-ToolOp.register(SelectNonManifold)
 
 export class SelectShortestLoop extends SelectOpBase {
   constructor() {
@@ -1064,7 +1046,6 @@ export class SelectShortestLoop extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectShortestLoop)
 
 export class SelectLongestLoop extends SelectShortestLoop {
   constructor() {
@@ -1082,7 +1063,6 @@ export class SelectLongestLoop extends SelectShortestLoop {
   }
 }
 
-ToolOp.register(SelectLongestLoop)
 
 let SimilarModes = {
   NUMBER_OF_EDGES: 0,
@@ -1185,7 +1165,6 @@ export class SelectSimilarOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectSimilarOp)
 
 export class CircleSelectOp extends SelectOpBase {
   constructor() {
@@ -1359,4 +1338,3 @@ export class CircleSelectOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(CircleSelectOp)

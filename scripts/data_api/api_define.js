@@ -38,7 +38,7 @@ import {RenderSettings} from '../renderengine/renderengine_base'
 
 import '../../addons/builtin/mesh/src/mesh_createops.js'
 
-import {CurveSpline} from '../curve/curve.js'
+import {CurveSpline} from '../../addons/builtin/curve/src/curve.js'
 
 let STRUCT = nstructjs.STRUCT
 import '../editors/view3d/widgets/widget_tools.js' //ensure widget tools are all registered

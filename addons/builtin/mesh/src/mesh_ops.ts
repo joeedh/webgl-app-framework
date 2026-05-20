@@ -1,33 +1,16 @@
 import './mesh_loopops.js'
 import './mesh_curvature_test'
 
-import {
-  IntProperty,
-  BoolProperty,
-  FloatProperty,
-  EnumProperty,
-  FlagProperty,
-  StringProperty,
-  Vector3,
-  ToolOp,
-  ToolMacro,
-  UndoFlags,
-  keymap,
-  ToolDef,
-  Number2,
-  PropertySlots,
-  Vector4,
-  Number3,
-  ContextLike,
-} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {TranslateOp} from '../../../../scripts/editors/view3d/transform/transform_ops.js'
-import * as util from '../../../../scripts/util/util.js'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
-import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {Vector3, ToolDef, Number2, PropertySlots, Vector4, Number3, ContextLike} from '@framework/api'
+import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, StringProperty, ToolOp, ToolMacro, UndoFlags, keymap} from '@framework/pathux'
+import {TranslateOp} from '@framework/api'
+import {util} from '@framework/api'
+import {SelMask} from '@framework/api'
+import {Icons} from '@framework/api'
 
 import {MeshFlags, MeshTypes, LogContext} from './mesh_base.js'
 import {IMeshUndoData, MeshDeformOp, MeshOp} from './mesh_ops_base.js'
-import {ccSmooth, subdivide, loopSubdivide} from '../../../../scripts/subsurf/subsurf_mesh.js'
+import {ccSmooth, subdivide, loopSubdivide} from '../../subsurf/src/subsurf_mesh.js'
 import {splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from './mesh_subdivide.js'
 import {GridBase, Grid, gridSides, GridSettingFlags, GridVertBase, GridVert} from './mesh_grids.js'
 import {QuadTreeGrid, QuadTreeFields, QTGridVert} from './mesh_grids_quadtree.js'
@@ -55,7 +38,7 @@ import {QRecalcFlags} from './mesh_grids.js'
 import {buildGridsSubSurf} from './mesh_grids_subsurf.js'
 
 import '../../../../scripts/util/floathalf.js'
-import {CubicPatch, bernstein, bspline} from '../../../../scripts/subsurf/subsurf_patch.js'
+import {CubicPatch, bernstein, bspline} from '../../subsurf/src/subsurf_patch.js'
 import {KdTreeGrid} from './mesh_grids_kdtree.js'
 import {triangulateFace, setMeshClass, applyTriangulation} from './mesh_tess.js'
 import {Edge, Element, Face, Handle, Mesh, Vertex} from './mesh.js'
@@ -140,7 +123,6 @@ export class DeleteOp extends MeshOp<{}, {}> {
   }
 }
 
-ToolOp.register(DeleteOp)
 
 export class DeleteOnlyFacesOp extends MeshOp {
   static tooldef(): ToolDef {
@@ -175,7 +157,6 @@ export class DeleteOnlyFacesOp extends MeshOp {
   }
 }
 
-ToolOp.register(DeleteOnlyFacesOp)
 
 export class FlipLongTrisOp extends MeshOp {
   static tooldef(): ToolDef {
@@ -207,7 +188,6 @@ export class FlipLongTrisOp extends MeshOp {
   }
 }
 
-ToolOp.register(FlipLongTrisOp)
 
 export class TriToQuadsOp extends MeshOp<{
   options: FlagProperty
@@ -265,7 +245,6 @@ export class TriToQuadsOp extends MeshOp<{
   }
 }
 
-ToolOp.register(TriToQuadsOp)
 
 export class SymmetrizeOp extends MeshOp<{
   axis: EnumProperty<number>
@@ -331,7 +310,6 @@ export class SymmetrizeOp extends MeshOp<{
   }
 }
 
-ToolOp.register(SymmetrizeOp)
 
 export class BisectOp extends MeshOp<{
   axis: EnumProperty<number>
@@ -408,7 +386,6 @@ export class BisectOp extends MeshOp<{
   }
 }
 
-ToolOp.register(BisectOp)
 
 export class TriangulateOp extends MeshOp {
   static tooldef() {
@@ -485,7 +462,6 @@ export class TriangulateOp extends MeshOp {
   }
 }
 
-ToolOp.register(TriangulateOp)
 
 export const RemeshOpModes = {
   REMESH        : 0,
@@ -617,7 +593,6 @@ export class RemeshOp<InputSlots = {}> extends MeshOp<
   }
 }
 
-ToolOp.register(RemeshOp)
 
 export class InteractiveRemeshOp extends RemeshOp<{
   steps: IntProperty
@@ -795,7 +770,6 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 }
 
-ToolOp.register(InteractiveRemeshOp)
 
 export class LoopSubdOp extends MeshOp {
   static tooldef() {
@@ -825,7 +799,6 @@ export class LoopSubdOp extends MeshOp {
   }
 }
 
-ToolOp.register(LoopSubdOp)
 
 import {meshSubdivideTest} from './mesh_subdivide.js'
 import {UVWrangler, voxelUnwrap} from './unwrapping.js'
@@ -909,7 +882,6 @@ export class CatmullClarkeSubd extends MeshOp {
   }
 }
 
-ToolOp.register(CatmullClarkeSubd)
 
 export const SymFlags = {
   X   : 1,
@@ -985,7 +957,6 @@ export class MeshSnapToMirror extends MeshOp<{
   }
 }
 
-ToolOp.register(MeshSnapToMirror)
 
 export class MeshSubdTest extends MeshOp {
   constructor() {
@@ -1018,7 +989,6 @@ export class MeshSubdTest extends MeshOp {
   }
 }
 
-ToolOp.register(MeshSubdTest)
 
 export class SubdivideSimple extends MeshOp {
   constructor() {
@@ -1084,7 +1054,6 @@ export class SubdivideSimple extends MeshOp {
   }
 }
 
-ToolOp.register(SubdivideSimple)
 
 export class SplitEdgesOp extends MeshOp {
   constructor() {
@@ -1121,7 +1090,6 @@ export class SplitEdgesOp extends MeshOp {
   }
 }
 
-ToolOp.register(SplitEdgesOp)
 
 export function vertexSmooth_tst(mesh: Mesh, vertsInput = mesh.verts.selected.editable, fac = 0.5) {
   const verts = new Set<Vertex>(vertsInput)
@@ -1314,7 +1282,6 @@ export class SmoothCurvaturesOp extends MeshDeformOp<{
   }
 }
 
-ToolOp.register(SmoothCurvaturesOp)
 
 export class MarkSingularitiesOp extends MeshOp {
   static tooldef() {
@@ -1338,7 +1305,6 @@ export class MarkSingularitiesOp extends MeshOp {
   }
 }
 
-ToolOp.register(MarkSingularitiesOp)
 
 export class UnmarkSingularitiesOp extends MeshOp {
   static tooldef() {
@@ -1363,7 +1329,6 @@ export class UnmarkSingularitiesOp extends MeshOp {
   }
 }
 
-ToolOp.register(UnmarkSingularitiesOp)
 
 export class RelaxRakeUVCells extends MeshOp {
   static tooldef() {
@@ -1405,7 +1370,6 @@ export class RelaxRakeUVCells extends MeshOp {
   }
 }
 
-ToolOp.register(RelaxRakeUVCells)
 
 export class VertexSmooth extends MeshDeformOp<{
   repeat: IntProperty
@@ -1489,7 +1453,6 @@ export class VertexSmooth extends MeshDeformOp<{
   }
 }
 
-ToolOp.register(VertexSmooth)
 
 const SplitMethods = {
   SMART1: 0,
@@ -1585,7 +1548,6 @@ export class TestSplitFaceOp extends MeshOp<{
   }
 }
 
-ToolOp.register(TestSplitFaceOp)
 
 export class TestCollapseOp extends MeshOp {
   static tooldef() {
@@ -1633,7 +1595,6 @@ export class TestCollapseOp extends MeshOp {
   }
 }
 
-ToolOp.register(TestCollapseOp)
 
 const GridTypes = {
   SIMPLE  : 0,
@@ -1714,7 +1675,6 @@ export class EnsureGridsOp extends MeshOp<{
   }
 }
 
-ToolOp.register(EnsureGridsOp)
 
 export class SubdivideGridsOp extends MeshOp {
   static tooldef() {
@@ -1754,7 +1714,6 @@ export class SubdivideGridsOp extends MeshOp {
   }
 }
 
-ToolOp.register(SubdivideGridsOp)
 
 export class SmoothGridsOp extends MeshOp<{
   factor: FloatProperty
@@ -1867,7 +1826,6 @@ export class SmoothGridsOp extends MeshOp<{
   }
 }
 
-ToolOp.register(SmoothGridsOp)
 
 const staroffs = [
   [-1, 0],
@@ -1958,7 +1916,6 @@ export class GridsTestOp2 extends MeshOp<{
   }
 }
 
-ToolOp.register(GridsTestOp2)
 
 export class GridsTestOp extends MeshOp<{
   factor: FloatProperty
@@ -2384,7 +2341,6 @@ export class GridsTestOp extends MeshOp<{
   }
 }
 
-ToolOp.register(GridsTestOp)
 
 export class DeleteGridsOp extends MeshOp {
   static tooldef() {
@@ -2422,7 +2378,6 @@ export class DeleteGridsOp extends MeshOp {
   }
 }
 
-ToolOp.register(DeleteGridsOp)
 
 export class ResetGridsOp extends MeshOp {
   static tooldef() {
@@ -2473,7 +2428,6 @@ export class ResetGridsOp extends MeshOp {
   }
 }
 
-ToolOp.register(ResetGridsOp)
 
 export class ApplyGridBaseOp extends MeshOp {
   static tooldef() {
@@ -2518,7 +2472,6 @@ export class ApplyGridBaseOp extends MeshOp {
   }
 }
 
-ToolOp.register(ApplyGridBaseOp)
 
 export class AddCDLayerOp extends MeshOp<
   {
@@ -2578,7 +2531,6 @@ export class AddCDLayerOp extends MeshOp<
   }
 }
 
-ToolOp.register(AddCDLayerOp)
 
 export class RemCDLayerOp extends MeshOp<{
   elemType: EnumProperty<number>
@@ -2633,7 +2585,6 @@ export class RemCDLayerOp extends MeshOp<{
   }
 }
 
-ToolOp.register(RemCDLayerOp)
 
 export class TestMultiGridSmoothOp extends MeshOp {
   static tooldef() {
@@ -2695,7 +2646,6 @@ export class TestMultiGridSmoothOp extends MeshOp {
   }
 }
 
-ToolOp.register(TestMultiGridSmoothOp)
 
 export class FixNormalsOp extends MeshOp<{
   outside: BoolProperty
@@ -2733,7 +2683,6 @@ export class FixNormalsOp extends MeshOp<{
   }
 }
 
-ToolOp.register(FixNormalsOp)
 
 export class FixManifoldOp extends MeshOp<{
   fixLooseGeometry: BoolProperty
@@ -2819,7 +2768,6 @@ export class FixManifoldOp extends MeshOp<{
   }
 }
 
-ToolOp.register(FixManifoldOp)
 
 export class ConnectVertsOp extends MeshOp {
   static tooldef() {
@@ -2857,7 +2805,6 @@ export class ConnectVertsOp extends MeshOp {
   }
 }
 
-ToolOp.register(ConnectVertsOp)
 
 export class DissolveVertOp extends MeshOp {
   static tooldef() {
@@ -2905,7 +2852,6 @@ export class DissolveVertOp extends MeshOp {
   }
 }
 
-ToolOp.register(DissolveVertOp)
 
 export class CleanupQuads extends MeshOp {
   static tooldef() {
@@ -2967,7 +2913,6 @@ export class CleanupQuads extends MeshOp {
   }
 }
 
-ToolOp.register(CleanupQuads)
 
 export class CleanupTris extends MeshOp {
   static tooldef() {
@@ -3019,7 +2964,6 @@ export class CleanupTris extends MeshOp {
   }
 }
 
-ToolOp.register(CleanupTris)
 
 export class DissolveEdgesOp extends MeshOp {
   static tooldef() {
@@ -3053,7 +2997,6 @@ export class DissolveEdgesOp extends MeshOp {
   }
 }
 
-ToolOp.register(DissolveEdgesOp)
 
 export const RotateEdgeModes = {
   FORWARD : 0,
@@ -3105,7 +3048,6 @@ export class RotateEdgeOp extends MeshOp<{
   }
 }
 
-ToolOp.register(RotateEdgeOp)
 
 export class CollapseEdgesOp extends MeshOp {
   static tooldef() {
@@ -3139,7 +3081,6 @@ export class CollapseEdgesOp extends MeshOp {
   }
 }
 
-ToolOp.register(CollapseEdgesOp)
 
 export class RandomCollapseOp extends MeshOp<{
   probability: FloatProperty
@@ -3210,7 +3151,6 @@ export class RandomCollapseOp extends MeshOp<{
   }
 }
 
-ToolOp.register(RandomCollapseOp)
 
 export class DissolveEdgeLoopsOp extends MeshOp<{
   ensureQuads: BoolProperty
@@ -3274,7 +3214,6 @@ export class DissolveEdgeLoopsOp extends MeshOp<{
   }
 }
 
-ToolOp.register(DissolveEdgeLoopsOp)
 
 export class FlipNormalsOp extends MeshOp {
   static tooldef() {
@@ -3306,7 +3245,6 @@ export class FlipNormalsOp extends MeshOp {
   }
 }
 
-ToolOp.register(FlipNormalsOp)
 
 export class QuadSmoothOp extends MeshOp {
   static tooldef() {
@@ -3354,7 +3292,6 @@ export class QuadSmoothOp extends MeshOp {
   }
 }
 
-ToolOp.register(QuadSmoothOp)
 
 export class TestSmoothOp extends MeshOp {
   static tooldef() {
@@ -3376,7 +3313,6 @@ export class TestSmoothOp extends MeshOp {
   }
 }
 
-ToolOp.register(TestSmoothOp)
 
 export class DissolveFacesOp extends MeshOp {
   static tooldef() {
@@ -3399,7 +3335,6 @@ export class DissolveFacesOp extends MeshOp {
   }
 }
 
-ToolOp.register(DissolveFacesOp)
 
 export class OptRemeshParams extends ToolOp<{
   edgeGoal: FloatProperty
@@ -3455,15 +3390,14 @@ export class OptRemeshParams extends ToolOp<{
   }
 }
 
-ToolOp.register(OptRemeshParams)
 
 import {SolverElem, Solver, VelConstraint} from './mesh_solver.js'
-import {BVHToolMode} from '../../../../scripts/editors/view3d/tools/pbvh'
+import {BVHToolMode} from '../../../../scripts/editors/view3d/tools/pbvh.js'
 import {CurvVert, getCurveVerts, smoothCurvatures} from './mesh_curvature.js'
 import {getFaceSets} from './mesh_facesets.js'
 import {getDynVerts} from './bvh.js'
-import type {ToolContext, ViewContext} from '../../../../scripts/core/context'
-import type {View3D} from '../../../../scripts/editors/all.js'
+import type {ToolContext, ViewContext} from '@framework/api'
+import type {View3D} from '@framework/api'
 
 export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet & {
@@ -3812,7 +3746,6 @@ export class TestSolverOp extends SolverOpBase<{
   }
 }
 
-ToolOp.register(TestSolverOp)
 
 export class DuplicateMeshOp extends MeshOp<{
   selectMask: FlagProperty
@@ -3894,4 +3827,3 @@ export class DuplicateMeshOp extends MeshOp<{
   }
 }
 
-ToolOp.register(DuplicateMeshOp)

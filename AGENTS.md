@@ -28,6 +28,20 @@ When generating type annotations:
 - Do not use single-line control blocks, e.g. `if (test) action()` is bad,
   `if (test) { action() }` is good.
 
+## Addons
+
+- Builtin editing features live under `addons/builtin/<id>/src/`.
+- Read the contents of `documentation/addons.md` before editing any
+  `addons/builtin/**` file. Key rules:
+  - Import framework primitives through `@framework/api` (never write
+    `../../../../scripts/foo.js` from inside an addon).
+  - Import peer-addon classes through `@addon/<id>/api`.
+  - Register classes through `api.register(cls)` /
+    `api.registerAll(...)` inside the addon's `register(api)` hook —
+    not via module-scope `ToolOp.register(...)` / `ToolMode.register(...)`
+    / etc. side effects. `nstructjs.inlineRegister(this, ...)` stays at
+    class scope.
+
 ## Code style
 
 - Read contents of `documentation/codeStyle.md`

@@ -1,8 +1,8 @@
-import {Vector2, Vector3, Vector4, Matrix4} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
+import {Vector2, Vector3, Vector4, Matrix4} from '@framework/api'
+import {util} from '@framework/api'
 import {MeshTypes, MeshFlags, LogTags} from './mesh_base.js'
 import {Face} from './mesh_types.js'
-import {nstructjs} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {nstructjs} from '@framework/pathux'
 
 export const LogTypes = {
   VERTEX   : 1,
@@ -64,7 +64,6 @@ mesh_log.CustomDataList {
   list : array(abstract(mesh.CustomDataElem));
 }
 `
-nstructjs.register(CustomDataList)
 
 let _cdtmp = new CustomDataList()
 let _cdReadMem = new Uint8Array(1024 * 1024 * 4)

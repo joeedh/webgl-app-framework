@@ -1,9 +1,9 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
-import * as math from '../../../../scripts/util/math.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js'
-import {nstructjs} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {nstructjs} from '@framework/pathux'
 
 /*
 
@@ -60,7 +60,6 @@ MultiGridSettings.STRUCT =
   nstructjs.inherit(MultiGridSettings, LayerSettingsBase) +
   `
 }`
-nstructjs.register(MultiGridSettings)
 
 export const SmoothVertFlags = {
   SELECT: 1,
@@ -191,8 +190,6 @@ MultiGridData.STRUCT =
   nstructjs.inherit(MultiGridData, CustomDataElem) +
   `
 }`
-nstructjs.register(MultiGridData)
-CustomDataElem.register(MultiGridData)
 
 let name_idgen = 0
 

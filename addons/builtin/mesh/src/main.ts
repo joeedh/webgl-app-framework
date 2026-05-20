@@ -14,7 +14,7 @@
  * flip the switch atomically when the file move lands.
  */
 
-import type {AddonAPI, IAddon, IAddonDefine} from '../../../../scripts/addon/addon_base.js'
+import type {AddonAPI, IAddon, IAddonDefine} from '@framework/api'
 
 export const addonDefine: IAddonDefine = {
   name       : 'Mesh',

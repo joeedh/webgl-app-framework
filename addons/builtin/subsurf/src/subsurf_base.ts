@@ -1,5 +1,5 @@
-import { Vector4 } from '../path.ux/pathux'
-import {Texture} from '../webgl/index'
+import { Vector4 } from '@framework/api'
+import {Texture} from '@framework/api'
 
 ///XXX truly ancient code
 export const PCOS = 0

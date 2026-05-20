@@ -1,8 +1,8 @@
 import {getArrayTemp, MeshFlags, MeshTypes} from './mesh_base.js'
-import {Vector3, Vector2, Matrix4, Vector4, Quat} from '../../../../scripts/util/vectormath.js'
-import * as math from '../../../../scripts/util/math.js'
-import * as util from '../../../../scripts/util/util.js'
-import Delaunay from '../../../../scripts/util/delaunay.js'
+import {Vector3, Vector2, Matrix4, Vector4, Quat} from '@framework/api'
+import {math} from '@framework/api'
+import {util} from '@framework/api'
+import {Delaunay} from '@framework/api'
 import {CustomDataElem} from './customdata.js'
 
 let EPS = 0.000001

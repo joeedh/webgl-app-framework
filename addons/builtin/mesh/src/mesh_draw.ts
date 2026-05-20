@@ -1,17 +1,17 @@
-import {IVector4, Number3, Number4, Vector2, Vector3, Vector4} from '../../../../scripts/util/vectormath.js'
-import * as util from '../../../../scripts/util/util.js'
+import {IVector4, Number3, Number4, Vector2, Vector3, Vector4} from '@framework/api'
+import {util} from '@framework/api'
 
 import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from './mesh_base'
-import {Colors, SceneObject} from '../../../../scripts/sceneobject/sceneobject'
-import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../../scripts/webgl/simplemesh'
+import {Colors, SceneObject} from '@framework/api'
+import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes, SimpleMesh} from '@framework/api'
 import {NormalLayerElem, UVLayerElem} from './mesh_customdata'
-import {SelMask} from '../../../../scripts/editors/view3d/selectmode'
+import {SelMask} from '@framework/api'
 import {GridBase} from './mesh_grids'
 import {getFaceSetColor, getFaceSetsAttr} from './mesh_facesets'
-import type {IUniformsBlock, ShaderProgram} from '../../../../scripts/webgl/webgl'
+import type {IUniformsBlock, ShaderProgram} from '@framework/api'
 import type {AttrRef, ColorLayerElem, ElementList, FaceSetElem, Mesh} from './mesh'
-import type {ViewContext} from '../../../../scripts/core/context.js'
-import type {View3D} from '../../../../scripts/editors/all.js'
+import type {ViewContext} from '@framework/api'
+import type {View3D} from '@framework/api'
 
 export function genRenderMesh(
   gl: WebGL2RenderingContext | undefined,

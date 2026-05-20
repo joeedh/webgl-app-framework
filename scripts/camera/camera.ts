@@ -12,7 +12,7 @@ import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/view3d/view3d.js'
 import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {ToolContext} from '../core/context.js'
-import type {CurveSpline} from '../curve/curve.js'
+import type {CurveSpline} from '../../addons/builtin/curve/src/curve.js'
 
 export class CameraData extends SceneObjectData {
   camera: Camera

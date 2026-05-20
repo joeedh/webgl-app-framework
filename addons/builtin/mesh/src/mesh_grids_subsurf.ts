@@ -2,13 +2,13 @@ import {Grid, GridVert, QRecalcFlags} from './mesh_grids.js'
 import {AttrRef, CDRef} from './customdata'
 import {ColorLayerElem, IntElem} from './mesh_customdata.js'
 import {MeshError} from './mesh_base.js'
-import {Patch4, CubicPatch, bernstein, PatchBase} from '../../../../scripts/subsurf/subsurf_patch.js'
-import {subdivide} from '../../../../scripts/subsurf/subsurf_mesh.js'
-import {Vector2, Vector3, util} from '../../../../scripts/path.ux/scripts/pathux.js'
-import {ccSmooth} from '../../../../scripts/subsurf/subsurf_mesh.js'
+import {Patch4, CubicPatch, bernstein, PatchBase} from '../../subsurf/src/subsurf_patch.js'
+import {subdivide} from '../../subsurf/src/subsurf_mesh.js'
+import {Vector2, Vector3, util} from '@framework/api'
+import {ccSmooth} from '../../subsurf/src/subsurf_mesh.js'
 import {getDynVerts, MDynVert} from './bvh'
 import {getFaceSets} from './mesh_facesets.js'
-import {Loop, Mesh, Vertex} from './mesh'
+import type {Loop, Mesh, Vertex} from './mesh'
 
 export class PatchBuilder {
   mesh: Mesh

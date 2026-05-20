@@ -1,10 +1,11 @@
-import {ToolOp, BoolProperty, ToolDef, PropertySlots, ContextLike} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {ToolDef, PropertySlots, ContextLike} from '@framework/api'
+import {ToolOp, BoolProperty} from '@framework/pathux'
 import {MeshFlags} from './mesh_base'
-import {View3DOp} from '../../../../scripts/editors/view3d/view3d_ops.js'
+import {View3DOp} from '@framework/api'
 import {MeshOp} from './mesh_ops_base'
 import {Loop} from './mesh_types'
-import type {ViewContext} from '../../../../scripts/core/context.js'
-import type {ImageEditor} from '../../../../scripts/editors/all.js'
+import type {ViewContext} from '@framework/api'
+import type {ImageEditor} from '@framework/api'
 
 export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> //
   extends MeshOp<

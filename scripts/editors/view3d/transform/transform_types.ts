@@ -1,7 +1,8 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
 import {ToolOp, UndoFlags} from '../../../path.ux/scripts/pathux.js'
 import {keymap} from '../../../path.ux/scripts/util/simple_events.js'
-import {MeshFlags, MeshTypes, Mesh, Vertex, Face} from '../../../../addons/builtin/mesh/src/mesh.js'
+import {MeshFlags, MeshTypes} from '../../../../addons/builtin/mesh/src/mesh_base.js'
+import type {Mesh, Vertex, Face} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {SelMask} from '../selectmode.js'
 import {SceneObject, ObjectFlags} from '../../../sceneobject/sceneobject.js'
 import {PropModes, TransDataType, TransDataElem, TransDataList, ITransDataType} from './transform_base.js'
@@ -865,7 +866,7 @@ export const ObjectTransType: ITransDataType<
 
     for (const ob of ctx.selectedObjects) {
       let ok = get_transform_parent(ob) === ob
-      ok = ok && (!ignore_meshes || !(ob.data instanceof Mesh))
+      ok = ok && (!ignore_meshes || ob.data?.lib_type !== 'mesh')
 
       if (!ok) {
         continue

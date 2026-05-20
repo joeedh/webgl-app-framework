@@ -7,7 +7,7 @@
  * and resolve its exports via `@addon/subsurf/api`.
  */
 
-import addonManager from '../addon/addon.js'
+import {addonManager} from '@framework/api'
 import {ccSmooth, createPatches, loopSubdivide, subdivide} from './subsurf_mesh.js'
 import {
   CubicPatch,

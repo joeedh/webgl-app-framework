@@ -1,4 +1,5 @@
-import {util, math, Vector2, Vector3, Matrix4, Number2, Solver, Constraint} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {util, math, Vector2, Vector3, Matrix4, Number2} from '@framework/api'
+import {Solver, Constraint} from '@framework/pathux'
 import '../../../../scripts/util/numeric.js'
 
 import '../../../../scripts/extern/Math.js'
