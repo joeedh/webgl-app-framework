@@ -1,0 +1,10 @@
+node_modules
+build
+dist
+**/dist/
+scripts/path.ux/
+emsdk/
+sculptcore/
+vendor/
+patches/
+**/*.min.js
