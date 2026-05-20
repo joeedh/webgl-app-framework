@@ -27,3 +27,6 @@ export {BufferUsage, TextureUsage, ShaderStage} from './flags.js'
 
 export {WebGPUDrawQueueAdapter} from './queue_adapter.js'
 export type {WebGPUFrameContext} from './queue_adapter.js'
+
+export {WebGpuRenderContext, FULLSCREEN_QUAD_LAYOUT} from './render_context.js'
+export type {WebGpuRenderContextOptions} from './render_context.js'
