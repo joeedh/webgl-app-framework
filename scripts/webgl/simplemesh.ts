@@ -1879,6 +1879,33 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     //  this.regen = 1;
     //}
   }
+
+  /**
+   * WebGPU draw entry — placeholder per Phase 4c. The full port needs:
+   *
+   *   1. An `_uploadGpuBuffers(device)` mirror of `gen_buffers(gl)`,
+   *      packing each `GeoLayer` into either an interleaved
+   *      `GpuBuffer` per primtype (matching the registry layouts in
+   *      `scripts/shaders/wgsl_shaders.ts`) or a buffer-per-attribute
+   *      with shader-side `arrayStride`/`shaderLocation` adjustments.
+   *   2. Shader-specific bind group construction — frame uniforms
+   *      (@group 0), per-material samplers/textures (@group 1), and
+   *      per-object matrices (@group 2). Sculpt shaders pull a
+   *      sampler+texture at @group(1); simple ones don't.
+   *   3. Index buffer support for `indexedMode === true`.
+   *   4. A draw call per primtype (tris/lines/points/tristrip-lines)
+   *      mirroring the GL `_draw_tris` / `_draw_lines` split.
+   *
+   * Throwing here means the WebGPU adapter surfaces a clear error
+   * instead of silently no-op'ing. Lift this stub when the buffer
+   * upload lands.
+   */
+  drawGPU(_pass: GPURenderPassEncoder, _pipeline: GPURenderPipeline, _uniforms: IUniformsBlock): void {
+    throw new Error(
+      'SimpleIsland.drawGPU: vertex upload path not implemented yet — ' +
+        'see Phase 4c TODO in simplemesh.ts.'
+    )
+  }
 }
 
 export class SimpleMesh {
@@ -2036,6 +2063,12 @@ export class SimpleMesh {
 
     for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
+    }
+  }
+
+  drawGPU(pass: GPURenderPassEncoder, pipeline: GPURenderPipeline, uniforms: IUniformsBlock): void {
+    for (const island of this.islands) {
+      island.drawGPU(pass, pipeline, uniforms)
     }
   }
 }
