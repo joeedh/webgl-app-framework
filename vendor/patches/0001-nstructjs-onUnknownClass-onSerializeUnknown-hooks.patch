@@ -1,0 +1,277 @@
+From 5cd346922e7517e5bdc592a56157707028965aa1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 19 May 2026 20:07:02 +0000
+Subject: [PATCH] Add onUnknownClass + onSerializeUnknown hooks
+
+For host integration with the webgl-app-framework addon system: when an
+abstract(...) field references a struct whose JS class isn't registered
+(e.g. its addon is disabled), the host installs onUnknownClass to
+provide a placeholder class. read_object walks the file's stored schema
+to populate the placeholder's dynamic properties with all original
+fields, so no data is lost.
+
+For the matching write path, onSerializeUnknown lets the host name an
+override struct (typically the original missing class) so that
+write_struct re-emits the data under the original struct id + schema.
+
+Default behavior unchanged when hooks are not installed.
+
+Changes:
+- src/struct_intern.ts: STRUCT class gains onUnknownClass +
+  onSerializeUnknown fields. read_object uses onUnknownClass and the
+  file's schema when the class is missing.
+- src/struct_intern2.ts: StructTStructField pack honors
+  onSerializeUnknown to override struct id/schema. unpack/unpackInto
+  pass the numeric id through when class is missing so read_object can
+  call the hook, then stamp _origClsname on the resulting placeholder
+  instance.
+- build/: rebuilt via rollup_module.config.js.
+
+All 33 existing nstructjs tests still pass.
+---
+ build/nstructjs_es6.js   | 46 ++++++++++++++++++++++++++++++++++++----
+ build/struct_intern.d.ts | 20 +++++++++++++++++
+ src/struct_intern.ts     | 40 ++++++++++++++++++++++++++++++++--
+ src/struct_intern2.ts    | 29 +++++++++++++++++++++++--
+ 4 files changed, 127 insertions(+), 8 deletions(-)
+
+diff --git a/build/nstructjs_es6.js b/build/nstructjs_es6.js
+index 7f13cb2..23bbe59 100644
+--- a/build/nstructjs_es6.js
++++ b/build/nstructjs_es6.js
+@@ -1540,6 +1540,18 @@ class StructTStructField extends StructFieldType {
+         let cls = manager.get_struct_cls(type.data);
+         let stt = manager.get_struct(type.data);
+         const keywords = manager.constructor.keywords;
++        // Host-supplied placeholder for an unloaded-addon class: write under the
++        // original struct's id + schema, not the placeholder's. See plan §4.
++        if (manager.onSerializeUnknown) {
++            const overrideName = manager.onSerializeUnknown(val);
++            if (overrideName !== undefined) {
++                const ostt = manager.get_struct(overrideName);
++                packer_debug$1("int " + ostt.id);
++                pack_int(data, ostt.id);
++                manager.write_struct(data, val, ostt);
++                return;
++            }
++        }
+         const valObj = val;
+         const valCtor = valObj.constructor;
+         //make sure inheritance is correct
+@@ -1621,7 +1633,13 @@ class StructTStructField extends StructFieldType {
+         let cls2 = manager.get_struct_id(id);
+         packer_debug$1("struct name: " + cls2.name);
+         let cls3 = manager.struct_cls[cls2.name];
+-        return manager.read_object(data, cls3, uctx, dest);
++        // Pass the numeric id when class missing so read_object's onUnknownClass
++        // hook can fire and produce a placeholder instance. See plan §4.
++        const instance = manager.read_object(data, cls3 ?? id, uctx, dest);
++        if (cls3 === undefined && instance && typeof instance === "object") {
++            instance._origClsname = cls2.name;
++        }
++        return instance;
+     }
+     static unpack(manager, data, type, uctx) {
+         let id = unpack_int(data, uctx);
+@@ -1636,7 +1654,13 @@ class StructTStructField extends StructFieldType {
+         let cls2 = manager.get_struct_id(id);
+         packer_debug$1("struct name: " + cls2.name);
+         let cls3 = manager.struct_cls[cls2.name];
+-        return manager.read_object(data, cls3, uctx);
++        // Pass the numeric id when class missing so read_object's onUnknownClass
++        // hook can fire and produce a placeholder instance. See plan §4.
++        const instance = manager.read_object(data, cls3 ?? id, uctx);
++        if (cls3 === undefined && instance && typeof instance === "object") {
++            instance._origClsname = cls2.name;
++        }
++        return instance;
+     }
+     static define() {
+         return {
+@@ -3278,8 +3302,22 @@ class STRUCT {
+         if (data instanceof Array) {
+             data = new DataView(new Uint8Array(data).buffer);
+         }
++        // When dispatched via abstract-type from a numeric struct id, capture the
++        // *file's* schema. If the JS class isn't registered (addon unloaded) and
++        // the host has installed an onUnknownClass hook, fall back to the host's
++        // placeholder class but keep walking the file's schema so the placeholder
++        // ends up with every original field as a dynamic property — see plan §4.
++        let unknownClassSchema;
+         if (typeof cls_or_struct_id === "number") {
+-            cls = this.struct_cls[this.struct_ids[cls_or_struct_id].name];
++            const fileSchema = this.struct_ids[cls_or_struct_id];
++            cls = this.struct_cls[fileSchema.name];
++            if (cls === undefined && this.onUnknownClass) {
++                const hookResult = this.onUnknownClass(fileSchema.name, fileSchema);
++                if (hookResult !== undefined) {
++                    cls = hookResult;
++                    unknownClassSchema = fileSchema;
++                }
++            }
+         }
+         else {
+             cls = cls_or_struct_id;
+@@ -3287,7 +3325,7 @@ class STRUCT {
+         if (cls === undefined) {
+             throw new Error("bad cls_or_struct_id " + cls_or_struct_id);
+         }
+-        stt = this.structs[cls.structName];
++        stt = unknownClassSchema ?? this.structs[cls.structName];
+         if (uctx === undefined) {
+             uctx = new unpack_context();
+             packer_debug("\n\n=Begin reading " + cls.structName + "=");
+diff --git a/build/struct_intern.d.ts b/build/struct_intern.d.ts
+index 7a2c99f..cc7c7da 100644
+--- a/build/struct_intern.d.ts
++++ b/build/struct_intern.d.ts
+@@ -19,6 +19,26 @@ export declare class STRUCT {
+     jsonBuf: string;
+     jsonLogger: (...args: unknown[]) => void;
+     formatCtx: FormatCtx;
++    /**
++     * Host-supplied hook invoked when an `abstract(...)` field references a
++     * struct name that's in the schema dictionary but whose JS class isn't
++     * currently registered (e.g. the addon that owned it isn't loaded).
++     *
++     * Return a StructableClass to use *as the instance constructor* for that
++     * struct. The reader will still walk the original on-disk schema to fill
++     * the instance's fields by name, so the instance ends up with all of the
++     * original class's data attached as dynamic properties. Return undefined
++     * to fall through to the default error.
++     */
++    onUnknownClass?: (clsname: string, schema: NStructInterface) => StructableClass<unknown> | undefined;
++    /**
++     * Host-supplied hook invoked at write time, when serializing a value
++     * whose class isn't the one declared in the schema (e.g. a placeholder
++     * standing in for an unloaded addon's class). Return the original
++     * struct-name to use that struct's schema for both the struct id and the
++     * field layout. Return undefined to fall through to the default behavior.
++     */
++    onSerializeUnknown?: (obj: unknown) => string | undefined;
+     static keywords: StructKeywords;
+     constructor();
+     static inherit(child: StructableClass, parent: StructableClass, structName?: string): string;
+diff --git a/src/struct_intern.ts b/src/struct_intern.ts
+index dd4582b..af803d2 100644
+--- a/src/struct_intern.ts
++++ b/src/struct_intern.ts
+@@ -179,6 +179,28 @@ export class STRUCT {
+   jsonLogger!: (...args: unknown[]) => void;
+   formatCtx: FormatCtx;
+ 
++  /**
++   * Host-supplied hook invoked when an `abstract(...)` field references a
++   * struct name that's in the schema dictionary but whose JS class isn't
++   * currently registered (e.g. the addon that owned it isn't loaded).
++   *
++   * Return a StructableClass to use *as the instance constructor* for that
++   * struct. The reader will still walk the original on-disk schema to fill
++   * the instance's fields by name, so the instance ends up with all of the
++   * original class's data attached as dynamic properties. Return undefined
++   * to fall through to the default error.
++   */
++  onUnknownClass?: (clsname: string, schema: NStructInterface) => StructableClass<unknown> | undefined;
++
++  /**
++   * Host-supplied hook invoked at write time, when serializing a value
++   * whose class isn't the one declared in the schema (e.g. a placeholder
++   * standing in for an unloaded addon's class). Return the original
++   * struct-name to use that struct's schema for both the struct id and the
++   * field layout. Return undefined to fall through to the default behavior.
++   */
++  onSerializeUnknown?: (obj: unknown) => string | undefined;
++
+   static keywords: StructKeywords;
+ 
+   constructor() {
+@@ -961,8 +983,22 @@ export class STRUCT {
+       data = new DataView(new Uint8Array(data).buffer);
+     }
+ 
++    // When dispatched via abstract-type from a numeric struct id, capture the
++    // *file's* schema. If the JS class isn't registered (addon unloaded) and
++    // the host has installed an onUnknownClass hook, fall back to the host's
++    // placeholder class but keep walking the file's schema so the placeholder
++    // ends up with every original field as a dynamic property — see plan §4.
++    let unknownClassSchema: NStructInterface | undefined;
+     if (typeof cls_or_struct_id === "number") {
+-      cls = this.struct_cls[this.struct_ids[cls_or_struct_id].name] as StructableClass<T>;
++      const fileSchema = this.struct_ids[cls_or_struct_id];
++      cls = this.struct_cls[fileSchema.name] as StructableClass<T>;
++      if (cls === undefined && this.onUnknownClass) {
++        const hookResult = this.onUnknownClass(fileSchema.name, fileSchema);
++        if (hookResult !== undefined) {
++          cls = hookResult as StructableClass<T>;
++          unknownClassSchema = fileSchema;
++        }
++      }
+     } else {
+       cls = cls_or_struct_id;
+     }
+@@ -971,7 +1007,7 @@ export class STRUCT {
+       throw new Error("bad cls_or_struct_id " + cls_or_struct_id);
+     }
+ 
+-    stt = this.structs[(cls as any)[keywords.name] as string];
++    stt = unknownClassSchema ?? this.structs[(cls as any)[keywords.name] as string];
+ 
+     if (uctx === undefined) {
+       uctx = new struct_binpack.unpack_context();
+diff --git a/src/struct_intern2.ts b/src/struct_intern2.ts
+index a2a4e78..7c3afae 100644
+--- a/src/struct_intern2.ts
++++ b/src/struct_intern2.ts
+@@ -734,6 +734,19 @@ class StructTStructField extends StructFieldType {
+ 
+     const keywords = (manager.constructor as unknown as { keywords: import("./types.js").StructKeywords }).keywords;
+ 
++    // Host-supplied placeholder for an unloaded-addon class: write under the
++    // original struct's id + schema, not the placeholder's. See plan §4.
++    if (manager.onSerializeUnknown) {
++      const overrideName = manager.onSerializeUnknown(val);
++      if (overrideName !== undefined) {
++        const ostt = manager.get_struct(overrideName);
++        packer_debug("int " + ostt.id);
++        pack_int(data, ostt.id);
++        manager.write_struct(data, val, ostt);
++        return;
++      }
++    }
++
+     const valObj = val as Record<string, unknown>;
+     const valCtor = valObj.constructor as unknown as Record<string, unknown>;
+ 
+@@ -873,7 +886,13 @@ class StructTStructField extends StructFieldType {
+ 
+     let cls3 = manager.struct_cls[cls2.name];
+ 
+-    return manager.read_object(data, cls3, uctx, dest);
++    // Pass the numeric id when class missing so read_object's onUnknownClass
++    // hook can fire and produce a placeholder instance. See plan §4.
++    const instance = manager.read_object(data, cls3 ?? id, uctx, dest);
++    if (cls3 === undefined && instance && typeof instance === "object") {
++      (instance as Record<string, unknown>)._origClsname = cls2.name;
++    }
++    return instance;
+   }
+ 
+   static unpack(manager: StructManager, data: DataView, type: TypeDescriptor, uctx: UnpackContext): unknown {
+@@ -893,7 +912,13 @@ class StructTStructField extends StructFieldType {
+     packer_debug("struct name: " + cls2.name);
+     let cls3 = manager.struct_cls[cls2.name];
+ 
+-    return manager.read_object(data, cls3, uctx);
++    // Pass the numeric id when class missing so read_object's onUnknownClass
++    // hook can fire and produce a placeholder instance. See plan §4.
++    const instance = manager.read_object(data, cls3 ?? id, uctx);
++    if (cls3 === undefined && instance && typeof instance === "object") {
++      (instance as Record<string, unknown>)._origClsname = cls2.name;
++    }
++    return instance;
+   }
+ 
+   static define(): FieldTypeDefinition {
+-- 
+2.43.0
+
