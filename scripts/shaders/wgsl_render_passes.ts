@@ -215,6 +215,61 @@ fn fs_main(in : VsOut) -> FsOut {
 }
 `
 
+/**
+ * SharpenPass — port of `SharpenPass` (realtime_passes.ts:725-806).
+ * Same 1D scan as BlurPass but with a remapped weight curve and a
+ * post-blur mix back toward the original sample using `sharpen` as
+ * the lerp factor. Defines mirror BlurPass: `SAMPLES`, `AXIS_Y`.
+ */
+export const SHARPEN_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp       : sampler;
+@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+
+struct SharpenUniforms {
+  sharpen : f32,
+};
+@group(0) @binding(4) var<uniform> sharpenU : SharpenUniforms;
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  var accum = vec4f(0.0);
+  var tot : f32 = 0.0;
+  let p = in.v_Uv * pass.size;
+
+  for (var i : i32 = -SAMPLES; i < SAMPLES; i = i + 1) {
+    var w = 1.0 - abs(f32(i) / f32(SAMPLES));
+    w = w * w * (3.0 - 2.0 * w);
+    w = w - 0.4;
+    var p2 = p;
+#ifdef AXIS_Y
+    p2.y = p2.y + f32(i);
+#else
+    p2.x = p2.x + f32(i);
+#endif
+    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    accum = accum + color * w;
+    tot = tot + w;
+  }
+
+  accum = accum / tot;
+  let center = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
+  let mixed = accum + (center - accum) * (1.0 - sharpenU.sharpen);
+  out.color = vec4f(mixed.xyz, 1.0);
+  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  return out;
+}
+`
+
 export interface WgslPassEntry {
   key: string
   source: string
@@ -296,6 +351,15 @@ registerWgslPass({
 registerWgslPass({
   key          : 'BlurPass',
   source       : BLUR_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+registerWgslPass({
+  key          : 'SharpenPass',
+  source       : SHARPEN_PASS_WGSL,
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
