@@ -126,6 +126,33 @@ export class WebGpuRenderContext {
   }
 
   /**
+   * Like `renderStage` but takes a raw `GPURenderPassDescriptor` instead
+   * of a `RenderTarget`. Use this when the color attachment is a view
+   * that doesn't live on a `RenderTarget` — most notably the canvas
+   * texture returned by `GPUCanvasContext.getCurrentTexture()`, which
+   * is volatile per frame and not owned by any persistent object.
+   *
+   * Sets/clears `currentPass` so `createDrawQueue` can pick it up, same
+   * as `renderStage`.
+   */
+  renderStageDesc(
+    desc: GPURenderPassDescriptor,
+    drawCb: (pass: GPURenderPassEncoder) => void
+  ): void {
+    if (!this.encoder) {
+      throw new Error('WebGpuRenderContext.renderStageDesc: no frame open — call beginFrame() first.')
+    }
+    const pass = this.encoder.beginRenderPass(desc)
+    this.currentPass = pass
+    try {
+      drawCb(pass)
+    } finally {
+      this.currentPass = undefined
+      pass.end()
+    }
+  }
+
+  /**
    * Issue a full-screen blit using the bundled quad buffer. The caller
    * is responsible for `setPipeline` + `setBindGroup` — this method only
    * binds the vertex buffer and issues the 6-vertex draw.

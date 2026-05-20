@@ -54,6 +54,8 @@ import type {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 import {BusMessage} from '../../core/bus'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 import * as sculptcore_demo from '../../sculptcore_demo'
+import {isWebGPU} from '../../core/renderer_flag'
+import {drawViewportWebGpu, makeWebGpuGlStub} from './view3d_draw_webgpu'
 
 export interface ITempText {
   co: Vector3
@@ -119,6 +121,15 @@ export function initWebGL() {
   canvas.dpi = dpi
 
   document.body.appendChild(canvas)
+
+  if (isWebGPU()) {
+    // WebGPU mode: skip WebGL2 acquisition + WebGL-only resource init.
+    // view3d_draw_webgpu lazily acquires the GPUDevice + GPUCanvasContext
+    // on first draw. `_gl` is a throwing Proxy so any code path that
+    // forgot an isWebGPU() guard surfaces as a clear error.
+    window._gl = makeWebGpuGlStub(canvas)
+    return
+  }
 
   const gl = init_webgl(canvas, {
     antialias            : false,
@@ -1481,6 +1492,23 @@ View3D {
       this.makeGraphNodes()
     }
 
+    if (isWebGPU()) {
+      // WebGPU smoke-test path — bypasses the WebGL imperative state
+      // setup below. See scripts/editors/view3d/view3d_draw_webgpu.ts
+      // for what's implemented and what's stubbed.
+      const aspect = this.size[0] / this.size[1]
+      this.activeCamera.regen_mats(aspect)
+      const dpi = this.canvas.dpi
+      const x = this.owning_sarea.pos[0] * dpi
+      const y = this.owning_sarea.pos[1] * dpi
+      const w = this.owning_sarea.size[0] * dpi
+      const h = this.owning_sarea.size[1] * dpi
+      this.glPos = new Vector2([~~x, ~~y])
+      this.glSize = new Vector2([~~w, ~~h])
+      drawViewportWebGpu(this as unknown as Parameters<typeof drawViewportWebGpu>[0])
+      return
+    }
+
     const graphnode = this._graphnode!
     graphnode.outputs.onDrawPre.immediateUpdate()
 
@@ -1892,7 +1920,9 @@ const f2 = () => {
   }
 
   //wait for gpu
-  gl.finish()
+  if (!isWebGPU()) {
+    gl.finish()
+  }
 
   //be real sure gpu has finished drawing
   //gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(8*8*4));
