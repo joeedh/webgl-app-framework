@@ -617,6 +617,450 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 }
 `
 
+/**
+ * SculptShaderSimple — port of `SculptShaderSimple` (shaders.ts:764-884).
+ * Lit-mesh shader for the sculpt PBVH nodes, simple lambert + texture +
+ * vertex color. `DRAW_FLAT` variant computes normal from screen-space
+ * derivatives instead of the interpolated attribute.
+ *
+ * Defines: `DRAW_FLAT` (recomputes normal via `dpdx`/`dpdy`).
+ */
+export const SCULPT_SIMPLE_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  normalMatrix : mat4x4f,
+  uColor       : vec4f,
+  alpha        : f32,
+  hasTexture   : f32,
+  polygonOffset: f32,
+  _pad0        : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+@group(1) @binding(0) var sculptTex : texture_2d<f32>;
+@group(1) @binding(1) var sculptSmp : sampler;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+  @location(2) uv       : vec2f,
+  @location(3) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor  : vec4f,
+  @location(1) vNormal : vec3f,
+  @location(2) vUv     : vec2f,
+#ifdef DRAW_FLAT
+  @location(3) vWorldCo : vec3f,
+#endif
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  var p = object.objectMatrix * vec4f(in.position, 1.0);
+#ifdef DRAW_FLAT
+  out.vWorldCo = p.xyz;
+#endif
+  p = frame.projectionMatrix * vec4f(p.xyz, 1.0);
+  var n = object.objectMatrix * vec4f(in.normal, 0.0);
+  n = frame.projectionMatrix * n;
+
+  let off = 5.0 * object.polygonOffset / (frame.far - frame.near + 0.00001);
+  p.z = p.z - off;
+
+  out.clipPos = p;
+  out.vUv = in.uv;
+  out.vNormal = normalize(n.xyz);
+  out.vColor = in.color;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  var no = normalize(in.vNormal);
+#ifdef DRAW_FLAT
+  let n1 = dpdx(in.vWorldCo);
+  let n2 = dpdy(in.vWorldCo);
+  var nflat = cross(n1, n2);
+  nflat = (frame.projectionMatrix * vec4f(nflat, 0.0)).xyz;
+  no = normalize(nflat);
+#endif
+  let l = vec3f(0.096, -0.288, 0.96);
+  var f = dot(no, l);
+  if (f < 0.0) { f = -f * 0.5; }
+  f = f * 0.8 + 0.2;
+
+  var tex = textureSample(sculptTex, sculptSmp, in.vUv);
+  tex = tex + (vec4f(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - object.hasTexture);
+
+  var c = vec4f(f, f, f, 1.0) * object.uColor * in.vColor;
+  c.a = c.a * object.alpha;
+  return c * tex;
+}
+`
+
+/**
+ * SculptShaderHexDeform — port of `SculptShaderHexDeform`
+ * (shaders.ts:886-1070). Adds trilinear hex-box deformation on the
+ * vertex position. `WITH_BOXVERTS` chooses between uniform-array box
+ * corners and a texture-sampled definition (`nodeDefTex`); the WGSL
+ * port keeps both variants behind the same `#ifdef` so callers don't
+ * have to flip storage at the pipeline layer.
+ *
+ * Defines: `WITH_BOXVERTS`, `DRAW_FLAT`.
+ */
+export const SCULPT_HEX_DEFORM_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+#ifdef WITH_BOXVERTS
+struct ObjectUniforms {
+  objectMatrix  : mat4x4f,
+  normalMatrix  : mat4x4f,
+  uColor        : vec4f,
+  boxverts      : array<vec4f, 8>, // .xyz used; vec4 for std140 align
+  alpha         : f32,
+  hasTexture    : f32,
+  polygonOffset : f32,
+  _pad0         : f32,
+};
+#else
+struct ObjectUniforms {
+  objectMatrix  : mat4x4f,
+  normalMatrix  : mat4x4f,
+  uColor        : vec4f,
+  nodeDefTexUV  : vec2f,
+  nodeDefTexDu  : f32,
+  alpha         : f32,
+  hasTexture    : f32,
+  polygonOffset : f32,
+  _pad0         : f32,
+  _pad1         : f32,
+};
+#endif
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+@group(1) @binding(0) var sculptTex : texture_2d<f32>;
+@group(1) @binding(1) var sculptSmp : sampler;
+#ifndef WITH_BOXVERTS
+@group(1) @binding(2) var nodeDefTex : texture_2d<f32>;
+@group(1) @binding(3) var nodeDefSmp : sampler;
+#endif
+
+struct VsIn {
+  @location(0) position  : vec3f,
+  @location(1) normal    : vec3f,
+  @location(2) uv        : vec2f,
+  @location(3) color     : vec4f,
+  @location(4) bvhDefVs  : vec2f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor  : vec4f,
+  @location(1) vNormal : vec3f,
+  @location(2) vUv     : vec2f,
+#ifdef DRAW_FLAT
+  @location(3) vWorldCo : vec3f,
+#endif
+};
+
+fn trilinear_v3(uvw : vec3f, bvhDefVs : vec2f) -> vec3f {
+  let u = uvw.x;
+  let v = uvw.y;
+  let w = uvw.z;
+
+#ifdef WITH_BOXVERTS
+  let a1 = object.boxverts[0].xyz;
+  let b1 = object.boxverts[1].xyz - a1;
+  let c1 = object.boxverts[2].xyz - a1;
+  let d1 = object.boxverts[3].xyz - a1;
+  let a2 = object.boxverts[4].xyz - a1;
+  let b2 = object.boxverts[5].xyz - a1;
+  let c2 = object.boxverts[6].xyz - a1;
+  let d2 = object.boxverts[7].xyz - a1;
+#else
+  let uvT = bvhDefVs;
+  let s1 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT, 0.0);
+  let a1 = s1.xyz;
+  let b1 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 1.0, 0.0), 0.0).xyz - a1;
+  let c1 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 2.0, 0.0), 0.0).xyz - a1;
+  let d1 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 3.0, 0.0), 0.0).xyz - a1;
+  let a2 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 4.0, 0.0), 0.0).xyz - a1;
+  let b2 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 5.0, 0.0), 0.0).xyz - a1;
+  let c2 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 6.0, 0.0), 0.0).xyz - a1;
+  let d2 = textureSampleLevel(nodeDefTex, nodeDefSmp, uvT + vec2f(object.nodeDefTexDu * 7.0, 0.0), 0.0).xyz - a1;
+#endif
+
+  let x = (((a2.x - b2.x) * v - a2.x + (c2.x - d2.x) * v + d2.x) * u
+           - ((a2.x - b2.x) * v - a2.x)
+           - (((c1.x - d1.x) * v + d1.x - b1.x * v) * u + b1.x * v)) * w
+          + ((c1.x - d1.x) * v + d1.x - b1.x * v) * u + b1.x * v;
+  let y = (((a2.y - b2.y) * v - a2.y + (c2.y - d2.y) * v + d2.y) * u
+           - ((a2.y - b2.y) * v - a2.y)
+           - (((c1.y - d1.y) * v + d1.y - b1.y * v) * u + b1.y * v)) * w
+          + ((c1.y - d1.y) * v + d1.y - b1.y * v) * u + b1.y * v;
+  let z = (((a2.z - b2.z) * v - a2.z + (c2.z - d2.z) * v + d2.z) * u
+           - ((a2.z - b2.z) * v - a2.z)
+           - (((c1.z - d1.z) * v + d1.z - b1.z * v) * u + b1.z * v)) * w
+          + ((c1.z - d1.z) * v + d1.z - b1.z * v) * u + b1.z * v;
+
+  return vec3f(x, y, z) + a1;
+}
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let warped = trilinear_v3(in.position, in.bvhDefVs);
+  var p = object.objectMatrix * vec4f(warped, 1.0);
+#ifdef DRAW_FLAT
+  out.vWorldCo = p.xyz;
+#endif
+  p = frame.projectionMatrix * vec4f(p.xyz, 1.0);
+  var n = object.objectMatrix * vec4f(in.normal, 0.0);
+  n = frame.projectionMatrix * n;
+
+  let off = 5.0 * object.polygonOffset / (frame.far - frame.near + 0.00001);
+  p.z = p.z - off;
+
+  out.clipPos = p;
+  out.vUv = in.uv;
+  out.vNormal = normalize(n.xyz);
+  out.vColor = in.color;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  var no = normalize(in.vNormal);
+#ifdef DRAW_FLAT
+  let n1 = dpdx(in.vWorldCo);
+  let n2 = dpdy(in.vWorldCo);
+  var nflat = cross(n1, n2);
+  nflat = (frame.projectionMatrix * vec4f(nflat, 0.0)).xyz;
+  no = normalize(nflat);
+#endif
+  let l = vec3f(0.096, -0.288, 0.96);
+  var f = dot(no, l);
+  if (f < 0.0) { f = -f * 0.5; }
+  f = f * 0.8 + 0.2;
+
+  var tex = textureSample(sculptTex, sculptSmp, in.vUv);
+  tex = tex + (vec4f(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - object.hasTexture);
+
+  var c = vec4f(f, f, f, 1.0) * object.uColor * in.vColor;
+  c.a = c.a * object.alpha;
+  return c * tex;
+}
+`
+
+/**
+ * Hex-deform layout: position + normal + uv + color + BVHDefVs. Adds a
+ * `vec2` BVH-def attribute at location 4 on top of `LIT_MESH_VERTEX_LAYOUT`.
+ * Stride = 48 + 8 = 56 bytes.
+ */
+export const SCULPT_HEX_DEFORM_VERTEX_LAYOUT: GPUVertexBufferLayout = {
+  arrayStride: 56,
+  attributes: [
+    {shaderLocation: 0, offset: 0,  format: 'float32x3'},
+    {shaderLocation: 1, offset: 12, format: 'float32x3'},
+    {shaderLocation: 2, offset: 24, format: 'float32x2'},
+    {shaderLocation: 3, offset: 32, format: 'float32x4'},
+    {shaderLocation: 4, offset: 48, format: 'float32x2'},
+  ],
+}
+
+/**
+ * SculptShader — port of `SculptShader` (shaders.ts:480-762). Full
+ * sculpt-mode shader with per-primitive vertex colors and optional
+ * cubic-bezier-triangle color patching (`VCOL_PATCH`). The GLSL source
+ * carries three dead `#elif 0` branches plus the active `#elif 1` cubic
+ * bezier path — the dead branches are *not* ported here (preprocess.ts
+ * doesn't implement `#elif`, and Phase 2 explicitly limits to
+ * `#if 0|1`). Only the active branch is included; if you need to
+ * resurrect the bilinear/quadratic variants, add them as separate
+ * registry keys.
+ *
+ * Defines: `VCOL_PATCH` (enables cubic-bezier-triangle interpolation
+ * of vPrimC1..vPrimC6; otherwise vcol = vColor).
+ */
+export const SCULPT_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix  : mat4x4f,
+  normalMatrix  : mat4x4f,
+  uColor        : vec4f,
+  alpha         : f32,
+  hasTexture    : f32,
+  polygonOffset : f32,
+  iTime         : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+@group(1) @binding(0) var sculptTex : texture_2d<f32>;
+@group(1) @binding(1) var sculptSmp : sampler;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+  @location(2) uv       : vec2f,
+  @location(3) color    : vec4f,
+  @location(4) primUV   : vec4f,
+  @location(5) primc1   : vec4f,
+  @location(6) primc2   : vec4f,
+  @location(7) primc3   : vec4f,
+  @location(8) primc4   : vec4f,
+  @location(9) primc5   : vec4f,
+  @location(10) primc6  : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor  : vec4f,
+  @location(1) vNormal : vec3f,
+  @location(2) vUv     : vec2f,
+  @location(3) vPrimUV : vec4f,
+  @location(4) vPrimC1 : vec4f,
+  @location(5) vPrimC2 : vec4f,
+  @location(6) vPrimC3 : vec4f,
+  @location(7) vPrimC4 : vec4f,
+  @location(8) vPrimC5 : vec4f,
+  @location(9) vPrimC6 : vec4f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  var p = object.objectMatrix * vec4f(in.position, 1.0);
+  p = frame.projectionMatrix * vec4f(p.xyz, 1.0);
+  let n = object.normalMatrix * vec4f(in.normal, 0.0);
+
+  let off = 5.0 * object.polygonOffset / (frame.far - frame.near + 0.00001);
+  p.z = p.z - off;
+
+  out.clipPos = p;
+  out.vUv = in.uv;
+  out.vNormal = n.xyz;
+  out.vColor = in.color;
+  out.vPrimUV = in.primUV;
+  out.vPrimC1 = in.primc1;
+  out.vPrimC2 = in.primc2;
+  out.vPrimC3 = in.primc3;
+  out.vPrimC4 = in.primc4;
+  out.vPrimC5 = in.primc5;
+  out.vPrimC6 = in.primc6;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  let no = normalize(in.vNormal);
+  var f = no.y * 0.333 + no.z * 0.333 + no.x * 0.333;
+  if (f < 0.0) { f = -f * 0.5; }
+  f = f * 0.8 + 0.2;
+
+  let uvw = vec3f(in.vPrimUV.xy, 1.0 - in.vPrimUV.x - in.vPrimUV.y);
+  var vcol : vec4f;
+
+#ifdef VCOL_PATCH
+  // Cubic bezier triangle (shaders.ts:649-709, the active "#elif 1" branch)
+  let ww = 0.5;
+  let ww2 = 0.0;
+  var w1 = uvw.x;
+  var w2 = uvw.y;
+
+  w1 = w1 * w1 * (3.0 - 2.0 * w1);
+  w2 = w2 * w2 * (3.0 - 2.0 * w2);
+
+  var j1 = in.vPrimC4;
+  var j5 = in.vPrimC5;
+  var j9 = in.vPrimC6;
+
+  var k1 = in.vPrimC1;
+  var k5 = in.vPrimC2;
+  var k9 = in.vPrimC3;
+
+  let tt = 1.0;
+  j1 = k1 + (j1 - k1) * tt;
+  j5 = k5 + (j5 - k5) * tt;
+  j9 = k9 + (j9 - k9) * tt;
+
+  let tt2 = -1.0;
+  k1 = k1 + (in.vPrimC4 - k1) * tt2;
+  k5 = k5 + (in.vPrimC5 - k5) * tt2;
+  k9 = k9 + (in.vPrimC6 - k9) * tt2;
+
+  let k2 = k1 + (j5 - k1) * 0.25;
+  let k3 = j1 + (j5 - j1) * 0.5;
+  let k4 = j1 + (k5 - j1) * 0.75;
+
+  let k6 = k5 + (j9 - k5) * 0.25;
+  let k7 = j5 + (j9 - j5) * 0.5;
+  let k8 = j5 + (k9 - j5) * 0.75;
+
+  let k10 = k9 + (j1 - k9) * 0.25;
+  let k11 = j9 + (j1 - j9) * 0.5;
+  let k12 = j9 + (k1 - j9) * 0.75;
+
+  var k13 = (k3 + k11) * 0.5;
+  var k14 = (k3 + k7) * 0.5;
+  var k15 = (k7 + k11) * 0.5;
+
+  let tt3 = -1.5;
+  k13 = k13 + (in.vPrimC4 - in.vPrimC1) * tt3;
+  k14 = k14 + (in.vPrimC5 - in.vPrimC2) * tt3;
+  k15 = k15 + (in.vPrimC6 - in.vPrimC3) * tt3;
+
+  let s = w2 - 1.0 + w1;
+  vcol = -(((s * k6 - (k4 * w1 + k5 * w2)) * w2
+            - (s * k7 - (k14 * w1 + k6 * w2)) * s
+            + (s * k14 - (k3 * w1 + k4 * w2)) * w1) * w2
+           - ((s * k8 - (k15 * w1 + k7 * w2)) * w2
+              - (s * k9 - (k10 * w1 + k8 * w2)) * s
+              + (s * k10 - (k11 * w1 + k15 * w2)) * w1) * s
+           + ((s * k12 - (k1 * w1 + k2 * w2)) * w1
+              + (s * k13 - (k2 * w1 + k3 * w2)) * w2
+              - (s * k11 - (k12 * w1 + k13 * w2)) * s) * w1);
+#else
+  vcol = in.vColor;
+#endif
+
+  var tex = textureSample(sculptTex, sculptSmp, in.vUv);
+  tex = tex + (vec4f(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - object.hasTexture);
+
+  var c = vec4f(f, f, f, 1.0) * object.uColor * vcol;
+  c.a = c.a * object.alpha;
+  return c * tex;
+}
+`
+
+/**
+ * Sculpt-patch layout for `SculptShader`: position + normal + uv +
+ * color + primUV + primc1..primc6. Stride =
+ *   3*4 + 3*4 + 2*4 + 4*4 + 4*4 + 6*(4*4) = 160 bytes.
+ */
+export const SCULPT_PATCH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
+  arrayStride: 160,
+  attributes: [
+    {shaderLocation: 0,  offset: 0,   format: 'float32x3'}, // position
+    {shaderLocation: 1,  offset: 12,  format: 'float32x3'}, // normal
+    {shaderLocation: 2,  offset: 24,  format: 'float32x2'}, // uv
+    {shaderLocation: 3,  offset: 32,  format: 'float32x4'}, // color
+    {shaderLocation: 4,  offset: 48,  format: 'float32x4'}, // primUV
+    {shaderLocation: 5,  offset: 64,  format: 'float32x4'}, // primc1
+    {shaderLocation: 6,  offset: 80,  format: 'float32x4'}, // primc2
+    {shaderLocation: 7,  offset: 96,  format: 'float32x4'}, // primc3
+    {shaderLocation: 8,  offset: 112, format: 'float32x4'}, // primc4
+    {shaderLocation: 9,  offset: 128, format: 'float32x4'}, // primc5
+    {shaderLocation: 10, offset: 144, format: 'float32x4'}, // primc6
+  ],
+}
+
 export interface WgslShaderEntry {
   /** Stable key — set by the GLSL side as `program.wgslKey`. */
   key: string
@@ -765,4 +1209,31 @@ registerWgslShader({
   vertexBuffers: [STRIP_LINE_VERTEX_LAYOUT],
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-strip'},
+})
+
+registerWgslShader({
+  key          : 'SculptShaderSimple',
+  source       : SCULPT_SIMPLE_WGSL,
+  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
+})
+
+registerWgslShader({
+  key          : 'SculptShaderHexDeform',
+  source       : SCULPT_HEX_DEFORM_WGSL,
+  vertexBuffers: [SCULPT_HEX_DEFORM_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
+})
+
+registerWgslShader({
+  key          : 'SculptShader',
+  source       : SCULPT_WGSL,
+  vertexBuffers: [SCULPT_PATCH_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
 })
