@@ -341,6 +341,153 @@ fn fs_main(in : VsOut) -> FsOut {
 }
 `
 
+/**
+ * AOPass — port of `AOPass` (realtime_passes.ts:348-500). Per-fragment
+ * screen-space AO sampling with blue-noise-decorrelated random
+ * directions. The `samples` count is fixed at 25 to match the GLSL
+ * `#define samples 25`; tune by editing this source or branching on a
+ * preprocess define.
+ *
+ * Bindings:
+ *   @group(0) @binding(0)  pass         (PassUniforms)
+ *   @group(0) @binding(1)  fbo_rgba_tex (texture_2d<f32>)  — normals.rgb encoded *2-1
+ *   @group(0) @binding(2)  fbo_smp      (sampler)
+ *   @group(0) @binding(3)  fbo_depth_tex(texture_2d<f32>)
+ *   @group(0) @binding(4)  ao           (AOUniforms — dist/factor/steps + blue mask params)
+ *   @group(0) @binding(5)  blue_mask_tex(texture_2d<f32>)
+ *   @group(0) @binding(6)  blue_smp     (sampler)
+ */
+export const AO_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp       : sampler;
+@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+
+struct AOUniforms {
+  blueUVOff   : vec2f,
+  blueUVScale : vec2f,
+  dist        : f32,
+  factor      : f32,
+  steps       : f32,
+  _pad        : f32,
+};
+@group(0) @binding(4) var<uniform> ao : AOUniforms;
+@group(0) @binding(5) var blue_mask_tex : texture_2d<f32>;
+@group(0) @binding(6) var blue_smp      : sampler;
+
+const SAMPLES : i32 = 25;
+const SEED1   : f32 = 0.23432;
+
+fn sampleBlue(uv : vec2f) -> vec4f {
+  return textureSample(blue_mask_tex, blue_smp, uv * ao.blueUVScale + ao.blueUVOff);
+}
+
+fn unproject(p : vec4f) -> vec4f {
+  var p2 = pass.iprojectionMatrix * vec4f(p.xyz, 1.0);
+  p2 = vec4f(p2.xyz / p2.w, p2.w);
+  return p2;
+}
+
+fn rng(uv : vec2f, seed_in : f32) -> f32 {
+  var sf = sampleBlue(uv).x;
+  sf = floor(sf * 10.0) / 10.0;
+  sf = sf + fract(pass.uSample * sqrt(3.0)) * 0.1;
+  var seed = seed_in + sf * 1012.23432;
+  var f = fract(fract(seed * 312.23432) + seed);
+  f = fract(1.0 / (f * 0.00001 + 0.00001));
+  return f;
+}
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut, @builtin(position) fragCoord : vec4f) -> FsOut {
+  var p = vec4f(fragCoord.xyz, 1.0);
+  p = vec4f((p.xy / pass.size) * 2.0 - vec2f(1.0), p.z, p.w);
+  let depthSample = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  p.z = depthSample;
+  let pWorld = unproject(p);
+
+  var seed : f32 = 0.0;
+  var f    : f32 = 0.0;
+  var tot  : f32 = 0.0;
+  let nin = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv).rgb * 2.0 - vec3f(1.0);
+
+  for (var i : i32 = 0; i < SAMPLES; i = i + 1) {
+    var n = vec3f(
+      rng(in.v_Uv, seed)             - 0.5,
+      rng(in.v_Uv, seed + 2.23432)   - 0.5,
+      rng(in.v_Uv, seed + 1.9234)    - 0.5,
+    );
+    if (dot(n, nin) < 0.0) { n = -n; }
+    n = n * ao.dist;
+
+    var p2 = pass.projectionMatrix * vec4f(pWorld.xyz + n, 1.0);
+    p2 = vec4f(p2.xyz / p2.w, p2.w);
+    let oldz = p2.z;
+
+    let uv2 = p2.xy * 0.5 + vec2f(0.5);
+    let c = textureSample(fbo_rgba_tex, fbo_smp, uv2);
+    let z2 = textureSampleLevel(fbo_depth_tex, fbo_smp, uv2, 0.0).r;
+    let p3 = unproject(vec4f(p2.xy, z2, 1.0));
+    var w = length(p3.xyz - pWorld.xyz) / ao.dist;
+    w = select(min(w, 1.0), 0.0, w > 2.0);
+    if (c.a < 0.2 || z2 + (1.0 + 0.00025 * SEED1) * abs(oldz - z2) > oldz) {
+      w = 0.0;
+    }
+    f = f + w;
+    seed = seed + 3.0;
+    tot = tot + 1.0;
+  }
+
+  f = select(f / tot, 1.0, tot == 0.0);
+  f = fract(f);
+  f = min(f, 1.0);
+  f = pow(1.0 - f, ao.factor);
+  if (f != f) { f = 1.0; }  // NaN guard
+
+  var out : FsOut;
+  out.color = vec4f(f, f, f, 1.0);
+  out.depth = depthSample;
+  return out;
+}
+`
+
+/**
+ * NormalPass — port of `NormalPass` (realtime_passes.ts:249-281). On
+ * WebGL this delegates to `engine.render_normals` (a mesh render, not a
+ * quad blit). The WGSL side is a placeholder shader-key only — the
+ * actual encode is done by `WebGpuRenderGraph` issuing a normal-mesh
+ * render pass instead of invoking this WGSL. We register the key so
+ * the dispatcher recognizes NormalPass and routes accordingly.
+ *
+ * The placeholder fragment is a black-clear no-op kept around so a
+ * generic pass-walker doesn't crash on a missing entry; real callers
+ * should branch on `entry.key === 'NormalPass'` before issuing draw.
+ */
+export const NORMAL_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  out.color = vec4f(0.0, 0.0, 0.0, 1.0);
+  out.depth = 1.0;
+  return out;
+}
+`
+
 export interface WgslPassEntry {
   key: string
   source: string
@@ -440,6 +587,26 @@ registerWgslPass({
 registerWgslPass({
   key          : 'DenoiseBlur',
   source       : DENOISE_BLUR_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+registerWgslPass({
+  key          : 'AOPass',
+  source       : AO_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+// NormalPass is a marker entry — the WebGPU graph dispatcher must see
+// the key and route to a mesh render rather than a quad blit.
+registerWgslPass({
+  key          : 'NormalPass',
+  source       : NORMAL_PASS_WGSL,
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},

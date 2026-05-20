@@ -36,3 +36,6 @@ export type {BridgedTexture} from './texpaint_bridge.js'
 
 export {WebGPUBatchExecutor} from './batch.js'
 export type {WebGPUBatchExecutorOptions} from './batch.js'
+
+export {WebGpuRenderGraph} from './render_graph.js'
+export type {GraphNodeRef, DispatchHooks} from './render_graph.js'
