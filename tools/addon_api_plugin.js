@@ -54,9 +54,7 @@ export function addonApiPlugin(repoRoot) {
         const apiFile = path.join(repoRoot, 'addons', 'builtin', id, 'src', 'api.ts')
         if (!fs.existsSync(apiFile)) {
           return {
-            errors: [
-              {text: `@addon/${id}/api resolver: ${path.relative(repoRoot, apiFile)} does not exist`},
-            ],
+            errors: [{text: `@addon/${id}/api resolver: ${path.relative(repoRoot, apiFile)} does not exist`}],
           }
         }
 

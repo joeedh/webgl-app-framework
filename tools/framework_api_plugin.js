@@ -104,9 +104,7 @@ export function frameworkApiPlugin(repoRoot) {
         }
         if (names.length === 0) {
           return {
-            errors: [
-              {text: `framework-api(${surface.key}): no value exports found in ${surface.sourceFile}`},
-            ],
+            errors: [{text: `framework-api(${surface.key}): no value exports found in ${surface.sourceFile}`}],
           }
         }
 

@@ -132,9 +132,7 @@ export async function transpileAddonSources(
         // the importer's directory; bare specifiers are external (we don't
         // pull anything off npm at install time).
         if (args.path.startsWith('.')) {
-          const importerDir = args.importer
-            ? args.importer.replace(/[^/]+$/, '')
-            : args.resolveDir.replace(/^\//, '')
+          const importerDir = args.importer ? args.importer.replace(/[^/]+$/, '') : args.resolveDir.replace(/^\//, '')
           const resolved = normalizeJoin(importerDir, args.path)
           // Look up with and without ts/js extension variations.
           for (const candidate of expandExtensionGuesses(resolved)) {

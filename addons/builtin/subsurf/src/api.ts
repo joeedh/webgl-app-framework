@@ -9,5 +9,14 @@
  */
 
 export {ccSmooth, createPatches, loopSubdivide, subdivide} from './subsurf_mesh.js'
-export {CubicPatchFields, CubicPatchFlags, bernstein, bspline, CubicPatch, SSPatch, Patch4, PatchBase} from './subsurf_patch.js'
+export {
+  CubicPatchFields,
+  CubicPatchFlags,
+  bernstein,
+  bspline,
+  CubicPatch,
+  SSPatch,
+  Patch4,
+  PatchBase,
+} from './subsurf_patch.js'
 export {PCOS, PEID, PCOLOR, PTOT, PatchList, PatchData} from './subsurf_base.js'

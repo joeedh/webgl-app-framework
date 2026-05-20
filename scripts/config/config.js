@@ -1,46 +1,46 @@
 let exports = {
-  addonLoadWaitTime : 500,
-  svgIcons : true,
+  addonLoadWaitTime: 500,
+  svgIcons         : true,
   pathuxConfig: {
     addHelpPickers: true,
 
-    useAreaTabSwitcher: true,
-    autoSizeUpdate: true,
-    showPathsInToolTips: true,
-    colorSchemeType: "dark",
+    useAreaTabSwitcher   : true,
+    autoSizeUpdate       : true,
+    showPathsInToolTips  : true,
+    colorSchemeType      : 'dark',
     useNumSliderTextboxes: true,
 
     menu_close_time: 500,
     doubleClickTime: 500,
 
     //timeout for press-and-hold (touch) version of double clicking
-    doubleClickHoldTime: 750
+    doubleClickHoldTime: 750,
   },
 
-  DEBUG : {
-    simplemesh : false,
-    enableDebugGraphPanel : true,
-    verboseDataPath : 0, //show verbose data path debug messages
-    gl  : 0,
-    fbo : 0,
-    doOnce : false,
-    modalEvents : true,
+  DEBUG: {
+    simplemesh           : false,
+    enableDebugGraphPanel: true,
+    verboseDataPath      : 0, //show verbose data path debug messages
+    gl                   : 0,
+    fbo                  : 0,
+    doOnce               : false,
+    modalEvents          : true,
 
-    domEvents : false,
-    domEventAddRemove : false,
+    domEvents        : false,
+    domEventAddRemove: false,
 
-    datapaths : false,
+    datapaths: false,
 
-    screenAreaPosSizeAccesses : false,
-    buttonEvents : false,
+    screenAreaPosSizeAccesses: false,
+    buttonEvents             : false,
 
-    debugUIUpdatePerf : false,
+    debugUIUpdatePerf: false,
 
-    contextSystem : 0,
-    screenborders : false,
+    contextSystem    : 0,
+    screenborders    : false,
     allBordersMovable: false,
 
-    areaConstraintSolver: false
+    areaConstraintSolver: false,
 
     /*
     customWindowSize : {
@@ -50,16 +50,16 @@ let exports = {
     //*/
   },
 
-  cacheSelectBufs: true
+  cacheSelectBufs: true,
 }
 
 if (!window.__baseModulePath) {
-  window.__baseModulePath = "./scripts";
+  window.__baseModulePath = './scripts'
 }
 
 //load config_local.js if it exists
-let script = document.createElement("script");
-script.setAttribute("type", "module");
+let script = document.createElement('script')
+script.setAttribute('type', 'module')
 script.innerText = `
   import * as configlocal from '${__baseModulePath}/config/config_local.js';
   import {cconst} from '${__baseModulePath}/path.ux/scripts/pathux.js';
@@ -86,11 +86,11 @@ script.innerText = `
     config[k] = local[k];
   }
   
-`;
+`
 
-document.body.appendChild(script);
-window._config = exports;
+document.body.appendChild(script)
+window._config = exports
 
 //import './config_local.js';
 
-export default exports;
+export default exports

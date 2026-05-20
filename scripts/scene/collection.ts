@@ -4,7 +4,7 @@ import {BlockFlags, BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '.
 import {SceneObject} from '../sceneobject/sceneobject'
 import {IntSocket} from '../core/graphsockets'
 import {INodeSocketSet} from '../core/graph.js'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 //sceneobjet collection
 export enum CollectFlags {

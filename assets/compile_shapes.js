@@ -1,29 +1,29 @@
 #!/usr/bin/env nodejs
 
-import fs from 'fs';
-import btoa from 'btoa';
+import fs from 'fs'
+import btoa from 'btoa'
 
 let files = {
-  ARROW : "arrow.obj",
-  PLANE : "plane.obj",
-  TORUS : "rotatetorus.obj",
-  BLOCKARROW : "scalearrow.obj",
-  CHEVRON : "chevron.obj",
-  SPHERE  : "sphere.obj",
-  LIGHT   : "light.obj",
-  CURSOR  : "cursor.obj",
-  CUBE    : "cube.obj"
-};
+  ARROW     : 'arrow.obj',
+  PLANE     : 'plane.obj',
+  TORUS     : 'rotatetorus.obj',
+  BLOCKARROW: 'scalearrow.obj',
+  CHEVRON   : 'chevron.obj',
+  SPHERE    : 'sphere.obj',
+  LIGHT     : 'light.obj',
+  CURSOR    : 'cursor.obj',
+  CUBE      : 'cube.obj',
+}
 
-let data = '';
+let data = ''
 
 for (let k in files) {
-  let path = files[k];
+  let path = files[k]
 
-  let buf = fs.readFileSync(path, "ascii");
-  buf = btoa(buf);
+  let buf = fs.readFileSync(path, 'ascii')
+  buf = btoa(buf)
 
-  data += `  ${k} : "${buf}",\n`;
+  data += `  ${k} : "${buf}",\n`
 }
 
 let out = `
@@ -52,5 +52,4 @@ export function loadShapes() {
 }
 `
 
-
-fs.writeFileSync("../scripts/webgl/simplemesh_shapes.js", out);
+fs.writeFileSync('../scripts/webgl/simplemesh_shapes.js', out)

@@ -301,7 +301,7 @@ export const SceneRecalcFlags = {
 
 import messageBus from '../core/bus.js'
 import type {INodeSocketSet} from '../core/graph'
-import type  {ToolContext, ViewContext} from '../core/context'
+import type {ToolContext, ViewContext} from '../core/context'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 export class Scene<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends DataBlock<

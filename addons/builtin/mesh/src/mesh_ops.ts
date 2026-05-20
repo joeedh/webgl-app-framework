@@ -2,7 +2,18 @@ import './mesh_loopops.js'
 import './mesh_curvature_test'
 
 import {Vector3, ToolDef, Number2, PropertySlots, Vector4, Number3, ContextLike} from '@framework/api'
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, StringProperty, ToolOp, ToolMacro, UndoFlags, keymap} from '@framework/pathux'
+import {
+  IntProperty,
+  BoolProperty,
+  FloatProperty,
+  EnumProperty,
+  FlagProperty,
+  StringProperty,
+  ToolOp,
+  ToolMacro,
+  UndoFlags,
+  keymap,
+} from '@framework/pathux'
 import {TranslateOp} from '@framework/api'
 import {util} from '@framework/api'
 import {SelMask} from '@framework/api'
@@ -123,7 +134,6 @@ export class DeleteOp extends MeshOp<{}, {}> {
   }
 }
 
-
 export class DeleteOnlyFacesOp extends MeshOp {
   static tooldef(): ToolDef {
     return {
@@ -157,7 +167,6 @@ export class DeleteOnlyFacesOp extends MeshOp {
   }
 }
 
-
 export class FlipLongTrisOp extends MeshOp {
   static tooldef(): ToolDef {
     return {
@@ -187,7 +196,6 @@ export class FlipLongTrisOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export class TriToQuadsOp extends MeshOp<{
   options: FlagProperty
@@ -244,7 +252,6 @@ export class TriToQuadsOp extends MeshOp<{
     window.redraw_viewport()
   }
 }
-
 
 export class SymmetrizeOp extends MeshOp<{
   axis: EnumProperty<number>
@@ -309,7 +316,6 @@ export class SymmetrizeOp extends MeshOp<{
     window.redraw_viewport()
   }
 }
-
 
 export class BisectOp extends MeshOp<{
   axis: EnumProperty<number>
@@ -386,7 +392,6 @@ export class BisectOp extends MeshOp<{
   }
 }
 
-
 export class TriangulateOp extends MeshOp {
   static tooldef() {
     return {
@@ -461,7 +466,6 @@ export class TriangulateOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export const RemeshOpModes = {
   REMESH        : 0,
@@ -592,7 +596,6 @@ export class RemeshOp<InputSlots = {}> extends MeshOp<
     window.redraw_viewport()
   }
 }
-
 
 export class InteractiveRemeshOp extends RemeshOp<{
   steps: IntProperty
@@ -770,7 +773,6 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 }
 
-
 export class LoopSubdOp extends MeshOp {
   static tooldef() {
     return {
@@ -798,7 +800,6 @@ export class LoopSubdOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 import {meshSubdivideTest} from './mesh_subdivide.js'
 import {UVWrangler, voxelUnwrap} from './unwrapping.js'
@@ -882,7 +883,6 @@ export class CatmullClarkeSubd extends MeshOp {
   }
 }
 
-
 export const SymFlags = {
   X   : 1,
   Y   : 2,
@@ -957,7 +957,6 @@ export class MeshSnapToMirror extends MeshOp<{
   }
 }
 
-
 export class MeshSubdTest extends MeshOp {
   constructor() {
     super()
@@ -988,7 +987,6 @@ export class MeshSubdTest extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export class SubdivideSimple extends MeshOp {
   constructor() {
@@ -1054,7 +1052,6 @@ export class SubdivideSimple extends MeshOp {
   }
 }
 
-
 export class SplitEdgesOp extends MeshOp {
   constructor() {
     super()
@@ -1089,7 +1086,6 @@ export class SplitEdgesOp extends MeshOp {
     }
   }
 }
-
 
 export function vertexSmooth_tst(mesh: Mesh, vertsInput = mesh.verts.selected.editable, fac = 0.5) {
   const verts = new Set<Vertex>(vertsInput)
@@ -1282,7 +1278,6 @@ export class SmoothCurvaturesOp extends MeshDeformOp<{
   }
 }
 
-
 export class MarkSingularitiesOp extends MeshOp {
   static tooldef() {
     return {
@@ -1304,7 +1299,6 @@ export class MarkSingularitiesOp extends MeshOp {
     }
   }
 }
-
 
 export class UnmarkSingularitiesOp extends MeshOp {
   static tooldef() {
@@ -1328,7 +1322,6 @@ export class UnmarkSingularitiesOp extends MeshOp {
     }
   }
 }
-
 
 export class RelaxRakeUVCells extends MeshOp {
   static tooldef() {
@@ -1369,7 +1362,6 @@ export class RelaxRakeUVCells extends MeshOp {
     window.redraw_viewport(true)
   }
 }
-
 
 export class VertexSmooth extends MeshDeformOp<{
   repeat: IntProperty
@@ -1452,7 +1444,6 @@ export class VertexSmooth extends MeshDeformOp<{
     }
   }
 }
-
 
 const SplitMethods = {
   SMART1: 0,
@@ -1548,7 +1539,6 @@ export class TestSplitFaceOp extends MeshOp<{
   }
 }
 
-
 export class TestCollapseOp extends MeshOp {
   static tooldef() {
     return {
@@ -1594,7 +1584,6 @@ export class TestCollapseOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 const GridTypes = {
   SIMPLE  : 0,
@@ -1675,7 +1664,6 @@ export class EnsureGridsOp extends MeshOp<{
   }
 }
 
-
 export class SubdivideGridsOp extends MeshOp {
   static tooldef() {
     return {
@@ -1713,7 +1701,6 @@ export class SubdivideGridsOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export class SmoothGridsOp extends MeshOp<{
   factor: FloatProperty
@@ -1826,7 +1813,6 @@ export class SmoothGridsOp extends MeshOp<{
   }
 }
 
-
 const staroffs = [
   [-1, 0],
   [1, 0],
@@ -1915,7 +1901,6 @@ export class GridsTestOp2 extends MeshOp<{
     window.redraw_viewport(true)
   }
 }
-
 
 export class GridsTestOp extends MeshOp<{
   factor: FloatProperty
@@ -2341,7 +2326,6 @@ export class GridsTestOp extends MeshOp<{
   }
 }
 
-
 export class DeleteGridsOp extends MeshOp {
   static tooldef() {
     return {
@@ -2377,7 +2361,6 @@ export class DeleteGridsOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export class ResetGridsOp extends MeshOp {
   static tooldef() {
@@ -2428,7 +2411,6 @@ export class ResetGridsOp extends MeshOp {
   }
 }
 
-
 export class ApplyGridBaseOp extends MeshOp {
   static tooldef() {
     return {
@@ -2471,7 +2453,6 @@ export class ApplyGridBaseOp extends MeshOp {
     window.redraw_viewport()
   }
 }
-
 
 export class AddCDLayerOp extends MeshOp<
   {
@@ -2531,7 +2512,6 @@ export class AddCDLayerOp extends MeshOp<
   }
 }
 
-
 export class RemCDLayerOp extends MeshOp<{
   elemType: EnumProperty<number>
   layerType: StringProperty
@@ -2584,7 +2564,6 @@ export class RemCDLayerOp extends MeshOp<{
     window.redraw_viewport()
   }
 }
-
 
 export class TestMultiGridSmoothOp extends MeshOp {
   static tooldef() {
@@ -2646,7 +2625,6 @@ export class TestMultiGridSmoothOp extends MeshOp {
   }
 }
 
-
 export class FixNormalsOp extends MeshOp<{
   outside: BoolProperty
 }> {
@@ -2682,7 +2660,6 @@ export class FixNormalsOp extends MeshOp<{
     window.redraw_viewport(true)
   }
 }
-
 
 export class FixManifoldOp extends MeshOp<{
   fixLooseGeometry: BoolProperty
@@ -2768,7 +2745,6 @@ export class FixManifoldOp extends MeshOp<{
   }
 }
 
-
 export class ConnectVertsOp extends MeshOp {
   static tooldef() {
     return {
@@ -2804,7 +2780,6 @@ export class ConnectVertsOp extends MeshOp {
     }
   }
 }
-
 
 export class DissolveVertOp extends MeshOp {
   static tooldef() {
@@ -2851,7 +2826,6 @@ export class DissolveVertOp extends MeshOp {
     }
   }
 }
-
 
 export class CleanupQuads extends MeshOp {
   static tooldef() {
@@ -2913,7 +2887,6 @@ export class CleanupQuads extends MeshOp {
   }
 }
 
-
 export class CleanupTris extends MeshOp {
   static tooldef() {
     return {
@@ -2964,7 +2937,6 @@ export class CleanupTris extends MeshOp {
   }
 }
 
-
 export class DissolveEdgesOp extends MeshOp {
   static tooldef() {
     return {
@@ -2996,7 +2968,6 @@ export class DissolveEdgesOp extends MeshOp {
     }
   }
 }
-
 
 export const RotateEdgeModes = {
   FORWARD : 0,
@@ -3048,7 +3019,6 @@ export class RotateEdgeOp extends MeshOp<{
   }
 }
 
-
 export class CollapseEdgesOp extends MeshOp {
   static tooldef() {
     return {
@@ -3080,7 +3050,6 @@ export class CollapseEdgesOp extends MeshOp {
     }
   }
 }
-
 
 export class RandomCollapseOp extends MeshOp<{
   probability: FloatProperty
@@ -3151,7 +3120,6 @@ export class RandomCollapseOp extends MeshOp<{
   }
 }
 
-
 export class DissolveEdgeLoopsOp extends MeshOp<{
   ensureQuads: BoolProperty
   selectFaces: BoolProperty
@@ -3214,7 +3182,6 @@ export class DissolveEdgeLoopsOp extends MeshOp<{
   }
 }
 
-
 export class FlipNormalsOp extends MeshOp {
   static tooldef() {
     return {
@@ -3244,7 +3211,6 @@ export class FlipNormalsOp extends MeshOp {
     }
   }
 }
-
 
 export class QuadSmoothOp extends MeshOp {
   static tooldef() {
@@ -3292,7 +3258,6 @@ export class QuadSmoothOp extends MeshOp {
   }
 }
 
-
 export class TestSmoothOp extends MeshOp {
   static tooldef() {
     return {
@@ -3312,7 +3277,6 @@ export class TestSmoothOp extends MeshOp {
     }
   }
 }
-
 
 export class DissolveFacesOp extends MeshOp {
   static tooldef() {
@@ -3334,7 +3298,6 @@ export class DissolveFacesOp extends MeshOp {
     }
   }
 }
-
 
 export class OptRemeshParams extends ToolOp<{
   edgeGoal: FloatProperty
@@ -3389,7 +3352,6 @@ export class OptRemeshParams extends ToolOp<{
     return result
   }
 }
-
 
 import {SolverElem, Solver, VelConstraint} from './mesh_solver.js'
 import {BVHToolMode} from '../../../../scripts/editors/view3d/tools/pbvh.js'
@@ -3746,7 +3708,6 @@ export class TestSolverOp extends SolverOpBase<{
   }
 }
 
-
 export class DuplicateMeshOp extends MeshOp<{
   selectMask: FlagProperty
 }> {
@@ -3826,4 +3787,3 @@ export class DuplicateMeshOp extends MeshOp<{
     }
   }
 }
-

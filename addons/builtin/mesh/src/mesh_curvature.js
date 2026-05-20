@@ -723,7 +723,6 @@ CurvVert.STRUCT =
 }
 `
 
-
 export function getCurveVerts(mesh) {
   let cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
   if (cd_cotan < 0) {

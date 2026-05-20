@@ -56,7 +56,13 @@ import {
   OrigCoType,
 } from '../../../../addons/builtin/mesh/src/bvh.js'
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../../addons/builtin/mesh/src/mesh_grids_quadtree.js'
-import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../../addons/builtin/mesh/src/mesh_grids_kdtree.js'
+import {
+  EMapFields,
+  KdTreeFields,
+  KdTreeFlags,
+  KdTreeGrid,
+  VMapFields,
+} from '../../../../addons/builtin/mesh/src/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../../addons/builtin/mesh/src/mesh_subdivide.js'
 import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/src/mesh_utils.js'
@@ -68,7 +74,12 @@ import {getCurveVerts, dirCurveSmooth, CurvVert} from '../../../../addons/builti
 import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {Bezier} from '../../../util/bezier.js'
 import {tetSolve} from '../../../tet/tet_deform.js'
-import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../../addons/builtin/mesh/src/mesh_displacement.js'
+import {
+  DispContext,
+  DispLayerVert,
+  getSmoothMemo,
+  SmoothMemoizer,
+} from '../../../../addons/builtin/mesh/src/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
 import type {ViewContext} from '../../../core/context.js'

@@ -1,23 +1,23 @@
-import {CurveSpline} from '../../addons/builtin/curve/src/curve.js';
-import {AttachFlags, AttachTypes} from './strand_base.js';
-import {nstructjs} from '../path.ux/scripts/pathux.js';
+import {CurveSpline} from '../../addons/builtin/curve/src/curve.js'
+import {AttachFlags, AttachTypes} from './strand_base.js'
+import {nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class AttachPoint {
-  constructor(mode=AttachTypes.ABSOLUTE) {
-    this.mode = mode;
-    this.co = new Vector3();
-    this.ray = new Vector3();
-    this.maxdis = 0;
-    this.flag = AttachFlags.BOTH;
-    this.obj = undefined;
+  constructor(mode = AttachTypes.ABSOLUTE) {
+    this.mode = mode
+    this.co = new Vector3()
+    this.ray = new Vector3()
+    this.maxdis = 0
+    this.flag = AttachFlags.BOTH
+    this.obj = undefined
   }
 
   dataLink(owner, getblock, getblock_us) {
-    this.obj = getblock_us(this.obj, owner);
+    this.obj = getblock_us(this.obj, owner)
   }
 
   loadSTRUCT(reader) {
-    reader(this);
+    reader(this)
   }
 }
 AttachPoint.STRUCT = `
@@ -29,34 +29,35 @@ AttachPoint {
   flag        : int;
   obj         : DataRef | DataRef.fromBlock(this.obj);
 }
-`;
+`
 
-nstructjs.register(AttachPoint);
+nstructjs.register(AttachPoint)
 
 export class Strand extends CurveSpline {
   constructor() {
-    super();
+    super()
 
-    this.flag = 0;
-    this.id = -1;
-    this.attachPoint = new AttachPoint();
+    this.flag = 0
+    this.id = -1
+    this.attachPoint = new AttachPoint()
   }
 
   dataLink(owner, _getblock, _getblock_us) {
     function getblock(block) {
-      return _getblock(block, owner);
+      return _getblock(block, owner)
     }
     function getblock_us(block) {
-      return _getblock_us(block, owner);
+      return _getblock_us(block, owner)
     }
 
-    super.dataLink(getblock, getblock_us);
-    this.attachPoint.dataLink(getblock, getblock_us);
+    super.dataLink(getblock, getblock_us)
+    this.attachPoint.dataLink(getblock, getblock_us)
   }
 }
-Strand.STRUCT = nstructjs.inherit(Strand, CurveSpline) + `
+Strand.STRUCT =
+  nstructjs.inherit(Strand, CurveSpline) +
+  `
   id          : int;
   attachPoint : AttachPoint;
-}`;
-nstructjs.register(Strand);
-
+}`
+nstructjs.register(Strand)

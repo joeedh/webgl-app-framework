@@ -1,4 +1,4 @@
-import { Vector4 } from '@framework/api'
+import {Vector4} from '@framework/api'
 import {Texture} from '@framework/api'
 
 ///XXX truly ancient code

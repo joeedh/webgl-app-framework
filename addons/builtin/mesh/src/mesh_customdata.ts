@@ -5,7 +5,7 @@ import {Vector2, Vector3, Vector4, Number4} from '@framework/api'
 import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
 import {half2float} from '@framework/api'
-import { StructReader } from '@framework/api'
+import {StructReader} from '@framework/api'
 
 export enum UVFlags {
   PIN = 2,
@@ -102,7 +102,6 @@ mesh.UVLayerElem {
   }
 }
 
-
 export class Vector2LayerElem extends CustomDataElem<Vector2> {
   value: Vector2
 
@@ -190,7 +189,6 @@ mesh.Vector2LayerElem {
   }
 }
 
-
 export const ORIGINDEX_NONE = -1
 
 export class OrigIndexElem extends CustomDataElem<number> {
@@ -246,7 +244,6 @@ mesh.OrigIndexElem {
     return true
   }
 }
-
 
 export class FloatElem extends CustomDataElem<number> {
   static STRUCT = nstructjs.inlineRegister(
@@ -327,7 +324,6 @@ mesh.FloatElem {
   }
 }
 
-
 export class IntElem extends CustomDataElem<number> {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -391,7 +387,6 @@ mesh.IntElem {
     return true
   }
 }
-
 
 export class NormalLayerElem extends CustomDataElem<Vector3> {
   static STRUCT = nstructjs.inlineRegister(
@@ -459,7 +454,6 @@ mesh.NormalLayerElem {
     return true
   }
 }
-
 
 export class ColorLayerElem extends CustomDataElem<Vector4> {
   static STRUCT = nstructjs.inlineRegister(
@@ -571,7 +565,6 @@ mesh.ColorLayerElem {
   }
 }
 
-
 export class Vector3LayerElem extends CustomDataElem<Vector3> {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -641,7 +634,6 @@ mesh.Vector3LayerElem {
     super.loadSTRUCT(reader)
   }
 }
-
 
 export class Vector4LayerElem extends CustomDataElem<Vector4> {
   static STRUCT = nstructjs.inlineRegister(
@@ -713,7 +705,6 @@ mesh.Vector4LayerElem {
   }
 }
 
-
 export class MaskElem extends FloatElem {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -738,7 +729,6 @@ mesh.MaskElem {
     }
   }
 }
-
 
 export {AttrRef} from './customdata'
 

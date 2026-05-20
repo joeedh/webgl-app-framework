@@ -30,7 +30,7 @@ for (let i = 0; i < 4; i++) {
 import '../../../../scripts/util/polyfill.d.ts'
 import {PatchBase} from '../../subsurf/src/subsurf_patch.js'
 import {StructReader} from '@framework/api'
-import { IUniformsBlock } from '@framework/api'
+import {IUniformsBlock} from '@framework/api'
 
 export enum QRecalcFlags {
   NONE = 0,
@@ -2036,4 +2036,3 @@ mesh.Grid {
     super.loadSTRUCT(reader)
   }
 }
-

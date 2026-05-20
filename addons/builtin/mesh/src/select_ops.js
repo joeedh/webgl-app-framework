@@ -1,6 +1,15 @@
 'use strict'
 
-import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty, ToolOp, ReportProperty, ListProperty} from '@framework/pathux'
+import {
+  IntProperty,
+  EnumProperty,
+  BoolProperty,
+  FloatProperty,
+  FlagProperty,
+  ToolOp,
+  ReportProperty,
+  ListProperty,
+} from '@framework/pathux'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {Vector3} from '@framework/api'
 import {SelMask, SelOneToolModes, SelToolModes} from '@framework/api'
@@ -249,7 +258,6 @@ export class SelectLinkedOp extends SelectOpBase {
   }
 }
 
-
 export class SelectLinkedPickOp extends SelectLinkedOp {
   static tooldef() {
     return {
@@ -331,7 +339,6 @@ export class SelectLinkedPickOp extends SelectLinkedOp {
     window.redraw_viewport(true)
   }
 }
-
 
 export class SelectMoreLess extends SelectOpBase {
   constructor() {
@@ -467,7 +474,6 @@ export class SelectMoreLess extends SelectOpBase {
   }
 }
 
-
 export class SelectOneOp extends SelectOpBase {
   constructor() {
     super()
@@ -597,7 +603,6 @@ export class ToggleSelectAll extends SelectOpBase {
   }
 }
 
-
 export class SetFaceSmoothOp extends ToolOp {
   static tooldef() {
     return {
@@ -695,7 +700,6 @@ export class SetFaceSmoothOp extends ToolOp {
     window.redraw_viewport()
   }
 }
-
 
 export class SelectEdgeLoopOp extends SelectOpBase {
   constructor() {
@@ -841,7 +845,6 @@ export class SelectEdgeLoopOp extends SelectOpBase {
   }
 }
 
-
 export class SelectInverse extends SelectOpBase {
   constructor() {
     super()
@@ -880,7 +883,6 @@ export class SelectInverse extends SelectOpBase {
     }
   }
 }
-
 
 export class SelectNonManifold extends SelectOpBase {
   constructor() {
@@ -1046,7 +1048,6 @@ export class SelectShortestLoop extends SelectOpBase {
   }
 }
 
-
 export class SelectLongestLoop extends SelectShortestLoop {
   constructor() {
     super()
@@ -1062,7 +1063,6 @@ export class SelectLongestLoop extends SelectShortestLoop {
     }
   }
 }
-
 
 let SimilarModes = {
   NUMBER_OF_EDGES: 0,
@@ -1164,7 +1164,6 @@ export class SelectSimilarOp extends SelectOpBase {
     window.redraw_viewport(true)
   }
 }
-
 
 export class CircleSelectOp extends SelectOpBase {
   constructor() {
@@ -1337,4 +1336,3 @@ export class CircleSelectOp extends SelectOpBase {
     window.redraw_viewport(true)
   }
 }
-

@@ -2,7 +2,7 @@ import {ToolOp, StringProperty, nstructjs, PropertySlots, ToolDef} from '../path
 import {SculptBrush, DefaultBrushes, getBrushes} from './brush'
 import {Icons} from '../editors/icon_enum.js'
 import type {ToolContext} from '../core/context'
-import { BlockLoader, BlockLoaderAddUser } from '../core/lib_api.js'
+import {BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 
 export class BrushOp<InputSlots extends PropertySlots = {}, OutputSlots extends PropertySlots = {}> extends ToolOp<
   InputSlots & {

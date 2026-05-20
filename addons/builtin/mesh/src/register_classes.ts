@@ -14,10 +14,30 @@ import {AppImportOBJOp} from './import_obj_op.js'
 import {Mesh} from './mesh.js'
 import {BevelOp} from './mesh_bevel.js'
 import {CotanVert} from './mesh_cotan.js'
-import {MakePlaneOp, MakeCubeOp, MakeSphere, MakeCylinder, MakeIcoSphere, CreateFaceOp, CreateMeshGenOp, ProceduralToMesh} from './mesh_createops.js'
+import {
+  MakePlaneOp,
+  MakeCubeOp,
+  MakeSphere,
+  MakeCylinder,
+  MakeIcoSphere,
+  CreateFaceOp,
+  CreateMeshGenOp,
+  ProceduralToMesh,
+} from './mesh_createops.js'
 import {CurvVert} from './mesh_curvature.js'
 import {CurvVert2Settings, CurvVert2} from './mesh_curvature_test.js'
-import {UVLayerElem, Vector2LayerElem, OrigIndexElem, FloatElem, IntElem, NormalLayerElem, ColorLayerElem, Vector3LayerElem, Vector4LayerElem, MaskElem} from './mesh_customdata.js'
+import {
+  UVLayerElem,
+  Vector2LayerElem,
+  OrigIndexElem,
+  FloatElem,
+  IntElem,
+  NormalLayerElem,
+  ColorLayerElem,
+  Vector3LayerElem,
+  Vector4LayerElem,
+  MaskElem,
+} from './mesh_customdata.js'
 import {DFieldSettings, DFieldElem} from './mesh_dfield.js'
 import {DispLayerSettings, DispLayerVert} from './mesh_displacement.js'
 import {ExtrudeOneVertexOp, ExtrudeRegionsOp, ExtrudeFaceIndivOp, InsetHoleOp} from './mesh_extrudeops.js'
@@ -28,12 +48,87 @@ import {KdTreeGrid} from './mesh_grids_kdtree.js'
 import {CompressedQuadNode, QuadTreeGrid} from './mesh_grids_quadtree.js'
 import {CustomDataList} from './mesh_log.js'
 import {EdgeCutOp} from './mesh_loopops.js'
-import {DeleteOp, DeleteOnlyFacesOp, FlipLongTrisOp, TriToQuadsOp, SymmetrizeOp, BisectOp, TriangulateOp, RemeshOp, InteractiveRemeshOp, LoopSubdOp, CatmullClarkeSubd, MeshSnapToMirror, MeshSubdTest, SubdivideSimple, SplitEdgesOp, SmoothCurvaturesOp, MarkSingularitiesOp, UnmarkSingularitiesOp, RelaxRakeUVCells, VertexSmooth, TestSplitFaceOp, TestCollapseOp, EnsureGridsOp, SubdivideGridsOp, SmoothGridsOp, GridsTestOp2, GridsTestOp, DeleteGridsOp, ResetGridsOp, ApplyGridBaseOp, AddCDLayerOp, RemCDLayerOp, TestMultiGridSmoothOp, FixNormalsOp, FixManifoldOp, ConnectVertsOp, DissolveVertOp, CleanupQuads, CleanupTris, DissolveEdgesOp, RotateEdgeOp, CollapseEdgesOp, RandomCollapseOp, DissolveEdgeLoopsOp, FlipNormalsOp, QuadSmoothOp, TestSmoothOp, DissolveFacesOp, OptRemeshParams, TestSolverOp, DuplicateMeshOp} from './mesh_ops.js'
+import {
+  DeleteOp,
+  DeleteOnlyFacesOp,
+  FlipLongTrisOp,
+  TriToQuadsOp,
+  SymmetrizeOp,
+  BisectOp,
+  TriangulateOp,
+  RemeshOp,
+  InteractiveRemeshOp,
+  LoopSubdOp,
+  CatmullClarkeSubd,
+  MeshSnapToMirror,
+  MeshSubdTest,
+  SubdivideSimple,
+  SplitEdgesOp,
+  SmoothCurvaturesOp,
+  MarkSingularitiesOp,
+  UnmarkSingularitiesOp,
+  RelaxRakeUVCells,
+  VertexSmooth,
+  TestSplitFaceOp,
+  TestCollapseOp,
+  EnsureGridsOp,
+  SubdivideGridsOp,
+  SmoothGridsOp,
+  GridsTestOp2,
+  GridsTestOp,
+  DeleteGridsOp,
+  ResetGridsOp,
+  ApplyGridBaseOp,
+  AddCDLayerOp,
+  RemCDLayerOp,
+  TestMultiGridSmoothOp,
+  FixNormalsOp,
+  FixManifoldOp,
+  ConnectVertsOp,
+  DissolveVertOp,
+  CleanupQuads,
+  CleanupTris,
+  DissolveEdgesOp,
+  RotateEdgeOp,
+  CollapseEdgesOp,
+  RandomCollapseOp,
+  DissolveEdgeLoopsOp,
+  FlipNormalsOp,
+  QuadSmoothOp,
+  TestSmoothOp,
+  DissolveFacesOp,
+  OptRemeshParams,
+  TestSolverOp,
+  DuplicateMeshOp,
+} from './mesh_ops.js'
 import {ParamVertSettings, ParamVert} from './mesh_paramizer.js'
 import {SolverSettings, SolverElem} from './mesh_solver.js'
-import {VoxelUnwrapOp, RandomizeUVsOp, UnwrapSolveOp, RelaxUVsOp, FixUvSeamsOp, ResetUVs, GridUVs, PackIslandsOp} from './mesh_uvops.js'
+import {
+  VoxelUnwrapOp,
+  RandomizeUVsOp,
+  UnwrapSolveOp,
+  RelaxUVsOp,
+  FixUvSeamsOp,
+  ResetUVs,
+  GridUVs,
+  PackIslandsOp,
+} from './mesh_uvops.js'
 import {MultiGridSettings, MultiGridData} from './multigrid_smooth.js'
-import {SelectLinkedOp, SelectLinkedPickOp, SelectMoreLess, SelectOneOp, ToggleSelectAll, SetFaceSmoothOp, SelectEdgeLoopOp, SelectInverse, SelectNonManifold, SelectShortestLoop, SelectLongestLoop, SelectSimilarOp, CircleSelectOp} from './select_ops.js'
+import {
+  SelectLinkedOp,
+  SelectLinkedPickOp,
+  SelectMoreLess,
+  SelectOneOp,
+  ToggleSelectAll,
+  SetFaceSmoothOp,
+  SelectEdgeLoopOp,
+  SelectInverse,
+  SelectNonManifold,
+  SelectShortestLoop,
+  SelectLongestLoop,
+  SelectSimilarOp,
+  CircleSelectOp,
+} from './select_ops.js'
 import {CVElem} from './unwrapping.js'
 export const ALL_MESH_REGISTRATIONS: unknown[] = [
   MDynVert,

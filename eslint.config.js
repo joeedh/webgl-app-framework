@@ -9,11 +9,13 @@ export default defineConfig([
   globalIgnores([
     //
     '**/node_modules/**',
+    '**/emsdk/**',
+    '**/sculptcore/**',
     './scripts/path.ux/**',
     './scripts/mathl/**',
     './types/**',
     './esdocs/**',
-    './addons/**', // might want to remove this line later
+    './vendor/**',
   ]),
   {
     files          : ['**/*.{js,mjs,cjs,ts,mts,cts}'],
@@ -41,9 +43,22 @@ export default defineConfig([
         'warn',
         {
           patterns: [
-            {group: ['*/mesh/*', '../mesh/*', '**/mesh/*'], message: 'core/ must not import scripts/mesh/* — use the data_kinds / default_file / file_migrations registries (see plan §3).'},
-            {group: ['../editors/view3d/tools/*'], message: 'core/ must not import view3d toolmode files — only the ToolMode base in view3d_toolmode is allowed.'},
-            {group: ['../../addons/**'], allowTypeImports: true, message: 'core/ must not import addon source — addons depend on core, not the other way around. Type-only imports are allowed (they erase at compile time).'},
+            {
+              group  : ['*/mesh/*', '../mesh/*', '**/mesh/*'],
+              message:
+                'core/ must not import scripts/mesh/* — use the data_kinds / default_file / file_migrations registries (see plan §3).',
+            },
+            {
+              group  : ['../editors/view3d/tools/*'],
+              message:
+                'core/ must not import view3d toolmode files — only the ToolMode base in view3d_toolmode is allowed.',
+            },
+            {
+              group           : ['../../addons/**'],
+              allowTypeImports: true,
+              message:
+                'core/ must not import addon source — addons depend on core, not the other way around. Type-only imports are allowed (they erase at compile time).',
+            },
           ],
         },
       ],
@@ -56,7 +71,11 @@ export default defineConfig([
         'warn',
         {
           patterns: [
-            {group: ['*/mesh/*', '../mesh/*'], message: 'util/ must stay mesh-agnostic — extract any needed interfaces into util/spatial.ts (see plan §3).'},
+            {
+              group  : ['*/mesh/*', '../mesh/*'],
+              message:
+                'util/ must stay mesh-agnostic — extract any needed interfaces into util/spatial.ts (see plan §3).',
+            },
           ],
         },
       ],
@@ -69,7 +88,11 @@ export default defineConfig([
         'warn',
         {
           patterns: [
-            {group: ['../../../../addons/builtin/*'], message: 'Builtin addons must not reach into each other directly — declare a manifest dependency and use api.deps or @addon/<id>/api (see plan §2.5).'},
+            {
+              group  : ['../../../../addons/builtin/*'],
+              message:
+                'Builtin addons must not reach into each other directly — declare a manifest dependency and use api.deps or @addon/<id>/api (see plan §2.5).',
+            },
           ],
         },
       ],

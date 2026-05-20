@@ -1,138 +1,138 @@
 export function makeGraphItToolMode(api) {
-  let exports = {};
+  let exports = {}
 
-  let nstructjs = api.nstructjs;
+  let nstructjs = api.nstructjs
 
-  let DrawModes = exports.DrawModes = {
-    GEODESIC      : 0,
-    UV            : 1
-  }
+  let DrawModes = (exports.DrawModes = {
+    GEODESIC: 0,
+    UV      : 1,
+  })
 
-  let DrawFlags = exports.DrawFlags = {
-    COLOR : 1
-  };
+  let DrawFlags = (exports.DrawFlags = {
+    COLOR: 1,
+  })
 
-  let ParamVert = api.mesh.paramizer.ParamVert;
-  let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;
+  let ParamVert = api.mesh.paramizer.ParamVert
+  let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh
 
-  let GraphItToolMode = exports.GraphItToolMode = class GraphItToolMode extends api.toolmode.MeshToolBase {
+  let GraphItToolMode = (exports.GraphItToolMode = class GraphItToolMode extends api.toolmode.MeshToolBase {
     constructor() {
-      super();
+      super()
 
-      this.drawTangents = true;
-      this.drawVerts = true;
+      this.drawTangents = true
+      this.drawVerts = true
 
-      this.selectMask = api.SelMask.VERTEX;
-      this.vertexPointSize = 3;
+      this.selectMask = api.SelMask.VERTEX
+      this.vertexPointSize = 3
     }
 
     static defineAPI(api) {
-      let st = super.defineAPI(api);
+      let st = super.defineAPI(api)
 
-      let onchange = () => window.redraw_viewport(true);
+      let onchange = () => window.redraw_viewport(true)
 
-      return st;
+      return st
     }
 
     static buildHeader(header, addRow) {
-      let row = addRow();
+      let row = addRow()
 
-      let strip = row.strip();
-      strip.useIcons(false);
+      let strip = row.strip()
+      strip.useIcons(false)
     }
 
     static buildSettings(con) {
-      let panel = con.panel("Tools");
+      let panel = con.panel('Tools')
 
-      let strip = panel.strip();
+      let strip = panel.strip()
 
-      strip.useIcons(false);
+      strip.useIcons(false)
       //strip.toolPanel("graphit.load");
     }
 
     updateParamMesh(gl) {
       if (!this.mesh) {
-        return;
+        return
       }
 
-      let mesh = this.mesh;
-      let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+      let mesh = this.mesh
+      let cd_pvert = mesh.verts.customData.getLayerIndex('paramvert')
 
-      let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + cd_pvert;
+      let key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + cd_pvert
 
       if (this.paramMesh && key === this._last_pmesh_key) {
-        return;
+        return
       }
 
-      this._last_pmesh_key = key;
+      this._last_pmesh_key = key
 
       if (this.paramMesh) {
-        this.paramMesh.destroy(gl);
+        this.paramMesh.destroy(gl)
       }
 
-      let lf = LayerTypes;
-      let lflag = lf.LOC | lf.COLOR | lf.UV;
+      let lf = LayerTypes
+      let lflag = lf.LOC | lf.COLOR | lf.UV
 
-      let sm = this.paramMesh = new SimpleMesh(lflag);
-      sm.primflag = PrimitiveTypes.LINES;
+      let sm = (this.paramMesh = new SimpleMesh(lflag))
+      sm.primflag = PrimitiveTypes.LINES
 
-      return;
+      return
 
       if (cd_pvert < 0) {
-        console.log("no param verts");
-        return;
+        console.log('no param verts')
+        return
       }
 
-      let white = [1, 1, 1, 1];
-      let tmp = new Vector3();
+      let white = [1, 1, 1, 1]
+      let tmp = new Vector3()
 
       for (let v of mesh.verts) {
-        let pv = v.customData[cd_pvert];
+        let pv = v.customData[cd_pvert]
 
-        let dis = 0;
-        let tot = 0;
+        let dis = 0
+        let tot = 0
         for (let v2 of v.neighbors) {
-          let dis2 = v.vectorDistance(v2);
-          dis += dis2;
-          tot++;
+          let dis2 = v.vectorDistance(v2)
+          dis += dis2
+          tot++
         }
 
         if (tot) {
-          dis /= tot;
+          dis /= tot
         }
 
-        dis = Math.max(dis, 0.01);
+        dis = Math.max(dis, 0.01)
 
-        let v1 = v;
-        let v2 = tmp.zero();
+        let v1 = v
+        let v2 = tmp.zero()
 
-        v2[0] = pv.smoothTan[0];
-        v2[1] = pv.smoothTan[1];
-        v2[2] = pv.smoothTan[2];
+        v2[0] = pv.smoothTan[0]
+        v2[1] = pv.smoothTan[1]
+        v2[2] = pv.smoothTan[2]
 
-        v2.cross(v.no);
+        v2.cross(v.no)
 
-        v2.normalize();
+        v2.normalize()
 
-        v2.mulScalar(dis);
+        v2.mulScalar(dis)
 
-        v2.add(v);
+        v2.add(v)
 
-        let l = sm.line(v1, v2);
-        l.colors(white, white);
+        let l = sm.line(v1, v2)
+        l.colors(white, white)
       }
     }
 
     on_drawend(view3d, gl) {
       if (this.drawVerts) {
-        super.on_drawend(view3d, gl);
+        super.on_drawend(view3d, gl)
       }
 
-      let ob = this.ctx.object;
-      let color = [1, 0.8, 0.7, 1.0];
+      let ob = this.ctx.object
+      let color = [1, 0.8, 0.7, 1.0]
 
       if (!ob) {
-        return;
+        return
       }
 
       let uniforms = {
@@ -147,40 +147,42 @@ export function makeGraphItToolMode(api) {
         uColor          : color,
         alpha           : 1.0,
         opacity         : 1.0,
-        polygonOffset   : 1.0
-      };
+        polygonOffset   : 1.0,
+      }
 
-      this.mesh = this.ctx.mesh;
+      this.mesh = this.ctx.mesh
 
       if (this.mesh && this.drawTangents) {
-        this.updateParamMesh(gl);
+        this.updateParamMesh(gl)
 
         if (this.paramMesh) {
-          gl.enable(gl.DEPTH_TEST);
-          this.paramMesh.draw(gl, uniforms, api.Shaders.WidgetMeshShader);
+          gl.enable(gl.DEPTH_TEST)
+          this.paramMesh.draw(gl, uniforms, api.Shaders.WidgetMeshShader)
         }
       }
     }
 
     static toolModeDefine() {
       return {
-        name        : "GraphItTool",
-        uiname      : "GraphIt",
+        name        : 'GraphItTool',
+        uiname      : 'GraphIt',
         icon        : api.Icons.GRAPH,
-        description : "GraphIt Tool Mode",
+        description : 'GraphIt Tool Mode',
         transWidgets: [],
-        flag        : 0
+        flag        : 0,
       }
     }
-  }
+  })
 
-  GraphItToolMode.STRUCT = nstructjs.inherit(GraphItToolMode, api.toolmode.ToolMode) + `
+  GraphItToolMode.STRUCT =
+    nstructjs.inherit(GraphItToolMode, api.toolmode.ToolMode) +
+    `
     drawTangents : bool;
     drawVerts    : bool;
   }
-  `;
+  `
 
-  api.register(GraphItToolMode);
+  api.register(GraphItToolMode)
 
-  return exports;
+  return exports
 }

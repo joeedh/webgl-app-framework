@@ -69,7 +69,6 @@ export class ExtrudeOneVertexOp extends MeshOp {
   }
 }
 
-
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {
     super()
@@ -295,7 +294,6 @@ export class ExtrudeRegionsOp extends MeshOp {
   }
 }
 
-
 export function extrudeIndivFaces(mesh, faces, lctx) {
   faces = ReusableIter.getSafeIter(faces)
 
@@ -423,7 +421,6 @@ export class ExtrudeFaceIndivOp extends MeshOp {
     }
   }
 }
-
 
 export class InsetHoleOp extends MeshOp {
   constructor() {
@@ -676,4 +673,3 @@ export class InsetHoleOp extends MeshOp {
     }
   }
 }
-

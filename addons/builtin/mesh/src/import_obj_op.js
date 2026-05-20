@@ -46,4 +46,3 @@ export class AppImportOBJOp extends ToolOp {
       })
   }
 }
-

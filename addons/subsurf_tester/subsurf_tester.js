@@ -1,13 +1,11 @@
 export const addonDefine = {
-  name : "Subsurf Tester"
-};
+  name: 'Subsurf Tester',
+}
 
-import {registerToolMode} from './subsurf_tangent_test.js';
+import {registerToolMode} from './subsurf_tangent_test.js'
 
 export function register(api) {
-  registerToolMode(api);
+  registerToolMode(api)
 }
 
-export function unregister() {
-
-}
+export function unregister() {}

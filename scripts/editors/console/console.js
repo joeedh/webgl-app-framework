@@ -469,7 +469,7 @@ ConsoleEditor {
       shiftKey       : e.shiftKey,
       ctrlKey        : e.ctrlKey,
       altKey         : e.altKey,
-      metaKey     : e.metaKey,
+      metaKey        : e.metaKey,
       x              : x,
       y              : y,
       pageX          : x,

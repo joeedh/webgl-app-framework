@@ -37,39 +37,35 @@ describe('validateManifest', () => {
 
   test('rejects bad id', () => {
     for (const bad of ['', 'Foo', '1mesh', 'mesh.edit', 'mesh/edit']) {
-      expect(() =>
-        validateManifest({id: bad, name: 'x', version: '1.0.0', entry: 'm.ts'})
-      ).toThrow(ManifestValidationError)
+      expect(() => validateManifest({id: bad, name: 'x', version: '1.0.0', entry: 'm.ts'})).toThrow(
+        ManifestValidationError
+      )
     }
   })
 
   test('rejects bad version', () => {
     for (const bad of ['1', '1.0', '1.0.0-rc1', 'v1.0.0']) {
-      expect(() =>
-        validateManifest({id: 'a', name: 'A', version: bad, entry: 'm.ts'})
-      ).toThrow(/version/)
+      expect(() => validateManifest({id: 'a', name: 'A', version: bad, entry: 'm.ts'})).toThrow(/version/)
     }
   })
 
   test('rejects entry containing ..', () => {
-    expect(() =>
-      validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: '../m.ts'})
-    ).toThrow(/\.\./)
+    expect(() => validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: '../m.ts'})).toThrow(/\.\./)
   })
 
   test('rejects bad dependencies field', () => {
-    expect(() =>
-      validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: 'm.ts', dependencies: 'mesh'})
-    ).toThrow(/dependencies/)
+    expect(() => validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: 'm.ts', dependencies: 'mesh'})).toThrow(
+      /dependencies/
+    )
     expect(() =>
       validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: 'm.ts', dependencies: ['Foo']})
     ).toThrow(/Foo/)
   })
 
   test('rejects bad buildMode', () => {
-    expect(() =>
-      validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: 'm.ts', buildMode: 'binary'})
-    ).toThrow(/buildMode/)
+    expect(() => validateManifest({id: 'a', name: 'A', version: '1.0.0', entry: 'm.ts', buildMode: 'binary'})).toThrow(
+      /buildMode/
+    )
   })
 
   test('includes manifestPath in error message', () => {
@@ -102,10 +98,7 @@ describe('sortManifestsByDeps', () => {
 
   test('rejects cycles', () => {
     expect(() =>
-      sortManifestsByDeps([
-        manifest({id: 'a', dependencies: ['b']}),
-        manifest({id: 'b', dependencies: ['a']}),
-      ])
+      sortManifestsByDeps([manifest({id: 'a', dependencies: ['b']}), manifest({id: 'b', dependencies: ['a']})])
     ).toThrow(/cycle/)
   })
 
@@ -118,8 +111,6 @@ describe('sortManifestsByDeps', () => {
   })
 
   test('rejects duplicate id', () => {
-    expect(() =>
-      sortManifestsByDeps([manifest({id: 'a'}), manifest({id: 'a'})])
-    ).toThrow(/duplicate/)
+    expect(() => sortManifestsByDeps([manifest({id: 'a'}), manifest({id: 'a'})])).toThrow(/duplicate/)
   })
 })

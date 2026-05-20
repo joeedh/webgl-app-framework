@@ -1,178 +1,180 @@
-import {Texture} from '../webgl/webgl.js';
-import {FBO} from '../webgl/fbo';
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../webgl/simplemesh.ts';
+import {Texture} from '../webgl/webgl.js'
+import {FBO} from '../webgl/fbo'
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../webgl/simplemesh.ts'
 
 export const GPUTileFlags = {
   UPDATE      : 1,
-  UNDO_SWAPPED: 2
-};
+  UNDO_SWAPPED: 2,
+}
 
-let gpuidgen = 1;
+let gpuidgen = 1
 
 export class GPUTile {
   constructor(x, y, width, height, u, v, index) {
-    this.width = width;
-    this.height = height;
+    this.width = width
+    this.height = height
 
-    this.gltex = undefined;
-    this.gltex2 = undefined; //backbuffer
+    this.gltex = undefined
+    this.gltex2 = undefined //backbuffer
 
-    this.fbo = undefined;
-    this.ready = false;
-    this.flag = 0;
-    this.index = index;
+    this.fbo = undefined
+    this.ready = false
+    this.flag = 0
+    this.index = index
 
-    this.id = gpuidgen++;
+    this.id = gpuidgen++
 
-    this.x = x;
-    this.y = y;
-    this.u = u;
-    this.v = v;
+    this.x = x
+    this.y = y
+    this.u = u
+    this.v = v
   }
 
   swap(gl) {
-    this.fbo.setTexColor(gl, this.gltex);
+    this.fbo.setTexColor(gl, this.gltex)
 
-    let t = this.gltex;
-    this.gltex = this.gltex2;
+    let t = this.gltex
+    this.gltex = this.gltex2
 
-    this.gltex2 = t;
+    this.gltex2 = t
 
-    return this;
+    return this
   }
 
   duplicate(gl) {
-    let tile = new GPUTile(this.x, this.y, this.width, this.height, this.u, this.v);
+    let tile = new GPUTile(this.x, this.y, this.width, this.height, this.u, this.v)
 
-    tile.genTex(gl);
-    tile.index = this.index;
+    tile.genTex(gl)
+    tile.index = this.index
 
-    tile.fbo.bind(gl);
-    tile.fbo.drawQuad(gl, this.width, this.height, this.gltex);
-    gl.finish();
-    tile.fbo.unbind();
+    tile.fbo.bind(gl)
+    tile.fbo.drawQuad(gl, this.width, this.height, this.gltex)
+    gl.finish()
+    tile.fbo.unbind()
 
-    tile.swap();
+    tile.swap()
 
-    return tile;
+    return tile
   }
 
   genTex(gl) {
-    let tex = new Texture(undefined, gl.createTexture());
-    Texture.defaultParams(gl, tex, gl.TEXTURE_2D);
-    tex.initEmpty(gl, gl.TEXTURE_2D, this.width, this.height);
-    this.gltex = tex;
+    let tex = new Texture(undefined, gl.createTexture())
+    Texture.defaultParams(gl, tex, gl.TEXTURE_2D)
+    tex.initEmpty(gl, gl.TEXTURE_2D, this.width, this.height)
+    this.gltex = tex
 
-    tex = new Texture(undefined, gl.createTexture());
-    Texture.defaultParams(gl, tex, gl.TEXTURE_2D);
-    tex.initEmpty(gl, gl.TEXTURE_2D, this.width, this.height);
-    this.gltex2 = tex;
+    tex = new Texture(undefined, gl.createTexture())
+    Texture.defaultParams(gl, tex, gl.TEXTURE_2D)
+    tex.initEmpty(gl, gl.TEXTURE_2D, this.width, this.height)
+    this.gltex2 = tex
 
-    let fbo = this.fbo = new FBO(gl, this.width, this.height);
-    fbo.texColor = this.gltex2;
-    fbo.update(gl, this.width, this.height);
+    let fbo = (this.fbo = new FBO(gl, this.width, this.height))
+    fbo.texColor = this.gltex2
+    fbo.update(gl, this.width, this.height)
 
-    this.ready = true;
+    this.ready = true
   }
 
   destroy(gl) {
     if (this.gltex) {
-      this.gltex.destroy(gl);
+      this.gltex.destroy(gl)
     }
 
-    this.gltex = undefined;
-    return this;
+    this.gltex = undefined
+    return this
   }
 }
 
 export class GPUTiledImage {
   constructor(gl, width, height, tilesize = 512) {
-    this.width = width;
-    this.height = height;
-    this.tilesize = tilesize;
-    this.smesh = undefined;
-    this.islands = []; //simplemesh islands, one per tile
-    this.tiles = [];
-    this.makeTiles();
-    this.gl = gl;
+    this.width = width
+    this.height = height
+    this.tilesize = tilesize
+    this.smesh = undefined
+    this.islands = [] //simplemesh islands, one per tile
+    this.tiles = []
+    this.makeTiles()
+    this.gl = gl
   }
 
   makeTiles(gl) {
-    let lf = LayerTypes;
-    let lflag = lf.LOC | lf.UV;
+    let lf = LayerTypes
+    let lflag = lf.LOC | lf.UV
 
-    let sm = this.smesh = new SimpleMesh(lflag);
+    let sm = (this.smesh = new SimpleMesh(lflag))
 
-    this.tiles = [];
-    this.islands = [];
+    this.tiles = []
+    this.islands = []
 
-    let tsize = this.tilesize;
-    let totx = Math.ceil(this.width/tsize);
-    let toty = Math.ceil(this.height/tsize);
+    let tsize = this.tilesize
+    let totx = Math.ceil(this.width / tsize)
+    let toty = Math.ceil(this.height / tsize)
 
-    totx = Math.max(totx, 1);
-    toty = Math.max(toty, 1);
+    totx = Math.max(totx, 1)
+    toty = Math.max(toty, 1)
 
-    let ilen = totx*toty;
+    let ilen = totx * toty
     for (let i = 0; i < ilen; i++) {
-      let ix = i%totx, iy = ~~(i/totx);
+      let ix = i % totx,
+        iy = ~~(i / totx)
 
-      let w, h;
-      let x = ix*tsize, y = iy*tsize;
+      let w, h
+      let x = ix * tsize,
+        y = iy * tsize
 
       if (ix === totx - 1) {
-        w = this.width%tsize;
+        w = this.width % tsize
       } else {
-        w = tsize;
+        w = tsize
       }
 
       if (iy === toty - 1) {
-        h = this.height%tsize;
+        h = this.height % tsize
       } else {
-        h = tsize;
+        h = tsize
       }
 
-      let u = x/this.width;
-      let v = y/this.height;
+      let u = x / this.width
+      let v = y / this.height
 
-      let du = w/tsize;
-      let dv = h/tsize;
+      let du = w / tsize
+      let dv = h / tsize
 
-      let island = sm.add_island();
+      let island = sm.add_island()
 
-      let quad = island.quad([u, v, 0], [u, v + dv, 0], [u + du, v + dv, 0], [u + du, v, 0]);
-      quad.uvs([u, v], [u, v + dv], [u + du, v + dv], [u + du, v]);
+      let quad = island.quad([u, v, 0], [u, v + dv, 0], [u + du, v + dv, 0], [u + du, v, 0])
+      quad.uvs([u, v], [u, v + dv], [u + du, v + dv], [u + du, v])
 
-      let tile = new GPUTile(x, y, w, h, u, v, this.tiles.length);
-      tile.genTex(gl);
+      let tile = new GPUTile(x, y, w, h, u, v, this.tiles.length)
+      tile.genTex(gl)
 
-      this.tiles.push(tile);
-      this.islands.push(island);
+      this.tiles.push(tile)
+      this.islands.push(island)
     }
   }
 
   draw(gl, uniforms, program, bindFBOs = false, onbind = undefined, onunbind = undefined) {
-    gl.depthMask(false);
-    gl.disable(gl.DEPTH_TEST);
-
+    gl.depthMask(false)
+    gl.disable(gl.DEPTH_TEST)
 
     for (let i = 0; i < this.tiles.length; i++) {
-      let island = this.islands[i], tile = this.tiles[i];
-      uniforms.rgba = tile.gltex;
+      let island = this.islands[i],
+        tile = this.tiles[i]
+      uniforms.rgba = tile.gltex
 
       if (bindFBOs) {
-        tile.fbo.bind(gl);
+        tile.fbo.bind(gl)
         if (onbind) {
-          onbind(tile, island);
+          onbind(tile, island)
         }
       }
 
-      island.draw(gl, uniforms, program);
+      island.draw(gl, uniforms, program)
 
       if (bindFBOs) {
-        tile.fbo.unbind(gl);
+        tile.fbo.unbind(gl)
         if (onunbind) {
-          onunbind(tile, island);
+          onunbind(tile, island)
         }
       }
     }
@@ -180,51 +182,51 @@ export class GPUTiledImage {
 
   swap(gl) {
     for (let tile of this.tiles) {
-      tile.swap(gl);
+      tile.swap(gl)
     }
   }
 
   destroy(gl = this.gl) {
-    this.smesh.destroy(gl);
+    this.smesh.destroy(gl)
     for (let tile of this.tiles) {
-      tile.destroy(gl);
+      tile.destroy(gl)
     }
 
-    this.tiles = [];
-    this.islands = [];
-    this.smesh = undefined;
+    this.tiles = []
+    this.islands = []
+    this.smesh = undefined
 
-    return this;
+    return this
   }
 }
 
 export class GPUHistoryImage extends GPUTiledImage {
   constructor(gl, width, height, tilesize = 512) {
-    super(gl, width, height, tilesize = 512);
+    super(gl, width, height, (tilesize = 512))
 
-    this.history = [];
-    this.setpoints = [0];
-    this.history.cur = 0;
-    this.setpoints.cur = 0;
+    this.history = []
+    this.setpoints = [0]
+    this.history.cur = 0
+    this.setpoints.cur = 0
   }
 
   dirty(x, y, w, h) {
-    x /= this.tilesize;
-    y /= this.tilesize;
-    w /= this.tilesize;
-    h /= this.tilesize;
+    x /= this.tilesize
+    y /= this.tilesize
+    w /= this.tilesize
+    h /= this.tilesize
 
-    w = Math.ceil(w);
-    h = Math.ceil(h);
+    w = Math.ceil(w)
+    h = Math.ceil(h)
 
-    x = Math.floor(x);
-    y = Math.floor(y);
+    x = Math.floor(x)
+    y = Math.floor(y)
 
     for (let j = y; j < y + h; j++) {
       for (let i = x; i < x + w; i++) {
-        let idx = j*this.tilesize + i;
+        let idx = j * this.tilesize + i
 
-        this.tiles[idx].flag |= GPUTileFlags.UPDATE;
+        this.tiles[idx].flag |= GPUTileFlags.UPDATE
       }
     }
   }
@@ -232,140 +234,140 @@ export class GPUHistoryImage extends GPUTiledImage {
   saveDirtyTiles(gl = this.gl) {
     for (let tile of this.tiles) {
       if (tile.flag & GPUTileFlags.UPDATE) {
-        tile.flag &= ~GPUTileFlags.UPDATE;
+        tile.flag &= ~GPUTileFlags.UPDATE
 
-        this.history.push(tile.duplicate(gl));
+        this.history.push(tile.duplicate(gl))
       }
     }
 
-    this.history.cur = this.history.length;
+    this.history.cur = this.history.length
   }
 
   undo(gl = this.gl) {
     if (this.setpoints.cur < 0) {
-      return;
+      return
     }
 
-    let scur = this.setpoints.cur;
-    let start = this.setpoints[scur];
-    let end = scur < this.setpoints.length ? this.setpoints[scur+1] : this.history.length;
+    let scur = this.setpoints.cur
+    let start = this.setpoints[scur]
+    let end = scur < this.setpoints.length ? this.setpoints[scur + 1] : this.history.length
 
-    for (let i=start; i<end; i++) {
-      let tile1 = this.history[i];
-      let tile2 = this.tiles[i];
+    for (let i = start; i < end; i++) {
+      let tile1 = this.history[i]
+      let tile2 = this.tiles[i]
 
-      this.tiles[i] = tile2;
-      this.history[i] = tile1;
+      this.tiles[i] = tile2
+      this.history[i] = tile1
 
-      tile1.flag &= ~GPUTileFlags.UNDO_SWAPPED;
-      tile2.flag |= GPUTileFlags.UNDO_SWAPPED;
+      tile1.flag &= ~GPUTileFlags.UNDO_SWAPPED
+      tile2.flag |= GPUTileFlags.UNDO_SWAPPED
     }
 
-    this.setpoints.cur--;
-    this.history.cur = start;
+    this.setpoints.cur--
+    this.history.cur = start
 
-    return this;
+    return this
   }
 
   redo(gl = this.gl) {
-    if (this.setpoints.cur >= this.setpoints.length-1) {
-      return;
+    if (this.setpoints.cur >= this.setpoints.length - 1) {
+      return
     }
 
-    this.setpoints.cur++;
+    this.setpoints.cur++
 
-    let scur = this.setpoints.cur;
-    let start = this.setpoints[scur];
-    let end = scur < this.setpoints.length ? this.setpoints[scur+1] : this.history.length;
+    let scur = this.setpoints.cur
+    let start = this.setpoints[scur]
+    let end = scur < this.setpoints.length ? this.setpoints[scur + 1] : this.history.length
 
-    for (let i=start; i<end; i++) {
-      let tile1 = this.history[i];
-      let tile2 = this.tiles[i];
+    for (let i = start; i < end; i++) {
+      let tile1 = this.history[i]
+      let tile2 = this.tiles[i]
 
-      this.tiles[i] = tile2;
-      this.history[i] = tile1;
+      this.tiles[i] = tile2
+      this.history[i] = tile1
 
-      tile1.flag &= ~GPUTileFlags.UNDO_SWAPPED;
-      tile2.flag |= GPUTileFlags.UNDO_SWAPPED;
+      tile1.flag &= ~GPUTileFlags.UNDO_SWAPPED
+      tile2.flag |= GPUTileFlags.UNDO_SWAPPED
     }
 
-    this.history.cur = end;
-    return this;
+    this.history.cur = end
+    return this
   }
 
   addSetPoint() {
-    this.setpoints.push(this.history.length);
-    this.setpoints.cur = this.setpoints.length;
+    this.setpoints.push(this.history.length)
+    this.setpoints.cur = this.setpoints.length
 
-    return this.setpoints.cur;
+    return this.setpoints.cur
   }
 
   truncateHistory(gl = this.gl) {
     for (let i = this.history.cur; i < this.history.length; i++) {
-      this.history[i].destroy(gl);
+      this.history[i].destroy(gl)
     }
 
-    this.history.length = this.history.cur;
-    this.setpoints.length = this.setpoints.cur;
+    this.history.length = this.history.cur
+    this.setpoints.length = this.setpoints.cur
 
-    return this;
+    return this
   }
 }
 
 export function makeKey(id, width, height, type) {
-  return `${id}:${width}:${height}:${type}`;
+  return `${id}:${width}:${height}:${type}`
 }
 
 export class GPUImageManager {
   constructor() {
-    this.images = [];
-    this.image_idmap = {};
-    this.tiles = [];
-    this.tile_idmap = {};
+    this.images = []
+    this.image_idmap = {}
+    this.tiles = []
+    this.tile_idmap = {}
   }
 
   get(gl, id, width, height, type) {
-    let key = makeKey(id, width, height, type);
+    let key = makeKey(id, width, height, type)
 
-    this.gl = gl;
+    this.gl = gl
 
     if (key in this.image_idmap) {
-      return this.image_idmap[key];
+      return this.image_idmap[key]
     }
 
-    let image = new GPUHistoryImage(gl, width, height);
+    let image = new GPUHistoryImage(gl, width, height)
 
-    this.images.push(image);
-    this.image_idmap[key] = image;
+    this.images.push(image)
+    this.image_idmap[key] = image
 
-    return image;
+    return image
   }
 
   addTile(tile, id) {
-    id = "tile_"  + id;
-    let key = makeKey(id, tile.width, tile.height, tile.type);
+    id = 'tile_' + id
+    let key = makeKey(id, tile.width, tile.height, tile.type)
 
-    this.tile_idmap[id] = tile;
-    this.tiles.push(tile);
+    this.tile_idmap[id] = tile
+    this.tiles.push(tile)
   }
 
   clear() {
     for (let image of this.images) {
-      image.destroy(this.gl);
+      image.destroy(this.gl)
     }
 
     for (let tile of this.tiles) {
-      tile.destroy(this.gl);
+      tile.destroy(this.gl)
     }
 
-    this.images.length = 0;
-    this.image_idmap = {};
+    this.images.length = 0
+    this.image_idmap = {}
 
-    this.tiles.length = 0;
-    this.tile_idmap = {};
+    this.tiles.length = 0
+    this.tile_idmap = {}
 
-    return this;
+    return this
   }
 }
 
-export const imageManager = new GPUImageManager();
+export const imageManager = new GPUImageManager()

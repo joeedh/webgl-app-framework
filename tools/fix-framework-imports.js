@@ -41,8 +41,14 @@ let count = 0
 for (const file of walk(ROOT, [])) {
   let src = fs.readFileSync(file, 'utf-8')
   let n = 0
-  src = src.replace(RE_STAR, (_m, name) => { n++; return `import {${name}} from '@framework/api'` })
-  src = src.replace(RE_DEFAULT, (_m, name) => { n++; return `import {${name}} from '@framework/api'` })
+  src = src.replace(RE_STAR, (_m, name) => {
+    n++
+    return `import {${name}} from '@framework/api'`
+  })
+  src = src.replace(RE_DEFAULT, (_m, name) => {
+    n++
+    return `import {${name}} from '@framework/api'`
+  })
   if (n > 0) {
     fs.writeFileSync(file, src)
     touched++

@@ -14,12 +14,7 @@ import path from 'node:path'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 
-const args = [
-  '--config', '.dependency-cruiser.cjs',
-  '--output-type', 'err',
-  'scripts',
-  'addons',
-]
+const args = ['--config', '.dependency-cruiser.cjs', '--output-type', 'err', 'scripts', 'addons']
 
 console.log('check-layers: running dependency-cruiser against scripts/ + addons/')
 console.log('check-layers: arguments: depcruise ' + args.join(' '))

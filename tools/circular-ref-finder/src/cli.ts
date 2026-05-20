@@ -40,7 +40,7 @@ export class CLI {
 
   parseOptions(args: string[]): CliOptions {
     const options: CliOptions = {
-      dir: process.cwd(),
+      dir    : process.cwd(),
       exclude: ['node_modules', 'dist', 'build', '.git'],
       include: [],
       verbose: false,

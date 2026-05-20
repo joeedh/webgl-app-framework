@@ -1,6 +1,5 @@
-export * from '../mathl/util/s
-
-`
+export * from '../mathl/util/'
+;`
 //handle to module.  never access in code; for debug console use only.
 var _sym = undefined;
 
@@ -1341,4 +1340,4 @@ define([
   
   return exports;
 });
-`;
+`

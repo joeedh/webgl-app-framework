@@ -65,7 +65,7 @@ describe('installFromBlob', () => {
     // if it's already there; otherwise build it now. esbuild is fast.
     if (!fs.existsSync(BUILT_ENTRY_PATH)) {
       execSync('node tools/build-addons.js --include-fixtures', {
-        cwd: REPO_ROOT,
+        cwd  : REPO_ROOT,
         stdio: 'pipe',
       })
     }
@@ -114,7 +114,10 @@ describe('installFromBlob', () => {
   test('throws when manifest entry is not in zip', async () => {
     const blob = await makeZipBlob({
       'manifest.json': JSON.stringify({
-        id: 'noentry', name: 'X', version: '1.0.0', entry: 'build/missing.js',
+        id     : 'noentry',
+        name   : 'X',
+        version: '1.0.0',
+        entry  : 'build/missing.js',
       }),
     })
     await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(/not found/)
@@ -133,7 +136,7 @@ describe('installFromBlob', () => {
         buildMode   : 'source',
         dependencies: [],
       }),
-      'src/main.ts'  : `
+      'src/main.ts': `
         import {greet} from './helper'
         export const message: string = greet('world')
       `,
@@ -157,16 +160,14 @@ describe('installFromBlob', () => {
   test('source-mode requires the entry file to exist in the zip', async () => {
     const blob = await makeZipBlob({
       'manifest.json': JSON.stringify({
-        id        : 'no_src',
-        name      : 'X',
-        version   : '1.0.0',
-        entry     : 'src/main.ts',
-        buildMode : 'source',
+        id       : 'no_src',
+        name     : 'X',
+        version  : '1.0.0',
+        entry    : 'src/main.ts',
+        buildMode: 'source',
       }),
     })
-    await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(
-      /missing entry/
-    )
+    await expect(installFromBlob(blob, new InMemoryAddonStorage())).rejects.toThrow(/missing entry/)
   })
 
   test('reinstalling replaces the previous version', async () => {
@@ -175,7 +176,10 @@ describe('installFromBlob', () => {
 
     const blob1 = await makeZipBlob({
       'manifest.json': JSON.stringify({
-        id: 'rev', name: 'Rev', version: '0.1.0', entry: 'build/main.js',
+        id     : 'rev',
+        name   : 'Rev',
+        version: '0.1.0',
+        entry  : 'build/main.js',
       }),
       'build/main.js': new Uint8Array(builtJs),
     })
@@ -183,7 +187,10 @@ describe('installFromBlob', () => {
 
     const blob2 = await makeZipBlob({
       'manifest.json': JSON.stringify({
-        id: 'rev', name: 'Rev', version: '0.2.0', entry: 'build/main.js',
+        id     : 'rev',
+        name   : 'Rev',
+        version: '0.2.0',
+        entry  : 'build/main.js',
       }),
       'build/main.js': new Uint8Array(builtJs),
     })

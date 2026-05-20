@@ -17,7 +17,6 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
     this.drawlines2d = []
   }
 
-
   modalEnd(wasCancelled?: boolean) {
     this.resetDrawLines()
     return super.modalEnd(wasCancelled ?? false)

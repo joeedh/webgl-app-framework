@@ -128,7 +128,6 @@ export class AppToolStack extends ToolStack {
     }
   }
 
-
   redo() {
     this._syncSettings(this.ctx) //sync undo settings
 

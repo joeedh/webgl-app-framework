@@ -34,6 +34,10 @@ describe('data_kinds registry', () => {
   test('listDataKinds returns all entries', () => {
     registerDataKind({id: 'mesh'})
     registerDataKind({id: 'curve'})
-    expect(listDataKinds().map((k) => k.id).sort()).toEqual(['curve', 'mesh'])
+    expect(
+      listDataKinds()
+        .map((k) => k.id)
+        .sort()
+    ).toEqual(['curve', 'mesh'])
   })
 })

@@ -16,12 +16,11 @@ import {NodeFlags} from '../core/graph'
 import {DrawBatch, float3, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl/index'
-import {View3D} from '../editors/all'
+import type {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject/index'
 import {Shaders} from '../shaders/shaders'
 import {GenericIsect} from '../util/spatial'
-import type {IGenericIsect} from '../util/spatial'
-import {pointer} from '@litestl/typescript-runtime'
+import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -203,7 +202,7 @@ export class LiteMesh extends SceneObjectData {
     // this code cannot run before wasm loads
     this.wasm = getWasmImmediate()!
 
-    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(50, 1.0, 1.0)
+    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(120, 1.0, 1.0)
     this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
@@ -265,15 +264,18 @@ export class LiteMesh extends SceneObjectData {
     program: ShaderProgram,
     object: SceneObject
   ) {
+    const drawBVH = (view3d.ctx?.scene?.toolmode as SculptCorePaintMode)?.drawBVH
     if (this.spatial.update(this.wasm.gpu)) {
       if (this.treeBatch) {
         this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
-        this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+        if (drawBVH) {
+          this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+        }
       }
     }
     this.drawBatch = this.spatial.getDrawBatch()
 
-    if (!this.treeBatch) {
+    if (drawBVH && !this.treeBatch) {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
     }
 
@@ -299,7 +301,7 @@ export class LiteMesh extends SceneObjectData {
     if (this.drawBatch) {
       exec.dispatch(this.drawBatch, uniforms2)
     }
-    if (this.treeBatch) {
+    if (drawBVH && this.treeBatch) {
       exec.dispatch(this.treeBatch, uniforms2)
     }
   }

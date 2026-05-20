@@ -50,10 +50,11 @@ exports.ServerResponse = class ServerResponse extends http.ServerResponse {
   _addHeaders(origin = globalThis.ORIGIN) {
     this.setHeader('X-Content-Type-Options', 'nosniff')
 
-    if (true) { //allowed_origins.has(origin)) {
+    if (true) {
+      //allowed_origins.has(origin)) {
       this.setHeader('Access-Control-Allow-Origin', origin)
     }
-    
+
     this.setHeader('Document-Policy', 'js-profiling')
     this.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
     this.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')

@@ -36,7 +36,7 @@ import type {SceneObject} from '../../../sceneobject/sceneobject'
 import type {View3D} from '../view3d'
 import {Loop, Mesh, UVLayerElem} from '../../../../addons/builtin/mesh/src/mesh'
 import {AttrRef, ColorLayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
-import { getUVWrangler } from '../../../../addons/builtin/mesh/src/unwrapping'
+import {getUVWrangler} from '../../../../addons/builtin/mesh/src/unwrapping'
 
 declare global {
   let DDD: number

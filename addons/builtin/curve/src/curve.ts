@@ -3,7 +3,14 @@ import {nstructjs} from '@framework/pathux'
 
 import {Vertex, Edge} from '../../mesh/src/mesh_types'
 import {Mesh} from '../../mesh/src/mesh.js'
-import {MeshTypes, MeshFlags, MeshFeatures, MeshFeatureError, MeshDrawFlags, MeshError} from '../../mesh/src/mesh_base.js'
+import {
+  MeshTypes,
+  MeshFlags,
+  MeshFeatures,
+  MeshFeatureError,
+  MeshDrawFlags,
+  MeshError,
+} from '../../mesh/src/mesh_base.js'
 import {NodeFlags} from '@framework/api'
 import {MeshTools} from '../../mesh/src/mesh_stdtools.js'
 import {SelMask} from '@framework/api'
@@ -724,4 +731,3 @@ CurveSpline {
     super.loadSTRUCT(reader)
   }
 }
-

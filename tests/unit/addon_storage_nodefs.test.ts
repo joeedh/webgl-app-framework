@@ -76,10 +76,7 @@ describe('NodeFsAddonStorage', () => {
 
   test('write creates nested directories', async () => {
     const s = mkStorage()
-    await s.write(
-      'a',
-      new Map([['build/deep/nested/file.js', bytes('hi')]])
-    )
+    await s.write('a', new Map([['build/deep/nested/file.js', bytes('hi')]]))
     expect(str(await s.read('a', 'build/deep/nested/file.js'))).toBe('hi')
   })
 

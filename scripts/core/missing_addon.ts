@@ -55,11 +55,11 @@ export class MissingDataBlock extends DataBlock {
 
   static blockDefine() {
     return {
-      typeName    : 'MissingDataBlock',
-      defaultName : 'Missing Addon Data',
-      uiName      : 'Missing',
-      flag        : 0,
-      icon        : -1,
+      typeName   : 'MissingDataBlock',
+      defaultName: 'Missing Addon Data',
+      uiName     : 'Missing',
+      flag       : 0,
+      icon       : -1,
     }
   }
 
@@ -106,11 +106,11 @@ export class MissingToolMode extends ToolMode {
 
   static toolModeDefine() {
     return {
-      name        : 'MissingToolMode',
-      uiname      : 'Missing (Addon Disabled)',
-      icon        : -1,
-      flag        : 0,
-      description : 'Placeholder for a tool mode whose addon is not loaded.',
+      name       : 'MissingToolMode',
+      uiname     : 'Missing (Addon Disabled)',
+      icon       : -1,
+      flag       : 0,
+      description: 'Placeholder for a tool mode whose addon is not loaded.',
     }
   }
 
@@ -182,4 +182,3 @@ export function installMissingAddonHooks(): void {
     return placeholder?._origClsname || undefined
   }
 }
-

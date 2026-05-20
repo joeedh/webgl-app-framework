@@ -112,9 +112,7 @@ export async function installFromBlob(
   let installFiles: Map<string, Uint8Array>
   if (manifest.buildMode === 'source') {
     if (!files.has(manifest.entry)) {
-      throw new AddonInstallError(
-        `source-mode addon "${manifest.id}" missing entry "${manifest.entry}" in zip`
-      )
+      throw new AddonInstallError(`source-mode addon "${manifest.id}" missing entry "${manifest.entry}" in zip`)
     }
     try {
       installFiles = await transpileAddonSources(manifest, files)
@@ -129,9 +127,7 @@ export async function installFromBlob(
     // ends in .ts, the loader normalizes to .js — accept either form.
     const entryJs = manifest.entry.replace(/\.ts$/, '.js')
     if (!files.has(entryJs) && !files.has(manifest.entry)) {
-      throw new AddonInstallError(
-        `manifest entry "${manifest.entry}" (or "${entryJs}") not found in zip`
-      )
+      throw new AddonInstallError(`manifest entry "${manifest.entry}" (or "${entryJs}") not found in zip`)
     }
     installFiles = files
   }

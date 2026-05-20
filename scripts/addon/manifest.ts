@@ -94,10 +94,7 @@ export function validateManifest(raw: unknown, manifestPath?: string): IAddonMan
     }
     for (const d of m.dependencies as string[]) {
       if (!ID_RE.test(d)) {
-        throw new ManifestValidationError(
-          `dependency id ${JSON.stringify(d)} does not match ${ID_RE}`,
-          manifestPath
-        )
+        throw new ManifestValidationError(`dependency id ${JSON.stringify(d)} does not match ${ID_RE}`, manifestPath)
       }
     }
   }

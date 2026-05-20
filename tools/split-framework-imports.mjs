@@ -85,7 +85,10 @@ for (const m of fapiSrcRaw.matchAll(/export\s+type\s*\{([^}]*)\}/g)) {
   for (const raw of m[1].split(',')) {
     const t = raw.trim()
     if (!t) continue
-    const name = t.replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim()
+    const name = t
+      .replace(/^type\s+/, '')
+      .split(/\s+as\s+/)[0]
+      .trim()
     if (name) fapiTypeOnly.add(name)
   }
 }
@@ -127,7 +130,7 @@ function rewriteFile(file) {
   const unknowns = []
 
   const out = orig.replace(importRe, (full, typeKw, bindings, quote) => {
-    if (typeKw) return full  // type-only: leave alone
+    if (typeKw) return full // type-only: leave alone
 
     // Parse bindings. Each item: `Name` or `Name as Alias`. Whitespace/comments noted but rare.
     const items = bindings
@@ -169,9 +172,7 @@ function rewriteFile(file) {
     if (pathuxItems.length === 0) return full
     changed = true
 
-    const fw = frameworkItems.length
-      ? `import {${frameworkItems.join(', ')}} from ${quote}@framework/api${quote}`
-      : ''
+    const fw = frameworkItems.length ? `import {${frameworkItems.join(', ')}} from ${quote}@framework/api${quote}` : ''
     const px = `import {${pathuxItems.join(', ')}} from ${quote}@framework/pathux${quote}`
 
     if (fw) return `${fw}\n${px}`

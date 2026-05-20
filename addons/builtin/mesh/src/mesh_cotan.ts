@@ -233,4 +233,3 @@ CotanVert.STRUCT =
   flag         : int;
   _last_hash   : int;
 }`
-

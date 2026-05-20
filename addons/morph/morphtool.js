@@ -1,26 +1,28 @@
 export function makeMorphToolMode(api) {
-  let nstructjs = api.nstructjs;
-  
+  let nstructjs = api.nstructjs
+
   class MorphToolMode extends api.toolmode.ToolMode {
     constructor() {
-      super();
+      super()
     }
 
     static toolModeDefine() {
       return {
-        name        : "morphtool",
-        uiname      : "Morph Tool",
+        name        : 'morphtool',
+        uiname      : 'Morph Tool',
         icon        : api.Icons.SHOW_LOOPS,
-        description : "Morph Tool",
+        description : 'Morph Tool',
         transWidgets: [],
-        flag        : 0
+        flag        : 0,
       }
     }
   }
 
-  MorphToolMode.STRUCT = nstructjs.inherit(MorphToolMode, api.toolmode.ToolMode) + `
+  MorphToolMode.STRUCT =
+    nstructjs.inherit(MorphToolMode, api.toolmode.ToolMode) +
+    `
   }
-  `;
+  `
 
-  api.register(MorphToolMode);
+  api.register(MorphToolMode)
 }

@@ -14,7 +14,7 @@ import {
 
 import {CDFlags, CustomData, CustomDataElem, CustomDataLayer, ICustomDataElemConstructor} from './customdata'
 import {Vertex, Loop, Face, Handle} from './mesh_types.js'
-import { StructReader } from '@framework/api'
+import {StructReader} from '@framework/api'
 
 const typemap = {
   [MeshTypes.VERTEX]: Vertex,
@@ -644,7 +644,7 @@ mesh.ElementList {
     }
 
     for (let i = 0; i < sources2.length; i++) {
-      sources2[i] = undefined as unknown as typeof sources2[typeof i]
+      sources2[i] = undefined as unknown as (typeof sources2)[typeof i]
     }
   }
 

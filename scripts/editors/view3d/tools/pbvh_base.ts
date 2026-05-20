@@ -26,7 +26,14 @@ import {
   Number3,
 } from '../../../path.ux/scripts/pathux.js'
 
-import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings, PaintToolSlot} from '../../../brush/index'
+import {
+  BrushFlags,
+  SculptBrush,
+  SculptTools,
+  BrushSpacingModes,
+  DynTopoSettings,
+  PaintToolSlot,
+} from '../../../brush/index'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../../addons/builtin/mesh/src/customdata.js'

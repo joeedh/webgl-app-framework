@@ -1,7 +1,7 @@
 'use strict'
 
 import {util, nstructjs, Vector3, Matrix4, JSONAny} from '../path.ux/scripts/pathux'
-import { StructReader } from '../path.ux/scripts/util/nstructjs'
+import {StructReader} from '../path.ux/scripts/util/nstructjs'
 import '../core/const'
 
 export const constmap = {} as any //{[k: number]: number}
@@ -853,7 +853,7 @@ v${attr} = ${attr};
     return this.attrLoc(name)
   }
 
-  attrLoc(name: string): number  {
+  attrLoc(name: string): number {
     if (this._use_def_shaders) {
       const shader = this._getLastDefShader()
 

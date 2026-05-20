@@ -10,7 +10,9 @@
     "test": "turbo test",
     "watch-typecheck": "npx tsgo --watch",
     "serv": "node tools/serv.js",
-    "eslint": "npx eslint",
+    "eslint": "npx eslint --cache --cache-location .eslintcache",
+    "format": "prettier --cache --write \"**/*.{ts,tsx,js,jsx,mjs,cjs}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs}\"",
     "markdown-toc": "bash tools/run_markdown_toc.sh"
   },
   "devDependencies": {

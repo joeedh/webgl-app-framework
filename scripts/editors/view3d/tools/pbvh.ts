@@ -25,14 +25,7 @@ import {
 import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
-import {
-  Container,
-  IndexRange,
-  math,
-  Number3,
-  PackFlags,
-  UIBase,
-} from '../../../path.ux/scripts/pathux.js'
+import {Container, IndexRange, math, Number3, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../webgl/simplemesh'
 import {GridBase, GridSettings, GridSettingFlags} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
@@ -60,7 +53,12 @@ import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/sr
 import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../../addons/builtin/mesh/src/mesh_displacement.js'
 import {IUniformsBlock, ShaderProgram, Texture} from '../../../webgl/webgl.js'
-import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
+import {
+  getFaceSetColor,
+  getFaceSets,
+  getFaceSetsAttr,
+  getNextFaceSet,
+} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {eventWasTouch, haveModal} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumValues} from '../../../util/enum-utils'
 import {ParamVert} from '../../../../addons/builtin/mesh/src/mesh_paramizer'
@@ -143,7 +141,10 @@ export class BVHToolMode extends PaintToolModeBase {
         if (key !== 'flag') {
           const key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
-          if (key2 && brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as keyof typeof DynTopoOverrides] as unknown as number)) {
+          if (
+            key2 &&
+            brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as keyof typeof DynTopoOverrides] as unknown as number)
+          ) {
             ;(brush.dynTopo as any)[key] = val
           } else {
             ;(this.dynTopo as any)[key] = val
@@ -2134,7 +2135,6 @@ export class BVHToolMode extends PaintToolModeBase {
               if (l && l.eid === v.loopEid) {
                 l.customData.get(bvh.cd_grid).checkCustomDataLayout(mesh)
               }
-
             }
             /*
             let c1 = colorfilter(tri.v1);

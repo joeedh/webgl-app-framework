@@ -4,14 +4,14 @@
  *
  * */
 export const StandardTools1 = {
-  SELECTONE         : 1,
-  TOGGLE_SELECT_ALL : 2,
-  CIRCLE_SELECT     : 4,
-  BOX_SELECT        : 8,
-  SELECT_LINKED     : 16,
-  DELETE            : 32,
-  DUPLICATE         : 64
-};
+  SELECTONE        : 1,
+  TOGGLE_SELECT_ALL: 2,
+  CIRCLE_SELECT    : 4,
+  BOX_SELECT       : 8,
+  SELECT_LINKED    : 16,
+  DELETE           : 32,
+  DUPLICATE        : 64,
+}
 
 /**
  * Collection of standard tool operators
@@ -25,33 +25,33 @@ export const StandardTools1 = {
  * Popping up menus and
  * spawning modal tools are okay.
  */
-export const NOTEXIST = Symbol("notexist");
+export const NOTEXIST = Symbol('notexist')
 
 export class StandardTools {
   hasTool(method) {
-    return this.hasOwnProperty(method);
+    return this.hasOwnProperty(method)
   }
 
-  static SelectOne(ctx, unique=true) {
-    return NOTEXIST;
+  static SelectOne(ctx, unique = true) {
+    return NOTEXIST
   }
 
   static ToggleSelectAll(ctx) {
-    return NOTEXIST;
+    return NOTEXIST
   }
   static CircleSelect(ctx) {
-    return NOTEXIST;
+    return NOTEXIST
   }
   static BoxSelect(ctx) {
-    return NOTEXIST;
+    return NOTEXIST
   }
   static SelectLinked(ctx, x, y) {
-    return NOTEXIST;
+    return NOTEXIST
   }
   static Delete(ctx) {
-    return NOTEXIST;
+    return NOTEXIST
   }
   static Duplicate(ctx) {
-    return NOTEXIST;
+    return NOTEXIST
   }
 }

@@ -37,7 +37,10 @@ let lines = 0
 for (const file of walk(ROOT, [])) {
   const src = fs.readFileSync(file, 'utf-8')
   let n = 0
-  const out = src.replace(RE, () => { n++; return `from '@framework/api'` })
+  const out = src.replace(RE, () => {
+    n++
+    return `from '@framework/api'`
+  })
   if (n > 0) {
     fs.writeFileSync(file, out)
     touched++

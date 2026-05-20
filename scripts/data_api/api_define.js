@@ -57,7 +57,14 @@ import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../co
 import {VelPan, VelPanFlags} from '../editors/velpan.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {ToolContext} from '../core/context.js'
-import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures, MeshSymFlags} from '../../addons/builtin/mesh/src/mesh_base.js'
+import {
+  MeshModifierFlags,
+  MeshFlags,
+  MeshTypes,
+  MeshDrawFlags,
+  MeshFeatures,
+  MeshSymFlags,
+} from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
 import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'

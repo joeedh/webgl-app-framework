@@ -2,7 +2,25 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
 import {SimpleMesh, LayerTypes} from '@framework/api'
 
 import {makeCube} from './mesh_shapes.js'
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty, StringSetProperty, ListProperty, PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags} from '@framework/pathux'
+import {
+  IntProperty,
+  BoolProperty,
+  FloatProperty,
+  EnumProperty,
+  FlagProperty,
+  ToolProperty,
+  Vec3Property,
+  Mat4Property,
+  StringProperty,
+  StringSetProperty,
+  ListProperty,
+  PropFlags,
+  PropTypes,
+  PropSubTypes,
+  ToolOp,
+  ToolFlags,
+  UndoFlags,
+} from '@framework/pathux'
 import {dist_to_line_2d} from '@framework/api'
 import {CallbackNode, NodeFlags} from '@framework/api'
 import {DataRefProperty} from '@framework/api'
@@ -302,7 +320,6 @@ export class MakePlaneOp extends MeshCreateOp {
   }
 }
 
-
 export class MakeCubeOp extends MeshCreateOp {
   constructor() {
     super()
@@ -338,7 +355,6 @@ export class MakeCubeOp extends MeshCreateOp {
     }
   }
 }
-
 
 export class MakeSphere extends MeshCreateOp {
   constructor() {
@@ -421,7 +437,6 @@ export class MakeSphere extends MeshCreateOp {
   }
 }
 
-
 export class MakeCylinder extends MeshCreateOp {
   constructor() {
     super()
@@ -489,7 +504,6 @@ export class MakeCylinder extends MeshCreateOp {
     }
   }
 }
-
 
 export class MakeIcoSphere extends MeshCreateOp {
   constructor() {
@@ -625,7 +639,6 @@ export class MakeIcoSphere extends MeshCreateOp {
     mesh.graphUpdate()
   }
 }
-
 
 export class CreateFaceOp extends MeshOp {
   constructor() {
@@ -857,7 +870,6 @@ export class CreateFaceOp extends MeshOp {
   }
 }
 
-
 export class CreateMeshGenOp extends ToolOp {
   static tooldef() {
     return {
@@ -953,7 +965,6 @@ export class CreateMeshGenOp extends ToolOp {
   }
 }
 
-
 export class ProceduralToMesh extends ToolOp {
   static tooldef() {
     return {
@@ -1018,7 +1029,6 @@ export class ProceduralToMesh extends ToolOp {
     ob.graphUpdate()
   }
 }
-
 
 export class ImportOBJOp extends MeshCreateOp {
   static tooldef() {

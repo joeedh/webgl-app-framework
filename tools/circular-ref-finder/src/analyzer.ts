@@ -22,12 +22,12 @@ export class DependencyAnalyzer {
     }
 
     const opt = {
-      target: ts.ScriptTarget.Latest,
-      module: ts.ModuleKind.NodeNext,
+      target          : ts.ScriptTarget.Latest,
+      module          : ts.ModuleKind.NodeNext,
       moduleResolution: ts.ModuleResolutionKind.NodeNext,
-      allowJs: true,
-      noResolve: false,
-      noEmit: true,
+      allowJs         : true,
+      noResolve       : false,
+      noEmit          : true,
     }
 
     let filePaths = [] as string[]
@@ -60,8 +60,8 @@ export class DependencyAnalyzer {
           if (moduleName === '@my-custom-alias/core') {
             return {
               resolvedModule: {
-                resolvedFileName: '/absolute/path/to/virtual/core.ts',
-                extension: ts.Extension.Ts,
+                resolvedFileName       : '/absolute/path/to/virtual/core.ts',
+                extension              : ts.Extension.Ts,
                 isExternalLibraryImport: false,
               },
             }

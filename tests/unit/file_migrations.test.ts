@@ -42,9 +42,9 @@ describe('file_migrations registry', () => {
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
     registerFileMigrator({
-      id        : 'bad',
+      id         : 'bad',
       fromVersion: 5,
-      apply     : () => {
+      apply: () => {
         throw new Error('boom')
       },
     })
@@ -59,9 +59,7 @@ describe('file_migrations registry', () => {
 
   test('duplicate id rejected', () => {
     registerFileMigrator({id: 'm5', fromVersion: 5, apply: () => {}})
-    expect(() => registerFileMigrator({id: 'm5', fromVersion: 6, apply: () => {}})).toThrow(
-      /already registered/
-    )
+    expect(() => registerFileMigrator({id: 'm5', fromVersion: 6, apply: () => {}})).toThrow(/already registered/)
   })
 
   test('unregister removes the migrator', () => {

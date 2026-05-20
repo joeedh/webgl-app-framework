@@ -34,7 +34,7 @@ export const LightTypes = {
 
 export class Light extends SceneObjectData {
   /** @type { number} */
-  
+
   type
   constructor() {
     super()

@@ -86,10 +86,10 @@ if (!addonManager.idmap.has('mesh')) {
     exports: {
       // Keep this in sync with `addons/builtin/mesh/src/api.ts` so the typed
       // `@addon/mesh/api` shim resolves to the same surface at runtime.
-      mesh        : meshExports,
-      mesh_utils  : {...mesh_utils},
-      bvh         : {...bvh},
-      unwrapping  : {...unwrapping},
+      mesh      : meshExports,
+      mesh_utils: {...mesh_utils},
+      bvh       : {...bvh},
+      unwrapping: {...unwrapping},
     },
     register(api) {
       api.registerAll(...ALL_MESH_REGISTRATIONS)

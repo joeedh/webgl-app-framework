@@ -9,7 +9,7 @@ import {Material} from '../core/material'
 import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/all.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import { NullObject } from '../nullobject/nullobject.js'
+import {NullObject} from '../nullobject/nullobject.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 

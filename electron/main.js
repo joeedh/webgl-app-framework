@@ -11,25 +11,25 @@ ipcMain.handle('addon-storage:get-user-data', async () => {
   return app.getPath('userData')
 })
 
-ipcMain.handle("nativeTheme.setThemeSource", async (event, val) => {
-  nativeTheme.themeSource = val;
-});
+ipcMain.handle('nativeTheme.setThemeSource', async (event, val) => {
+  nativeTheme.themeSource = val
+})
 
-ipcMain.handle("nativeTheme", async (event) => {
-  let obj = {};
+ipcMain.handle('nativeTheme', async (event) => {
+  let obj = {}
 
   for (let k in nativeTheme) {
-    let v = nativeTheme[k];
+    let v = nativeTheme[k]
 
-    if (typeof v !== "object" && typeof v !== "function") {
-      obj[k] = v;
+    if (typeof v !== 'object' && typeof v !== 'function') {
+      obj[k] = v
     }
   }
 
   if (win) {
-    win.webContents.send('nativeTheme', obj);
+    win.webContents.send('nativeTheme', obj)
   }
-});
+})
 
 function makeInvoker(
   event,

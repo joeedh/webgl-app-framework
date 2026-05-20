@@ -16,20 +16,20 @@ module.exports = {
     {
       name    : 'core-no-mesh',
       severity: 'warn',
-      comment :
+      comment:
         'scripts/core/ must not depend on scripts/mesh/. Use the data_kinds / default_file / ' +
         'file_migrations registries instead (plan §3).',
-      from: {path: '^scripts/core/'},
-      to  : {path: '^scripts/mesh/'},
+      from    : {path: '^scripts/core/'},
+      to      : {path: '^scripts/mesh/'},
     },
     {
       name    : 'core-no-view3d-tools',
       severity: 'warn',
-      comment :
+      comment:
         'scripts/core/ must not depend on individual view3d toolmodes. Only the ToolMode base ' +
         'in scripts/editors/view3d/view3d_toolmode is allowed.',
-      from: {path: '^scripts/core/'},
-      to  : {path: '^scripts/editors/view3d/tools/'},
+      from    : {path: '^scripts/core/'},
+      to      : {path: '^scripts/editors/view3d/tools/'},
     },
     {
       name    : 'util-no-mesh',
@@ -41,15 +41,15 @@ module.exports = {
     {
       name    : 'core-no-addons',
       severity: 'warn',
-      comment :
+      comment:
         'Core must not import addon source. Addons depend on core, never the reverse. ' +
         'Editors and editors/view3d/tools/* are intentionally excluded — they are ' +
         'tool-like layers that consume the mesh addon API and themselves move into ' +
         'addons in a follow-up; tracked separately under core-no-view3d-tools. ' +
         'Type-only imports are permitted: they erase at compile time and create no ' +
         'runtime dependency (see lib_api.ts / context.ts mesh type references).',
-      from: {path: '^scripts/(core|util|scene|sceneobject)/'},
-      to  : {path: '^addons/', dependencyTypesNot: ['type-only']},
+      from    : {path: '^scripts/(core|util|scene|sceneobject)/'},
+      to      : {path: '^addons/', dependencyTypesNot: ['type-only']},
     },
     {
       name    : 'no-circular',
@@ -80,13 +80,13 @@ module.exports = {
         '\\.test\\.(t|j)sx?$',
       ],
     },
-    tsConfig: {fileName: 'tsconfig.json'},
+    tsConfig   : {fileName: 'tsconfig.json'},
 
     enhancedResolveOptions: {
-      exportsFields    : ['exports'],
-      conditionNames   : ['import', 'require', 'node', 'default'],
-      mainFields       : ['module', 'main', 'types', 'typings'],
-      extensions       : ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.json'],
+      exportsFields : ['exports'],
+      conditionNames: ['import', 'require', 'node', 'default'],
+      mainFields    : ['module', 'main', 'types', 'typings'],
+      extensions    : ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.json'],
     },
 
     reporterOptions: {

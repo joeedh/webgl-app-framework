@@ -24,7 +24,8 @@ const MESH_SRC = Path.join(REPO_ROOT, 'addons', 'builtin', 'mesh', 'src')
 // Lines like `ToolOp.register(Foo)` / `nstructjs.register(Foo)` /
 // `CustomDataElem.register(Foo)` / `DataBlock.register(Foo)` /
 // `SceneObjectData.register(Foo)`.
-const RE_REG = /^\s*(?:ToolOp|ToolMode|DataBlock|CustomDataElem|SceneObjectData|Editor|nstructjs)\.register\(([A-Za-z_$][\w$]*)\)\s*;?\s*$/
+const RE_REG =
+  /^\s*(?:ToolOp|ToolMode|DataBlock|CustomDataElem|SceneObjectData|Editor|nstructjs)\.register\(([A-Za-z_$][\w$]*)\)\s*;?\s*$/
 
 // File path → class name list (preserves order, may have duplicates we'll dedup).
 const collected = new Map()

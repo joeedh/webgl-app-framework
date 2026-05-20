@@ -272,9 +272,7 @@ export class IndexedDBAddonStorage implements AddonStorage {
     const normalized = normalizePath(relPath)
     const db = await this.openDB()
     const tx = db.transaction(STORE, 'readonly')
-    const row = (await reqAsPromise(tx.objectStore(STORE).get(`${addonId}/${normalized}`))) as
-      | IFileRow
-      | undefined
+    const row = (await reqAsPromise(tx.objectStore(STORE).get(`${addonId}/${normalized}`))) as IFileRow | undefined
     if (!row) {
       throw new Error(`addon "${addonId}": file "${relPath}" not found`)
     }
@@ -310,11 +308,11 @@ export class IndexedDBAddonStorage implements AddonStorage {
     for (const [relPath, bytes] of files) {
       const normalized = normalizePath(relPath)
       const row: IFileRow = {
-        key    : `${addonId}/${normalized}`,
+        key: `${addonId}/${normalized}`,
         addonId,
         relPath: normalized,
         bytes,
-        mime   : mimeFor(normalized),
+        mime: mimeFor(normalized),
       }
       store.put(row)
     }
@@ -393,10 +391,7 @@ export class IndexedDBAddonStorage implements AddonStorage {
 // ---------------------------------------------------------------------------
 
 export interface INodeFs {
-  readdir(
-    path: string,
-    options: {withFileTypes: true}
-  ): Promise<Array<{name: string; isDirectory(): boolean}>>
+  readdir(path: string, options: {withFileTypes: true}): Promise<Array<{name: string; isDirectory(): boolean}>>
   readFile(path: string): Promise<Uint8Array>
   writeFile(path: string, data: Uint8Array): Promise<void>
   mkdir(path: string, options?: {recursive?: boolean}): Promise<string | undefined>
@@ -438,9 +433,7 @@ export class NodeFsAddonStorage implements AddonStorage {
     try {
       return await this.fs.readFile(fullPath)
     } catch (err) {
-      throw new Error(
-        `addon "${addonId}": file "${relPath}" not found: ${(err as Error).message}`
-      )
+      throw new Error(`addon "${addonId}": file "${relPath}" not found: ${(err as Error).message}`)
     }
   }
 

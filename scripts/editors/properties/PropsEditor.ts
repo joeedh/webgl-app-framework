@@ -1020,7 +1020,7 @@ PropsEditor {
     // check that init has been called
     this._init()
     this.setCSS()
-    // on_area_active could be called during file load, so put 
+    // on_area_active could be called during file load, so put
     // flushUpdate in a try block
 
     try {

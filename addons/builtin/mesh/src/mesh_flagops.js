@@ -1,6 +1,14 @@
 'use strict'
 
-import {IntProperty, ToolOp, UndoFlags, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from '@framework/pathux'
+import {
+  IntProperty,
+  ToolOp,
+  UndoFlags,
+  EnumProperty,
+  BoolProperty,
+  FloatProperty,
+  FlagProperty,
+} from '@framework/pathux'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {util} from '@framework/api'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'

@@ -2830,7 +2830,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       [ff, 0.0, 0.0, 1],
       [0.0, ff, 0.0, 1],
       [0.0, 0.0, ff, 1],
-    ].map(c => new Vector4(c))
+    ].map((c) => new Vector4(c))
 
     for (const ni of this.getLeafNodes()) {
       for (let i = 0; i < 4; i++) {

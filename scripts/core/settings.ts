@@ -3,7 +3,7 @@ import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
 
 import '../util/polyfill.d.ts'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 declare let _appstate: any
 

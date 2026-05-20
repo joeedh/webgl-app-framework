@@ -718,9 +718,7 @@ mesh.CustomData {
           // sure the layer is preserved in the flat list. The next save will
           // round-trip the elements under their original struct id via the
           // matching onSerializeUnknown hook. See plan §4.
-          console.warn(
-            `unregistered CustomData type "${list.typeName}" — preserving as opaque layer`
-          )
+          console.warn(`unregistered CustomData type "${list.typeName}" — preserving as opaque layer`)
           continue
         }
 

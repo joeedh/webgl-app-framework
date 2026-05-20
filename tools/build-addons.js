@@ -56,9 +56,7 @@ function discoverManifests(rootDir, kind) {
       continue
     }
     if (manifest.id !== name) {
-      console.error(
-        `${manifestPath}: manifest.id ("${manifest.id}") must match directory name ("${name}")`
-      )
+      console.error(`${manifestPath}: manifest.id ("${manifest.id}") must match directory name ("${name}")`)
       continue
     }
     out.push({id: manifest.id, manifestPath, addonDir, manifest, kind})
@@ -112,7 +110,7 @@ function buildOptionsFor(entries) {
     // instead of inlining the upstream addon's code. See plan §2.5.
     // @framework/api and @framework/pathux are resolved similarly against
     // globalThis._framework (set in scripts/_framework_runtime.ts).
-    plugins: [frameworkApiPlugin(REPO_ROOT), addonApiPlugin(REPO_ROOT)],
+    plugins    : [frameworkApiPlugin(REPO_ROOT), addonApiPlugin(REPO_ROOT)],
   }
 }
 

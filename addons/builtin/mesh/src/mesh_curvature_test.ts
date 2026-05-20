@@ -6,7 +6,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
 import '../../../../scripts/util/numeric.js'
 
 declare const numeric: {
-  eig(matrix: number[][], maxiter?: number): {E: {x: number[][]}, lambda: {x: number[]}}
+  eig(matrix: number[][], maxiter?: number): {E: {x: number[][]}; lambda: {x: number[]}}
   dot(a: number[] | number[][], b: number[] | number[][]): number[]
 }
 

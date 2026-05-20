@@ -31,9 +31,9 @@ function forEachGriddedMesh(
 }
 
 registerFileMigrator({
-  id          : 'mesh.grid.v5.flagNormalsUpdate',
-  fromVersion : 4,
-  apply       : ({datalib}) => {
+  id         : 'mesh.grid.v5.flagNormalsUpdate',
+  fromVersion: 4,
+  apply: ({datalib}) => {
     forEachGriddedMesh(datalib, (mesh, cd_grid) => {
       for (const l of mesh.loops) {
         const grid = l.customData[cd_grid] as {flagNormalsUpdate(): void}
@@ -44,9 +44,9 @@ registerFileMigrator({
 })
 
 registerFileMigrator({
-  id          : 'mesh.grid.v6.flagIdsRegen',
-  fromVersion : 5,
-  apply       : ({datalib}) => {
+  id         : 'mesh.grid.v6.flagIdsRegen',
+  fromVersion: 5,
+  apply: ({datalib}) => {
     forEachGriddedMesh(datalib, (mesh, cd_grid) => {
       for (const l of mesh.loops) {
         const grid = l.customData[cd_grid] as {flagIdsRegen(): void}

@@ -91,7 +91,6 @@ CVElem {
   }
 }
 
-
 export class UVIsland extends Set {
   hasPins: boolean
   hasSelLoops: boolean

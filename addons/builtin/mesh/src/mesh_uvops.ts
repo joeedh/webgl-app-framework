@@ -57,7 +57,6 @@ export class VoxelUnwrapOp<
   }
 }
 
-
 export class RandomizeUVsOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
@@ -138,7 +137,6 @@ export class RandomizeUVsOp<
     window.redraw_viewport()
   }
 }
-
 
 let unwrap_solvers = (window._unwrap_solvers = new Map())
 unwrap_solvers.clear = function () {
@@ -246,7 +244,6 @@ export class UnwrapSolveOp<
   }
 }
 
-
 export class RelaxUVsOp<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOpBaseUV<
   InputSet & {
     doSolve: BoolProperty
@@ -318,7 +315,6 @@ export class RelaxUVsOp<InputSet extends PropertySlots = {}, OutputSet extends P
   }
 }
 
-
 export class FixUvSeamsOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
@@ -357,7 +353,6 @@ export class FixUvSeamsOp<
     window.redraw_viewport()
   }
 }
-
 
 export class ResetUVs<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet,
@@ -420,7 +415,6 @@ export class ResetUVs<InputSet extends PropertySlots = {}, OutputSet extends Pro
     window.redraw_viewport()
   }
 }
-
 
 export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet,
@@ -515,7 +509,6 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
   }
 }
 
-
 export class PackIslandsOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
@@ -558,4 +551,3 @@ export class PackIslandsOp<
     window.redraw_viewport()
   }
 }
-

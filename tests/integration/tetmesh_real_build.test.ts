@@ -38,7 +38,7 @@ describe('tetmesh as a real per-addon bundle', () => {
   beforeAll(() => {
     if (!fs.existsSync(TETMESH_BUNDLE)) {
       execSync('node tools/build-addons.js --include-fixtures', {
-        cwd: REPO_ROOT,
+        cwd  : REPO_ROOT,
         stdio: 'pipe',
       })
     }

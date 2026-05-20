@@ -331,7 +331,6 @@ MDynVert {
   }
 }
 
-
 export function getDynVerts(mesh: Mesh): CDRef<MDynVert> {
   let cd_dyn_vert = mesh.verts.customData.getLayerIndex('dynvert')
 
@@ -434,7 +433,6 @@ CDNodeInfo {
     b.vel.load(this.vel)
   }
 }
-
 
 const cvstmps = util.cachering.fromConstructor<Vector3>(Vector3, 64)
 const cvstmps2 = util.cachering.fromConstructor<Vector3>(Vector3, 64)

@@ -58,7 +58,7 @@ export async function createElectronAddonStorage(): Promise<NodeFsAddonStorage> 
 
   return new NodeFsAddonStorage({
     baseDir,
-    fs     : fsp,
+    fs: fsp,
     pathlib,
   })
 }

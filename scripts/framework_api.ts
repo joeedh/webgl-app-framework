@@ -36,27 +36,13 @@ export {dist_to_line_2d} from './path.ux/scripts/util/math.js'
 
 // util/* — vectormath types not surfaced via pathux
 export type {IVector4, Number2, Number3, Number4} from './util/vectormath.js'
-export {
-  Vector2,
-  Vector3,
-  Vector4,
-  Quat,
-  Matrix4,
-} from './util/vectormath.js'
+export {Vector2, Vector3, Vector4, Quat, Matrix4} from './util/vectormath.js'
 export * as vectormath from './util/vectormath.js'
 export * as util from './util/util.js'
 export * as math from './util/math.js'
 export * as parseutil from './util/parseutil.js'
-export {
-  aabb_sphere_dist,
-  closest_point_on_tri,
-} from './util/math.js'
-export {
-  aabb_ray_isect,
-  ray_tri_isect,
-  aabb_cone_isect,
-  tri_cone_isect,
-} from './util/isect.js'
+export {aabb_sphere_dist, closest_point_on_tri} from './util/math.js'
+export {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './util/isect.js'
 export {GenericIsect} from './util/spatial.js'
 export type {IGenericIsect, ISurfaceSampler, IBVHCreateArgs, IBVHVertex} from './util/spatial.js'
 export * as spatial from './util/spatial.js'
@@ -68,18 +54,8 @@ export {default as Delaunay} from './util/delaunay.js'
 export type {INumberList} from './util/polyfill.d'
 
 // core/*
-export {
-  DataBlock,
-  DataRef,
-  DataRefProperty,
-  DataRefListProperty,
-} from './core/lib_api.js'
-export type {
-  Library,
-  IDataBlockConstructor,
-  BlockLoader,
-  BlockLoaderAddUser,
-} from './core/lib_api.js'
+export {DataBlock, DataRef, DataRefProperty, DataRefListProperty} from './core/lib_api.js'
+export type {Library, IDataBlockConstructor, BlockLoader, BlockLoaderAddUser} from './core/lib_api.js'
 
 // sceneobject/* and View3DOp — MUST be re-exported BEFORE context.ts.
 // context.ts pulls in editors/all → editors/view3d → tools/addon_register →
@@ -107,12 +83,7 @@ export {setDefaultSceneBuilder} from './core/default_file.js'
 export * as platform from './core/platform.js'
 
 // webgl/*
-export {
-  ChunkedSimpleMesh,
-  LayerTypes,
-  PrimitiveTypes,
-  SimpleMesh,
-} from './webgl/simplemesh.js'
+export {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes, SimpleMesh} from './webgl/simplemesh.js'
 export * as simplemesh from './webgl/simplemesh.js'
 export {Texture} from './webgl/webgl.js'
 export type {IUniformsBlock, ShaderProgram} from './webgl/webgl.js'

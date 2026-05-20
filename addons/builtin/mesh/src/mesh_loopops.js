@@ -1,6 +1,23 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
 import {SimpleMesh, LayerTypes} from '@framework/api'
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty, FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty, PropFlags, PropTypes, PropSubTypes, ToolOp, ToolMacro, ToolFlags, UndoFlags} from '@framework/pathux'
+import {
+  IntProperty,
+  BoolProperty,
+  FloatProperty,
+  EnumProperty,
+  FlagProperty,
+  ToolProperty,
+  Vec3Property,
+  Mat4Property,
+  StringProperty,
+  PropFlags,
+  PropTypes,
+  PropSubTypes,
+  ToolOp,
+  ToolMacro,
+  ToolFlags,
+  UndoFlags,
+} from '@framework/pathux'
 import {TranslateOp} from '@framework/api'
 import {dist_to_line_2d} from '@framework/api'
 import {CallbackNode, NodeFlags} from '@framework/api'
@@ -208,7 +225,7 @@ export class EdgeCutOp extends MeshOp {
     }
 
     mesh.selectFlush(MeshTypes.VERTEX)
-    
+
     for (let i = 0; i < loops.length; i++) {
       break
       let f = loops[i].f

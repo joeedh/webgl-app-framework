@@ -1,9 +1,7 @@
-import {registerToolMode} from './strandtool.js';
+import {registerToolMode} from './strandtool.js'
 
 export function register(api) {
-  registerToolMode(api);
+  registerToolMode(api)
 }
 
-export function unregister() {
-
-}
+export function unregister() {}

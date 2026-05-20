@@ -327,7 +327,7 @@ export function getFBODebug(gl) {
 }
 
 window.gldebug_sample = () => {
-  let gl = window._gl// getWebGL()
+  let gl = window._gl // getWebGL()
 
   if (gl._debug) {
     gl._debug.saveDrawBuffer()

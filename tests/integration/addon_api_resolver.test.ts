@@ -39,7 +39,7 @@ describe('addon_api_plugin (runtime resolver)', () => {
   beforeAll(() => {
     if (!fs.existsSync(BUILT_ENTRY)) {
       execSync('node tools/build-addons.js --include-fixtures', {
-        cwd: REPO_ROOT,
+        cwd  : REPO_ROOT,
         stdio: 'pipe',
       })
     }
@@ -60,7 +60,7 @@ describe('addon_api_plugin (runtime resolver)', () => {
     // unique to the implementation (not just the type name).
     expect(built).not.toMatch(/class Mesh extends SceneObjectData/)
     expect(built).not.toMatch(/recalcNormals/) // a mesh.ts method
-    expect(built).not.toMatch(/getElemList/)   // a mesh_base.ts method
+    expect(built).not.toMatch(/getElemList/) // a mesh_base.ts method
     // And the bundle should be small — much smaller than even one mesh file.
     expect(built.length).toBeLessThan(20 * 1024) // 20kb cap
   })
@@ -68,10 +68,10 @@ describe('addon_api_plugin (runtime resolver)', () => {
   test('runtime lookup yields the host-registered symbols', async () => {
     // Mock the host AddonManager surface that the stub reads from.
     const mockMeshSymbols = {
-      Mesh       : class MockMesh {},
-      MeshFlags  : {DEAD: 1, HIDE: 2},
-      BVH        : class MockBVH {},
-      mesh_utils : {answer: 42},
+      Mesh      : class MockMesh {},
+      MeshFlags : {DEAD: 1, HIDE: 2},
+      BVH       : class MockBVH {},
+      mesh_utils: {answer: 42},
     }
     ;(globalThis as unknown as {_addons: {getAddonAPI: (id: string) => MockAddonAPI | undefined}})._addons = {
       getAddonAPI(id: string): MockAddonAPI | undefined {

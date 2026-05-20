@@ -1,180 +1,179 @@
 export function makeParamToolMode(api) {
-  let exports = {};
+  let exports = {}
 
-  let nstructjs = api.nstructjs;
+  let nstructjs = api.nstructjs
 
-  let DrawModes = exports.DrawModes = {
-    GEODESIC      : 0,
-    UV            : 1
-  }
+  let DrawModes = (exports.DrawModes = {
+    GEODESIC: 0,
+    UV      : 1,
+  })
 
-  let DrawFlags = exports.DrawFlags = {
-    COLOR : 1
-  };
+  let DrawFlags = (exports.DrawFlags = {
+    COLOR: 1,
+  })
 
-  const Shaders = api.shaders.Shaders;
-  const KDrawModes = api.mesh.KDrawModes;
+  const Shaders = api.shaders.Shaders
+  const KDrawModes = api.mesh.KDrawModes
 
-  let ParamVert = api.mesh.paramizer.ParamVert;
-  let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;
+  let ParamVert = api.mesh.paramizer.ParamVert
+  let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh
 
-  let ParamToolMode = exports.ParamToolMode = class ParamToolMode extends api.toolmode.MeshToolBase {
+  let ParamToolMode = (exports.ParamToolMode = class ParamToolMode extends api.toolmode.MeshToolBase {
     constructor() {
-      super();
+      super()
 
-      this.kDrawMode = KDrawModes.TAN;
+      this.kDrawMode = KDrawModes.TAN
 
-      this.selectMask = api.SelMask.VERTEX;
-      this.vertexPointSize = 3;
+      this.selectMask = api.SelMask.VERTEX
+      this.vertexPointSize = 3
 
-      this.drawTangents = true;
+      this.drawTangents = true
 
-      this.paramMesh = undefined;
-      this.drawMode = DrawModes.GEODESIC;
-      this.drawFlag = 0;
-      this.drawScale = 20.0;
-      this.drawVerts = true;
+      this.paramMesh = undefined
+      this.drawMode = DrawModes.GEODESIC
+      this.drawFlag = 0
+      this.drawScale = 20.0
+      this.drawVerts = true
 
-      let _last_pmesh_key = '';
+      let _last_pmesh_key = ''
     }
 
     static defineAPI(api) {
-      let st = super.defineAPI(api);
+      let st = super.defineAPI(api)
 
-      let onchange = () => window.redraw_viewport(true);
+      let onchange = () => window.redraw_viewport(true)
 
-      st.enum("drawMode", "drawMode", DrawModes, "Draw Mode");
-      st.flags("drawFlag", "drawFlag", DrawFlags, "Draw Flags");
-      st.float("drawScale", "drawScale", "Scale").noUnits().range(0.1, 25.0);
-      st.bool("drawVerts", "drawVerts", "Draw Verts").on('change', onchange);
-      st.bool("drawTangents", "drawTangents", "Draw Tangents").on('change', onchange);
+      st.enum('drawMode', 'drawMode', DrawModes, 'Draw Mode')
+      st.flags('drawFlag', 'drawFlag', DrawFlags, 'Draw Flags')
+      st.float('drawScale', 'drawScale', 'Scale').noUnits().range(0.1, 25.0)
+      st.bool('drawVerts', 'drawVerts', 'Draw Verts').on('change', onchange)
+      st.bool('drawTangents', 'drawTangents', 'Draw Tangents').on('change', onchange)
 
+      st.enum('kDrawMode', 'kDrawMode', KDrawModes, 'Tangent Draw Mode')
 
-      st.enum("kDrawMode", "kDrawMode", KDrawModes, "Tangent Draw Mode");
-
-      return st;
+      return st
     }
 
     update(ctx) {
       super.update(ctx)
-      window.kdrawmode = this.kDrawMode;
+      window.kdrawmode = this.kDrawMode
     }
 
     static buildHeader(header, addRow) {
-      let row = addRow();
+      let row = addRow()
 
-      let strip = row.strip();
-      strip.useIcons(false);
+      let strip = row.strip()
+      strip.useIcons(false)
 
-      strip.tool("paramize.test()");
-      strip.prop("scene.tool.drawVerts");
+      strip.tool('paramize.test()')
+      strip.prop('scene.tool.drawVerts')
     }
 
     static buildSettings(con) {
-      let panel = con.panel("Tools");
+      let panel = con.panel('Tools')
 
-      panel.toolPanel("mesh.test_disp_smooth()");
+      panel.toolPanel('mesh.test_disp_smooth()')
 
-      let strip = panel.strip();
-      strip.useIcons(false);
-      strip.tool("paramize.test()");
-      strip.tool("paramize.smooth()");
+      let strip = panel.strip()
+      strip.useIcons(false)
+      strip.tool('paramize.test()')
+      strip.tool('paramize.smooth()')
 
-      strip = panel.strip();
-      strip.useIcons(false);
-      strip.prop("scene.tool.drawMode");
-      strip.prop("scene.tool.drawFlag");
+      strip = panel.strip()
+      strip.useIcons(false)
+      strip.prop('scene.tool.drawMode')
+      strip.prop('scene.tool.drawFlag')
 
-      panel.useIcons(false);
-      panel.prop("scene.tool.drawScale");
-      panel.prop("scene.tool.drawVerts");
-      panel.prop("scene.tool.drawTangents");
-      panel.prop("scene.tool.kDrawMode");
+      panel.useIcons(false)
+      panel.prop('scene.tool.drawScale')
+      panel.prop('scene.tool.drawVerts')
+      panel.prop('scene.tool.drawTangents')
+      panel.prop('scene.tool.kDrawMode')
 
-      panel = con.panel("Settings");
-      panel.useIcons(false);
-      panel.prop("mesh.vertsData.paramvert.settings.smoothTangents");
-      panel.prop("mesh.vertsData.paramvert.settings.weightMode");
+      panel = con.panel('Settings')
+      panel.useIcons(false)
+      panel.prop('mesh.vertsData.paramvert.settings.smoothTangents')
+      panel.prop('mesh.vertsData.paramvert.settings.weightMode')
     }
 
     updateParamMesh(gl) {
       if (!this.mesh) {
-        return;
+        return
       }
 
-      let mesh = this.mesh;
-      let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+      let mesh = this.mesh
+      let cd_pvert = mesh.verts.customData.getLayerIndex('paramvert')
 
-      let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + cd_pvert;
+      let key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + cd_pvert
 
       if (this.paramMesh && key === this._last_pmesh_key) {
-        return;
+        return
       }
 
-      this._last_pmesh_key = key;
+      this._last_pmesh_key = key
 
       if (this.paramMesh) {
-        this.paramMesh.destroy(gl);
+        this.paramMesh.destroy(gl)
       }
 
-      let lf = LayerTypes;
-      let lflag = lf.LOC | lf.COLOR | lf.UV;
+      let lf = LayerTypes
+      let lflag = lf.LOC | lf.COLOR | lf.UV
 
-      let sm = this.paramMesh = new SimpleMesh(lflag);
-      sm.primflag = PrimitiveTypes.LINES;
+      let sm = (this.paramMesh = new SimpleMesh(lflag))
+      sm.primflag = PrimitiveTypes.LINES
 
       if (cd_pvert < 0) {
-        console.log("no param verts");
-        return;
+        console.log('no param verts')
+        return
       }
 
-      let white = [1, 1, 1, 1];
-      let tmp = new Vector3();
+      let white = [1, 1, 1, 1]
+      let tmp = new Vector3()
 
       for (let v of mesh.verts) {
-        let pv = v.customData[cd_pvert];
+        let pv = v.customData[cd_pvert]
 
-        let dis = 0;
-        let tot = 0;
+        let dis = 0
+        let tot = 0
         for (let v2 of v.neighbors) {
-          let dis2 = v.vectorDistance(v2);
-          dis += dis2;
-          tot++;
+          let dis2 = v.vectorDistance(v2)
+          dis += dis2
+          tot++
         }
 
         if (tot) {
-          dis /= tot;
+          dis /= tot
         }
 
-        dis = Math.max(dis, 0.01);
+        dis = Math.max(dis, 0.01)
 
-        let v1 = v;
-        let v2 = tmp.zero();
+        let v1 = v
+        let v2 = tmp.zero()
 
-        v2[0] = pv.smoothTan[0];
-        v2[1] = pv.smoothTan[1];
-        v2[2] = pv.smoothTan[2];
+        v2[0] = pv.smoothTan[0]
+        v2[1] = pv.smoothTan[1]
+        v2[2] = pv.smoothTan[2]
 
-        v2.cross(v.no);
+        v2.cross(v.no)
 
-        v2.normalize();
+        v2.normalize()
 
-        v2.mulScalar(dis);
+        v2.mulScalar(dis)
 
-        v2.add(v);
+        v2.add(v)
 
-        let l = sm.line(v1, v2);
-        l.colors(white, white);
+        let l = sm.line(v1, v2)
+        l.colors(white, white)
       }
     }
 
     on_drawend(view3d, gl) {
       if (this.drawVerts) {
-        super.on_drawend(view3d, gl);
+        super.on_drawend(view3d, gl)
       }
 
-      let ob = this.ctx.object;
-      let color = [1, 0.8, 0.7, 1.0];
+      let ob = this.ctx.object
+      let color = [1, 0.8, 0.7, 1.0]
 
       let uniforms = {
         projectionMatrix: view3d.activeCamera.rendermat,
@@ -188,34 +187,36 @@ export function makeParamToolMode(api) {
         uColor          : color,
         alpha           : 1.0,
         opacity         : 1.0,
-        polygonOffset   : 1.0
-      };
+        polygonOffset   : 1.0,
+      }
 
-      this.mesh = this.ctx.mesh;
+      this.mesh = this.ctx.mesh
 
       if (this.mesh && this.drawTangents) {
-        this.updateParamMesh(gl);
+        this.updateParamMesh(gl)
 
         if (this.paramMesh) {
-          gl.enable(gl.DEPTH_TEST);
-          this.paramMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+          gl.enable(gl.DEPTH_TEST)
+          this.paramMesh.draw(gl, uniforms, Shaders.WidgetMeshShader)
         }
       }
     }
 
     static toolModeDefine() {
       return {
-        name        : "paramtool",
-        uiname      : "Parameterizer Tool",
+        name        : 'paramtool',
+        uiname      : 'Parameterizer Tool',
         icon        : api.Icons.SHOW_LOOPS,
-        description : "Parameterizer Tool",
+        description : 'Parameterizer Tool',
         transWidgets: [],
-        flag        : 0
+        flag        : 0,
       }
     }
-  }
+  })
 
-  ParamToolMode.STRUCT = nstructjs.inherit(ParamToolMode, api.toolmode.ToolMode) + `
+  ParamToolMode.STRUCT =
+    nstructjs.inherit(ParamToolMode, api.toolmode.ToolMode) +
+    `
     drawMode       : int;
     drawFlag       : int;
     drawScale      : float;
@@ -223,9 +224,9 @@ export function makeParamToolMode(api) {
     drawTangents   : bool;
     kDrawMode      : int;
   }
-  `;
+  `
 
-  api.register(ParamToolMode);
+  api.register(ParamToolMode)
 
-  return exports;
+  return exports
 }
