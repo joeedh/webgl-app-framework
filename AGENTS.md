@@ -1,5 +1,9 @@
 # Agent instructions
 
+## Package manager
+
+- Use pnpm
+
 ## Plans
 
 - Write all plans to the `documentation/plans` folder (with proper descriptive names; add
