@@ -183,7 +183,7 @@ export function genRenderMesh(
         continue
       }
 
-      const p = sm2.point(v.eid, v.co)
+      const p = sm2.point(v.co, v.eid)
 
       const colormask =
         v.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
@@ -208,7 +208,7 @@ export function genRenderMesh(
       if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
         continue
       }
-      const p = sm2.point(h.eid, h.co)
+      const p = sm2.point(h.co, h.eid)
 
       //let color = h.flag & MeshFlags.SELECT ? selcolor : black;
       const colormask =
@@ -279,8 +279,8 @@ export function genRenderMesh(
         }
 
         const line = smoothline
-          ? (sm as ChunkedSimpleMesh).smoothline(e.eid, e.v1.co, e.v2.co)
-          : (sm as ChunkedSimpleMesh).line(e.eid, e.v1.co, e.v2.co)
+          ? sm.smoothline(e.v1.co, e.v2.co, e.eid)
+          : sm.line(e.v1.co, e.v2.co, e.eid)
 
         const mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
 
@@ -348,7 +348,7 @@ export function genRenderMesh(
         let tri
 
         if (axis === -1) {
-          tri = sm2.tri(i, v1.co, v2.co, v3.co)
+          tri = sm2.tri(v1.co, v2.co, v3.co, i)
         } else {
           p1.load(v1.co)
           p2.load(v2.co)
@@ -358,7 +358,7 @@ export function genRenderMesh(
           p2[axis as Number3] = -p2[axis as Number3]
           p3[axis as Number3] = -p3[axis as Number3]
 
-          tri = sm2.tri(ltris.length + i * 3 + axis, p1, p2, p3)
+          tri = sm2.tri(p1, p2, p3, ltris.length + i * 3 + axis)
         }
         tri.ids(f.eid, f.eid, f.eid)
 
@@ -418,7 +418,7 @@ export function genRenderMesh(
           continue
         }
 
-        const line = sm2.line(e.eid, e.v1.co, e.v2.co)
+        const line = sm2.line(e.v1.co, e.v2.co, e.eid)
 
         //line.ids(e.eid+1, e.eid+1);
         line.colors(white, white)

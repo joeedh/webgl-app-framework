@@ -2772,7 +2772,6 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     const polys = this.polys
 
-    const ischunk = smesh instanceof ChunkedSimpleMesh
     const feid = loop.f.eid
 
     const cd_color = mesh.loops.customData.getLayerIndex('color')
@@ -2801,13 +2800,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     function line(v1: Vector3, v2: Vector3, color?: Vector4) {
       const id = lidgen++
-      let line2
-
-      if (ischunk) {
-        line2 = (smesh as ChunkedSimpleMesh).line(id, v1, v2)
-      } else {
-        line2 = (smesh as SimpleMesh).line(v1, v2)
-      }
+      const line2 = smesh.line(v1, v2, id)
 
       if (color) {
         line2.colors(color, color)
@@ -2903,15 +2896,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
         const id = loop.eid * idmul + i
 
-        let tri
-
         //let id = Math.random();
-
-        if (ischunk) {
-          tri = (smesh as ChunkedSimpleMesh).tri(id, p1.co, p2.co, p3.co)
-        } else {
-          tri = (smesh as SimpleMesh).tri(p1.co, p2.co, p3.co)
-        }
+        const tri = smesh.tri(p1.co, p2.co, p3.co, id)
 
         this.totTris++
 

@@ -10,6 +10,7 @@ import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/all.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {NullObject} from '../nullobject/nullobject.js'
+import {WebGLDrawQueueAdapter, FrameContext} from '../render/queue'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 
@@ -356,23 +357,26 @@ SceneObject {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
+    const frame: FrameContext = {gl, uniforms, program}
+    const queue = new WebGLDrawQueueAdapter(frame)
+
     if (this.flag & ObjectFlags.DRAW_WIREFRAME) {
       uniforms.polygonOffset = uniforms.polygonOffset || 0.0
 
-      this.data.draw(view3d, gl, uniforms, program, this)
+      this.data.drawQ(view3d, queue, frame, this)
 
-      program = Shaders.ObjectLineShader
+      frame.program = Shaders.ObjectLineShader
 
       let off = uniforms.polygonOffset
 
       uniforms.polygonOffset = 0.3
       uniforms.uColor = [0, 0, 0, 1]
 
-      this.data.drawWireframe(view3d, gl, uniforms, program, this)
+      this.data.drawWireframeQ(view3d, queue, frame, this)
 
       uniforms.polygonOffset = off
     } else {
-      this.data.draw(view3d, gl, uniforms, program, this)
+      this.data.drawQ(view3d, queue, frame, this)
     }
   }
 
@@ -385,7 +389,9 @@ SceneObject {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
-    this.data.drawWireframe(view3d, gl, uniforms, program, this)
+    const frame: FrameContext = {gl, uniforms, program}
+    const queue = new WebGLDrawQueueAdapter(frame)
+    this.data.drawWireframeQ(view3d, queue, frame, this)
   }
 
   drawOutline(
@@ -397,14 +403,18 @@ SceneObject {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
-    this.data.drawOutline(view3d, gl, uniforms, program, this)
+    const frame: FrameContext = {gl, uniforms, program}
+    const queue = new WebGLDrawQueueAdapter(frame)
+    this.data.drawOutlineQ(view3d, queue, frame, this)
   }
 
   drawIds(view3d: View3D, gl: WebGL2RenderingContext, selectMask: number, uniforms: any): void {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
-    this.data.drawIds(view3d, gl, selectMask, uniforms, this)
+    const frame: FrameContext = {gl, uniforms, program: Shaders.MeshIDShader}
+    const queue = new WebGLDrawQueueAdapter(frame)
+    this.data.drawIdsQ(view3d, queue, frame, selectMask, this)
   }
 
   onContextLost(e: Event) {}

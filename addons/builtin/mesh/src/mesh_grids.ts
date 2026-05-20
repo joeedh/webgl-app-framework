@@ -9,7 +9,7 @@ import {
   ILayerSettingsConstructor,
   LayerSettingsBase,
 } from './customdata'
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '@framework/api'
+import {LayerTypes, SimpleMesh} from '@framework/api'
 import {AttrRef, ColorLayerElem, FloatElem, UVLayerElem} from './mesh_customdata.js'
 import {PatchBuilder} from './mesh_grids_subsurf.js'
 import {BasicLineShader, Shaders} from '@framework/api'
@@ -1633,8 +1633,6 @@ mesh.Grid {
     const quad = this.getQuad(loop)
     const dimen = this.dimen
 
-    const chunkmode = smesh instanceof ChunkedSimpleMesh
-
     const cd_uv = mesh.loops.customData.getLayerIndex('uv')
     const have_uvs = cd_uv >= 0
 
@@ -1658,13 +1656,7 @@ mesh.Grid {
         const i3 = (y + 1) * dimen + x + 1
         const i4 = y * dimen + x + 1
 
-        let tri
-
-        if (chunkmode) {
-          tri = (smesh as unknown as ChunkedSimpleMesh).tri(id + i1 * 2, ps[i1].co, ps[i2].co, ps[i3].co)
-        } else {
-          tri = smesh.tri(ps[i1].co, ps[i2].co, ps[i3].co)
-        }
+        let tri = smesh.tri(ps[i1].co, ps[i2].co, ps[i3].co, id + i1 * 2)
 
         this.totTris += 2
 
@@ -1683,11 +1675,7 @@ mesh.Grid {
         tri.ids(eid, eid, eid)
 
         //*
-        if (chunkmode) {
-          tri = (smesh as unknown as ChunkedSimpleMesh).tri(id + i1 * 2 + 1, ps[i1].co, ps[i3].co, ps[i4].co)
-        } else {
-          tri = smesh.tri(ps[i1].co, ps[i3].co, ps[i4].co)
-        }
+        tri = smesh.tri(ps[i1].co, ps[i3].co, ps[i4].co, id + i1 * 2 + 1)
 
         tri.normals(n, n, n)
 

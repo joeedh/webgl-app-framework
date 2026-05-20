@@ -9,6 +9,7 @@ import type {ToolContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
 import {ShaderProgram} from '../webgl/webgl'
 import type {View3D} from '../editors/all'
+import type {DrawQueue, FrameContext} from '../render/queue'
 
 export interface IDataDefine {
   name: string
@@ -139,6 +140,35 @@ SceneObjectData {
 
   drawOutline(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject) {
     this.drawWireframe(view3d, gl, uniforms, program, object)
+  }
+
+  /**
+   * Queue-mediated draw API (Phase 0b of WebGL→WebGPU migration).
+   *
+   * The default implementations here bridge to the legacy immediate-mode
+   * methods via a transient WebGLDrawQueueAdapter, so an implementer that has
+   * not yet been ported continues to work unchanged. Once an implementer
+   * overrides drawQ / drawIdsQ / drawWireframeQ / drawOutlineQ, the queue is
+   * the only API touched at that call site.
+   *
+   * SceneObject.draw / drawWireframe / drawOutline / drawIds dispatch through
+   * these wrappers; the legacy methods stay around only as the bridge target
+   * for un-ported implementers.
+   */
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
+    this.draw(view3d, frame.gl, frame.uniforms, frame.program!, object)
+  }
+
+  drawWireframeQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
+    this.drawWireframe(view3d, frame.gl, frame.uniforms, frame.program!, object)
+  }
+
+  drawOutlineQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
+    this.drawOutline(view3d, frame.gl, frame.uniforms, frame.program!, object)
+  }
+
+  drawIdsQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, selectMask: number, object: SceneObject) {
+    this.drawIds(view3d, frame.gl, selectMask, frame.uniforms, object)
   }
 
   onContextLost(e: Event) {}

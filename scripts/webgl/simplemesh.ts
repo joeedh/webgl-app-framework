@@ -1998,25 +1998,28 @@ export class SimpleMesh {
     }
   }
 
-  tri(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like): TriEditor<{dead: false}> {
+  tri(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, _id?: number): TriEditor<{dead: false}> {
     return this.island.tri(v1, v2, v3)
   }
 
-  quad(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, v4: Vector3Like): QuadEditor<{dead: false}> {
+  quad(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, v4: Vector3Like, _id?: number): QuadEditor<{dead: false}> {
     return this.island.quad(v1, v2, v3, v4)
   }
 
-  line(v1: Vector3Like, v2: Vector3Like): LineEditor<{dead: false}> {
+  line(v1: Vector3Like, v2: Vector3Like, _id?: number): LineEditor<{dead: false}> {
     return this.island.line(v1, v2)
   }
 
-  point(v1: Vector3Like): PointEditor<{dead: false}> {
+  point(v1: Vector3Like, _id?: number): PointEditor<{dead: false}> {
     return this.island.point(v1)
   }
 
-  smoothline(v1: Vector3Like, v2: Vector3Like): LineEditor2<{dead: false}> {
+  smoothline(v1: Vector3Like, v2: Vector3Like, _id?: number): LineEditor2<{dead: false}> {
     return this.island.smoothline(v1, v2)
   }
+
+  // No-op on non-chunked meshes; overridden in ChunkedSimpleMesh.
+  free(_id?: number): void {}
 
   drawLines(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program_override?: ShaderProgram): void {
     for (const island of this.islands) {
@@ -2185,8 +2188,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.add_island()
   }
 
-  // @ts-ignore
-  tri(id: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor<{dead: false}> {
+  tri(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, id?: number): TriEditor<{dead: false}> {
+    if (id === undefined) {
+      throw new Error('ChunkedSimpleMesh.tri requires an id')
+    }
     if (0) {
       function isvec(v: any) {
         if (!v) {
@@ -2253,12 +2258,23 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.tri_editors.next().bind(chunk, itri)
   }
 
-  quad(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, v4: Vector3Like): QuadEditor<{dead: false}> {
-    throw new Error('unsupported for chunked meshes')
+  quad(
+    _v1: Vector3Like,
+    _v2: Vector3Like,
+    _v3: Vector3Like,
+    _v4: Vector3Like,
+    _id?: number
+  ): QuadEditor<{dead: false}> {
+    // TODO: synthesise two tri() slots per id once a caller needs it.
+    // The two synthesised sub-ids would need to live in their own namespace
+    // so they don't collide with `tri()` ids on the same mesh.
+    throw new Error('ChunkedSimpleMesh.quad: not yet supported (use two tri() calls)')
   }
 
-  // @ts-ignore
-  smoothline(id: number, v1: Vector3Like, v2: Vector3Like): LineEditor2<{dead: false}> {
+  smoothline(v1: Vector3Like, v2: Vector3Like, id?: number): LineEditor2<{dead: false}> {
+    if (id === undefined) {
+      throw new Error('ChunkedSimpleMesh.smoothline requires an id')
+    }
     const chunk = this.get_chunk(id)
     let iline = this.idmap.get(id)!
 
@@ -2322,8 +2338,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.tristrip_line_editors.next().bind(chunk, iline)
   }
 
-  // @ts-ignore
-  line(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
+  line(v1: Vector3Like, v2: Vector3Like, id?: number): LineEditor<{dead: false}> {
+    if (id === undefined) {
+      throw new Error('ChunkedSimpleMesh.line requires an id')
+    }
     //return this.smoothline(id, v1, v2);
 
     const chunk = this.get_chunk(id)
@@ -2356,8 +2374,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.line_editors.next().bind(chunk, iline)
   }
 
-  // @ts-ignore
-  point(id: number, v1: IOpenNumVector): PointEditor {
+  point(v1: Vector3Like, id?: number): PointEditor<{dead: false}> {
+    if (id === undefined) {
+      throw new Error('ChunkedSimpleMesh.point requires an id')
+    }
     const chunk = this.get_chunk(id)
     const ipoint = this.idmap.get(id)!
 

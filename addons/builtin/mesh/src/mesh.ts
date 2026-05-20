@@ -5007,7 +5007,7 @@ mesh.Mesh {
           const l2 = ltris[li++]
           const l3 = ltris[li++]
 
-          const tri = sm.tri(idx, l1.v, l2.v, l3.v)
+          const tri = sm.tri(l1.v, l2.v, l3.v, idx)
           tri.colors(w, w, w)
 
           if (l1.f.flag & MeshFlags.FLAT) {
