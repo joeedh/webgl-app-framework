@@ -27,7 +27,9 @@ import '../editors/resbrowser/resbrowser'
 import '../editors/resbrowser/resbrowser_ops'
 import '../editors/resbrowser/resbrowser_types'
 
-import '../editors/view3d/tools/tools'
+// View3D toolmode registrations moved out of core: entry_point.js side-effect
+// imports `editors/view3d/tools/tools` so the addon registry sees them. core
+// itself only depends on the ToolMode base + the toolmode enum builder.
 import {App} from '../editors/editor_base'
 import {Library, DataBlock, DataRef, BlockFlags, BlockLoader} from './lib_api'
 import * as util from '../util/util'
@@ -41,13 +43,13 @@ export class FileLoadError extends Error {}
 import {Collection} from '../scene/collection'
 import {PropsEditor} from '../editors/properties/PropsEditor'
 import '../light/light'
-import {GridBase} from '../mesh/mesh_grids'
 import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush'
 import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp} from './gen_default_file'
 import {installMissingAddonHooks, MissingDataBlock} from './missing_addon'
+import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
 
 // Install the nstructjs placeholder hooks before any file is loaded.
@@ -988,37 +990,10 @@ export class AppState {
       }
     }
 
-    if (version < 5) {
-      for (const mesh of datalib.mesh) {
-        const cd_grid = GridBase.meshGridOffset(mesh)
-
-        if (cd_grid < 0) {
-          continue
-        }
-
-        for (const l of mesh.loops) {
-          const grid = l.customData[cd_grid] as unknown as {flagNormalsUpdate(): void}
-          grid.flagNormalsUpdate()
-        }
-      }
-    }
-
-    if (version < 6) {
-      for (const mesh of datalib.mesh) {
-        const cd_grid = GridBase.meshGridOffset(mesh)
-
-        if (cd_grid < 0) {
-          continue
-        }
-
-        for (const l of mesh.loops) {
-          const grid = l.customData[cd_grid] as unknown as {flagIdsRegen(): void}
-
-          console.error('Building grid vert eids for old file. . .')
-          grid.flagIdsRegen()
-        }
-      }
-    }
+    // Mesh-grid migrations (v5: flagNormalsUpdate, v6: flagIdsRegen) live in
+    // scripts/mesh/migrations.ts and register themselves with the
+    // file_migrations registry. See plan §3.
+    runFileMigrations({fromVersion: version, toVersion: APP_VERSION, datalib})
 
     if (version < 7) {
       for (const brush of datalib.brush) {

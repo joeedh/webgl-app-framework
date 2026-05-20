@@ -27,6 +27,18 @@ import './mesh/addon_register.js';
 // Same pattern for subsurf (depends on mesh). See plan §6 step 7.
 import './subsurf/addon_register.js';
 
+// Registers mesh-grid file-version migrations against core/file_migrations.
+// Once mesh moves out of the main bundle this side-effect import disappears.
+import './mesh/migrations.js';
+
+// Mesh-specific Open-dialog wrapper around ImportOBJOp. Was previously in
+// core/app_ops.js, moved here to keep core from importing mesh. See plan §3.
+import './mesh/import_obj_op.js';
+
+// View3D toolmode registrations. Was previously in core/appstate.ts; moved
+// here so core stops importing from editors/view3d/tools. See plan §3 / §12.
+import './editors/view3d/tools/tools.js';
+
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
 
 import addon, {startAddons} from './addon/addon.js';
