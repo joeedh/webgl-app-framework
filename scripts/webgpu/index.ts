@@ -30,3 +30,6 @@ export type {WebGPUFrameContext} from './queue_adapter.js'
 
 export {WebGpuRenderContext, FULLSCREEN_QUAD_LAYOUT} from './render_context.js'
 export type {WebGpuRenderContextOptions} from './render_context.js'
+
+export {TexpaintBridge} from './texpaint_bridge.js'
+export type {BridgedTexture} from './texpaint_bridge.js'
