@@ -270,6 +270,77 @@ fn fs_main(in : VsOut) -> FsOut {
 }
 `
 
+/**
+ * DenoiseBlur — port of `DenoiseBlur` (realtime_passes.ts:584-723).
+ * A depth-weighted 1D blur: the input fbo carries the depth value in
+ * `.b`, the persw in `.a`, and the renderer scales by a depth term
+ * before accumulating. Used by the realtime AO/denoise chain.
+ *
+ * Defines:
+ *   BLUR_SAMPLES (required) — radius
+ *   BLUR_AXIS_Y (optional) — Y-axis variant (omit for X)
+ *   DEPTH_SCALE, DEPTH_OFFSET, DEPTH_PRESCALE (required) — JS-injected
+ *     floats (the GLSL side serializes from FloatSockets)
+ *
+ * The GLSL `#if BLUR_AXIS == 0` branch is rewritten as `#ifdef
+ * BLUR_AXIS_Y` (preprocess.ts intentionally doesn't implement
+ * `#if expr`). The `#define CALCD(d) ...` function-like macro is
+ * hand-inlined since the preprocessor only handles simple
+ * NAME → value substitution.
+ */
+export const DENOISE_BLUR_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp       : sampler;
+@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  var accum = vec4f(0.0);
+  var tot : f32 = 0.0;
+  let p = in.v_Uv * pass.size;
+
+  let samp = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
+  let persw = samp.a;
+  let d = (samp.b * DEPTH_PRESCALE + DEPTH_OFFSET) * DEPTH_SCALE;
+
+  for (var i : i32 = -BLUR_SAMPLES; i < BLUR_SAMPLES; i = i + 1) {
+    let w = 1.0 - abs(f32(i) / f32(BLUR_SAMPLES));
+    var p2 = p;
+#ifdef BLUR_AXIS_Y
+    p2.y = p2.y + f32(i);
+#else
+    p2.x = p2.x + f32(i);
+#endif
+    var color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    let d2 = (color.b * DEPTH_PRESCALE + DEPTH_OFFSET) * DEPTH_SCALE;
+    color.r = color.r * d2;
+    accum = accum + color * w;
+    tot = tot + w;
+  }
+
+  accum = accum / tot;
+  let denom = select(d, 0.0001, d == 0.0);
+  accum = accum / denom;
+
+#ifdef BLUR_AXIS_Y
+  out.color = vec4f(accum.r, accum.r, accum.r, 1.0);
+#else
+  out.color = vec4f(accum.r, accum.r, d, persw);
+#endif
+  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  return out;
+}
+`
+
 export interface WgslPassEntry {
   key: string
   source: string
@@ -360,6 +431,15 @@ registerWgslPass({
 registerWgslPass({
   key          : 'SharpenPass',
   source       : SHARPEN_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+registerWgslPass({
+  key          : 'DenoiseBlur',
+  source       : DENOISE_BLUR_WGSL,
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
