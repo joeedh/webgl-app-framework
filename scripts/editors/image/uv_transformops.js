@@ -15,10 +15,10 @@ import {
   eventWasTouch,
 } from '../../path.ux/scripts/pathux.js'
 import * as util from '../../util/util.js'
-import {MeshTypes, MeshFlags} from '../../mesh/mesh_base.js'
+import {MeshTypes, MeshFlags} from '../../../addons/builtin/mesh/src/mesh_base.js'
 import {PropModes, TransDataType} from '../view3d/transform/transform_base.js'
-import {UVOpBase} from '../../mesh/mesh_uvops_base.js'
-import {UVWrangler} from '../../mesh/unwrapping.js'
+import {UVOpBase} from '../../../addons/builtin/mesh/src/mesh_uvops_base.js'
+import {UVWrangler} from '../../../addons/builtin/mesh/src/unwrapping.js'
 
 export class TransLoop {
   constructor(l, uv) {

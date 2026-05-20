@@ -12,13 +12,13 @@ import {
   nstructjs,
   ToolOp,
 } from '../../path.ux/scripts/pathux.js'
-import {MeshTypes, MeshFlags} from '../../mesh/mesh_base.js'
+import {MeshTypes, MeshFlags} from '../../../addons/builtin/mesh/src/mesh_base.js'
 import {SelOneToolModes, SelToolModes} from '../view3d/selectmode.js'
 import {Icons} from '../icon_enum.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js'
 //import {FindNearest} from '../view3d/findnearest.js';
-import {UVWrangler} from '../../mesh/unwrapping.js'
-import {UVOpBase} from '../../mesh/mesh_uvops_base.js'
+import {UVWrangler} from '../../../addons/builtin/mesh/src/unwrapping.js'
+import {UVOpBase} from '../../../addons/builtin/mesh/src/mesh_uvops_base.js'
 
 export const UVSelMask = {
   VERTEX: 1,

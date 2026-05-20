@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js';
-import {MeshFeatures} from '../mesh/mesh_base.js';
+import {MeshFeatures} from '../../addons/builtin/mesh/src/mesh_base.js';
 import {ObjectFlags} from './sceneobject.js';
 
 let vtmps = util.cachering.fromConstructor(Vector3, 512);

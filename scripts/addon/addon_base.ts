@@ -19,17 +19,17 @@ import {
   HotKey,
 } from '../path.ux/scripts/pathux'
 import * as pathux from '../path.ux/scripts/pathux'
-import * as mesh from '../mesh/mesh'
-import * as mesh_utils from '../mesh/mesh_utils'
-import * as mesh_types from '../mesh/mesh_utils'
-import * as mesh_base from '../mesh/mesh_utils'
-import * as unwrapping from '../mesh/unwrapping'
-import {KDrawModes} from '../mesh/mesh_curvature_test'
+import * as mesh from '../../addons/builtin/mesh/src/mesh'
+import * as mesh_utils from '../../addons/builtin/mesh/src/mesh_utils'
+import * as mesh_types from '../../addons/builtin/mesh/src/mesh_utils'
+import * as mesh_base from '../../addons/builtin/mesh/src/mesh_utils'
+import * as unwrapping from '../../addons/builtin/mesh/src/unwrapping'
+import {KDrawModes} from '../../addons/builtin/mesh/src/mesh_curvature_test'
 import {DataBlock, DataRef, DataRefProperty, DataRefListProperty, IDataBlockConstructor} from '../core/lib_api'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {ToolMode} from '../editors/view3d/view3d_toolmode'
 import {SceneObject, composeObjectMatrix} from '../sceneobject/sceneobject'
-import * as customdata from '../mesh/customdata'
+import * as customdata from '../../addons/builtin/mesh/src/customdata'
 import {
   Editor,
   VelPan,
@@ -48,25 +48,25 @@ import {Icons} from '../editors/icon_enum'
 import {MeshToolBase} from '../editors/view3d/tools/meshtool'
 import {MeshEditor} from '../editors/view3d/tools/mesheditor'
 import {SelMask} from '../editors/view3d/selectmode'
-import {MeshOp, MeshDeformOp} from '../mesh/mesh_ops_base'
-import {MeshOpBaseUV} from '../mesh/mesh_uvops_base'
+import {MeshOp, MeshDeformOp} from '../../addons/builtin/mesh/src/mesh_ops_base'
+import {MeshOpBaseUV} from '../../addons/builtin/mesh/src/mesh_uvops_base'
 import {TransformOp} from '../editors/view3d/transform/transform_ops'
 import * as widget_tools from '../editors/view3d/widgets/widget_tools'
 import * as widgets from '../editors/view3d/widgets/widgets'
 import * as simplemesh from '../webgl/simplemesh'
-import * as paramizer from '../mesh/mesh_paramizer'
-import * as displacement from '../mesh/mesh_displacement'
-import * as curvature from '../mesh/mesh_curvature'
-import * as curvature_test from '../mesh/mesh_curvature_test'
-import * as utils from '../mesh/mesh_utils'
-import * as subdivide from '../mesh/mesh_subdivide'
-import * as bvh from '../util/bvh'
+import * as paramizer from '../../addons/builtin/mesh/src/mesh_paramizer'
+import * as displacement from '../../addons/builtin/mesh/src/mesh_displacement'
+import * as curvature from '../../addons/builtin/mesh/src/mesh_curvature'
+import * as curvature_test from '../../addons/builtin/mesh/src/mesh_curvature_test'
+import * as utils from '../../addons/builtin/mesh/src/mesh_utils'
+import * as subdivide from '../../addons/builtin/mesh/src/mesh_subdivide'
+import * as bvh from '../../addons/builtin/mesh/src/bvh'
 import * as bezier from '../util/bezier'
 import * as shaders from '../shaders/shaders'
-import * as subsurf from '../subsurf'
+import * as subsurf from '../subsurf/index'
 import * as graph from '../core/graph'
 import * as graphsockets from '../core/graphsockets'
-import * as sceneobject from '../sceneobject'
+import * as sceneobject from '../sceneobject/index'
 import {ViewContext} from '../core/context'
 
 /** is a constructor a subclass of another constructor? */
@@ -195,8 +195,27 @@ export class AddonAPI<T> {
 
   addon?: T
 
+  /** Stable id from the addon's manifest. Set by the loader. */
+  addonId?: string
+
   classes = new AddonClasses<T>()
   _graphNodes = new Set<graph.Node['graph_id']>()
+
+  /**
+   * Namespaces exported by this addon for other addons to consume. Populated
+   * by `api.exportNamespace(name, exports)` from inside the addon's
+   * `register()`. Other addons reach these via `api.getAddon(id).exports[name]`
+   * — or via the typed `@addon/<id>/api` resolver at compile time. See plan §2.5.
+   */
+  exports: {[name: string]: unknown} = {}
+
+  /**
+   * Resolved dependency addons, keyed by manifest id. Populated by the loader
+   * before this addon's `register()` runs (deps are loaded first by topological
+   * sort). Addons can also use the typed `import * as mesh from '@addon/mesh/api'`
+   * shim which resolves to `api.deps.mesh.exports['mesh']` at runtime.
+   */
+  deps: {[id: string]: AddonAPI<unknown>} = {}
 
   readonly lib_api: {
     DataBlock: typeof DataBlock
@@ -225,6 +244,25 @@ export class AddonAPI<T> {
       DataRefProperty,
       DataRefListProperty,
     }
+  }
+
+  /**
+   * Publishes a namespace that other addons can import. Typical use from inside
+   * an addon's `register(api)`:
+   *
+   *   api.exportNamespace('mesh', {Mesh, MeshFlags, BVH, customdata: {...}})
+   *
+   * Consumers reach it as `api.getAddon('mesh').exports['mesh']` or, with full
+   * type-checking, via the `@addon/mesh/api` resolver baked into the addon
+   * build pipeline (see tools/build-addons.js).
+   */
+  exportNamespace(name: string, exports: Record<string, unknown>): void {
+    this.exports[name] = exports
+  }
+
+  /** Returns another loaded addon's API by manifest id, or undefined. */
+  getAddon(id: string): AddonAPI<unknown> | undefined {
+    return window._addons?.getAddonAPI(id)
   }
 
   get argv() {

@@ -14,6 +14,13 @@ export interface IDataDefine {
   name: string
   selectMask?: number
   tools: any
+  /**
+   * Stable data-kind id used by core/context queries and the data_kinds
+   * registry. Subclasses that participate in core's kind-driven dispatch
+   * (mesh, curve, light, camera, ...) should set this. Defaults to `name`
+   * lowercased if omitted. See plan §3.
+   */
+  dataKind?: string
 }
 
 export interface IObjectDataConstructor {
@@ -172,5 +179,26 @@ SceneObjectData {
     }
 
     ObjectDataTypes.push(cls as unknown as IObjectDataConstructor)
+  }
+
+  /**
+   * Resolve the data-kind tag for a scene-object data instance. Reads
+   * `dataDefine().dataKind` (falling back to a lowercased `dataDefine().name`)
+   * and caches the lookup on the constructor. Used by context queries instead
+   * of `instanceof Mesh`/`instanceof Light`/... so core stays decoupled from
+   * the concrete data classes that live in mesh/light/etc. addons.
+   */
+  static dataKindOf(data: SceneObjectData | undefined): string | undefined {
+    if (!data) return undefined
+    const ctor = data.constructor as unknown as {
+      dataDefine?: () => IDataDefine
+      _cachedDataKind?: string
+    }
+    if (typeof ctor._cachedDataKind === 'string') return ctor._cachedDataKind
+    if (typeof ctor.dataDefine !== 'function') return undefined
+    const def = ctor.dataDefine()
+    const kind = def.dataKind ?? (def.name ? def.name.toLowerCase() : undefined)
+    ctor._cachedDataKind = kind
+    return kind
   }
 }

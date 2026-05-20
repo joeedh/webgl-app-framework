@@ -1,0 +1,10 @@
+{
+  "id": "sculptcore",
+  "name": "Sculptcore",
+  "version": "1.0.0",
+  "author": "joeedh",
+  "entry": "src/main.ts",
+  "dependencies": ["mesh"],
+  "description": "Sculptcore-backed paint/sculpt toolmode (next-gen).",
+  "buildMode": "prebuilt"
+}

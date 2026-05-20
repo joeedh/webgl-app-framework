@@ -37,10 +37,10 @@ import {calcTransCenter} from './transform_query.js'
 import {CastModes, castViewRay} from '../findnearest.js'
 
 import {ModalFlags} from '../../../core/modalflags.js'
-import {MeshFlags, MeshTypes} from '../../../mesh/mesh_base.js'
+import {MeshFlags, MeshTypes} from '../../../../addons/builtin/mesh/src/mesh_base.js'
 
 import type {ViewContext} from '../../../core/context.js'
-import type {Mesh} from '../../../mesh/mesh.js'
+import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
 
 interface NumericVal {
   sign: number

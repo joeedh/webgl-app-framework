@@ -13,9 +13,9 @@ import {
 import * as editors from '../editors/all.js'
 
 import '../tet/wiregen_ops.js'
-import '../mesh/mesh_bevel.js'
-import '../mesh/mesh_ops.js'
-import '../mesh/mesh_extrudeops.js'
+import '../../addons/builtin/mesh/src/mesh_bevel.js'
+import '../../addons/builtin/mesh/src/mesh_ops.js'
+import '../../addons/builtin/mesh/src/mesh_extrudeops.js'
 
 import '../image/image_ops.js'
 import '../image/image.js'
@@ -26,17 +26,17 @@ import '../hair/strand_selectops.js'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {resourceManager} from '../core/resource.js'
 import '../core/image.js'
-import {buildCDAPI, buildElementAPI, CustomData} from '../mesh/customdata.js'
+import {buildCDAPI, buildElementAPI, CustomData} from '../../addons/builtin/mesh/src/customdata.js'
 import {CameraData} from '../camera/camera.js'
 import {Camera} from '../webgl/webgl.js'
 
-import {buildProcMeshAPI} from '../mesh/mesh_gen.js'
+import {buildProcMeshAPI} from '../../addons/builtin/mesh/src/mesh_gen.js'
 
 import {makeToolModeEnum, ToolModes, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {NodeSocketClasses} from '../core/graph.js'
 import {RenderSettings} from '../renderengine/renderengine_base'
 
-import '../mesh/mesh_createops.js'
+import '../../addons/builtin/mesh/src/mesh_createops.js'
 
 import {CurveSpline} from '../curve/curve.js'
 
@@ -57,9 +57,9 @@ import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../co
 import {VelPan, VelPanFlags} from '../editors/velpan.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {ToolContext} from '../core/context.js'
-import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures, MeshSymFlags} from '../mesh/mesh_base.js'
-import {Mesh} from '../mesh/mesh.js'
-import {Vertex} from '../mesh/mesh_types.js'
+import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures, MeshSymFlags} from '../../addons/builtin/mesh/src/mesh_base.js'
+import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
+import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
 import '../shadernodes/allnodes.js'
@@ -90,12 +90,12 @@ import {
   SculptIcons,
   SculptTools,
   SubdivModes,
-} from '../brush'
+} from '../brush/index'
 
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.ts'
 import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js'
-import {BVHSettings} from '../util/bvh.js'
+import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
 import {AppSettings} from '../core/settings.ts'
 
 export function api_define_rendersettings(api) {

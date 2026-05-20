@@ -4,7 +4,7 @@ import {nstructjs} from '../path.ux/pathux.js'
 let STRUCT = nstructjs.STRUCT
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js'
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js'
-import {Mesh} from '../mesh/mesh.js'
+import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
 import {
   Vec3Socket,
   FloatSocket,

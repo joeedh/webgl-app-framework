@@ -5,6 +5,7 @@ import {exportTheme, loadUIData, nstructjs, saveUIData, UIBase} from '../../path
 import {Editor} from '../editor_base.ts'
 import {Icons} from '../icon_enum.js'
 import addonManager from '../../addon/addon.js'
+import {pickAndInstallAddon} from '../../addon/install_ui.ts'
 
 export class SettingsEditor extends Editor {
   static STRUCT = nstructjs.inlineRegister(
@@ -74,6 +75,25 @@ SettingsEditor {
     tab.add(UIBase.createElement('theme-editor-x'))
 
     tab = tabs.tab('Addons')
+
+    // Install button at the top — opens a file picker, installs the .zip via
+    // the configured storage backend, and reloads the addon list.
+    if (addonManager.storage) {
+      tab.button('Install Addon…', () => {
+        pickAndInstallAddon()
+          .then((result) => {
+            if (result) {
+              console.log(`installed addon "${result.manifest.id}"`)
+              this.doOnce(this.rebuild)
+            }
+          })
+          .catch((err) => {
+            console.error('addon install failed:', err)
+            window.alert?.(`Addon install failed: ${err.message}`)
+          })
+      })
+    }
+
     for (let addon of addonManager.addons) {
       let k = addon.key
       let path = `settings.addons['${k}']`
@@ -83,6 +103,18 @@ SettingsEditor {
       row.useIcons('false')
       row.prop(path + '.enabled')
       row.label(addon.name)
+
+      // Third-party addons get an Uninstall button. Builtin addons stay
+      // for the session — they can be disabled via the enabled checkbox.
+      if (addon.manifest && !addon.builtin) {
+        row.button('Uninstall', () => {
+          if (!window.confirm?.(`Uninstall "${addon.manifest.name}"?`)) return
+          addonManager
+            .uninstall(addon.manifest.id)
+            .then(() => this.doOnce(this.rebuild))
+            .catch((err) => console.error('uninstall failed:', err))
+        })
+      }
     }
 
     loadUIData(container, uidata)

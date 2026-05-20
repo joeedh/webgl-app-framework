@@ -14,8 +14,8 @@ import {
   Vector4,
   closest_point_on_line,
 } from '../../../path.ux/scripts/pathux.js'
-import {Grid, GridBase, GridVert, GridVertBase, QRecalcFlags} from '../../../mesh/mesh_grids.js'
-import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js'
+import {Grid, GridBase, GridVert, GridVertBase, QRecalcFlags} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
+import {AttrRef, CDFlags, CustomDataElem} from '../../../../addons/builtin/mesh/src/customdata.js'
 import {
   BrushFlags,
   DynTopoFlags,
@@ -24,7 +24,7 @@ import {
   DynTopoModes,
   SubdivModes,
   SculptBrush,
-} from '../../../brush'
+} from '../../../brush/index'
 import {
   CDElemArray,
   ColorLayerElem,
@@ -42,7 +42,7 @@ import {
   MeshTypes,
   Vector3LayerElem,
   Vertex,
-} from '../../../mesh/mesh.js'
+} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {
   BVH,
   BVHFlags,
@@ -54,22 +54,22 @@ import {
   IBVHVertex,
   MDynVert,
   OrigCoType,
-} from '../../../util/bvh.js'
-import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
-import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
-import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
+} from '../../../../addons/builtin/mesh/src/bvh.js'
+import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../../addons/builtin/mesh/src/mesh_grids_quadtree.js'
+import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../../addons/builtin/mesh/src/mesh_grids_kdtree.js'
+import {splitEdgesSimple2, splitEdgesSmart2} from '../../../../addons/builtin/mesh/src/mesh_subdivide.js'
 import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint} from './pbvh_base'
-import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
-import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
-import {MeshLog} from '../../../mesh/mesh_log.js'
+import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/src/mesh_utils.js'
+import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../../addons/builtin/mesh/src/mesh_tess.js'
+import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js'
-import {getCurveVerts, dirCurveSmooth, CurvVert} from '../../../mesh/mesh_curvature.js'
+import {MultiGridSmoother} from '../../../../addons/builtin/mesh/src/multigrid_smooth.js'
+import {getCurveVerts, dirCurveSmooth, CurvVert} from '../../../../addons/builtin/mesh/src/mesh_curvature.js'
 import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
 import {Bezier} from '../../../util/bezier.js'
 import {tetSolve} from '../../../tet/tet_deform.js'
-import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
-import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
+import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../../addons/builtin/mesh/src/mesh_displacement.js'
+import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
 import type {ViewContext} from '../../../core/context.js'
 

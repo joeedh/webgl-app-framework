@@ -2,7 +2,7 @@
 
 import type {ViewContext} from '../../core/context.js'
 import {IUniformsBlock} from '../../webgl/webgl.js'
-import {Mesh} from '../../mesh/mesh.js'
+import {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
 import {SceneObject} from '../../sceneobject/sceneobject.js'
 import {IVectorOrHigher, Vector2, Vector3} from '../../util/vectormath.js'
 import {View3D} from '../all.js'

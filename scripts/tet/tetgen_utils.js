@@ -7,7 +7,7 @@ import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js';
 import {TetLogContext} from './tetgen_base.js';
 import {TetMesh} from './tetgen.js';
 import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from '../util/isect.js';
-import {getArrayTemp} from '../mesh/mesh_base.js';
+import {getArrayTemp} from '../../addons/builtin/mesh/src/mesh_base.js';
 
 export class OcTri {
   constructor(v1, v2, v3) {

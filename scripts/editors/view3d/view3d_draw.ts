@@ -1,12 +1,12 @@
 import {Vector3} from '../../util/vectormath.js'
-import {Mesh, MeshFlags, MeshTypes} from '../../mesh/mesh.js'
+import {Mesh, MeshFlags, MeshTypes} from '../../../addons/builtin/mesh/src/mesh.js'
 import {LayerTypes} from '../../webgl/simplemesh.js'
 import {SelMask} from './selectmode.js'
 import {Shaders} from '../../shaders/shaders.js'
 import {View3DFlags} from './view3d_base.js'
 import type {View3D} from './view3d.js'
 import type {SceneObject} from '../../sceneobject/sceneobject.js'
-import type {Element} from '../../mesh/mesh_types.js'
+import type {Element} from '../../../addons/builtin/mesh/src/mesh_types.js'
 import type {ShaderProgram as RealShaderProgram} from '../../webgl/webgl.js'
 
 declare global {

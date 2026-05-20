@@ -1,11 +1,11 @@
 import * as util from '../../../util/util.js'
 import {FlagProperty, IVector2, IVector3, ToolOp, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js'
-import {AttrRef, Edge, LogContext, Mesh, MeshFlags, MeshTypes, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
-import {BVH, BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js'
+import {AttrRef, Edge, LogContext, Mesh, MeshFlags, MeshTypes, Vector3LayerElem, Vertex} from '../../../../addons/builtin/mesh/src/mesh.js'
+import {BVH, BVHFlags, BVHTriFlags, IsectRet} from '../../../../addons/builtin/mesh/src/bvh.js'
 import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSample, PaintSampleProperty} from './pbvh_base'
-import {applyTriangulation} from '../../../mesh/mesh_tess.js'
-import {MeshLog} from '../../../mesh/mesh_log.js'
-import type {GridBase} from '../../../mesh/mesh_grids.js'
+import {applyTriangulation} from '../../../../addons/builtin/mesh/src/mesh_tess.js'
+import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
+import type {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
 import type {ViewContext} from '../../../core/context.js'
 
 export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: WeakSet<Vertex | Edge>, lctx?: LogContext): void {

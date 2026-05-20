@@ -5,7 +5,7 @@ import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {aabb_ray_isect, ray_tri_isect, triBoxOverlap} from '../util/isect.js';
 import {tetrahedralizeMesh} from './tetgen_utils.js';
 import {TetFlags} from './tetgen_base.js';
-import {MAX_EDGE_FACES} from '../mesh/mesh_base.js';
+import {MAX_EDGE_FACES} from '../../addons/builtin/mesh/src/mesh_base.js';
 
 function makeBoxVerts(min, max) {
   let ret = [

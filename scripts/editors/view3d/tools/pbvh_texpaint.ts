@@ -15,10 +15,10 @@ import {
   IVectorOrHigher,
   Number3,
 } from '../../../path.ux/scripts/pathux.js'
-import {BVH, BVHFlags, BVHTri, IsectRet} from '../../../util/bvh.js'
-import {GridBase} from '../../../mesh/mesh_grids'
+import {BVH, BVHFlags, BVHTri, IsectRet} from '../../../../addons/builtin/mesh/src/bvh.js'
+import {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids'
 import {ImageBlock, ImageTypes} from '../../../image/image.js'
-import {FBO} from '../../../webgl'
+import {FBO} from '../../../webgl/index'
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../webgl/simplemesh'
 import {ShaderDef} from '../../../shaders/shaders.js'
 import {getFBODebug} from '../../debug/gldebug.js'
@@ -34,9 +34,9 @@ import {GPUTile, tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js'
 import type {ToolContext, ViewContext} from '../../../core/context'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
 import type {View3D} from '../view3d'
-import {Loop, Mesh, UVLayerElem} from '../../../mesh/mesh'
-import {AttrRef, ColorLayerElem} from '../../../mesh/mesh_customdata'
-import { getUVWrangler } from '../../../mesh/unwrapping'
+import {Loop, Mesh, UVLayerElem} from '../../../../addons/builtin/mesh/src/mesh'
+import {AttrRef, ColorLayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
+import { getUVWrangler } from '../../../../addons/builtin/mesh/src/unwrapping'
 
 declare global {
   let DDD: number

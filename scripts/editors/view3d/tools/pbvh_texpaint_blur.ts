@@ -1,6 +1,6 @@
 import {Matrix4, Vector2, Vector3} from '../../../path.ux/scripts/pathux.js'
-import {BVH} from '../../../util/bvh.js'
-import {FBO} from '../../../webgl'
+import {BVH} from '../../../../addons/builtin/mesh/src/bvh.js'
+import {FBO} from '../../../webgl/index'
 import {ShaderProgram} from '../../../webgl/webgl'
 import {getFBODebug} from '../../debug/gldebug.js'
 import type {SceneObject} from '../../../sceneobject/sceneobject'

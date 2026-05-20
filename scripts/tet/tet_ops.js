@@ -7,7 +7,7 @@ import {
 } from '../path.ux/scripts/pathux.js';
 import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js';
 import {TetMesh} from './tetgen.js';
-import {saveUndoMesh, loadUndoMesh} from '../mesh/mesh_ops_base.js';
+import {saveUndoMesh, loadUndoMesh} from '../../addons/builtin/mesh/src/mesh_ops_base.js';
 import {meshToTetMesh, vertexSmooth, tetMeshToMesh, tetrahedralizeMesh} from './tetgen_utils.js';
 import {saveUndoTetMesh, loadUndoTetMesh, TetDeformOp, TetMeshOp} from './tet_ops_base.js';
 import {tetSolve} from './tet_deform.js';

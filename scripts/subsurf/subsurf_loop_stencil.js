@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
-import {MeshTypes, MeshFlags} from '../mesh/mesh_base.js';
+import {MeshTypes, MeshFlags} from '../../addons/builtin/mesh/src/mesh_base.js';
 
 import {sym, binop, checksym, unaryop, call} from '../mathl/transform/sym.js';
 

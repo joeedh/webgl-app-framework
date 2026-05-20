@@ -1,0 +1,10 @@
+{
+  "id": "tetmesh",
+  "name": "Tet Mesh",
+  "version": "1.0.0",
+  "author": "joeedh",
+  "entry": "src/main.ts",
+  "dependencies": ["mesh"],
+  "description": "Tetrahedral mesh editing toolmode.",
+  "buildMode": "prebuilt"
+}

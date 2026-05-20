@@ -6,7 +6,7 @@ import {Editor, VelPan} from '../editor_base.ts'
 
 import {saveFile, loadFile, DataPathError, KeyMap, HotKey} from '../../path.ux/scripts/pathux.js'
 
-import '../../mesh/mesh_createops.js'
+import '../../../addons/builtin/mesh/src/mesh_createops.js'
 import {UIBase, color2css, _getFont, css2color, nstructjs} from '../../path.ux/pathux.js'
 
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js'

@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {MeshDrawInterface, OrigRef} from "../editors/view3d/view3d_draw.js";
-import {Mesh, MeshTypes, MeshFlags} from '../mesh/mesh.js';
+import {Mesh, MeshTypes, MeshFlags} from '../../addons/builtin/mesh/src/mesh.js';
 import {createPatches} from './subsurf_mesh.js';
 import {Texture} from '../webgl/webgl.js';
 

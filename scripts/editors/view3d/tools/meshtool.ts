@@ -4,22 +4,22 @@ import {ToolMode} from '../view3d_toolmode.js'
 import {HotKey, KeyMap} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
-import {resolveMeshes} from '../../../mesh/mesh_ops_base.js'
+import {resolveMeshes} from '../../../../addons/builtin/mesh/src/mesh_ops_base.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {TranslateOp} from '../transform/transform_ops.js'
 import {SelOneToolModes} from '../selectmode.js'
 
 import {ObjectFlags, SceneObject} from '../../../sceneobject/sceneobject.js'
-import {Mesh} from '../../../mesh/mesh.js'
+import {Mesh} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {DataAPI, DataStruct, eventWasMouseDown, nstructjs} from '../../../path.ux/scripts/pathux.js'
-import '../../../mesh/mesh_flagops.js'
+import '../../../../addons/builtin/mesh/src/mesh_flagops.js'
 
-//import '../../../mesh/select_ops.js';
-//import '../../../mesh/mesh_ops.js';
+//import '../../../../addons/builtin/mesh/src/select_ops.js';
+//import '../../../../addons/builtin/mesh/src/mesh_ops.js';
 
-import {MeshFlags} from '../../../mesh/mesh_base.js'
-import {SelectEdgeLoopOp, type SelectOneOp} from '../../../mesh/select_ops.js'
+import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh_base.js'
+import {SelectEdgeLoopOp, type SelectOneOp} from '../../../../addons/builtin/mesh/src/select_ops.js'
 import type {ViewContext} from '../../../core/context.js'
 import type {BoundingBox} from '../view3d_utils.js'
 import type {View3D} from '../view3d.js'

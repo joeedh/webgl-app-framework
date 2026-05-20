@@ -1,8 +1,8 @@
 import {CommandExecutor, Brush as WasmBrush} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
-import {SculptBrush} from '../../../brush'
+import {SculptBrush} from '../../../brush/index'
 import {INeededWasm, StructType} from '@litestl/typescript-runtime'
-import {LiteMesh} from '../../../lite-mesh'
+import {LiteMesh} from '../../../lite-mesh/index'
 
 export function builSculptcoreBrush({
   wasm,

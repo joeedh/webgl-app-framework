@@ -8,7 +8,7 @@ import {MeshToolBase} from './meshtool'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath'
 import {Shaders} from '../../../shaders/shaders'
 
-import {Mesh, MeshDrawFlags} from '../../../mesh/mesh'
+import {Mesh, MeshDrawFlags} from '../../../../addons/builtin/mesh/src/mesh'
 import {CurveSpline} from '../../../curve/curve'
 import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux'
 import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'

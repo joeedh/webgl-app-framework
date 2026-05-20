@@ -1,9 +1,10 @@
 //override default undo implementation in Path.ux's toolop class
 import {ToolOp, BoolProperty, UndoFlags} from '../path.ux/scripts/pathux.js'
 import * as cconst from './const.js'
-import * as platform from '../core/platform.js'
+import * as platform from './platform.js'
 import {exportSTLMesh} from '../util/stlformat.js'
-import {ImportOBJOp} from '../mesh/mesh_createops.js'
+// AppImportOBJOp moved to scripts/mesh/import_obj_op.js so core stops
+// importing from mesh. The class is registered there via ToolOp.register.
 
 ToolOp.prototype.calcUndoMem = function (ctx) {
   if (this.undoPre !== ToolOp.prototype.undoPre) {
@@ -198,49 +199,6 @@ export class FileExportSTL extends ToolOp {
 
 ToolOp.register(FileExportSTL)
 
-export class AppImportOBJOp extends ToolOp {
-  static tooldef() {
-    return {
-      uiname  : 'Import Obj',
-      toolpath: 'app.import_obj',
-      inputs: {
-        //forceDialog: new BoolProperty(true)
-      },
-      undoflag: UndoFlags.NO_UNDO,
-    }
-  }
-
-  exec(ctx) {
-    console.log('File load')
-
-    platform.platform
-      .showOpenDialog('Open File', {
-        filters: [
-          {
-            name      : '3D Models (obj)',
-            extensions: ['obj'],
-          },
-        ],
-      })
-      .then((paths) => {
-        console.log('paths', paths)
-        if (paths.length === 0) {
-          return
-        }
-
-        return platform.platform.readFile(paths[0], 'text/plain')
-      })
-      .then((data) => {
-        console.log('got data!', data)
-        let toolop = new ImportOBJOp()
-
-        toolop.inputs.data.setValue(data)
-        ctx.api.execTool(ctx, toolop)
-      })
-
-    //loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
-    //_appstate.loadFile(filedata);
-    //});
-  }
-}
-ToolOp.register(AppImportOBJOp)
+// AppImportOBJOp moved to scripts/mesh/import_obj_op.js (mesh-specific feature
+// that was coupling core to mesh — see plan §3 / §12). The class is still
+// exported globally via its ToolOp.register call there.

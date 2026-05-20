@@ -2,7 +2,7 @@ import './pbvh_bvhdef'
 
 import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {BVH, BVHFlags, BVHNode} from '../../../util/bvh.js'
+import {BVH, BVHFlags, BVHNode} from '../../../../addons/builtin/mesh/src/bvh.js'
 import {KeyMap, HotKey} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
@@ -21,7 +21,7 @@ import {
   Mesh,
   UVLayerElem,
   Vertex,
-} from '../../../mesh/mesh.js'
+} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
@@ -33,9 +33,9 @@ import {
   PackFlags,
   UIBase,
 } from '../../../path.ux/scripts/pathux.js'
-import {MeshFlags} from '../../../mesh/mesh.js'
+import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../webgl/simplemesh'
-import {GridBase, GridSettings, GridSettingFlags} from '../../../mesh/mesh_grids.js'
+import {GridBase, GridSettings, GridSettingFlags} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
 import {nstructjs} from '../../../path.ux/scripts/pathux.js'
 
 import {
@@ -47,7 +47,7 @@ import {
   DynTopoFlags,
   DynTopoSettings,
   DynTopoOverrides,
-} from '../../../brush'
+} from '../../../brush/index'
 
 import './pbvh_holefiller'
 import './pbvh_sculptops'
@@ -56,14 +56,14 @@ import './pbvh_texpaint'
 
 import {calcConcave, getBVH, PaintToolModeBase} from './pbvh_base'
 import {buildBVHSettings} from './pbvh_ui'
-import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
+import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/src/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
+import {DispContext, DispLayerVert} from '../../../../addons/builtin/mesh/src/mesh_displacement.js'
 import {IUniformsBlock, ShaderProgram, Texture} from '../../../webgl/webgl.js'
-import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
+import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {eventWasTouch, haveModal} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumValues} from '../../../util/enum-utils'
-import {ParamVert} from '../../../mesh/mesh_paramizer'
+import {ParamVert} from '../../../../addons/builtin/mesh/src/mesh_paramizer'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
 import type {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
 import type {Scene} from '../../../scene/scene'

@@ -9,11 +9,40 @@ import './test/test_sculpt.js';
 import './test/test.js';
 import './test/test_sculpt_run.js';
 
-import * as mesh from './mesh/mesh.js';
-import * as mesh_types from './mesh/mesh_types.js';
-import * as customdata from './mesh/customdata';
-import * as mesh_customdata from './mesh/mesh_customdata.js';
-import * as mesh_base from './mesh/mesh_base.js';
+import * as mesh from '../addons/builtin/mesh/src/mesh.js';
+import * as mesh_types from '../addons/builtin/mesh/src/mesh_types.js';
+import * as customdata from '../addons/builtin/mesh/src/customdata';
+import * as mesh_customdata from '../addons/builtin/mesh/src/mesh_customdata.js';
+import * as mesh_base from '../addons/builtin/mesh/src/mesh_base.js';
+
+// Registers the default-scene-with-cube builder against core/default_file. Once
+// mesh moves into a builtin addon (plan §6 step 6) this side-effect import goes
+// away and the addon's register() hook performs the registration.
+import '../addons/builtin/mesh/src/default_scene.js';
+
+// Announces the mesh subsystem to AddonManager as an internal builtin addon so
+// other addons can declare `dependencies: ['mesh']`. See plan §6 step 6.
+import '../addons/builtin/mesh/src/addon_register.js';
+
+// Same pattern for subsurf (depends on mesh). See plan §6 step 7.
+import './subsurf/addon_register.js';
+
+// Registers mesh-grid file-version migrations against core/file_migrations.
+// Once mesh moves out of the main bundle this side-effect import disappears.
+import '../addons/builtin/mesh/src/migrations.js';
+
+// Mesh-specific Open-dialog wrapper around ImportOBJOp. Was previously in
+// core/app_ops.js, moved here to keep core from importing mesh. See plan §3.
+import '../addons/builtin/mesh/src/import_obj_op.js';
+
+// View3D toolmode registrations. Was previously in core/appstate.ts; moved
+// here so core stops importing from editors/view3d/tools. See plan §3 / §12.
+import './editors/view3d/tools/tools.js';
+
+// FBX loader (relocated with the mesh subsystem into addons/builtin/mesh/).
+// Side-effect import — registers the FBX loader against the global so other
+// callers can use it.
+import '../addons/builtin/mesh/src/fbxloader.js';
 
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
 

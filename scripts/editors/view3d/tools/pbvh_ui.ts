@@ -1,6 +1,6 @@
 import {Container, PanelContents} from '../../../path.ux/scripts/pathux.js'
 import {DataBlockBrowser} from '../../editor_base'
-import {DynTopoSettings, SculptBrush} from '../../../brush'
+import {DynTopoSettings, SculptBrush} from '../../../brush/index'
 import type {ViewContext} from '../../../core/context'
 import type {TextureSelectPanel} from '../../properties/PropsEditor'
 import type {BVHToolMode} from './pbvh'

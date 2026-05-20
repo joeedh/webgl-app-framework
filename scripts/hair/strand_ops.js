@@ -1,7 +1,7 @@
 import {ToolOp, BoolProperty, FloatProperty, EnumProperty, FlagProperty, IntProperty} from '../path.ux/scripts/pathux.js';
 import {DataRefProperty} from '../core/lib_api.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
-import {Mesh} from '../mesh/mesh.js';
+import {Mesh} from '../../addons/builtin/mesh/src/mesh.js';
 import {StrandSet} from './strand.js';
 
 export class MakeStrandSetOp extends ToolOp {

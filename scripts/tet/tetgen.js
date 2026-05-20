@@ -14,9 +14,9 @@ import {SelMask} from '../editors/view3d/selectmode.js'
 import {DataBlock} from '../core/lib_api.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes, ChunkedSimpleMesh} from '../webgl/simplemesh.ts'
 import {Shaders} from '../shaders/shaders.js'
-import {BVH} from '../util/bvh.js'
-import {CDFlags} from '../mesh/customdata.js'
-import {getArrayTemp} from '../mesh/mesh_base.js'
+import {BVH} from '../../addons/builtin/mesh/src/bvh.js'
+import {CDFlags} from '../../addons/builtin/mesh/src/customdata.js'
+import {getArrayTemp} from '../../addons/builtin/mesh/src/mesh_base.js'
 
 /*
   on factor;

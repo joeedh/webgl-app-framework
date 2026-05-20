@@ -15,11 +15,12 @@ import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, float3, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
-import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl'
+import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl/index'
 import {View3D} from '../editors/all'
-import {SceneObject} from '../sceneobject'
+import {SceneObject} from '../sceneobject/index'
 import {Shaders} from '../shaders/shaders'
-import {GenericIsect, IGenericIsect} from '../util/bvh'
+import {GenericIsect} from '../util/spatial'
+import type {IGenericIsect} from '../util/spatial'
 import {pointer} from '@litestl/typescript-runtime'
 
 export class VertexData extends AttrSet {
@@ -173,6 +174,7 @@ export class LiteMesh extends SceneObjectData {
       name      : 'LiteMesh',
       selectMask: SelMask.MESH,
       tools     : undefined,
+      dataKind  : 'mesh',
     }
   }
 
