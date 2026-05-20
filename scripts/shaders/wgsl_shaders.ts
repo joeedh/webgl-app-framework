@@ -528,6 +528,95 @@ export const LIT_MESH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   ],
 }
 
+/**
+ * Strip-line layout for `LineTriStripShader`. Position + _strip_dir +
+ * _strip_uv (normal/uv/color/id from the source `attributes` list are
+ * declared on the GLSL side but not read by the vertex stage — they're
+ * tagged for the GL bind path and irrelevant to the WGSL pipeline).
+ * Stride = 3*4 + 4*4 + 2*4 = 36 bytes.
+ */
+export const STRIP_LINE_VERTEX_LAYOUT: GPUVertexBufferLayout = {
+  arrayStride: 36,
+  attributes: [
+    {shaderLocation: 0, offset: 0,  format: 'float32x3'}, // position
+    {shaderLocation: 1, offset: 12, format: 'float32x4'}, // _strip_dir
+    {shaderLocation: 2, offset: 28, format: 'float32x2'}, // _strip_uv
+  ],
+}
+
+/**
+ * LineTriStripShader — port of `LineTriStripShader` (shaders.ts:2003-2086).
+ * Triangle-strip line renderer that extrudes width from `_strip_dir` /
+ * `_strip_uv`. Inlines `PolygonOffset.pre/vertex/fragment` (shaders.ts:4)
+ * since both pieces fold into a single uniform + a z-bias in clip space.
+ */
+export const LINE_TRI_STRIP_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix  : mat4x4f,
+  color         : vec4f,
+  pointSize     : f32,
+  polygonOffset : f32,
+  _pad0         : f32,
+  _pad1         : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position  : vec3f,
+  @location(1) strip_dir : vec4f,
+  @location(2) strip_uv  : vec2f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vStripUv : vec2f,
+  @location(1) vColor   : vec4f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let width = in.strip_dir.w;
+
+  var p = object.objectMatrix * vec4f(in.position, 1.0);
+  p = frame.projectionMatrix * vec4f(p.xyz, 1.0);
+
+  // PolygonOffset.vertex(p, near, far, size)
+  let off = 5.0 * object.polygonOffset / (frame.far - frame.near + 0.00001);
+  p.z = p.z - off;
+
+  var dir = object.objectMatrix * vec4f(in.strip_dir.xyz, 0.0);
+  dir = frame.projectionMatrix * dir;
+  dir = normalize(dir);
+
+  var pn = p.xyz / p.w;
+  let s = width / frame.size.y;
+  pn.x = pn.x + dir.y  * in.strip_uv.x * s;
+  pn.y = pn.y + (-dir.x) * in.strip_uv.x * s;
+  p = vec4f(pn * p.w, p.w);
+
+  out.clipPos = p;
+  out.vStripUv = vec2f(in.strip_uv.x, width);
+  out.vColor = object.color;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  var f = abs(in.vStripUv.x);
+  let t = in.vStripUv.y - 1.5;
+  f = f * in.vStripUv.y;
+  if (f > t) {
+    f = 1.0 - (f - t) / (in.vStripUv.y - t);
+  } else {
+    f = 1.0;
+  }
+  return object.color * in.vColor * vec4f(1.0, 1.0, 1.0, f);
+}
+`
+
 export interface WgslShaderEntry {
   /** Stable key — set by the GLSL side as `program.wgslKey`. */
   key: string
@@ -668,4 +757,12 @@ registerWgslShader({
   vertexBuffers: [POS_COLOR_ID_VERTEX_LAYOUT],
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'LineTriStripShader',
+  source       : LINE_TRI_STRIP_WGSL,
+  vertexBuffers: [STRIP_LINE_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-strip'},
 })
