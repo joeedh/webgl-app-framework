@@ -227,6 +227,65 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 `
 
 /**
+ * MeshEditShader — port of `MeshEditShader` (shaders.ts:1072-1150).
+ * Selection overlay: per-vertex coloring with active/highlight/last
+ * tinting. Used by view3d_draw.ts when rendering edit-mode element
+ * overlays. Attribute layout matches POS_COLOR_ID (no normal/uv).
+ */
+export const MESH_EDIT_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix    : mat4x4f,
+  active_color    : vec4f,
+  highlight_color : vec4f,
+  last_color      : vec4f,
+  alpha           : f32,
+  active_id       : f32,
+  highlight_id    : f32,
+  last_id         : f32,
+  pointSize       : f32,
+  _pad0           : f32,
+  _pad1           : f32,
+  _pad2           : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) color    : vec4f,
+  @location(2) id       : f32,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor : vec4f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+
+  if (object.highlight_id == in.id) {
+    out.vColor = object.highlight_color;
+  } else if (object.last_id == in.id) {
+    out.vColor = object.last_color;
+  } else if (object.active_id == in.id) {
+    out.vColor = object.active_color;
+  } else {
+    out.vColor = in.color;
+  }
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  return in.vColor * vec4f(1.0, 1.0, 1.0, object.alpha);
+}
+`
+
+/**
  * BasicLineShader2D — port of `BasicLineShader2D` (shaders.ts:1373-1409).
  * UI overlay; bypasses projectionMatrix and maps `position.xy / size`
  * to NDC directly.
@@ -601,4 +660,12 @@ registerWgslShader({
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
   depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
+})
+
+registerWgslShader({
+  key          : 'MeshEditShader',
+  source       : MESH_EDIT_WGSL,
+  vertexBuffers: [POS_COLOR_ID_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
 })
