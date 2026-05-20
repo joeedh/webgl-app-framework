@@ -86,6 +86,7 @@ import type {SceneObject} from '@framework/api'
 import type {ToolContext} from '@framework/api'
 import type {Material} from '@framework/api'
 import type {IUniformsBlock, ShaderProgram} from '@framework/api'
+import type {DrawQueue, FrameContext} from '@framework/api'
 import type {Scene} from '@framework/api'
 import type {StructReader} from '@framework/api'
 
@@ -5052,13 +5053,8 @@ mesh.Mesh {
     }
   }
 
-  drawWireframe(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: any,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {
+  drawWireframeQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
+    const gl = frame.gl
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate()
     }
@@ -5072,13 +5068,15 @@ mesh.Mesh {
 
     this.checkPartialUpdate(gl)
 
+    const uniforms = frame.uniforms
     uniforms.color = uniforms.color || [0, 0, 0, 1]
     uniforms.active_color = uniforms.highlight_color = uniforms.select_color = uniforms.color
 
+    const program = frame.program!
     if (this._fancyMeshes.edges) {
-      this._fancyMeshes.edges.draw(gl, uniforms, program)
+      queue.submit({pipeline: program, mesh: this._fancyMeshes.edges})
     } else if (this.smesh) {
-      this.smesh.draw(gl, uniforms, program)
+      queue.submit({pipeline: program, mesh: this.smesh})
     }
   }
 
@@ -5088,11 +5086,10 @@ mesh.Mesh {
     }
   }
 
-  drawIds(view3d: View3D, gl: WebGL2RenderingContext, selectMask: number, uniforms: any, object: SceneObject) {
-    const program = Shaders.MeshIDShader
-    uniforms.pointSize = 10
-
-    this.draw(view3d, gl, uniforms, program, object)
+  drawIdsQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, selectMask: number, object: SceneObject) {
+    frame.uniforms.pointSize = 10
+    frame.program = Shaders.MeshIDShader
+    this.drawQ(view3d, queue, frame, object)
   }
 
   updateMirrorTag(v: Vertex, threshold = 0.0001) {
@@ -5332,13 +5329,8 @@ mesh.Mesh {
     return drawMeshElements(this, view3d, gl, selmask, uniforms, program, object, drawTransFaces)
   }
 
-  draw(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ): void {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject): void {
+    const gl = frame.gl
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate()
     }
@@ -5352,17 +5344,12 @@ mesh.Mesh {
 
     this.checkPartialUpdate(gl)
 
-    if (this.smesh === undefined) {
+    if (this.smesh === undefined || frame.program === undefined) {
       return
     }
 
-    if (program !== undefined) {
-      this.smesh.program = program
-
-      program.bind(gl)
-    }
-
-    this.smesh.draw(gl, uniforms)
+    this.smesh.program = frame.program
+    queue.submit({pipeline: frame.program, mesh: this.smesh})
   }
 
   swapDataBlockContents(mesh: this) {

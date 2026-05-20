@@ -139,10 +139,12 @@ export class StrandSet extends SceneObjectData {
     }
   }
 
-  draw(view3d, gl, uniforms, program, object) {
-    for (let s of this.strands) {
-      s.draw(view3d, gl, uniforms, program, object)
-    }
+  drawQ(view3d, queue, frame, object) {
+    queue.scheduleRawGLPass(gl => {
+      for (let s of this.strands) {
+        s.draw(view3d, gl, frame.uniforms, frame.program, object)
+      }
+    })
   }
 
   copyTo(b) {

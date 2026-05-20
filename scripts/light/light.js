@@ -85,17 +85,21 @@ Light {
     return [new Vector3().addScalar(-r), new Vector3().addScalar(r)]
   }
 
-  draw(view3d, gl, uniforms, program, object) {
+  drawQ(view3d, queue, frame, object) {
+    let program = frame.program
     if (program !== Shaders.MeshIDShader) {
       program = Shaders.WidgetMeshShader
-      //program = Shaders.MeshIDShader;
       program.uniforms.color = object.getEditorColor()
     }
 
     program.uniforms.objectMatrix = object.outputs.matrix.getValue()
-    uniforms.objectMatrix = object.outputs.matrix.getValue()
+    frame.uniforms.objectMatrix = object.outputs.matrix.getValue()
 
-    Shapes.LIGHT.draw(gl, uniforms, program)
+    queue.submit({pipeline: program, mesh: Shapes.LIGHT})
+  }
+
+  drawIdsQ(view3d, queue, frame, selectMask, object) {
+    this.drawQ(view3d, queue, frame, object)
   }
 
   copy() {
@@ -109,12 +113,6 @@ Light {
 
   copyAddUsers() {
     return this.copy()
-  }
-
-  drawIds(view3d, gl, selectMask, uniforms, object) {
-    let program = Shaders.MeshIDShader
-
-    this.draw(view3d, gl, uniforms, program, object)
   }
 
   static dataDefine() {

@@ -13,17 +13,21 @@ export class NullObject extends SceneObjectData {
     super()
   }
 
-  draw(view3d, gl, uniforms, program, object) {
+  drawQ(view3d, queue, frame, object) {
+    let program = frame.program
     if (program !== Shaders.MeshIDShader) {
       program = Shaders.WidgetMeshShader
-      //program = Shaders.MeshIDShader;
       program.uniforms.color = object.getEditorColor()
     }
 
     program.uniforms.objectMatrix = object.outputs.matrix.getValue()
-    uniforms.objectMatrix = object.outputs.matrix.getValue()
+    frame.uniforms.objectMatrix = object.outputs.matrix.getValue()
 
-    Shapes.SPHERE.draw(gl, uniforms, program)
+    queue.submit({pipeline: program, mesh: Shapes.SPHERE})
+  }
+
+  drawIdsQ(view3d, queue, frame, selectMask, object) {
+    this.drawQ(view3d, queue, frame, object)
   }
 
   static blockDefine() {

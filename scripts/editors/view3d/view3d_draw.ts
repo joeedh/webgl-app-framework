@@ -8,6 +8,7 @@ import type {View3D} from './view3d.js'
 import type {SceneObject} from '../../sceneobject/sceneobject.js'
 import type {Element} from '../../../addons/builtin/mesh/src/mesh_types.js'
 import type {ShaderProgram as RealShaderProgram} from '../../webgl/webgl.js'
+import {WebGLDrawQueueAdapter, FrameContext} from '../../render/queue'
 
 declare global {
   interface Window {
@@ -322,7 +323,9 @@ export class BasicMeshDrawer extends MeshDrawInterface {
     //let program2 = Shaders.MeshIDShader;
 
     if (!(view3d.flag & View3DFlags.SHOW_RENDER)) {
-      mesh.draw(view3d, gl, uniforms, program as RealShaderProgram, object)
+      const frame: FrameContext = {gl, uniforms: uniforms as any, program: program as RealShaderProgram}
+      const queue = new WebGLDrawQueueAdapter(frame)
+      mesh.drawQ(view3d, queue, frame, object)
     }
 
     function drawElements(

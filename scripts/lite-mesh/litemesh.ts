@@ -21,6 +21,7 @@ import {SceneObject} from '../sceneobject/index'
 import {Shaders} from '../shaders/shaders'
 import {GenericIsect} from '../util/spatial'
 import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
+import type {DrawQueue, FrameContext} from '../render/queue'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -257,13 +258,7 @@ export class LiteMesh extends SceneObjectData {
     return this
   }
 
-  draw(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
     const drawBVH = (view3d.ctx?.scene?.toolmode as SculptCorePaintMode)?.drawBVH
     if (this.spatial.update(this.wasm.gpu)) {
       if (this.treeBatch) {
@@ -279,12 +274,7 @@ export class LiteMesh extends SceneObjectData {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
     }
 
-    let exec = this.drawBatchExecutor
-    if (exec === undefined) {
-      exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
-      this.drawBatchExecutor = exec
-    }
-
+    const uniforms = frame.uniforms
     const drawMatrix = new Matrix4(uniforms.projectionMatrix)
     if (uniforms.objectMatrix instanceof Matrix4) {
       drawMatrix.multiply(uniforms.objectMatrix)
@@ -298,12 +288,20 @@ export class LiteMesh extends SceneObjectData {
       drawMatrix,
       normalMatrix,
     }
-    if (this.drawBatch) {
-      exec.dispatch(this.drawBatch, uniforms2)
-    }
-    if (drawBVH && this.treeBatch) {
-      exec.dispatch(this.treeBatch, uniforms2)
-    }
+
+    queue.scheduleRawGLPass((gl: WebGL2RenderingContext) => {
+      let exec = this.drawBatchExecutor
+      if (exec === undefined) {
+        exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
+        this.drawBatchExecutor = exec
+      }
+      if (this.drawBatch) {
+        exec.dispatch(this.drawBatch, uniforms2)
+      }
+      if (drawBVH && this.treeBatch) {
+        exec.dispatch(this.treeBatch, uniforms2)
+      }
+    })
   }
 
   regenRender() {

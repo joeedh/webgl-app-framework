@@ -12,6 +12,7 @@ import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/view3d/view3d.js'
 import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {ToolContext} from '../core/context.js'
+import type {DrawQueue, FrameContext} from '../render/queue.js'
 import type {CurveSpline} from '../../addons/builtin/curve/src/curve.js'
 
 export class CameraData extends SceneObjectData {
@@ -88,16 +89,14 @@ export class CameraData extends SceneObjectData {
    green should be any sub-id (also + 1) provided by
    sceneobjectdata, e.g. vertices in a mesh.
    */
-  drawIds(
+  drawIdsQ(
     view3d: View3D,
-    gl: WebGL2RenderingContext,
+    queue: DrawQueue,
+    frame: FrameContext,
     selectMask: number,
-    uniforms: IUniformsBlock,
     object: SceneObject
   ) {
-    const shader = Shaders.MeshIDShader
-
-    this.draw(view3d, gl, uniforms, shader, object)
+    this.drawQ(view3d, queue, frame, object)
   }
 
   gen(gl: WebGL2RenderingContext) {
@@ -141,23 +140,15 @@ export class CameraData extends SceneObjectData {
     line(new Vector3([0, d2, z]), new Vector3([0, d2 + 1, z]))
   }
 
-  draw(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
     const hash = this.camera.generateUpdateHash()
 
-    //check if we need to update to dependency graph
-    //because a camera parameter has changed
     if (hash !== this._last_hash) {
       this._last_hash = hash
       this.update()
     }
 
-    uniforms = Object.assign(uniforms, {})
+    const uniforms = frame.uniforms
 
     uniforms['objectMatrix'] = new Matrix4(this.finalCamera.icameramat)
 
@@ -166,22 +157,17 @@ export class CameraData extends SceneObjectData {
     const w = co.multVecMatrix(uniforms['projectionMatrix']) / 75.0
 
     uniforms['objectMatrix'].scale(w, w, w)
-    //let co = new Vector3();
-    //co.multVecMatrix(uniforms.objectMatrix);
-    //console.log(co);
 
     const key = this.camera.fovy + ':' + this.camera.aspect
 
     if (!this.mesh || key !== this._drawkey) {
       this._drawkey = key
-      this.gen(gl)
+      this.gen(frame.gl)
     }
 
-    gl.disable(gl.DEPTH_TEST)
-    this.mesh!.draw(gl, uniforms, program)
-    gl.enable(gl.DEPTH_TEST)
-
-    //Shapes.CUBE.draw(gl, uniforms, program);
+    queue.scheduleRawGLPass(gl => gl.disable(gl.DEPTH_TEST))
+    queue.submit({pipeline: frame.program!, mesh: this.mesh!})
+    queue.scheduleRawGLPass(gl => gl.enable(gl.DEPTH_TEST))
   }
 
   exec(ctx: ToolContext) {
@@ -263,24 +249,6 @@ export class CameraData extends SceneObjectData {
     finalCamera.up.load(up)
 
     finalCamera.regen_mats()
-  }
-
-  drawWireframe(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {}
-
-  drawOutline(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {
-    this.drawWireframe(view3d, gl, uniforms, program, object)
   }
 
   static nodedef() {

@@ -7,7 +7,6 @@ import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
-import {ShaderProgram} from '../webgl/webgl'
 import type {View3D} from '../editors/all'
 import type {DrawQueue, FrameContext} from '../render/queue'
 
@@ -117,58 +116,29 @@ SceneObjectData {
     return [new Vector3([d, d, d]), new Vector3([d, d, d])]
   }
 
-  /**draws IDs.  no need for packing,
-   they're drawn into a float framebuffer
-
-   red should be sceneobject id + 1.
-   green should be any sub-id (also + 1) provided by
-   sceneobjectdata, e.g. vertices in a mesh.
+  /**
+   * Queue-mediated draw API (WebGL→WebGPU migration, Phase 3).
+   *
+   * `drawQ` is the main draw entry point. `drawIdsQ` paints the object's
+   * sub-element IDs into a float framebuffer for picking — red is
+   * sceneobject id + 1, green is any sub-id (also + 1, e.g. vertex eids on
+   * a mesh). `drawWireframeQ` / `drawOutlineQ` are the wireframe overlay
+   * and selection outline.
+   *
+   * SceneObject.draw / drawWireframe / drawOutline / drawIds build a
+   * transient FrameContext + WebGLDrawQueueAdapter and dispatch through
+   * these methods.
    */
-  drawIds(view3d: View3D, gl: WebGL2RenderingContext, selectMask: number, uniforms: any, object: SceneObject) {}
+  drawIdsQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, selectMask: number, object: SceneObject) {}
 
-  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject) {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
     throw new Error('implement me')
   }
 
-  drawWireframe(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: any,
-    program: ShaderProgram,
-    object: SceneObject
-  ) {}
-
-  drawOutline(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject) {
-    this.drawWireframe(view3d, gl, uniforms, program, object)
-  }
-
-  /**
-   * Queue-mediated draw API (Phase 0b of WebGL→WebGPU migration).
-   *
-   * The default implementations here bridge to the legacy immediate-mode
-   * methods via a transient WebGLDrawQueueAdapter, so an implementer that has
-   * not yet been ported continues to work unchanged. Once an implementer
-   * overrides drawQ / drawIdsQ / drawWireframeQ / drawOutlineQ, the queue is
-   * the only API touched at that call site.
-   *
-   * SceneObject.draw / drawWireframe / drawOutline / drawIds dispatch through
-   * these wrappers; the legacy methods stay around only as the bridge target
-   * for un-ported implementers.
-   */
-  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
-    this.draw(view3d, frame.gl, frame.uniforms, frame.program!, object)
-  }
-
-  drawWireframeQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
-    this.drawWireframe(view3d, frame.gl, frame.uniforms, frame.program!, object)
-  }
+  drawWireframeQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {}
 
   drawOutlineQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
-    this.drawOutline(view3d, frame.gl, frame.uniforms, frame.program!, object)
-  }
-
-  drawIdsQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, selectMask: number, object: SceneObject) {
-    this.drawIds(view3d, frame.gl, selectMask, frame.uniforms, object)
+    this.drawWireframeQ(view3d, queue, frame, object)
   }
 
   onContextLost(e: Event) {}

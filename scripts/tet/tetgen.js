@@ -119,21 +119,18 @@ export class TetMesh extends SceneObjectData {
     return regen
   }
 
-  drawIds(view3d, gl, selectMask, uniforms, object) {}
+  drawIdsQ(view3d, queue, frame, selectMask, object) {}
 
-  draw(view3d, gl, uniforms, program, object) {
-    this._ensureRender(gl)
+  drawQ(view3d, queue, frame, object) {
+    this._ensureRender(frame.gl)
 
-    let smeshes = this._meshes
+    const smeshes = this._meshes
+    const program = frame.program ?? Shaders.BasicLitMesh
 
-    if (!program) {
-      program = Shaders.BasicLitMesh
-    }
-
-    console.log(this._meshes)
-
-    smeshes.faces.draw(gl, uniforms, program)
-    smeshes.edges.drawLines(gl, uniforms, Shaders.ObjectLineShader)
+    queue.submit({pipeline: program, mesh: smeshes.faces})
+    queue.submit({pipeline: Shaders.ObjectLineShader, mesh: {
+      draw: (gl, u, p) => smeshes.edges.drawLines(gl, u, p),
+    }})
   }
 
   recalcStartLengths(edges = this.edges) {
@@ -151,10 +148,10 @@ export class TetMesh extends SceneObjectData {
     return this.draw(view3d, gl, uniforms, undefined, object)
   }
 
-  drawWireframe(view3d, gl, uniforms, program, object) {}
+  drawWireframeQ(view3d, queue, frame, object) {}
 
-  drawOutline(view3d, gl, uniforms, program, object) {
-    this.drawWireframe(...arguments)
+  drawOutlineQ(view3d, queue, frame, object) {
+    this.drawWireframeQ(view3d, queue, frame, object)
   }
 
   applyMatrix(matrix) {

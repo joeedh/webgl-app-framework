@@ -65,7 +65,7 @@ export class WalkRet {
 
 export * from './curve_knot'
 import {KnotDataLayer, KnotFlags, getKnot} from './curve_knot'
-import type {IUniformsBlock, ShaderProgram} from '@framework/api'
+import type {IUniformsBlock, ShaderProgram, DrawQueue, FrameContext} from '@framework/api'
 import type {ViewContext} from '@framework/api'
 import {SceneObject} from '@framework/api'
 import type {StructReader} from '@framework/api'
@@ -702,15 +702,9 @@ CurveSpline {
     }
   }
 
-  draw(
-    view3d: View3D,
-    gl: WebGL2RenderingContext,
-    uniforms: IUniformsBlock,
-    program: ShaderProgram,
-    object: SceneObject
-  ): void {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject): void {
     this.checkUpdate()
-    return super.draw(view3d, gl, uniforms, program, object)
+    return super.drawQ(view3d, queue, frame, object)
   }
 
   drawElements(

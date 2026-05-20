@@ -426,21 +426,25 @@ export class ProceduralMesh extends SceneObjectData {
     this.recalc = 1
   }
 
-  draw(view3d, gl, uniforms, program, object) {
-    this.generator.getSimpleMesh(gl).draw(gl, uniforms, program)
-    this.generator.getSimpleMesh(gl).drawLines(gl, uniforms, program)
+  drawQ(view3d, queue, frame, object) {
+    const sm = this.generator.getSimpleMesh(frame.gl)
+    queue.submit({pipeline: frame.program, mesh: sm})
+    queue.submit({pipeline: frame.program, mesh: {draw: (gl, u, p) => sm.drawLines(gl, u, p)}})
   }
 
-  drawIds(view3d, gl, selectMask, uniforms, object) {
-    this.generator.getSimpleMesh(gl).draw(gl, uniforms, Shaders.MeshIDShader)
+  drawIdsQ(view3d, queue, frame, selectMask, object) {
+    const sm = this.generator.getSimpleMesh(frame.gl)
+    queue.submit({pipeline: Shaders.MeshIDShader, mesh: sm})
   }
 
-  drawWireframe(view3d, gl, uniforms, program, object) {
-    this.generator.getSimpleMesh(gl).drawLines(gl, uniforms, program)
+  drawWireframeQ(view3d, queue, frame, object) {
+    const sm = this.generator.getSimpleMesh(frame.gl)
+    queue.submit({pipeline: frame.program, mesh: {draw: (gl, u, p) => sm.drawLines(gl, u, p)}})
   }
 
-  drawOutline(view3d, gl, uniforms, program, object) {
-    this.generator.getSimpleMesh(gl).drawLines(gl, uniforms, program)
+  drawOutlineQ(view3d, queue, frame, object) {
+    const sm = this.generator.getSimpleMesh(frame.gl)
+    queue.submit({pipeline: frame.program, mesh: {draw: (gl, u, p) => sm.drawLines(gl, u, p)}})
   }
 
   static dataDefine() {
