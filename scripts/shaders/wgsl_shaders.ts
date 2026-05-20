@@ -227,6 +227,161 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 `
 
 /**
+ * BasicLineShader2D — port of `BasicLineShader2D` (shaders.ts:1373-1409).
+ * UI overlay; bypasses projectionMatrix and maps `position.xy / size`
+ * to NDC directly.
+ */
+export const BASIC_LINE_2D_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  alpha : f32,
+  _pad0 : f32,
+  _pad1 : f32,
+  _pad2 : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) uv       : vec2f,
+  @location(2) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor : vec4f,
+  @location(1) vUv    : vec2f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let ndc = (in.position.xy / frame.size) * 2.0 - vec2f(1.0);
+  out.clipPos = vec4f(ndc, in.position.z, 1.0);
+  out.vColor = in.color;
+  out.vUv = in.uv;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  return in.vColor * vec4f(1.0, 1.0, 1.0, object.alpha);
+}
+`
+
+/**
+ * NormalPassShader — port of `NormalPassShader` (shaders.ts:1309-1371).
+ * Writes (normal * 0.5 + 0.5) into RGB; flips normal towards camera.
+ */
+export const NORMAL_PASS_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  normalMatrix : mat4x4f,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+  @location(2) uv       : vec2f,
+  @location(3) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vNormal       : vec3f,
+  @location(1) vCameraNormal : vec3f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  let cn = normalize(frame.projectionMatrix * object.objectMatrix * vec4f(in.normal, 0.0));
+  out.vNormal = in.normal;
+  out.vCameraNormal = cn.xyz;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  var no = normalize(in.vNormal);
+  if (in.vCameraNormal.z > 0.0) { no = -no; }
+  return vec4f(no * 0.5 + vec3f(0.5), 1.0);
+}
+`
+
+/**
+ * MeshLinearZShader — port of `MeshLinearZShader` (shaders.ts:1222-1306).
+ * Renders linear depth into `frag_depth`, viewed through `cameraMatrix`
+ * (typically a light camera for shadow passes). Attribute layout:
+ * position + color + id (no normal/uv — matches the GLSL `attributes`
+ * declaration).
+ */
+export const MESH_LINEAR_Z_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix : mat4x4f,
+  cameraMatrix : mat4x4f,
+  object_id    : f32,
+  pointSize    : f32,
+  _pad0        : f32,
+  _pad1        : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) color    : vec4f,
+  @location(2) id       : f32,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vLightZ       : f32,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  let lp = (object.cameraMatrix * object.objectMatrix * vec4f(in.position, 1.0)).xyz;
+  out.vLightZ = lp.z;
+  return out;
+}
+
+struct FsOut {
+  @location(0)        color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  out.color = vec4f(0.5, 0.5, 0.5, 1.0);
+  out.depth = in.vLightZ / frame.far;
+  return out;
+}
+`
+
+/**
+ * Compact `position + color + id` layout (no uv/normal). Used by
+ * `MeshLinearZShader`. Stride = 3*4 + 4*4 + 1*4 = 32 bytes.
+ */
+export const POS_COLOR_ID_VERTEX_LAYOUT: GPUVertexBufferLayout = {
+  arrayStride: 32,
+  attributes: [
+    {shaderLocation: 0, offset: 0,  format: 'float32x3'},
+    {shaderLocation: 1, offset: 12, format: 'float32x4'},
+    {shaderLocation: 2, offset: 28, format: 'float32'},
+  ],
+}
+
+/**
  * MeshIDShader — port of `MeshIDShader` (shaders.ts:1153-1220). Renders
  * (object_id+1, vertex_id+1, 0, 1) into a float framebuffer for picking.
  * Vertex attributes: position (vec3), uv (vec2), color (vec4), id (f32).
@@ -421,4 +576,29 @@ registerWgslShader({
   vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'BasicLineShader2D',
+  source       : BASIC_LINE_2D_WGSL,
+  vertexBuffers: [NO_ID_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'line-list'},
+})
+
+registerWgslShader({
+  key          : 'NormalPassShader',
+  source       : NORMAL_PASS_WGSL,
+  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'MeshLinearZShader',
+  source       : MESH_LINEAR_Z_WGSL,
+  vertexBuffers: [POS_COLOR_ID_VERTEX_LAYOUT],
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
 })
