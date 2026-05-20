@@ -39,3 +39,6 @@ export type {WebGPUBatchExecutorOptions} from './batch.js'
 
 export {WebGpuRenderGraph} from './render_graph.js'
 export type {GraphNodeRef, DispatchHooks} from './render_graph.js'
+
+export {UniformBindings, reflectPipelineBindings} from './uniform_bindings.js'
+export type {UniformBindingSlot} from './uniform_bindings.js'

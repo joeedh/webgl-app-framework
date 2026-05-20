@@ -20,6 +20,7 @@
 import type {DrawQueue, FrameContext, Submission} from '../render/queue.js'
 import type {Pipeline, PipelineCache} from './pipeline.js'
 import {lookupWgslShader} from '../shaders/wgsl_shaders.js'
+import {UniformBindings} from './uniform_bindings.js'
 
 export interface WebGPUFrameContext extends FrameContext {
   device: GPUDevice
@@ -32,6 +33,23 @@ export interface WebGPUFrameContext extends FrameContext {
    * shaders get ported under Phase 4b.
    */
   pipelineBindings: Map<unknown, Pipeline>
+}
+
+/**
+ * Per-`Pipeline` `UniformBindings` cache. Reflection of a pipeline's WGSL
+ * uniform structs is amortized once per pipeline, and the GpuBuffers
+ * + bind groups it owns are reused across submissions on every adapter
+ * that targets the same pipeline.
+ */
+const uniformBindingsByPipeline = new WeakMap<Pipeline, UniformBindings>()
+
+function getUniformBindings(device: GPUDevice, pipeline: Pipeline): UniformBindings {
+  let bindings = uniformBindingsByPipeline.get(pipeline)
+  if (!bindings) {
+    bindings = new UniformBindings(device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
+    uniformBindingsByPipeline.set(pipeline, bindings)
+  }
+  return bindings
 }
 
 export class WebGPUDrawQueueAdapter implements DrawQueue {
@@ -81,6 +99,14 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
     const uploader = (s.mesh as unknown as {_uploadGpuBuffers?: (device: GPUDevice) => void})._uploadGpuBuffers
     if (uploader) uploader.call(s.mesh, this.frame.device)
     const uniforms = s.uniforms ?? this.frame.uniforms
+    // Write per-frame / per-object uniform buffers and attach their
+    // bind groups. The material slot (group 1) holds textures + samplers
+    // and must still be set by the caller (or the Drawable's drawGPU)
+    // before issuing draws.
+    const bindings = getUniformBindings(this.frame.device, pipeline)
+    if (!bindings.isEmpty) {
+      bindings.bind(this.frame.passEncoder, pipeline.handle, uniforms)
+    }
     s.mesh.drawGPU(this.frame.passEncoder, pipeline.handle, uniforms)
   }
 
