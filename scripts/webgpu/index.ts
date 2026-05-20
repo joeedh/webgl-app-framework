@@ -33,3 +33,6 @@ export type {WebGpuRenderContextOptions} from './render_context.js'
 
 export {TexpaintBridge} from './texpaint_bridge.js'
 export type {BridgedTexture} from './texpaint_bridge.js'
+
+export {WebGPUBatchExecutor} from './batch.js'
+export type {WebGPUBatchExecutorOptions} from './batch.js'
