@@ -61,6 +61,11 @@ export class WebGpuRenderContext {
   readonly pipelineCache: PipelineCache
   /** Per-frame command encoder — set by `beginFrame`, cleared by `endFrame`. */
   encoder: GPUCommandEncoder | undefined
+  /** Currently open render pass encoder — set by `renderStage` while a pass
+   *  is in flight, cleared on return. The `createDrawQueue` factory reads
+   *  this to build a `WebGPUFrameContext` without the call site having to
+   *  thread the encoder through. */
+  currentPass: GPURenderPassEncoder | undefined
   /** Owned by the per-pass `Pipeline`s; the bridge from a GLSL ShaderProgram
    *  to its WGSL `Pipeline` (mirrors `pipelineBindings` in `WebGPUFrameContext`). */
   readonly pipelineBindings: Map<unknown, Pipeline>
@@ -75,12 +80,13 @@ export class WebGpuRenderContext {
     this.pipelineBindings = new Map()
     this.drawmats = opts.drawmats
     this.size = [opts.size[0], opts.size[1]]
+    this.currentPass = undefined
     this.fullscreenQuad = new GpuBuffer(opts.device, {
       label: 'WebGpuRenderContext.fullscreenQuad',
       size : FULLSCREEN_QUAD_DATA.byteLength,
       usage: 'vertex',
     })
-    this.fullscreenQuad.write(FULLSCREEN_QUAD_DATA)
+    this.fullscreenQuad.write(FULLSCREEN_QUAD_DATA as unknown as BufferSource)
   }
 
   beginFrame(): GPUCommandEncoder {
@@ -109,7 +115,14 @@ export class WebGpuRenderContext {
     if (!this.encoder) {
       throw new Error('WebGpuRenderContext.renderStage: no frame open — call beginFrame() first.')
     }
-    target.beginPass(this.encoder, drawCb, opts)
+    target.beginPass(this.encoder, (pass) => {
+      this.currentPass = pass
+      try {
+        drawCb(pass)
+      } finally {
+        this.currentPass = undefined
+      }
+    }, opts)
   }
 
   /**

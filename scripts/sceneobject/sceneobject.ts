@@ -10,7 +10,8 @@ import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/all.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {NullObject} from '../nullobject/nullobject.js'
-import {WebGLDrawQueueAdapter, FrameContext} from '../render/queue'
+import {FrameContext} from '../render/queue'
+import {createDrawQueue} from '../render/queue_factory.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 
@@ -358,7 +359,7 @@ SceneObject {
     uniforms.object_id = this.lib_id
 
     const frame: FrameContext = {gl, uniforms, program}
-    const queue = new WebGLDrawQueueAdapter(frame)
+    const queue = createDrawQueue(frame)
 
     if (this.flag & ObjectFlags.DRAW_WIREFRAME) {
       uniforms.polygonOffset = uniforms.polygonOffset || 0.0
@@ -390,7 +391,7 @@ SceneObject {
     uniforms.object_id = this.lib_id
 
     const frame: FrameContext = {gl, uniforms, program}
-    const queue = new WebGLDrawQueueAdapter(frame)
+    const queue = createDrawQueue(frame)
     this.data.drawWireframeQ(view3d, queue, frame, this)
   }
 
@@ -404,7 +405,7 @@ SceneObject {
     uniforms.object_id = this.lib_id
 
     const frame: FrameContext = {gl, uniforms, program}
-    const queue = new WebGLDrawQueueAdapter(frame)
+    const queue = createDrawQueue(frame)
     this.data.drawOutlineQ(view3d, queue, frame, this)
   }
 
@@ -413,7 +414,7 @@ SceneObject {
     uniforms.object_id = this.lib_id
 
     const frame: FrameContext = {gl, uniforms, program: Shaders.MeshIDShader}
-    const queue = new WebGLDrawQueueAdapter(frame)
+    const queue = createDrawQueue(frame)
     this.data.drawIdsQ(view3d, queue, frame, selectMask, this)
   }
 
