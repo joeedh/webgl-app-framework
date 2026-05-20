@@ -1,12 +1,12 @@
-import {nstructjs, KeyMap, HotKey} from '../../../path.ux/scripts/pathux.js'
-import {ToolMode} from '../view3d_toolmode.js'
-import {Icons} from '../../icon_enum.js'
-import {SelMask} from '../selectmode.js'
+import {nstructjs, KeyMap, HotKey} from '../../../../scripts/path.ux/scripts/pathux.js'
+import {ToolMode} from '../../../../scripts/editors/view3d/view3d_toolmode.js'
+import {Icons} from '../../../../scripts/editors/icon_enum.js'
+import {SelMask} from '../../../../scripts/editors/view3d/selectmode.js'
 
-import '../../../tet/tet_ops.js'
-import '../../../tet/tet_selectops.js'
-import type {ViewContext} from '../../../core/context.js'
-import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
+import '../../../../scripts/tet/tet_ops.js'
+import '../../../../scripts/tet/tet_selectops.js'
+import type {ViewContext} from '../../../../scripts/core/context.js'
+import type {StructReader} from '../../../../scripts/path.ux/scripts/util/nstructjs.js'
 
 export class TetMeshTool extends ToolMode {
   constructor(ctx: ViewContext) {

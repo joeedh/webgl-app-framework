@@ -81,6 +81,21 @@ function buildOptionsFor(entries) {
     keepNames  : true,
     chunkNames : '_chunks/[name]-[hash]',
     logOverride: {'direct-eval': 'silent'},
+    // Mirror the main esbuilder's externals — pathux references `electron`
+    // and `fs` for its Node/Electron path-controller backend. Real addon
+    // code never reaches those modules at runtime in the browser.
+    external: [
+      'fs',
+      'fs/promises',
+      'electron',
+      'numeric',
+      'numeric.js',
+      'scripts/util/numeric',
+      './scripts/util/numeric.js',
+      './scripts/extern/Math.js',
+      './scripts/extern/Math',
+      './scripts/extern/jszip/*',
+    ],
     // @addon/<id>/api imports get resolved to a tiny runtime-lookup stub
     // instead of inlining the upstream addon's code. See plan §2.5.
     plugins: [addonApiPlugin(REPO_ROOT)],

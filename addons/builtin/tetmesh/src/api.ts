@@ -3,4 +3,4 @@
  * See plan §6 step 8.
  */
 
-export {TetMeshTool} from '../../../../scripts/editors/view3d/tools/tetmesh.js'
+export {TetMeshTool} from './tetmesh.js'

@@ -276,10 +276,33 @@ export class AddonManager {
     baseUrl: string,
     options: {builtin?: boolean; register?: boolean} = {}
   ): Promise<void> {
-    const sorted = sortManifestsByDeps(manifests)
+    // Internal builtin addons (mesh, subsurf, etc.) are registered before
+    // this runs via registerInternalAddon. sortManifestsByDeps doesn't know
+    // about them and would reject deps pointing at them. Synthesize stub
+    // manifests for already-loaded addons so the sort succeeds, then filter
+    // them out of the load loop.
+    const preLoadedIds = new Set(this.idmap.keys())
+    const stubs: IAddonManifest[] = []
+    for (const id of preLoadedIds) {
+      const rec = this.idmap.get(id)
+      if (rec?.manifest) {
+        stubs.push(rec.manifest)
+      } else {
+        stubs.push({
+          id,
+          name        : id,
+          version     : '0.0.0',
+          entry       : 'internal',
+          dependencies: [],
+          buildMode   : 'prebuilt',
+        })
+      }
+    }
+    const sorted = sortManifestsByDeps([...stubs, ...manifests])
     const register = options.register ?? true
+    const toLoad = sorted.filter((m) => !preLoadedIds.has(m.id))
 
-    for (const m of sorted) {
+    for (const m of toLoad) {
       const entryJs = m.entry.replace(/\.ts$/, '.js')
       const url = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
 

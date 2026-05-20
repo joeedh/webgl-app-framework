@@ -16,13 +16,16 @@ import addonManager from '../../../addon/addon.js'
 // Side-effect imports — each module's top-level `ToolMode.register(...)` runs
 // at import time, so by the time we register the addon below the classes are
 // in the ToolModes[] enum.
+//
+// tetmesh is intentionally absent: it converted to a real out-of-bundle
+// per-addon build (see addons/builtin/tetmesh/) and is loaded via the
+// addon pipeline at startup. See plan §12 deferred follow-up #3.
 import {MeshToolBase} from './meshtool.js'
 import {MeshEditor} from './mesheditor.js'
 import {CurveToolBase} from './curvetool.js'
 import {BVHToolMode} from './pbvh.js'
 import {PaintToolModeBase} from './pbvh_base.js'
 import {SculptCorePaintMode} from './sculptcore.js'
-import {TetMeshTool} from './tetmesh.js'
 
 function maybeRegister(
   id: string,
@@ -93,17 +96,6 @@ maybeRegister(
   {sculptcore: {SculptCorePaintMode}}
 )
 
-maybeRegister(
-  'tetmesh',
-  {
-    id          : 'tetmesh',
-    name        : 'Tet Mesh',
-    version     : '1.0.0',
-    entry       : 'internal',
-    dependencies: ['mesh'],
-    buildMode   : 'prebuilt',
-    author      : 'joeedh',
-    description : 'Tetrahedral mesh editing toolmode.',
-  },
-  {tetmesh: {TetMeshTool}}
-)
+// tetmesh's in-bundle registration removed: the addon now ships as a
+// separately-built bundle under build/addons/tetmesh/ and is loaded via
+// AddonManager.loadAddonIndex().
