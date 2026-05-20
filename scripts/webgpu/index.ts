@@ -24,3 +24,6 @@ export {BindGroupBuilder, BindGroupSlot} from './bind_group.js'
 export type {BindGroupEntry} from './bind_group.js'
 
 export {BufferUsage, TextureUsage, ShaderStage} from './flags.js'
+
+export {WebGPUDrawQueueAdapter} from './queue_adapter.js'
+export type {WebGPUFrameContext} from './queue_adapter.js'
