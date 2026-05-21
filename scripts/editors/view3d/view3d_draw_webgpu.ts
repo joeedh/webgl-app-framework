@@ -40,6 +40,9 @@ import {TextureUsage} from '../../webgpu/flags.js'
 import {setActiveWebGpuContext, createDrawQueue} from '../../render/queue_factory.js'
 import {View3DFlags} from './view3d_base.js'
 import * as view3d_shaders from '../../shaders/shaders.js'
+import {buildMaterialPipelineDescriptor} from '../../shaders/wgsl_shaders.js'
+import type {Pipeline} from '../../webgpu/pipeline.js'
+import {LightGenWgsl, type IRenderLights} from '../../shadernodes/shader_lib_wgsl.js'
 
 interface WebGpuViewport {
   gpu: GpuContext
@@ -239,16 +242,203 @@ function drawSceneWebGpu(view3d: ViewLike): void {
     }
   }
 
-  // The RealtimeEngine pass graph (drawRender) still needs its own
-  // WGSL port — that lives in scripts/webgpu/render_graph.ts but
-  // none of the realtime passes have a WGSL sibling yet. The smoke
-  // path only matters when SHOW_RENDER / ONLY_RENDER is set.
+  // MVP shader-network path — when SHOW_RENDER / ONLY_RENDER is set,
+  // compile per-material WGSL and re-issue the scene-object draws with
+  // the material's pipeline. No AO / accumulation / offscreen passes
+  // yet (TODO: rebuild the pass graph through WebGpuRenderGraph once
+  // each WGSL pass sibling lands).
   if (view3d.flag !== undefined &&
       (view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER))) {
-    warnOnce('drawRender',
-      'RealtimeEngine pass graph not yet on WebGPU — flip off SHOW_RENDER to see scene-object meshes.')
+    drawRenderWebGpu(view3d)
   }
 }
+
+/**
+ * MVP replacement for `View3D.drawRender` on the WebGPU backend.
+ *
+ * Walks `scene.objects.renderable`, compiles each object's first
+ * material to WGSL via `Material.generateWgsl`, registers the resulting
+ * `Pipeline` in `frame.pipelineBindings` keyed by a per-material
+ * identity object, then issues `ob.draw(view3d, gl, uniforms, prog)`
+ * which routes through `createDrawQueue` → `WebGPUDrawQueueAdapter`
+ * and resolves the right pipeline.
+ *
+ * Scope vs. the WebGL `RealtimeEngine.render_intern`:
+ *   - No AO / Accum / Output / NormalPass offscreen FBOs (the MVP draws
+ *     straight to the canvas).
+ *   - Lights are pulled directly off `scene.objects.lights` — no
+ *     `RenderLight` wrapper or shadow render, just an empty map so the
+ *     shader-network compile falls back to its ambient term.
+ *   - Material hash diff is honored so we only recompile when the graph
+ *     or a uniform changes.
+ */
+interface MaterialWebGpuState {
+  // Per-material identity object used as the `program` arg threaded
+  // through `ob.draw` and looked up in `frame.pipelineBindings`.
+  program: {uniforms: IUniformsBlock; name: string; wgslKey?: undefined}
+  pipeline: Pipeline
+  hash: number
+}
+
+const materialStates = new WeakMap<object, MaterialWebGpuState>()
+const loggedMaterialWgsl = new Set<number>()
+
+function ensureMaterialPipeline(
+  wgpu: WebGpuRenderContext,
+  scene: SceneLike,
+  mat: MaterialLike,
+  rlights: IRenderLights,
+): MaterialWebGpuState | undefined {
+  // Include the light-count fingerprint so adding/removing a light
+  // triggers a recompile — the WGSL embeds `MAXPLIGHT`/`MAXSLIGHT` as
+  // baked-in literals (the preprocessor substitutes after #ifdef
+  // expansion), so the same material with a different light count
+  // produces a different pipeline.
+  let lightHash = 0
+  for (const k in rlights) lightHash = (lightHash * 31 + rlights[k].light.data.type) | 0
+  const hash = ((mat.calcUpdateHash?.() ?? 0) * 1009 + lightHash) | 0
+  const existing = materialStates.get(mat)
+  if (existing && existing.hash === hash && !mat._regen) {
+    return existing
+  }
+
+  let def
+  try {
+    def = mat.generateWgsl(scene, rlights)
+  } catch (err) {
+    console.error(`[webgpu] mat-${mat.lib_id} generateWgsl failed:`, err)
+    return undefined
+  }
+
+  if (!loggedMaterialWgsl.has(mat.lib_id)) {
+    loggedMaterialWgsl.add(mat.lib_id)
+    console.log(`[webgpu] mat-${mat.lib_id} WGSL:\n${def.wgsl}`)
+  }
+
+  const desc = buildMaterialPipelineDescriptor(def.wgsl, `material-${mat.lib_id}`)
+  const interchangeable = new Set<GPUTextureFormat>(['bgra8unorm', 'rgba8unorm'])
+  desc.colorTargets = desc.colorTargets.map(t =>
+    interchangeable.has(t.format) ? {...t, format: wgpu.surfaceFormat} : t,
+  )
+
+  let pipeline: Pipeline
+  try {
+    // Capture WGSL compilation + pipeline validation errors. WebGPU
+    // surfaces them asynchronously through error scopes; without this
+    // they only show up as `uncapturederror` toasts with no link to
+    // which material was being built.
+    wgpu.device.pushErrorScope('validation')
+    pipeline = wgpu.pipelineCache.get(desc)
+    void wgpu.device.popErrorScope().then(err => {
+      if (err) console.error(`[webgpu] mat-${mat.lib_id} pipeline validation error:`, err.message)
+    })
+    void pipeline.module.getCompilationInfo().then(info => {
+      const bad = info.messages.filter(m => m.type === 'error' || m.type === 'warning')
+      if (bad.length > 0) {
+        console.group(`[webgpu] mat-${mat.lib_id} WGSL compilation messages`)
+        for (const m of bad) {
+          console[m.type === 'error' ? 'error' : 'warn'](
+            `${m.type} at L${m.lineNum}:${m.linePos}: ${m.message}`,
+          )
+        }
+        console.groupEnd()
+      }
+    })
+  } catch (err) {
+    console.error(`[webgpu] mat-${mat.lib_id} pipeline compile threw:`, err)
+    return undefined
+  }
+
+  const program = existing?.program ?? {uniforms: {} as IUniformsBlock, name: `webgpu-mat-${mat.lib_id}`}
+  def.setUniforms(mat.graph, program.uniforms as unknown as Record<string, unknown>)
+  // Per-light uniforms (POINTLIGHTS[i].co, .power, ...) — packed into
+  // the same uniforms block; `UniformBindings.write` parses the flat
+  // array keys via `ArrayedStructWriter` when the slot type is
+  // `array<Struct, N>`.
+  LightGenWgsl.setUniforms(program.uniforms as unknown as Record<string, unknown>, scene, rlights)
+  wgpu.pipelineBindings.set(program, pipeline)
+
+  const state: MaterialWebGpuState = {program, pipeline, hash}
+  materialStates.set(mat, state)
+  return state
+}
+
+function drawRenderWebGpu(view3d: ViewLike): void {
+  const ctx = (view3d as ViewLike & {ctx?: {scene?: SceneLike}}).ctx
+  const scene = ctx?.scene
+  if (!scene) {
+    warnOnce('drawRenderWebGpu.scene', 'no scene on view3d.ctx — skipping render pass')
+    return
+  }
+
+  const viewport = viewports.get(view3d.canvas)
+  if (!viewport) return
+  const wgpu = viewport.ctx
+
+  const camera = view3d.activeCamera
+  const uniforms: IUniformsBlock = {
+    projectionMatrix: camera.rendermat,
+    normalMatrix    : camera.normalmat,
+    viewportSize    : view3d.glSize,
+    ambientColor    : scene.envlight?.color,
+    ambientPower    : scene.envlight?.power ?? 1.0,
+    uSample         : 1,
+    near            : camera.near,
+    far             : camera.far,
+    aspect          : camera.aspect,
+    size            : view3d.glSize,
+    polygonOffset   : 0.0,
+    objectMatrix    : new Matrix4(),
+    object_id       : 0,
+  } as unknown as IUniformsBlock
+
+  const renderable = scene.objects?.renderable
+  if (!renderable) return
+
+  // Build a minimal IRenderLights map from scene.lights. We skip the
+  // full RenderLight wrappers (shadow maps + hash digests) — the
+  // material WGSL path only reads `.light` to pull the underlying
+  // SceneObject<Light>.
+  const rlights: IRenderLights = {}
+  const sceneLights = scene.lights
+  if (sceneLights) {
+    let lid = 0
+    for (const light of sceneLights) {
+      // Cast is intentional: we only populate the `.light` slot — the
+      // other RenderLight fields (shadowmap, _digest, co, seed) are
+      // unused by the WGSL light-uniform path.
+      rlights[lid++] = {light} as unknown as IRenderLights[string]
+    }
+  }
+
+  let nTotal = 0, nUsesMat = 0, nWithMat = 0, nDrawn = 0
+  for (const ob of renderable) {
+    nTotal++
+    const data = ob.data as DataLike | undefined
+    if (!data?.usesMaterial) continue
+    nUsesMat++
+    const mats = data.materials
+    const mat = mats && mats.length > 0 ? mats[0] : undefined
+    if (!mat) continue
+    nWithMat++
+
+    const state = ensureMaterialPipeline(wgpu, scene, mat, rlights)
+    if (!state) continue
+
+    try {
+      ob.draw(view3d, view3d.gl as WebGL2RenderingContext, uniforms, state.program as unknown as ShaderProgram)
+      nDrawn++
+    } catch (err) {
+      console.error(`[webgpu] drawRender ob ${ob.lib_id} ob.draw threw:`, err)
+    }
+  }
+
+  if (!loggedRenderSummary) {
+    loggedRenderSummary = true
+    console.log(`[webgpu] drawRenderWebGpu: ${nTotal} total, ${nUsesMat} usesMaterial, ${nWithMat} with material slot, ${nDrawn} drawn`)
+  }
+}
+let loggedRenderSummary = false
 
 function drawGridWebGpu(view3d: ViewLike): void {
   if (!view3d.grid) return
@@ -358,6 +548,31 @@ interface SceneLike {
   toolmode?: {
     on_drawstart?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
     on_drawend?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
+  }
+  envlight?: {color?: unknown; power?: number}
+  objects?: {renderable: Iterable<SceneObjectLike>}
+  lights?: Iterable<unknown>
+}
+
+interface SceneObjectLike {
+  lib_id: number
+  data?: DataLike
+  draw: (view3d: ViewLike, gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program: ShaderProgram) => void
+}
+
+interface DataLike {
+  usesMaterial?: boolean
+  materials?: ArrayLike<MaterialLike | undefined>
+}
+
+interface MaterialLike {
+  lib_id: number
+  graph: Parameters<typeof import('../../shadernodes/shader_nodes_wgsl.js').WgslShaderGenerator.prototype.setMaterialUniforms>[0]
+  _regen?: number | boolean
+  calcUpdateHash?: () => number
+  generateWgsl: (scene: unknown, rlights: IRenderLights) => {
+    wgsl: string
+    setUniforms: (graph: unknown, uniforms: Record<string, unknown>) => void
   }
 }
 

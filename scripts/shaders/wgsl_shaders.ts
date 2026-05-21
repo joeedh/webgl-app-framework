@@ -1173,9 +1173,11 @@ export function buildPipelineDescriptor(
   entry: WgslShaderEntry,
   defines?: PreprocessOptions['defines']
 ): PipelineDescriptor {
-  const wgsl = defines && Object.keys(defines).length > 0
-    ? preprocess(entry.source, {defines})
-    : entry.source
+  // Always preprocess — even with no defines we need `#ifdef`/`#ifndef`
+  // blocks stripped (absent NAME = false). WGSL doesn't parse `#` as a
+  // comment, so a raw `#ifdef` reaches the shader module and fails with
+  // "invalid character found".
+  const wgsl = preprocess(entry.source, {defines: defines ?? {}})
   return {
     label        : entry.key,
     wgsl,
@@ -1183,6 +1185,23 @@ export function buildPipelineDescriptor(
     colorTargets : entry.colorTargets,
     primitive    : entry.primitive,
     depthStencil : entry.depthStencil ?? DEFAULT_DEPTH_STATE,
+  }
+}
+
+/**
+ * Build a `PipelineDescriptor` for a per-material WGSL shader emitted by
+ * `WgslShaderGenerator`. Pinned to `LIT_MESH_VERTEX_LAYOUT` +
+ * `DEFAULT_COLOR_TARGET` since every shader-network compile shares that
+ * vertex shape (see `VERTEX_INPUTS_WGSL` in `shader_lib_wgsl.ts`).
+ */
+export function buildMaterialPipelineDescriptor(wgsl: string, label: string): PipelineDescriptor {
+  return {
+    label,
+    wgsl,
+    vertexBuffers: LIT_MESH_VERTEX_LAYOUT,
+    colorTargets : [DEFAULT_COLOR_TARGET],
+    primitive    : {topology: 'triangle-list'},
+    depthStencil : DEFAULT_DEPTH_STATE,
   }
 }
 

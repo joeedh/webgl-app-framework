@@ -193,3 +193,81 @@ export class UniformWriter {
     }
   }
 }
+
+/**
+ * Writer for a top-level `var<uniform> X : array<Struct, N>` binding.
+ *
+ * `LightGenWgsl.setUniforms` emits flat keys of the form
+ * `POINTLIGHTS[0].co`, `POINTLIGHTS[0].power`, ... per light element.
+ * This writer parses those keys and writes each value into the correct
+ * `index * stride + field.offset` slot of a single shared ArrayBuffer.
+ * The buffer is sized as `stride * arrayLength` where stride satisfies
+ * WGSL's uniform-AS rule `stride = RoundUp(16, sizeOf(Struct))`.
+ */
+export class ArrayedStructWriter {
+  readonly struct: WgslStruct
+  readonly varName: string
+  readonly arrayLength: number
+  readonly stride: number
+  readonly buffer: ArrayBuffer
+  private readonly f32: Float32Array
+  private readonly i32: Int32Array
+  private readonly u32: Uint32Array
+  private readonly fieldMap: Map<string, WgslField>
+  private readonly keyRe: RegExp
+
+  constructor(struct: WgslStruct, varName: string, arrayLength: number) {
+    this.struct = struct
+    this.varName = varName
+    this.arrayLength = arrayLength
+    this.stride = alignUp(struct.size, 16)
+    this.buffer = new ArrayBuffer(Math.max(this.stride * arrayLength, 16))
+    this.f32 = new Float32Array(this.buffer)
+    this.i32 = new Int32Array(this.buffer)
+    this.u32 = new Uint32Array(this.buffer)
+    this.fieldMap = new Map(struct.fields.map(f => [f.name, f]))
+    const escaped = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    this.keyRe = new RegExp(`^${escaped}\\[(\\d+)\\]\\.(.+)$`)
+  }
+
+  setElementField(index: number, fieldName: string, value: number | ArrayLike<number>): void {
+    if (index < 0 || index >= this.arrayLength) return
+    const field = this.fieldMap.get(fieldName)
+    if (!field) return
+    const byteOffset = index * this.stride + field.offset
+    const wordOffset = byteOffset >> 2
+
+    if (typeof value === 'number') {
+      if (field.type === 'i32') this.i32[wordOffset] = value
+      else if (field.type === 'u32') this.u32[wordOffset] = value
+      else this.f32[wordOffset] = value
+      return
+    }
+
+    const target =
+      field.type.endsWith('i') ? this.i32 :
+      field.type.endsWith('u') ? this.u32 :
+      this.f32
+    const valueAny = value as unknown as {
+      getAsFloat32Array?: () => Float32Array
+      getAsArray?: () => number[]
+    }
+    const src: ArrayLike<number> =
+      typeof valueAny.getAsFloat32Array === 'function'
+        ? valueAny.getAsFloat32Array()
+        : typeof valueAny.getAsArray === 'function'
+        ? valueAny.getAsArray()
+        : value
+    for (let i = 0; i < src.length; i++) {
+      target[wordOffset + i] = src[i]
+    }
+  }
+
+  apply(obj: Record<string, number | ArrayLike<number>>): void {
+    for (const [name, value] of Object.entries(obj)) {
+      const m = this.keyRe.exec(name)
+      if (!m) continue
+      this.setElementField(parseInt(m[1], 10), m[2], value)
+    }
+  }
+}

@@ -511,9 +511,10 @@ export function buildPassPipelineDescriptor(
   entry: WgslPassEntry,
   defines?: PreprocessOptions['defines']
 ): PipelineDescriptor {
-  const wgsl = defines && Object.keys(defines).length > 0
-    ? preprocess(entry.source, {defines})
-    : entry.source
+  // Always preprocess — even with no defines we need `#ifdef` blocks
+  // stripped. WGSL doesn't parse `#` as a comment so unprocessed
+  // directives crash the shader module.
+  const wgsl = preprocess(entry.source, {defines: defines ?? {}})
   return {
     label        : entry.key,
     wgsl,
@@ -607,6 +608,20 @@ registerWgslPass({
 registerWgslPass({
   key          : 'NormalPass',
   source       : NORMAL_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+// BasePass — like NormalPass, a marker entry. BasePass renders the
+// scene materials (one pipeline per material, compiled on demand by
+// `WgslShaderGenerator`) rather than a quad blit, so the WGSL source is
+// a placeholder. `WebGpuRenderGraph` special-cases the key and routes
+// to `hooks.encodeMeshBasePass`.
+registerWgslPass({
+  key          : 'BasePass',
+  source       : NORMAL_PASS_WGSL, // placeholder — see comment above
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},

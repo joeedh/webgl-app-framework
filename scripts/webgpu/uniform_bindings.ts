@@ -1,62 +1,38 @@
 /**
- * `UniformBindings` — auto-builds `GPUBindGroup`s for the uniform-buffer
- * slots a WGSL pipeline declares, writing per-draw values from the loose
- * `IUniformsBlock` that the GLSL-era render code already threads through.
- *
- * The bridge has two pieces:
- *
- *   1. `reflectPipelineBindings(wgsl)` parses every
- *      `@group(N) @binding(M) var<uniform> NAME : Struct` declaration and
- *      pairs it with the matching `struct Struct { ... }` block reflected
- *      by `wgsl_reflect.ts`. Texture/sampler bindings (`var ...
- *      texture_2d<f32>`, `var ... sampler`) are *not* handled here — they
- *      belong to the material layer and have to be set by the caller.
- *
- *   2. `UniformBindings` owns a `GpuBuffer` + cached `GPUBindGroup` per
- *      reflected (group, binding). `writeFrame(uniforms)` /
- *      `writeObject(uniforms)` apply field names from the loose
- *      `IUniformsBlock` via `UniformWriter.apply()` and upload via
- *      `device.queue.writeBuffer`. `bind(pass, pipeline, uniforms)`
- *      writes and then issues `setBindGroup` for every reflected group
- *      against `pipeline.getBindGroupLayout(group)`.
- *
- * The bind groups are cached per pipeline (keyed by GPURenderPipeline
- * identity) since `getBindGroupLayout` returns a fresh handle each call,
- * but the underlying GpuBuffers are pipeline-independent and live on
- * the `UniformBindings` instance.
- *
- * For groups whose only bindings are textures/samplers (the
- * `@group(1)` material slot in sculpt shaders, for example),
- * `reflectPipelineBindings` returns no entry — the caller still has to
- * supply that bind group via `pass.setBindGroup(1, ...)` directly.
+ * Bridges the loose `IUniformsBlock` from the GLSL-era render code to
+ * WGSL uniform-buffer bind groups. Texture/sampler bindings are *not*
+ * handled here — the caller still has to supply `@group(1)` (material)
+ * separately. Bind groups are cached per `GPURenderPipeline` identity
+ * because `getBindGroupLayout` returns a fresh handle every call; the
+ * GpuBuffers underneath are pipeline-independent.
  */
 
 import {GpuBuffer} from './buffer.js'
-import {reflectWgslStructs, UniformWriter, type WgslStruct} from '../shaders/wgsl_reflect.js'
+import {
+  reflectWgslStructs,
+  UniformWriter,
+  ArrayedStructWriter,
+  type WgslStruct,
+} from '../shaders/wgsl_reflect.js'
 import type {IUniformsBlock} from '../webgl/webgl.js'
 
-/**
- * One reflected `@group(N) @binding(M) var<uniform> NAME : Struct`
- * declaration.
- */
 export interface UniformBindingSlot {
   group: number
   binding: number
   varName: string
   struct: WgslStruct
+  /** For `var<uniform> X : array<Struct, N>` bindings. */
+  arrayLength?: number
 }
 
-// var<uniform> NAME : StructName ;
+// var<uniform> NAME : Type ;  where Type is either `StructName` or `array<StructName, N>`.
 const UNIFORM_VAR_RE =
-  /@group\(\s*(\d+)\s*\)\s*@binding\(\s*(\d+)\s*\)\s*var\s*<\s*uniform\s*>\s*(\w+)\s*:\s*(\w+)\s*;/g
+  /@group\(\s*(\d+)\s*\)\s*@binding\(\s*(\d+)\s*\)\s*var\s*<\s*uniform\s*>\s*(\w+)\s*:\s*([^;]+?)\s*;/g
+const ARRAY_TYPE_RE = /^array<\s*(\w+)\s*,\s*(\d+)\s*>$/
 
 const REFLECT_CACHE = new Map<string, UniformBindingSlot[]>()
 
-/**
- * Find every uniform-buffer var declaration in `wgsl` and resolve each
- * one's struct layout. Results are cached on the WGSL source string,
- * so a `PipelineCache` hit also skips reflection.
- */
+// Cached on the WGSL source string so a `PipelineCache` hit also skips reflection.
 export function reflectPipelineBindings(wgsl: string): UniformBindingSlot[] {
   const hit = REFLECT_CACHE.get(wgsl)
   if (hit) return hit
@@ -70,15 +46,23 @@ export function reflectPipelineBindings(wgsl: string): UniformBindingSlot[] {
     const group = parseInt(m[1], 10)
     const binding = parseInt(m[2], 10)
     const varName = m[3]
-    const structName = m[4]
+    const typeStr = m[4].trim()
+
+    let structName = typeStr
+    let arrayLength: number | undefined
+    const arr = ARRAY_TYPE_RE.exec(typeStr)
+    if (arr) {
+      structName = arr[1]
+      arrayLength = parseInt(arr[2], 10)
+    }
+
     const struct = structs.get(structName)
     if (!struct) {
-      throw new Error(
-        `reflectPipelineBindings: var<uniform> ${varName} : ${structName} ` +
-          `references a struct that wasn't found in the WGSL source.`
-      )
+      // Plain scalar/vector uniform bindings (e.g. `var<uniform> u: f32;`)
+      // aren't supported by this reflector — skip rather than crash.
+      continue
     }
-    out.push({group, binding, varName, struct})
+    out.push({group, binding, varName, struct, arrayLength})
   }
 
   REFLECT_CACHE.set(wgsl, out)
@@ -87,14 +71,13 @@ export function reflectPipelineBindings(wgsl: string): UniformBindingSlot[] {
 
 interface SlotState {
   slot: UniformBindingSlot
-  writer: UniformWriter
+  writer: UniformWriter | ArrayedStructWriter
   buffer: GpuBuffer
 }
 
 export class UniformBindings {
   readonly device: GPUDevice
   readonly slots: ReadonlyMap<number, SlotState[]> // group → slots in that group
-  /** Cached `GPUBindGroup` per pipeline identity, per group. */
   private readonly bindGroupCache = new Map<GPURenderPipeline, Map<number, GPUBindGroup>>()
 
   constructor(device: GPUDevice, wgsl: string, label?: string) {
@@ -102,12 +85,21 @@ export class UniformBindings {
     const reflected = reflectPipelineBindings(wgsl)
     const grouped = new Map<number, SlotState[]>()
     for (const slot of reflected) {
-      const writer = new UniformWriter(slot.struct)
+      let writer: UniformWriter | ArrayedStructWriter
+      let bufSize: number
+      if (slot.arrayLength !== undefined) {
+        const w = new ArrayedStructWriter(slot.struct, slot.varName, slot.arrayLength)
+        writer = w
+        bufSize = w.buffer.byteLength
+      } else {
+        writer = new UniformWriter(slot.struct)
+        bufSize = Math.max(slot.struct.size, 16)
+      }
       const buffer = new GpuBuffer(device, {
         label: label
           ? `${label}.uniforms.g${slot.group}b${slot.binding}`
           : `uniforms.g${slot.group}b${slot.binding}`,
-        size : Math.max(slot.struct.size, 16), // WGSL uniform buffer min size
+        size : Math.max(bufSize, 16), // WGSL uniform buffer min size
         usage: 'uniform',
       })
       const arr = grouped.get(slot.group) ?? []
@@ -117,18 +109,13 @@ export class UniformBindings {
     this.slots = grouped
   }
 
-  /** True if this pipeline declares no uniform buffers at all. */
   get isEmpty(): boolean {
     return this.slots.size === 0
   }
 
-  /**
-   * Apply `uniforms` to every reflected slot. Field names are looked up
-   * case-sensitively against the WGSL struct's field names — keys not
-   * present in the struct are silently ignored (as `UniformWriter.apply`
-   * does), so a single broad `IUniformsBlock` can feed multiple
-   * pipelines with different schemas.
-   */
+  // Field names not present in the struct are silently ignored (per
+  // `UniformWriter.apply`), so a single broad `IUniformsBlock` can feed
+  // multiple pipelines with different schemas.
   write(uniforms: IUniformsBlock): void {
     for (const states of this.slots.values()) {
       for (const s of states) {
@@ -138,12 +125,6 @@ export class UniformBindings {
     }
   }
 
-  /**
-   * Build (or fetch from the per-pipeline cache) the `GPUBindGroup` for
-   * `group` against `pipeline.getBindGroupLayout(group)`. Returns
-   * `undefined` if this pipeline declared no uniform bindings in that
-   * group.
-   */
   getBindGroup(pipeline: GPURenderPipeline, group: number): GPUBindGroup | undefined {
     const states = this.slots.get(group)
     if (!states || states.length === 0) return undefined
@@ -169,12 +150,8 @@ export class UniformBindings {
     return bg
   }
 
-  /**
-   * Convenience: write `uniforms`, then call `pass.setBindGroup(g, ...)`
-   * for every group that has a uniform buffer. The caller is still
-   * responsible for `setPipeline`, vertex/index buffers, and any
-   * material (`@group(1)`) bind group that holds textures.
-   */
+  // Caller still owns `setPipeline`, vertex/index buffers, and any
+  // material (`@group(1)`) bind group that holds textures.
   bind(
     pass: GPURenderPassEncoder,
     pipeline: GPURenderPipeline,
@@ -187,7 +164,6 @@ export class UniformBindings {
     }
   }
 
-  /** Release all GpuBuffers + cached bind groups. */
   destroy(): void {
     for (const states of this.slots.values()) {
       for (const s of states) s.buffer.destroy()
