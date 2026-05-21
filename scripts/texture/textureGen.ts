@@ -1,5 +1,5 @@
 import {PropTypes} from '../path.ux/scripts/pathux.js'
-import * as mathl from '../mathl/core/mathl.js'
+import * as mathl from '../mathl/index'
 import {TextureShader} from './texture_base'
 
 let proptypemap = {
@@ -10,9 +10,9 @@ let proptypemap = {
   [PropTypes.VEC4] : 'vec4',
 } as const
 
-export const compileCache = new Map<string, mathl.ICompiledCode>()
+export const compileCache = new Map<string, mathl.CompiledJS>()
 
-export function compileTexShaderJS(shader: TextureShader): mathl.ICompiledCode {
+export function compileTexShaderJS(shader: TextureShader): mathl.CompiledJS {
   let code = shader.genCode()
   let sdef = shader.constructor.textureDefine()
 

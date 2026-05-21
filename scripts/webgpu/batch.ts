@@ -178,25 +178,36 @@ export class WebGPUBatchExecutor {
     }
   }
 
-  private getPipeline(sdef: ShaderDef, cmd: DrawCommand): Pipeline {
+  private getPipeline(sdef: ShaderDef, cmd: DrawCommand, cmdAttrs: Buffer[]): Pipeline {
     const sdefPtr = (sdef as unknown as BoundLike).ptr
     const topology = cmdTypeToTopology(cmd.type)
-    const cacheKey = `${sdefPtr}|${topology}`
+
+    // Build the per-slot layout from the *actual* buffer shape, not the
+    // shader's declared `elemSize`. WebGPU tolerates a narrower vertex
+    // format than the WGSL variable (e.g. `float32x3` data into a
+    // `vec4f` slot — missing components default to 0, w to 1). Keying
+    // off the buffer shape lets sculptcore feed vec3 normals into a
+    // WGSL `vec4f` declaration without the pipeline rejecting the bind.
+    const attrs = Array.from(sdef.attrs)
+    const slotShape: Array<{stride: number; format: GPUVertexFormat} | null> = attrs.map((a) => {
+      const found = cmdAttrs.find((b) => b.name === a.name)
+      if (!found) return null
+      const elemsize = found.elemsize
+      const stride = elemsize * gpuTypeBytes(found.type)
+      return {stride, format: gpuTypeWGSLFormat(found.type, elemsize)}
+    })
+
+    const shapeKey = slotShape.map((s) => (s ? `${s.format}@${s.stride}` : '_')).join(',')
+    const cacheKey = `${sdefPtr}|${topology}|${shapeKey}`
 
     let pipeline = this.pipelinesByShader.get(cacheKey)
     if (pipeline) return pipeline
 
-    const attrs = Array.from(sdef.attrs)
-    const vertexBuffers: GPUVertexBufferLayout[] = attrs.map((a, slot) => {
-      const elemsize = (a as unknown as {elemSize: number}).elemSize
-      const stride = elemsize * gpuTypeBytes(a.type)
+    const vertexBuffers: Array<GPUVertexBufferLayout | null> = slotShape.map((s, slot) => {
+      if (!s) return null
       return {
-        arrayStride: stride,
-        attributes: [{
-          shaderLocation: slot,
-          offset        : 0,
-          format        : gpuTypeWGSLFormat(a.type, elemsize),
-        }],
+        arrayStride: s.stride,
+        attributes: [{shaderLocation: slot, offset: 0, format: s.format}],
       }
     })
 
@@ -226,20 +237,22 @@ export class WebGPUBatchExecutor {
       const cmd = commands[i]
       if (!cmd.shader) continue
 
-      const pipeline = this.getPipeline(cmd.shader, cmd)
+      // `cmd.attrs` arrives from the WASM/Embind boundary as a
+      // Vector-like iterable, not a JS Array — `.find()` isn't on the
+      // prototype. Normalize once per command so the lookups below work.
+      const cmdAttrs = Array.from(cmd.attrs)
+
+      const pipeline = this.getPipeline(cmd.shader, cmd, cmdAttrs)
+      const sdefAttrs = Array.from(cmd.shader.attrs)
+      const count = cmd.end - cmd.start
+
       pass.setPipeline(pipeline.handle)
       pass.setBindGroup(0, this.opts.bindGroupForCommand(cmd, pipeline))
-
-      const sdefAttrs = Array.from(cmd.shader.attrs)
       for (let slot = 0; slot < sdefAttrs.length; slot++) {
-        const expected = sdefAttrs[slot].name
-        const found = cmd.attrs.find((a) => a.name === expected)
+        const found = cmdAttrs.find((a) => a.name === sdefAttrs[slot].name)
         if (!found) continue
-        const gpuBuf = this.uploadBuffer(found)
-        pass.setVertexBuffer(slot, gpuBuf.handle)
+        pass.setVertexBuffer(slot, this.uploadBuffer(found).handle)
       }
-
-      const count = cmd.end - cmd.start
       pass.draw(count, 1, cmd.start, 0)
     }
   }

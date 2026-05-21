@@ -22,6 +22,12 @@ import {Shaders} from '../shaders/shaders'
 import {GenericIsect} from '../util/spatial'
 import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 import type {DrawQueue, FrameContext} from '../render/queue'
+import {isWebGPU} from '../core/renderer_flag'
+import {getActiveWebGpuContext} from '../render/queue_factory'
+import {WebGPUBatchExecutor} from '../webgpu/batch'
+import {UniformBindings} from '../webgpu/uniform_bindings'
+import type {Pipeline} from '../webgpu/pipeline'
+import {wgslForSpatialShader} from './litemesh_wgsl'
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -196,6 +202,8 @@ export class LiteMesh extends SceneObjectData {
   drawBatch?: DrawBatch
   treeBatch?: DrawBatch
   drawBatchExecutor?: WebGLBatchExecutor
+  drawBatchExecutorGPU?: WebGPUBatchExecutor
+  private gpuUniforms?: IUniformsBlock
 
   constructor(wasmMesh?: WasmMesh) {
     super()
@@ -289,6 +297,11 @@ export class LiteMesh extends SceneObjectData {
       normalMatrix,
     }
 
+    if (isWebGPU()) {
+      this.drawQGPU(uniforms2, drawBVH)
+      return
+    }
+
     queue.scheduleRawGLPass((gl: WebGL2RenderingContext) => {
       let exec = this.drawBatchExecutor
       if (exec === undefined) {
@@ -302,6 +315,72 @@ export class LiteMesh extends SceneObjectData {
         exec.dispatch(this.treeBatch, uniforms2)
       }
     })
+  }
+
+  /**
+   * WebGPU sibling of the `scheduleRawGLPass` body above. Runs against
+   * the active `WebGpuRenderContext`'s currently-open render pass,
+   * routing sculptcore `DrawBatch`es through `WebGPUBatchExecutor`.
+   * `bindGroupForCommand` lazily reflects each pipeline's WGSL via
+   * `UniformBindings` and returns the `@group(0)` bind group with
+   * `drawMatrix`/`normalMatrix`/`uColor` already written.
+   */
+  private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean): void {
+    const ctx = getActiveWebGpuContext()
+    if (!ctx || !ctx.currentPass) return
+    const pass = ctx.currentPass
+    const surfaceFormat = navigator.gpu.getPreferredCanvasFormat()
+
+    // The bindGroupForCommand callback runs inside `exec.dispatch()` —
+    // route the per-frame uniforms through an instance field so the
+    // closure (built once on first dispatch) always reads the active
+    // frame's values.
+    this.gpuUniforms = uniforms
+
+    let exec = this.drawBatchExecutorGPU
+    if (exec === undefined) {
+      const bindingsCache = new WeakMap<Pipeline, UniformBindings>()
+      const self: LiteMesh = this
+      exec = new WebGPUBatchExecutor({
+        device       : ctx.device,
+        wasm         : this.wasm,
+        pipelineCache: ctx.pipelineCache,
+        wgslForShader: wgslForSpatialShader,
+        colorTargets : [{
+          format: surfaceFormat,
+          blend : {
+            color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+            alpha: {srcFactor: 'one',       dstFactor: 'one-minus-src-alpha', operation: 'add'},
+          },
+        }],
+        depthStencil: {
+          format           : 'depth24plus',
+          depthWriteEnabled: true,
+          depthCompare     : 'less-equal',
+        },
+        bindGroupForCommand: (_cmd, pipeline) => {
+          let bindings = bindingsCache.get(pipeline)
+          if (!bindings) {
+            bindings = new UniformBindings(
+              ctx.device,
+              pipeline.descriptor.wgsl,
+              pipeline.descriptor.label
+            )
+            bindingsCache.set(pipeline, bindings)
+          }
+          bindings.write(self.gpuUniforms!)
+          const bg = bindings.getBindGroup(pipeline.handle, 0)
+          if (!bg) {
+            throw new Error('litemesh: spatial pipeline declares no @group(0) uniform bindings')
+          }
+          return bg
+        },
+      })
+      this.drawBatchExecutorGPU = exec
+    }
+
+    if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
+    if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
   }
 
   regenRender() {

@@ -92,6 +92,12 @@ const serv = http.createServer(
       p = '/' + p
     }
 
+    // Strip query string and fragment — they're meaningful to the
+    // client (e.g. `?renderer=webgpu` is read by renderer_flag.ts) but
+    // would otherwise end up in the filesystem path and 404.
+    const qidx = p.search(/[?#]/)
+    if (qidx >= 0) p = p.slice(0, qidx)
+
     globalThis.ORIGIN = req.headers['origin'] ?? '*' //Boolean(origin.trim().length) ? origin : undefined
 
     console.log(req.method, p, ORIGIN)

@@ -128,6 +128,7 @@ export function initWebGL() {
     // on first draw. `_gl` is a throwing Proxy so any code path that
     // forgot an isWebGPU() guard surfaces as a clear error.
     window._gl = makeWebGpuGlStub(canvas)
+    loadWgslShaderStubs()
     return
   }
 
@@ -191,6 +192,35 @@ export function loadShaders(gl: WebGL2RenderingContext) {
   for (const k in view3d_shaders.ShaderDef) {
     const key = k as keyof typeof view3d_shaders.ShaderDef
     view3d_shaders.Shaders[key] = loadShader(gl, view3d_shaders.ShaderDef[key])
+  }
+}
+
+/**
+ * Stand-in for `loadShaders` on the WebGPU path. The WebGL2 program
+ * object is replaced by a tag carrying the WGSL registry key. The
+ * `WebGPUDrawQueueAdapter` reads `.wgslKey` off the submission's
+ * pipeline to resolve a `Pipeline` from `wgsl_shaders.ts`.
+ *
+ * Methods that the WebGL path would call on the `ShaderProgram` —
+ * `bind`, `uniformloc`, etc. — are stubbed to no-ops so a stray
+ * legacy code path doesn't crash before we can route it through
+ * the queue. `uniforms` stays as a plain bag so callers that read
+ * defaults off it still get something back.
+ */
+function loadWgslShaderStubs(): void {
+  for (const k in view3d_shaders.ShaderDef) {
+    const key = k as keyof typeof view3d_shaders.ShaderDef
+    const stub = {
+      wgslKey: key,
+      name   : key,
+      uniforms: {...(view3d_shaders.ShaderDef[key].uniforms ?? {})},
+      bind() {},
+      unbind() {},
+      destroy() {},
+      uniformloc() {return null},
+      uniform_set(_k: string, _v: unknown) {},
+    } as unknown as view3d_shaders.Shaders[typeof key]
+    view3d_shaders.Shaders[key] = stub
   }
 }
 
@@ -1118,7 +1148,9 @@ View3D {
       throw new Error('no webgl')
     }
 
-    sculptcore_demo.initSculptcoreDemo(getWebGL())
+    if (!isWebGPU()) {
+      sculptcore_demo.initSculptcoreDemo(getWebGL())
+    }
 
     this.canvas = this.gl.canvas as CanvasWithExtra
     this.grid = this.makeGrid()

@@ -428,17 +428,62 @@ fn fs_main(in : VsOut) -> FsOut {
 `
 
 /**
- * Compact `position + color + id` layout (no uv/normal). Used by
- * `MeshLinearZShader`. Stride = 3*4 + 4*4 + 1*4 = 32 bytes.
+ * Per-attribute vertex layouts that match `SimpleIsland._uploadGpuBuffers`'s
+ * one-buffer-per-LayerType output. Each shader entry composes the slots
+ * it needs into a fixed-position `vertexBuffers` array — see the comment
+ * on `WGSL_VERTEX_SLOTS` below.
+ *
+ * The `shaderLocation` numbers vary per shader (e.g. position is
+ * `@location(0)` everywhere, but `MeshLinearZShader` puts `color` at
+ * `@location(1)` while `BasicLitMesh` puts it at `@location(3)`), so we
+ * build the per-attribute layout with the location number baked in at
+ * the call site rather than as a shared constant.
  */
-export const POS_COLOR_ID_VERTEX_LAYOUT: GPUVertexBufferLayout = {
-  arrayStride: 32,
-  attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'},
-    {shaderLocation: 1, offset: 12, format: 'float32x4'},
-    {shaderLocation: 2, offset: 28, format: 'float32'},
-  ],
+function locLayout(shaderLocation: number): GPUVertexBufferLayout {
+  return {arrayStride: 12, attributes: [{shaderLocation, offset: 0, format: 'float32x3'}]}
 }
+function normalLayout(shaderLocation: number): GPUVertexBufferLayout {
+  return {arrayStride: 12, attributes: [{shaderLocation, offset: 0, format: 'float32x3'}]}
+}
+function uvLayout(shaderLocation: number): GPUVertexBufferLayout {
+  return {arrayStride: 8, attributes: [{shaderLocation, offset: 0, format: 'float32x2'}]}
+}
+function colorLayout(shaderLocation: number): GPUVertexBufferLayout {
+  return {arrayStride: 16, attributes: [{shaderLocation, offset: 0, format: 'float32x4'}]}
+}
+function idLayout(shaderLocation: number): GPUVertexBufferLayout {
+  return {arrayStride: 4, attributes: [{shaderLocation, offset: 0, format: 'float32'}]}
+}
+
+/**
+ * Canonical SimpleIsland slot → LayerType mapping. The
+ * `SimpleIsland.drawGPU` path calls `setVertexBuffer(slot, ...)` with
+ * a buffer for each present layer at the slot index listed here. A
+ * shader's `vertexBuffers` array is positional against this same
+ * mapping, with `null` entries for the slots the shader doesn't use.
+ *
+ *   slot 0 → LOC     (vec3, stride 12)
+ *   slot 1 → NORMAL  (vec3, stride 12)
+ *   slot 2 → UV      (vec2, stride 8)
+ *   slot 3 → COLOR   (vec4, stride 16)
+ *   slot 4 → ID      (f32,  stride 4)
+ */
+export const WGSL_VERTEX_SLOTS = Object.freeze({
+  LOC: 0, NORMAL: 1, UV: 2, COLOR: 3, ID: 4,
+})
+
+/**
+ * Compact `position + color + id` shape (no uv/normal). Used by
+ * `MeshLinearZShader`. WGSL declares `@location(0) pos, @location(1) color,
+ * @location(2) id`, mapped onto canonical slots 0/3/4.
+ */
+export const POS_COLOR_ID_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
+  locLayout(0),
+  null,
+  null,
+  colorLayout(1),
+  idLayout(2),
+]
 
 /**
  * MeshIDShader — port of `MeshIDShader` (shaders.ts:1153-1220). Renders
@@ -484,49 +529,40 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 `
 
 /**
- * Standard vertex layout used by `SimpleMesh` / `ChunkedSimpleMesh` when
- * all four interleaved layers (position, uv, color, id) are present.
- * Stride = 3*4 + 2*4 + 4*4 + 1*4 = 40 bytes.
- *
- * Phase 4c swaps `SimpleIsland`'s buffer upload to emit this layout
- * against a single `GpuBuffer`.
+ * `position + uv + color + id` shape — `MeshIDShader`. WGSL locations
+ * 0/1/2/3 mapped onto canonical slots 0/2/3/4.
  */
-export const STANDARD_VERTEX_LAYOUT: GPUVertexBufferLayout = {
-  arrayStride: 40,
-  attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'}, // position
-    {shaderLocation: 1, offset: 12, format: 'float32x2'}, // uv
-    {shaderLocation: 2, offset: 20, format: 'float32x4'}, // color
-    {shaderLocation: 3, offset: 36, format: 'float32'},   // id
-  ],
-}
+export const STANDARD_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
+  locLayout(0),
+  null,
+  uvLayout(1),
+  colorLayout(2),
+  idLayout(3),
+]
 
 /**
- * Variant of `STANDARD_VERTEX_LAYOUT` without the `id` attribute —
- * matches `BasicLineShader` / `ObjectLineShader`. Stride = 36 bytes.
+ * `position + uv + color` shape (no normal, no id) — `BasicLineShader`,
+ * `ObjectLineShader`, `BasicLineShader2D`. WGSL locations 0/1/2 mapped
+ * onto canonical slots 0/2/3.
  */
-export const NO_ID_VERTEX_LAYOUT: GPUVertexBufferLayout = {
-  arrayStride: 36,
-  attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'},
-    {shaderLocation: 1, offset: 12, format: 'float32x2'},
-    {shaderLocation: 2, offset: 20, format: 'float32x4'},
-  ],
-}
+export const NO_ID_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
+  locLayout(0),
+  null,
+  uvLayout(1),
+  colorLayout(2),
+]
 
 /**
- * Lit-mesh layout: position + normal + uv + color. Matches
- * `BasicLitMesh` / `WidgetMeshShader`. Stride = 48 bytes.
+ * Lit-mesh shape: position + normal + uv + color. `BasicLitMesh`,
+ * `WidgetMeshShader`, `NormalPassShader`. WGSL locations 0/1/2/3
+ * mapped onto canonical slots 0/1/2/3.
  */
-export const LIT_MESH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
-  arrayStride: 48,
-  attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'}, // position
-    {shaderLocation: 1, offset: 12, format: 'float32x3'}, // normal
-    {shaderLocation: 2, offset: 24, format: 'float32x2'}, // uv
-    {shaderLocation: 3, offset: 32, format: 'float32x4'}, // color
-  ],
-}
+export const LIT_MESH_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
+  locLayout(0),
+  normalLayout(1),
+  uvLayout(2),
+  colorLayout(3),
+]
 
 /**
  * Strip-line layout for `LineTriStripShader`. Position + _strip_dir +
@@ -535,6 +571,11 @@ export const LIT_MESH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
  * tagged for the GL bind path and irrelevant to the WGSL pipeline).
  * Stride = 3*4 + 4*4 + 2*4 = 36 bytes.
  */
+// LineTriStripShader uses CUSTOM attributes (`_strip_dir`, `_strip_uv`)
+// that don't map to SimpleIsland's LOC/NORMAL/UV/COLOR/ID slots. The
+// caller is responsible for binding those manually before draw. This
+// layout is kept for reference only — it's not threaded through the
+// queue adapter's per-LayerType bind path.
 export const STRIP_LINE_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 36,
   attributes: [
@@ -863,6 +904,10 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
  * `vec2` BVH-def attribute at location 4 on top of `LIT_MESH_VERTEX_LAYOUT`.
  * Stride = 48 + 8 = 56 bytes.
  */
+// SculptShaderHexDeform adds a BVH-def CUSTOM attribute at location 4
+// alongside the standard LIT layers. The CUSTOM slot doesn't map to
+// the canonical SimpleIsland mapping — sculptcore binds it manually.
+// Kept as the single-buffer reference layout.
 export const SCULPT_HEX_DEFORM_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 56,
   attributes: [
@@ -1066,8 +1111,11 @@ export interface WgslShaderEntry {
   key: string
   /** Raw (un-preprocessed) WGSL source. */
   source: string
-  /** Vertex buffer layout(s) the pipeline expects. */
-  vertexBuffers: GPUVertexBufferLayout[]
+  /** Vertex buffer layouts the pipeline expects, indexed by canonical
+   *  slot (`WGSL_VERTEX_SLOTS`). Slots the shader doesn't use are
+   *  `null` so positional alignment with `SimpleIsland.drawGPU` is
+   *  preserved. */
+  vertexBuffers: Array<GPUVertexBufferLayout | null>
   /** Default color target — caller can override per-pass. */
   colorTargets: GPUColorTargetState[]
   /** Default primitive topology. */
@@ -1086,6 +1134,18 @@ const DEFAULT_COLOR_TARGET: GPUColorTargetState = {
 
 const ID_PICKING_TARGET: GPUColorTargetState = {
   format: 'rgba32float',
+}
+
+/**
+ * The default depth state matches the depth attachment that
+ * `view3d_draw_webgpu.ts` opens on the canvas pass. Every WGSL
+ * pipeline that runs through the standard canvas pass needs a
+ * depth-state declaration — WebGPU rejects the pair otherwise.
+ */
+const DEFAULT_DEPTH_STATE: GPUDepthStencilState = {
+  format            : 'depth24plus',
+  depthWriteEnabled : true,
+  depthCompare      : 'less-equal',
 }
 
 /**
@@ -1122,7 +1182,7 @@ export function buildPipelineDescriptor(
     vertexBuffers: entry.vertexBuffers,
     colorTargets : entry.colorTargets,
     primitive    : entry.primitive,
-    depthStencil : entry.depthStencil,
+    depthStencil : entry.depthStencil ?? DEFAULT_DEPTH_STATE,
   }
 }
 
@@ -1133,7 +1193,7 @@ export function buildPipelineDescriptor(
 registerWgslShader({
   key          : 'BasicLineShader',
   source       : BASIC_LINE_WGSL,
-  vertexBuffers: [NO_ID_VERTEX_LAYOUT],
+  vertexBuffers: NO_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'line-list'},
 })
@@ -1141,7 +1201,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'MeshIDShader',
   source       : MESH_ID_WGSL,
-  vertexBuffers: [STANDARD_VERTEX_LAYOUT],
+  vertexBuffers: STANDARD_VERTEX_LAYOUT,
   colorTargets : [ID_PICKING_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
@@ -1149,7 +1209,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'ObjectLineShader',
   source       : OBJECT_LINE_WGSL,
-  vertexBuffers: [NO_ID_VERTEX_LAYOUT],
+  vertexBuffers: NO_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'line-list'},
 })
@@ -1157,7 +1217,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'WidgetMeshShader',
   source       : WIDGET_MESH_WGSL,
-  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  vertexBuffers: LIT_MESH_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
@@ -1165,7 +1225,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'BasicLitMesh',
   source       : BASIC_LIT_MESH_WGSL,
-  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  vertexBuffers: LIT_MESH_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
@@ -1173,7 +1233,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'BasicLineShader2D',
   source       : BASIC_LINE_2D_WGSL,
-  vertexBuffers: [NO_ID_VERTEX_LAYOUT],
+  vertexBuffers: NO_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'line-list'},
 })
@@ -1181,7 +1241,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'NormalPassShader',
   source       : NORMAL_PASS_WGSL,
-  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  vertexBuffers: LIT_MESH_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
@@ -1189,7 +1249,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'MeshLinearZShader',
   source       : MESH_LINEAR_Z_WGSL,
-  vertexBuffers: [POS_COLOR_ID_VERTEX_LAYOUT],
+  vertexBuffers: POS_COLOR_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
   depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
@@ -1198,7 +1258,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'MeshEditShader',
   source       : MESH_EDIT_WGSL,
-  vertexBuffers: [POS_COLOR_ID_VERTEX_LAYOUT],
+  vertexBuffers: POS_COLOR_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
@@ -1214,7 +1274,7 @@ registerWgslShader({
 registerWgslShader({
   key          : 'SculptShaderSimple',
   source       : SCULPT_SIMPLE_WGSL,
-  vertexBuffers: [LIT_MESH_VERTEX_LAYOUT],
+  vertexBuffers: LIT_MESH_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
   depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},

@@ -27,6 +27,10 @@ export interface WebGpuRenderContextOptions {
   drawmats: DrawMats
   /** Optional pre-existing cache; otherwise one is created. */
   pipelineCache?: PipelineCache
+  /** Preferred canvas surface format — fed into pipelines whose
+   *  color target the queue adapter needs to retarget at draw time.
+   *  Defaults to `'bgra8unorm'` when omitted, matching the registry. */
+  surfaceFormat?: GPUTextureFormat
 }
 
 /**
@@ -72,6 +76,7 @@ export class WebGpuRenderContext {
   readonly fullscreenQuad: GpuBuffer
   drawmats: DrawMats
   size: [number, number]
+  surfaceFormat: GPUTextureFormat
 
   constructor(opts: WebGpuRenderContextOptions) {
     this.device = opts.device
@@ -80,6 +85,7 @@ export class WebGpuRenderContext {
     this.pipelineBindings = new Map()
     this.drawmats = opts.drawmats
     this.size = [opts.size[0], opts.size[1]]
+    this.surfaceFormat = opts.surfaceFormat ?? 'bgra8unorm'
     this.currentPass = undefined
     this.fullscreenQuad = new GpuBuffer(opts.device, {
       label: 'WebGpuRenderContext.fullscreenQuad',

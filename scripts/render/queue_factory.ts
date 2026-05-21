@@ -80,6 +80,7 @@ export function createDrawQueue(frame: FrameContext): DrawQueue {
     passEncoder,
     pipelineCache   : ctx.pipelineCache,
     pipelineBindings: ctx.pipelineBindings,
+    surfaceFormat   : ctx.surfaceFormat,
   }
   return new WebGPUDrawQueueAdapter(gpuFrame)
 }

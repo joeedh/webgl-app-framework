@@ -1,7 +1,7 @@
 'use strict'
 
-import {ShaderProgram, IUniformsBlock} from '../webgl/webgl'
-import {PrimitiveTypes} from '../webgl/simplemesh'
+import type {ShaderProgram, IUniformsBlock} from '../webgl/webgl'
+import type {PrimitiveTypes} from '../webgl/simplemesh'
 
 /**
  * Anything that can be drawn by binding a program and calling its draw method.

@@ -1,35 +1,50 @@
 /**
  * WebGPU sibling of `view3d_draw.ts` / `View3D.viewportDraw_intern`.
  *
- * Owns the per-canvas WebGPU lifecycle (`GpuContext` + `WebGpuRenderContext`)
- * and drives a single canvas-targeted render pass that walks the
- * scene-object draw chain. Because `createDrawQueue` in
- * `scripts/render/queue_factory.ts` already branches on `isWebGPU()` +
- * the registered active context, all we have to do here is:
+ * Owns the per-canvas WebGPU lifecycle (`GpuContext` +
+ * `WebGpuRenderContext`) and drives a single canvas-targeted render
+ * pass that walks the scene-object draw chain. Because
+ * `createDrawQueue` in `scripts/render/queue_factory.ts` already
+ * branches on `isWebGPU()` + the registered active context, all we
+ * have to do here is:
  *
  *   1. Construct + register the `WebGpuRenderContext` once per canvas.
- *   2. Each frame: acquire the canvas surface, open a render pass, set
- *      `currentPass`, run the per-object draw loop inside it.
+ *   2. Each frame: acquire the canvas surface, open one full-canvas
+ *      render pass, set viewport/scissor to the view3d region, then
+ *      drive the existing scene-object draw chain inside it.
  *
- * Everything else (grid, drawlines, widgets, toolmode overlays, the
- * full `RealtimeEngine` pass graph) is intentionally skipped on this
- * smoke-test path. Each is tagged TODO(webgpu-followup) and has its
- * own per-feature port pending — see the migration plan.
+ * The color + depth attachments cover the *entire canvas surface*
+ * (otherwise WebGPU rejects the pass with a size-mismatch). The
+ * view3d region inside that canvas is enforced with `setViewport`
+ * + `setScissorRect` so multi-area screens render to the right
+ * rectangles.
+ *
+ * The legacy WebGL `ShaderProgram` objects in `view3d_shaders.Shaders`
+ * are replaced by `wgslKey`-tagged stubs on the WebGPU path (see
+ * `loadWgslShaderStubs` in `view3d.ts`), so existing `ob.draw(view3d,
+ * gl, uniforms, program)` calls flow through `createDrawQueue` →
+ * `WebGPUDrawQueueAdapter`, which resolves the pipeline from the
+ * WGSL registry via that key.
  */
 
-import type {Matrix4} from '../../path.ux/scripts/util/vectormath.js'
-import type {DrawMats} from '../../webgl/webgl.js'
+import {Matrix4, Vector2} from '../../path.ux/scripts/util/vectormath.js'
+import type {Vector3, Vector4} from '../../path.ux/scripts/util/vectormath.js'
+import type {DrawMats, IUniformsBlock, ShaderProgram} from '../../webgl/webgl.js'
+import {SimpleMesh, LayerTypes} from '../../webgl/simplemesh.js'
+import type {FrameContext} from '../../render/queue.js'
 import {isWebGPU} from '../../core/renderer_flag.js'
 import {GpuContext} from '../../webgpu/gpucontext.js'
 import {WebGpuRenderContext} from '../../webgpu/render_context.js'
 import {GpuTexture} from '../../webgpu/texture.js'
 import {TextureUsage} from '../../webgpu/flags.js'
-import {setActiveWebGpuContext} from '../../render/queue_factory.js'
+import {setActiveWebGpuContext, createDrawQueue} from '../../render/queue_factory.js'
+import {View3DFlags} from './view3d_base.js'
+import * as view3d_shaders from '../../shaders/shaders.js'
 
 interface WebGpuViewport {
   gpu: GpuContext
   ctx: WebGpuRenderContext
-  /** Cached depth texture, recreated on size change. */
+  /** Cached depth texture; recreated when canvas surface size changes. */
   depth: GpuTexture | undefined
   depthSize: [number, number]
 }
@@ -37,16 +52,7 @@ interface WebGpuViewport {
 const viewports = new WeakMap<HTMLCanvasElement | OffscreenCanvas, WebGpuViewport>()
 const inflightInits = new WeakMap<HTMLCanvasElement | OffscreenCanvas, Promise<WebGpuViewport>>()
 
-/**
- * `DrawMats` is required by `WebGpuRenderContextOptions` but the
- * matrices are mutable on the camera and we update them in place — so
- * any concrete `DrawMats` (the active camera) works fine. We grab one
- * here lazily; the context's `drawmats` reference is rebound each
- * frame in `drawViewportWebGpu`.
- */
 function fakeDrawMats(): DrawMats {
-  // We only need the shape; nothing reads it until callers wire up a
-  // real camera, at which point drawViewportWebGpu replaces it.
   return {} as DrawMats
 }
 
@@ -56,13 +62,23 @@ async function initViewport(
 ): Promise<WebGpuViewport> {
   const gpu = await GpuContext.create({canvas, powerPreference: 'high-performance'})
   const ctx = new WebGpuRenderContext({
-    device  : gpu.device,
-    drawmats: fakeDrawMats(),
+    device       : gpu.device,
+    drawmats     : fakeDrawMats(),
     size,
+    surfaceFormat: gpu.surfaceFormat,
   })
   setActiveWebGpuContext(ctx)
   const viewport: WebGpuViewport = {gpu, ctx, depth: undefined, depthSize: [0, 0]}
   viewports.set(canvas, viewport)
+  // Debug hook — exposes the live device + ctx so the DevTools console
+  // can `gpuDevice.popErrorScope()` etc. without touching app code.
+  ;(globalThis as unknown as {__webgpuDebug?: unknown}).__webgpuDebug = {
+    gpu, ctx, device: gpu.device, viewport,
+  }
+  gpu.device.addEventListener?.('uncapturederror', (ev) => {
+    const e = ev as unknown as {error: GPUError}
+    console.error('[webgpu] uncapturederror:', e.error.message)
+  })
   return viewport
 }
 
@@ -82,20 +98,11 @@ function ensureDepth(viewport: WebGpuViewport, w: number, h: number): GpuTexture
   return viewport.depth
 }
 
-let warnedSkipped = false
-
-function warnSkippedFeaturesOnce(): void {
-  if (warnedSkipped) return
-  warnedSkipped = true
-  console.warn(
-    '[webgpu] viewport draw on WebGPU is a smoke-test path — these features are skipped:\n' +
-      '  - RealtimeEngine pass graph (drawRender)\n' +
-      '  - grid lines\n' +
-      '  - drawDrawLines\n' +
-      '  - scene.toolmode.on_drawstart / on_drawend / drawObject\n' +
-      '  - widgets.draw\n' +
-      'see scripts/editors/view3d/view3d_draw_webgpu.ts for per-feature TODOs.'
-  )
+const warnedFeatures = new Set<string>()
+function warnOnce(key: string, message: string): void {
+  if (warnedFeatures.has(key)) return
+  warnedFeatures.add(key)
+  console.warn(`[webgpu] ${key}: ${message}`)
 }
 
 /**
@@ -108,35 +115,42 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
   const canvas = view3d.canvas
   if (!canvas) return
 
-  const sz = view3d.glSize ?? view3d.size
-  const size: [number, number] = [Math.max(1, ~~sz[0]), Math.max(1, ~~sz[1])]
-
   let viewport = viewports.get(canvas)
   if (!viewport) {
     let pending = inflightInits.get(canvas)
     if (!pending) {
-      pending = initViewport(canvas, size).finally(() => {
+      const initSize: [number, number] = [
+        Math.max(1, canvas.width | 0),
+        Math.max(1, canvas.height | 0),
+      ]
+      pending = initViewport(canvas, initSize).finally(() => {
         inflightInits.delete(canvas)
       })
       inflightInits.set(canvas, pending)
-      pending.catch(err => {
+      pending.then(() => {
+        // The first frame's drawViewportWebGpu call returned early
+        // before init resolved. Nothing else will schedule a frame
+        // (the rAF loop only re-fires on `redraw_viewport()` /
+        // interaction), so kick one ourselves once the device is up.
+        const w = window as unknown as {redraw_viewport?: () => void}
+        w.redraw_viewport?.()
+      }).catch(err => {
         console.error('[webgpu] init failed — falling back to WebGL on next frame', err)
       })
     }
-    // First frame after a `?renderer=webgpu` flip: nothing to draw yet.
     return
   }
 
-  warnSkippedFeaturesOnce()
-
-  // Keep size + matrices fresh — the camera matrices are populated by
-  // viewportDraw_intern's caller (regen_mats already ran), so we
-  // just point at the active camera's DrawMats.
-  viewport.ctx.size = size
   if (view3d.activeCamera) viewport.ctx.drawmats = view3d.activeCamera
 
   const canvasTex = viewport.gpu.canvasContext.getCurrentTexture()
-  const depth = ensureDepth(viewport, size[0], size[1])
+  // The canvas texture is sized to the full HTMLCanvasElement
+  // (canvas.width × canvas.height), so the depth attachment MUST
+  // match that, not the view3d region's glSize.
+  const surfaceW = canvasTex.width
+  const surfaceH = canvasTex.height
+  viewport.ctx.size = [surfaceW, surfaceH]
+  const depth = ensureDepth(viewport, surfaceW, surfaceH)
 
   const desc: GPURenderPassDescriptor = {
     label          : 'view3d.canvasPass',
@@ -156,77 +170,195 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
 
   viewport.ctx.beginFrame()
   try {
-    viewport.ctx.renderStageDesc(desc, () => {
-      drawObjectsWebGpu(view3d)
+    viewport.ctx.renderStageDesc(desc, (pass) => {
+      // Clip to the view3d region inside the full-canvas attachments.
+      const x = clamp(view3d.glPos[0] | 0, 0, surfaceW)
+      const y = clamp(view3d.glPos[1] | 0, 0, surfaceH)
+      const w = clamp(view3d.glSize[0] | 0, 0, surfaceW - x)
+      const h = clamp(view3d.glSize[1] | 0, 0, surfaceH - y)
+      if (w > 0 && h > 0) {
+        pass.setViewport(x, y, w, h, 0, 1)
+        pass.setScissorRect(x, y, w, h)
+      }
+      drawSceneWebGpu(view3d)
     })
   } finally {
     viewport.ctx.endFrame()
   }
 }
 
-/**
- * Per-object loop, WebGPU edition. Mirrors `View3D.drawObjects()` but
- * skips toolmode.drawObject — toolmode overlays haven't been ported
- * and they'd touch the stub `gl` directly.
- *
- * Reuses the existing `ob.draw(view3d, gl, uniforms, program)`
- * signature; `gl` is a stub Proxy in WebGPU mode and never executed
- * because the draw flows through `createDrawQueue` → WebGPU adapter.
- */
-function drawObjectsWebGpu(view3d: ViewLike): void {
-  const scene = view3d.ctx?.scene
-  if (!scene) return
-  const camera = view3d.activeCamera
-  if (!camera) return
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v
+}
 
-  // `Shaders` is loaded by WebGL boot — pull it lazily so this module
-  // doesn't pull the WebGL chain into the WebGPU smoke path's
-  // dependency graph at import time.
-  const Shaders = (globalThis as unknown as {view3d_shaders?: {Shaders?: Record<string, unknown>}})
-    .view3d_shaders?.Shaders
-  // Fall through with undefined program — the WebGPU adapter resolves
-  // via `submission.pipeline.wgslKey`, so as long as ob.draw passes a
-  // ShaderProgram that carries the wgslKey tag, we're fine. The
-  // legacy `Shaders.BasicLitMesh` is the default.
-  const program = (Shaders?.BasicLitMesh ?? null) as unknown
-  if (program === null) {
-    // Shaders not yet loaded — should be impossible since glInit runs first,
-    // but bail rather than crash.
+/**
+ * Drive the scene-object draw chain plus a minimal set of overlays
+ * inside the open WebGPU render pass.
+ *
+ * Each overlay is wrapped in its own try/catch so a failure in one
+ * (say, an unported widget pipeline) doesn't kill the entire frame.
+ */
+function drawSceneWebGpu(view3d: ViewLike): void {
+  // Scene-object meshes — routes through createDrawQueue, which
+  // returns the WebGPU adapter while currentPass is open.
+  try {
+    view3d.drawObjects?.()
+  } catch (err) {
+    warnOnce('drawObjects', `${(err as Error).message}`)
+  }
+
+  drawGridWebGpu(view3d)
+  drawDrawLinesWebGpu(view3d)
+
+  // Toolmode overlays — most call SimpleMesh.draw / SimpleMesh.drawLines,
+  // which route through createDrawQueue on WebGPU. The legacy
+  // gl.enable/depthMask/blendFunc bookkeeping inside on_drawstart/end
+  // hits the permissive stub which no-ops it.
+  const scene = (view3d as ViewLike & {ctx?: {scene?: SceneLike}}).ctx?.scene
+  if (scene?.toolmode) {
+    try {
+      scene.toolmode.on_drawstart?.(view3d, view3d.gl as WebGL2RenderingContext)
+    } catch (err) {
+      warnOnce('toolmode.on_drawstart', `${(err as Error).message}`)
+    }
+  }
+
+  // Widgets — `WidgetShape.draw` calls `this.mesh.draw(gl)` which
+  // SimpleMesh routes through the queue on WebGPU.
+  try {
+    view3d.widgets?.draw?.(view3d, view3d.gl as WebGL2RenderingContext)
+  } catch (err) {
+    warnOnce('widgets', `${(err as Error).message}`)
+  }
+
+  if (scene?.toolmode) {
+    try {
+      scene.toolmode.on_drawend?.(view3d, view3d.gl as WebGL2RenderingContext)
+    } catch (err) {
+      warnOnce('toolmode.on_drawend', `${(err as Error).message}`)
+    }
+  }
+
+  // The RealtimeEngine pass graph (drawRender) still needs its own
+  // WGSL port — that lives in scripts/webgpu/render_graph.ts but
+  // none of the realtime passes have a WGSL sibling yet. The smoke
+  // path only matters when SHOW_RENDER / ONLY_RENDER is set.
+  if (view3d.flag !== undefined &&
+      (view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER))) {
+    warnOnce('drawRender',
+      'RealtimeEngine pass graph not yet on WebGPU — flip off SHOW_RENDER to see scene-object meshes.')
+  }
+}
+
+function drawGridWebGpu(view3d: ViewLike): void {
+  if (!view3d.grid) return
+  if (view3d.flag === undefined || !(view3d.flag & View3DFlags.SHOW_GRID)) return
+
+  const program = view3d_shaders.Shaders.BasicLineShader
+  if (!program) {
+    warnOnce('grid', 'view3d_shaders.Shaders.BasicLineShader not initialized')
     return
   }
 
-  const uniforms = {
-    projectionMatrix: camera.rendermat,
-    normalMatrix    : camera.normalmat,
-    near            : camera.near,
-    far             : camera.far,
-    aspect          : camera.aspect,
+  try {
+    const uniforms: IUniformsBlock = {
+      ...sharedUniforms(view3d),
+      objectMatrix : new Matrix4(),
+      polygonOffset: 0.0,
+      alpha        : 1.0,
+    } as unknown as IUniformsBlock
+    submitMeshWebGpu(view3d, view3d.grid, program, uniforms)
+  } catch (err) {
+    warnOnce('grid', `${(err as Error).message}`)
+  }
+}
+
+function drawDrawLinesWebGpu(view3d: ViewLike): void {
+  const drawlines = view3d.drawlines
+  if (!drawlines || drawlines.length === 0) return
+
+  const program = view3d_shaders.Shaders.BasicLineShader
+  if (!program) {
+    warnOnce('drawDrawLines', 'view3d_shaders.Shaders.BasicLineShader not initialized')
+    return
+  }
+
+  try {
+    const sm  = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
+    const sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
+    for (let i = 0; i < drawlines.length; i++) {
+      const dl = drawlines[i] as DrawLineLike
+      const line = (dl.useZ ? sm : sm2).line(dl.v1, dl.v2)
+      line.uvs(new Vector2([0, 0]), new Vector2([1, 1]))
+      line.colors(dl.color, dl.color)
+    }
+    const uniforms: IUniformsBlock = {
+      ...sharedUniforms(view3d),
+      objectMatrix : new Matrix4(),
+      polygonOffset: 2.5,
+      alpha        : 1.0,
+    } as unknown as IUniformsBlock
+    submitMeshWebGpu(view3d, sm2 as unknown as SimpleMesh, program, uniforms)
+    submitMeshWebGpu(view3d, sm as unknown as SimpleMesh, program, uniforms)
+    // Don't sm.destroy(gl) — gl is the throwing Proxy. The buffers
+    // are short-lived; GpuBuffers get GC'd along with the SimpleMesh.
+  } catch (err) {
+    warnOnce('drawDrawLines', `${(err as Error).message}`)
+  }
+}
+
+/**
+ * Submit a SimpleMesh-like through createDrawQueue. The WebGPU adapter
+ * resolves `program.wgslKey` against the WGSL shader registry, then
+ * calls `mesh.drawGPU(pass, pipeline, uniforms)` after uploading any
+ * pending vertex buffers via `_uploadGpuBuffers`.
+ */
+function submitMeshWebGpu(
+  view3d: ViewLike,
+  mesh: SimpleMesh,
+  program: ShaderProgram,
+  uniforms: IUniformsBlock
+): void {
+  const frame: FrameContext = {gl: view3d.gl as WebGL2RenderingContext, uniforms, program}
+  const queue = createDrawQueue(frame)
+  queue.submit({pipeline: program, mesh, uniforms})
+}
+
+function sharedUniforms(view3d: ViewLike): IUniformsBlock {
+  const cam = view3d.activeCamera
+  return {
+    projectionMatrix: cam.rendermat,
+    normalMatrix    : cam.normalmat,
+    near            : cam.near,
+    far             : cam.far,
+    aspect          : cam.aspect,
     size            : view3d.glSize,
     polygonOffset   : 0.0,
-    objectMatrix    : undefined as unknown,
     object_id       : 0,
-    alpha           : 1.0,
-  }
-
-  const gl = view3d.gl // the stub Proxy; routed only to the WebGL adapter,
-                       // which createDrawQueue skips on WebGPU.
-
-  for (const ob of scene.objects.visible) {
-    uniforms.objectMatrix = ob.outputs.matrix.getValue()
-    uniforms.object_id = ob.lib_id
-    ob.draw(view3d, gl, uniforms, program)
-  }
+  } as unknown as IUniformsBlock
 }
 
 // Minimal structural type — we don't import View3D to avoid pulling
 // the whole editor module graph into the WebGPU module.
 interface ViewLike {
   canvas: HTMLCanvasElement | OffscreenCanvas
-  ctx: {scene?: SceneLike}
   activeCamera: DrawMatsCamera
   glSize: ArrayLike<number>
+  glPos: ArrayLike<number>
   size: ArrayLike<number>
   gl: unknown
+  flag?: number
+  grid?: SimpleMesh
+  drawlines?: ArrayLike<DrawLineLike>
+  drawObjects?: () => void
+  widgets?: {draw?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void}
+}
+
+interface SceneLike {
+  toolmode?: {
+    on_drawstart?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
+    on_drawend?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
+  }
 }
 
 interface DrawMatsCamera extends DrawMats {
@@ -237,30 +369,89 @@ interface DrawMatsCamera extends DrawMats {
   aspect: number
 }
 
-interface SceneLike {
-  objects: {visible: Iterable<SceneObjectLike>}
-}
-
-interface SceneObjectLike {
-  lib_id: number
-  outputs: {matrix: {getValue: () => Matrix4}}
-  draw: (view3d: ViewLike, gl: unknown, uniforms: unknown, program: unknown) => void
+interface DrawLineLike {
+  v1: Vector3
+  v2: Vector3
+  color: Vector4
+  useZ: boolean
 }
 
 /**
- * Replacement for `window._gl` when the app boots in WebGPU mode. Holds
- * the real canvas (so `getWebGL().canvas` and `this.canvas = this.gl.canvas`
- * still work) but throws on any other property access — surfaces the
- * exact line that tried to call a WebGL API on the WebGPU path.
+ * Replacement for `window._gl` when the app boots in WebGPU mode.
+ *
+ * WebGPU encodes pixel-pipeline state (blend, depth, viewport, clear
+ * color, polygon offset, ...) into the pipeline + render-pass
+ * descriptors rather than via per-call gl.enable/gl.depthMask/etc, so
+ * the imperative GL state-setting calls have no per-frame WebGPU
+ * equivalent. The stub silently no-ops those — they're dead writes,
+ * not failures.
+ *
+ * Actual GPU work (draws, buffer uploads, texture creation, shader
+ * compiles) still throws so a stray legacy code path surfaces at the
+ * exact line that needed an `isWebGPU()` guard.
  */
+
+// WebGL state-management methods that have no per-call WebGPU
+// equivalent (handled by pipeline state / pass descriptor instead).
+// These are SILENT NO-OPS on the stub — legacy code that calls them
+// is harmless on the WebGPU path.
+const SILENT_NOOP_METHODS = new Set([
+  'enable', 'disable', 'isEnabled',
+  'depthMask', 'depthFunc', 'depthRange',
+  'blendFunc', 'blendFuncSeparate', 'blendEquation', 'blendEquationSeparate', 'blendColor',
+  'colorMask', 'stencilMask', 'stencilFunc', 'stencilFuncSeparate',
+  'stencilOp', 'stencilOpSeparate',
+  'cullFace', 'frontFace', 'lineWidth', 'polygonOffset',
+  'scissor', 'viewport',
+  'clearColor', 'clearDepth', 'clearStencil', 'clear',
+  'pixelStorei', 'hint',
+  'activeTexture', 'bindTexture', 'bindFramebuffer', 'bindRenderbuffer',
+  'bindBuffer', 'bindBufferBase', 'bindBufferRange',
+  'bindVertexArray', 'bindSampler',
+  'useProgram',
+  'flush', 'finish',
+  'getError',
+  'disableVertexAttribArray', 'enableVertexAttribArray',
+  'uniform1i', 'uniform1f', 'uniform2f', 'uniform2fv', 'uniform2i', 'uniform2iv',
+  'uniform3f', 'uniform3fv', 'uniform3i', 'uniform3iv',
+  'uniform4f', 'uniform4fv', 'uniform4i', 'uniform4iv',
+  'uniform1iv', 'uniform1fv',
+  'uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv',
+  'vertexAttribPointer', 'vertexAttribIPointer', 'vertexAttribDivisor',
+  'sampleCoverage',
+])
+
+// Methods whose return value the caller probably reads — give them
+// something innocuous instead of a throw. (E.g. getParameter is used
+// for capability detection.)
+const SAFE_GETTER_METHODS = new Set([
+  'getParameter', 'getExtension', 'getSupportedExtensions',
+  'getContextAttributes',
+  'getUniformLocation', 'getAttribLocation',
+])
+
+const noop = () => undefined
+
 export function makeWebGpuGlStub(canvas: HTMLCanvasElement | OffscreenCanvas): WebGL2RenderingContext {
   const target = {canvas} as {canvas: typeof canvas}
   const proxy = new Proxy(target, {
     get(t, prop) {
       if (prop === 'canvas') return t.canvas
+      if (typeof prop === 'symbol') return undefined
+      const name = prop as string
+      if (SILENT_NOOP_METHODS.has(name)) return noop
+      if (SAFE_GETTER_METHODS.has(name)) {
+        // Return a function that gives `null` for any lookup (which is
+        // exactly what WebGL returns for missing uniforms/attribs/extensions).
+        return () => null
+      }
+      // WebGL enum constants are all-caps. Return a placeholder number so
+      // legacy code can read e.g. `gl.DEPTH_TEST` without crashing.
+      if (/^[A-Z][A-Z0-9_]*$/.test(name)) return 0
       throw new Error(
-        `[webgpu] WebGL property "${String(prop)}" accessed on WebGPU stub — ` +
-          `this code path needs an isWebGPU() guard.`
+        `[webgpu] WebGL property "${name}" accessed on WebGPU stub — ` +
+          `this code path needs an isWebGPU() guard (or, if it's harmless ` +
+          `state, add it to SILENT_NOOP_METHODS in view3d_draw_webgpu.ts).`
       )
     },
   }) as unknown as WebGL2RenderingContext

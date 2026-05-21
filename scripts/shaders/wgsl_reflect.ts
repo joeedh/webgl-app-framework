@@ -168,8 +168,21 @@ export class UniformWriter {
       field.type.endsWith('i') ? this.i32 :
       field.type.endsWith('u') ? this.u32 :
       this.f32
-    for (let i = 0; i < value.length; i++) {
-      target[wordOffset + i] = value[i]
+    // `Matrix4` from `vectormath` stores its data in a non-indexable
+    // `$matrix` property and exposes `.getAsArray()` / `.getAsFloat32Array()`.
+    // Detect that shape and unwrap to a real ArrayLike before copying.
+    const valueAny = value as unknown as {
+      getAsFloat32Array?: () => Float32Array
+      getAsArray?: () => number[]
+    }
+    const src: ArrayLike<number> =
+      typeof valueAny.getAsFloat32Array === 'function'
+        ? valueAny.getAsFloat32Array()
+        : typeof valueAny.getAsArray === 'function'
+        ? valueAny.getAsArray()
+        : value
+    for (let i = 0; i < src.length; i++) {
+      target[wordOffset + i] = src[i]
     }
   }
 

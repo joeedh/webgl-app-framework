@@ -9,6 +9,8 @@ import {loadShader, Shaders} from '../shaders/shaders'
 import {RenderBuffer} from './webgl'
 import {OptionalIf} from '../util/optionalIf'
 import {GpuBuffer} from '../webgpu/buffer.js'
+import {isWebGPU} from '../core/renderer_flag.js'
+import {getActiveWebGpuContext, createDrawQueue} from '../render/queue_factory.js'
 
 type OpenVector = number[] | Float32Array | Float64Array | Vector2Like | Vector3Like | Vector4Like
 
@@ -1910,7 +1912,30 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     for (const layer of this.layers) {
       if (layer.dataUsed === 0) continue
       if (!(layer.type & layerflag) && layer.type !== LayerTypes.INDEX) continue
-      if (!layer.f32Ready || !layer.data_f32) continue
+
+      // Promote layer to a Float32Array for the GPU. We diverge from
+      // `gen_buffers` here: it picks a typed-array constructor based
+      // on `layer.glSize` (Int16 for packed normals, Uint8 for packed
+      // colors, etc.) to save WebGL VRAM. The WGSL shader registry
+      // (`scripts/shaders/wgsl_shaders.ts`) uses uniform float32
+      // vertex formats for every layer, so the WebGPU upload always
+      // emits Float32 — divide by `glSizeMul` if the source was
+      // already packed into a smaller integer type.
+      if (!layer.f32Ready || !(layer.data_f32 instanceof Float32Array) ||
+          layer.data_f32.length !== layer.dataUsed) {
+        const out = new Float32Array(layer.dataUsed)
+        const src = layer._useTypedData ? (layer.data_f32 as ArrayLike<number>) : layer.data
+        const inv = layer.glSizeMul !== 1 ? 1 / layer.glSizeMul : 1
+        if (inv === 1) {
+          for (let k = 0; k < layer.dataUsed; k++) out[k] = src[k]
+        } else {
+          for (let k = 0; k < layer.dataUsed; k++) out[k] = src[k] * inv
+        }
+        layer.data_f32 = out
+        layer._useTypedData = true
+        layer.data = []
+        layer.f32Ready = true
+      }
 
       const data = layer.data_f32 as Float32Array
       const byteLength = data.byteLength
@@ -1952,26 +1977,27 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       throw new Error('SimpleIsland.drawGPU: call _uploadGpuBuffers(device) before drawGPU.')
     }
 
+    // Canonical fixed slot per LayerType — matches `WGSL_VERTEX_SLOTS`
+    // in `scripts/shaders/wgsl_shaders.ts`. The mapping is positional
+    // (not auto-increment): a mesh missing NORMAL still binds UV at
+    // slot 2, COLOR at slot 3, etc. so pipelines declare their
+    // `vertexBuffers` against these stable positions.
     const layerflag = this.layerflag
-    const slotOrder: LayerTypes[] = [
-      LayerTypes.LOC,
-      LayerTypes.NORMAL,
-      LayerTypes.UV,
-      LayerTypes.COLOR,
-      LayerTypes.ID,
+    const slotForType: Array<[LayerTypes, number]> = [
+      [LayerTypes.LOC,    0],
+      [LayerTypes.NORMAL, 1],
+      [LayerTypes.UV,     2],
+      [LayerTypes.COLOR,  3],
+      [LayerTypes.ID,     4],
     ]
 
-    let slot = 0
-    for (const type of slotOrder) {
+    for (const [type, slot] of slotForType) {
       if (!(type & layerflag)) continue
-      const name = LayerTypeNames[type as keyof typeof LayerTypeNames]
-      if (!name) continue
       for (const layer of this.layers) {
         if (layer.type !== type) continue
         const buf = this._gpuBuffers.get(layer.bufferKey)
         if (!buf) continue
         pass.setVertexBuffer(slot, buf.handle)
-        slot += 1
         break
       }
     }
@@ -2146,6 +2172,8 @@ export class SimpleMesh {
   free(_id?: number): void {}
 
   drawLines(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program_override?: ShaderProgram): void {
+    if (this._submitWebGpu(gl, uniforms, program_override, true)) return
+
     for (const island of this.islands) {
       const primflag = island.primflag
 
@@ -2158,9 +2186,43 @@ export class SimpleMesh {
   draw(gl: WebGL2RenderingContext, uniforms?: IUniformsBlock, program_override?: ShaderProgram): void {
     this.gl = gl
 
+    if (this._submitWebGpu(gl, uniforms, program_override, false)) return
+
     for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
     }
+  }
+
+  /**
+   * On the WebGPU backend, route the legacy `mesh.draw(gl, ...)` call
+   * through `createDrawQueue` so the WebGPU adapter resolves the
+   * pipeline via `program.wgslKey` and dispatches against the open
+   * render pass. Returns `true` if it handled the draw; `false` lets
+   * the WebGL imperative path run.
+   *
+   * `linesOnly` is for `drawLines` callers — overrides each island's
+   * primflag to LINES so the WebGPU side picks up the line pipeline.
+   * (Not yet plumbed all the way through the adapter; the linesOnly
+   * case currently falls back to the legacy island.draw on WebGPU
+   * until we wire a per-call primitive override.)
+   */
+  protected _submitWebGpu(
+    _gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock | undefined,
+    program_override: ShaderProgram | undefined,
+    linesOnly: boolean
+  ): boolean {
+    if (!isWebGPU()) return false
+    if (linesOnly) return false
+    const ctx = getActiveWebGpuContext()
+    if (!ctx || !ctx.currentPass) return false
+    const program = program_override ?? this.program
+    if (!program) return false
+    const merged = (uniforms ? {...this.uniforms, ...uniforms} : this.uniforms) as IUniformsBlock
+    const frame = {gl: undefined as unknown as WebGL2RenderingContext, uniforms: merged, program}
+    const queue = createDrawQueue(frame)
+    queue.submit({pipeline: program, mesh: this, uniforms: merged})
+    return true
   }
 
   _uploadGpuBuffers(device: GPUDevice): void {
@@ -2543,6 +2605,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
   draw(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program_override?: ShaderProgram): void {
     this.gl = gl
+
+    if (this._submitWebGpu(gl, uniforms, program_override, false)) return
 
     for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
