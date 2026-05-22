@@ -2,7 +2,6 @@ import {Matrix4, Vector2, Vector3} from '../../../path.ux/scripts/pathux.js'
 import {BVH} from '../../../../addons/builtin/mesh/src/bvh.js'
 import {FBO} from '../../../webgl/index'
 import {ShaderProgram} from '../../../webgl/webgl'
-import {getFBODebug} from '../../debug/gldebug.js'
 import type {SceneObject} from '../../../sceneobject/sceneobject'
 import type {View3D} from '../view3d'
 
@@ -186,7 +185,5 @@ export class BrushBlurFBO {
 
     gl.finish()
     fbo.unbind(gl)
-
-    getFBODebug(gl).pushFBO('brush temp', fbo)
   }
 }

@@ -1,16 +1,14 @@
 /**
- * Renderer backend flag — `'webgl'` (default) or `'webgpu'`.
+ * Renderer backend flag — `'webgpu'` (default) or `'webgl'`.
  *
- * Per Phase 4 of the WebGL→WebGPU migration plan: keep both backends in
- * the tree, select between them at runtime. URL param `?renderer=webgpu`
- * or `localStorage.renderer = 'webgpu'` flips the active backend; the
- * dispatcher in the render engine reads `getRenderer()` to decide whether
- * to construct `WebGLDrawQueueAdapter` or `WebGPUDrawQueueAdapter` per
- * frame.
+ * Default flipped to WebGPU on 2026-05-22 once the renderengine port and
+ * overlays-port (grid, drawDrawLines, drawObjects, widgets, toolmode
+ * overlays) reached parity. `isWebGPU()` still gates on `navigator.gpu`,
+ * so browsers without WebGPU support transparently fall back to WebGL.
  *
- * Default stays on WebGL until the WebGPU port reaches parity (Phase 4b/c
- * porting all SimpleIsland + WebGLBatchExecutor consumers, Phase 5
- * porting the render passes).
+ * Escape hatches preserved: URL param `?renderer=webgl` or
+ * `localStorage.renderer = 'webgl'` forces the legacy backend for A/B
+ * testing and visual regression.
  */
 
 export type RendererBackend = 'webgl' | 'webgpu'
@@ -28,7 +26,7 @@ function detect(): RendererBackend {
     const stored = localStorage.getItem('renderer')
     if (stored === 'webgpu' || stored === 'webgl') return stored
   }
-  return 'webgl'
+  return 'webgpu'
 }
 
 export function getRenderer(): RendererBackend {

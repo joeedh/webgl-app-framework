@@ -1,8 +1,8 @@
 /**
- * `scripts/webgpu/` — WebGPU abstraction layer. Built parallel to the
- * existing WebGL stack in `scripts/webgl/` per Phase 1 of the WebGL→WebGPU
- * migration plan. Nothing in the app wires up to this yet; Phase 4 swaps
- * the `DrawQueue` backend over.
+ * `scripts/webgpu/` — WebGPU abstraction layer used by `RealtimeEngine`
+ * and the view3d overlay encode. Sits alongside the legacy WebGL stack
+ * in `scripts/webgl/`, which is now only reached when the browser lacks
+ * `navigator.gpu`.
  */
 
 export {GpuContext} from './gpucontext.js'

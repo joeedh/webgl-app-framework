@@ -1,11 +1,10 @@
 /**
- * `GpuContext` — owns the WebGPU `GPUDevice`, the canvas-backed
- * `GPUCanvasContext`, and the preferred surface formats. Mirrors the role
- * `WebGL2RenderingContext` plays in the existing `scripts/webgl/` layer.
- *
- * Phase 1 surface: device init + format introspection. Phase 4 wires the
- * context into `DrawQueue` via `WebGPUDrawQueueAdapter`.
+ * Owns the WebGPU `GPUDevice`, the canvas-backed `GPUCanvasContext`, and
+ * the preferred surface format. WebGPU equivalent of
+ * `WebGL2RenderingContext` in the `scripts/webgl/` layer.
  */
+
+import {TextureUsage} from './flags.js'
 
 export interface GpuContextOptions {
   canvas: HTMLCanvasElement | OffscreenCanvas
@@ -59,6 +58,9 @@ export class GpuContext {
       device,
       format: surfaceFormat,
       alphaMode: 'premultiplied',
+      // RENDER_ATTACHMENT is implicit; COPY_SRC lets the FBO debug editor
+      // copyTextureToTexture() the canvas surface into a capture target.
+      usage: TextureUsage.RENDER_ATTACHMENT | TextureUsage.COPY_SRC,
     })
 
     return new GpuContext(device, adapter, opts.canvas, canvasContext, surfaceFormat)

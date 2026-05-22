@@ -117,7 +117,8 @@ SceneObjectData {
   }
 
   /**
-   * Queue-mediated draw API (WebGL→WebGPU migration, Phase 3).
+   * Queue-mediated draw API. All scene-object draws go through this — the
+   * adapter (WebGL or WebGPU) is selected by the active renderer.
    *
    * `drawQ` is the main draw entry point. `drawIdsQ` paints the object's
    * sub-element IDs into a float framebuffer for picking — red is

@@ -1,48 +1,41 @@
 /**
- * `TexpaintBridge` — Phase 6 isolation shim for the texpaint tool.
+ * Isolation shim that keeps the texpaint tool on WebGL2 even when the
+ * rest of the renderer is on WebGPU. Texpaint
+ * (`scripts/editors/view3d/tools/pbvh_texpaint.ts`,
+ * `pbvh_texpaint_blur.ts`) leans hard on raw GL state and FBO ops, so
+ * porting it is out of scope for the migration's first cut.
  *
- * Texpaint (`scripts/editors/view3d/tools/pbvh_texpaint.ts` and
- * `pbvh_texpaint_blur.ts`) is deeply tied to WebGL2: FBO binds, raw
- * `gl.blendFunc`/`gl.scissor`/`gl.depthMask` state, `SimpleMesh.draw`
- * with custom shaders, `gl.blitFramebuffer` for the undo path. Porting
- * it to WebGPU is out of scope for the migration's first cut.
+ * Flow per stroke:
+ *   1. texpaint draws into `texture._drawFBO` (WebGL) as always
+ *   2. `texture.swapWithFBO(gl)` rotates the result into `texture.glTex`
+ *   3. `syncFromGL` `gl.readPixels` → CPU staging buffer
+ *   4. `queue.writeTexture` uploads into the paired `GpuTexture` the
+ *      WGSL sculpt shaders sample from
  *
- * Instead this bridge keeps texpaint on WebGL even when the rest of the
- * renderer is on WebGPU. The flow:
- *
- *   1. Texpaint draws into `texture._drawFBO` (WebGL) as always.
- *   2. `texture.swapWithFBO(gl)` rotates the result into `texture.glTex`.
- *   3. `bridge.syncFromGL(gl, texture)` reads the FBO color attachment
- *      back into a CPU staging buffer via `gl.readPixels`.
- *   4. `queue.writeTexture` uploads the staged pixels into a paired
- *      `GpuTexture` that the WGSL sculpt shaders sample from.
- *
- * The CPU round-trip is the price of the isolation. End-of-stroke (not
- * per-dot) sync is enough for the visible sculpt result; the per-dot
- * path stays GL-only.
+ * End-of-stroke (not per-dot) sync is enough for the visible sculpt
+ * result; the per-dot path stays GL-only because the CPU round-trip
+ * is the dominant cost.
  */
 
 import {GpuTexture} from './texture.js'
 import {TextureUsage} from './flags.js'
 
-/** A texpaint-managed texture pair. */
 export interface BridgedTexture {
-  /** Logical id from the `ImageBlock` — used to look up the pair. */
+  // Logical id from the `ImageBlock`.
   key: unknown
   width: number
   height: number
   format: GPUTextureFormat
-  /** Float32 staging buffer reused across syncs. */
+  // Reused across syncs.
   staging: Float32Array
   gpu: GpuTexture
-  /** The GL framebuffer to read from. Set lazily by `attachFBO`. */
+  // Set lazily by `attachFBO`.
   glFbo: WebGLFramebuffer | undefined
 }
 
 export class TexpaintBridge {
   readonly device: GPUDevice
   readonly queue: GPUQueue
-  /** key (usually `ImageBlock` instance) → bridged pair. */
   private readonly pairs: Map<unknown, BridgedTexture> = new Map()
 
   constructor(device: GPUDevice, queue?: GPUQueue) {
@@ -50,10 +43,7 @@ export class TexpaintBridge {
     this.queue = queue ?? device.queue
   }
 
-  /**
-   * Get-or-create the `GpuTexture` paired with a texpaint-managed
-   * `ImageBlock`. Must be called once before `syncFromGL`.
-   */
+  // Must be called once before `syncFromGL` / `attachFBO`.
   ensurePair(
     key: unknown,
     width: number,
@@ -85,7 +75,6 @@ export class TexpaintBridge {
     return pair
   }
 
-  /** Associate the GL framebuffer that texpaint writes into. */
   attachFBO(key: unknown, fbo: WebGLFramebuffer): void {
     const pair = this.pairs.get(key)
     if (!pair) {
@@ -94,13 +83,7 @@ export class TexpaintBridge {
     pair.glFbo = fbo
   }
 
-  /**
-   * Read pixels from the WebGL framebuffer and upload them into the
-   * paired `GpuTexture`. Call at end-of-stroke (not per-dot) — the
-   * read/upload is the dominant cost.
-   *
-   * Returns false if no pair is registered or the FBO isn't attached.
-   */
+  // Returns false if no pair is registered or the FBO isn't attached.
   syncFromGL(gl: WebGL2RenderingContext, key: unknown): boolean {
     const pair = this.pairs.get(key)
     if (!pair || !pair.glFbo) return false
@@ -120,7 +103,6 @@ export class TexpaintBridge {
     return true
   }
 
-  /** Look up the bridged `GpuTexture` for a key — used by sculpt shaders. */
   getGpuTexture(key: unknown): GpuTexture | undefined {
     return this.pairs.get(key)?.gpu
   }

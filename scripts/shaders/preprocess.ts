@@ -25,9 +25,20 @@
  *   #endif
  *   #include "path"           → resolved via the `includes` table
  *
- * Not supported (intentional — keep it ~150 LOC): macro expansion of
- * `#define`d names inside arbitrary lines, `#if defined(X) && …`
- * expressions, `#elif`. The existing GLSL generators don't use these.
+ * Identifier substitution: any `#define NAME VALUE` with a string- or
+ * number-valued payload is substituted into subsequent non-directive
+ * source lines using word-boundary matching (`\bNAME\b → VALUE`).
+ * Boolean-valued defines (`#define NAME` with no value) only affect
+ * `#ifdef` / `#ifndef` and are NOT substituted — same convention as
+ * GLSL. Substitution is single-pass (a value containing another
+ * define's name is not re-expanded). This is the minimum needed by
+ * the WGSL pass shaders in `renderengine/wgsl_render_passes.ts`
+ * (`BLUR_SAMPLES`, `DEPTH_SCALE`, etc.).
+ *
+ * Not supported (intentional — keep it small): function-like macros
+ * (`#define F(x) ...`), `#if defined(X) && …` expressions, `#elif`,
+ * recursive macro expansion. The existing GLSL generators don't use
+ * these.
  */
 
 export interface PreprocessOptions {
@@ -75,7 +86,7 @@ function run(
     const line = lines[i]
     const match = DIRECTIVE.exec(line)
     if (!match) {
-      if (emitting()) out.push(line)
+      if (emitting()) out.push(substituteDefines(line, defines))
       continue
     }
 
@@ -145,4 +156,28 @@ function run(
   }
 
   return out.join('\n')
+}
+
+// Identifier-matching anchor — avoids substituting inside `NAME_2`,
+// `BLUR_SAMPLES_X`, etc. Non-identifier chars on both sides only.
+const IDENT_BOUNDARY = /[A-Za-z_][A-Za-z0-9_]*/g
+
+function substituteDefines(line: string, defines: DefinesMap): string {
+  // Fast path — `#define NAME` (no value) defines have boolean true; we
+  // skip those. If nothing in `defines` carries a substitutable payload,
+  // there's nothing to do.
+  let hasSubs = false
+  for (const k in defines) {
+    if (defines[k] !== true) {
+      hasSubs = true
+      break
+    }
+  }
+  if (!hasSubs) return line
+
+  return line.replace(IDENT_BOUNDARY, (ident) => {
+    const v = defines[ident]
+    if (v === undefined || v === true) return ident
+    return String(v)
+  })
 }

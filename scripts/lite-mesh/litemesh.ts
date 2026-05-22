@@ -342,17 +342,19 @@ export class LiteMesh extends SceneObjectData {
       const bindingsCache = new WeakMap<Pipeline, UniformBindings>()
       const self: LiteMesh = this
       exec = new WebGPUBatchExecutor({
-        device       : ctx.device,
-        wasm         : this.wasm,
-        pipelineCache: ctx.pipelineCache,
-        wgslForShader: wgslForSpatialShader,
-        colorTargets : [{
-          format: surfaceFormat,
-          blend : {
-            color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-            alpha: {srcFactor: 'one',       dstFactor: 'one-minus-src-alpha', operation: 'add'},
+        device             : ctx.device,
+        wasm               : this.wasm,
+        pipelineCache      : ctx.pipelineCache,
+        wgslForShader      : wgslForSpatialShader,
+        colorTargets: [
+          {
+            format: surfaceFormat,
+            blend: {
+              color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+              alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+            },
           },
-        }],
+        ],
         depthStencil: {
           format           : 'depth24plus',
           depthWriteEnabled: true,
@@ -361,11 +363,7 @@ export class LiteMesh extends SceneObjectData {
         bindGroupForCommand: (_cmd, pipeline) => {
           let bindings = bindingsCache.get(pipeline)
           if (!bindings) {
-            bindings = new UniformBindings(
-              ctx.device,
-              pipeline.descriptor.wgsl,
-              pipeline.descriptor.label
-            )
+            bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
             bindingsCache.set(pipeline, bindings)
           }
           bindings.write(self.gpuUniforms!)

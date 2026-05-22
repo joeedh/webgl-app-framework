@@ -11,6 +11,7 @@ import {OptionalIf} from '../util/optionalIf'
 import {GpuBuffer} from '../webgpu/buffer.js'
 import {isWebGPU} from '../core/renderer_flag.js'
 import {getActiveWebGpuContext, createDrawQueue} from '../render/queue_factory.js'
+import {isInstancedPointSprite} from '../webgpu/pipeline.js'
 
 type OpenVector = number[] | Float32Array | Float64Array | Vector2Like | Vector3Like | Vector4Like
 
@@ -1972,7 +1973,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
    * already bound it before invoking us) but kept in the signature to
    * match the `Drawable.drawGPU` contract.
    */
-  drawGPU(pass: GPURenderPassEncoder, _pipeline: GPURenderPipeline, _uniforms: IUniformsBlock): void {
+  drawGPU(pass: GPURenderPassEncoder, pipeline: GPURenderPipeline, _uniforms: IUniformsBlock): void {
     if (!this._gpuDevice) {
       throw new Error('SimpleIsland.drawGPU: call _uploadGpuBuffers(device) before drawGPU.')
     }
@@ -1991,14 +1992,21 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       [LayerTypes.ID,     4],
     ]
 
-    for (const [type, slot] of slotForType) {
-      if (!(type & layerflag)) continue
-      for (const layer of this.layers) {
-        if (layer.type !== type) continue
-        const buf = this._gpuBuffers.get(layer.bufferKey)
-        if (!buf) continue
-        pass.setVertexBuffer(slot, buf.handle)
-        break
+    // A single island can carry separate `LOC/COLOR/ID` layer sets per
+    // primitive type (`tri_cos:N`, `point_cos:M`, …). Bind by primflag
+    // before each primitive's draw call so e.g. a POINTS draw picks the
+    // `point_cos` layer and not the first-matching `tri_cos`.
+    const bindForPrim = (drawPrim: PrimitiveTypes): void => {
+      for (const [type, slot] of slotForType) {
+        if (!(type & layerflag)) continue
+        for (const layer of this.layers) {
+          if (layer.type !== type) continue
+          if (!(layer.primflag & drawPrim)) continue
+          const buf = this._gpuBuffers.get(layer.bufferKey)
+          if (!buf) continue
+          pass.setVertexBuffer(slot, buf.handle)
+          break
+        }
       }
     }
 
@@ -2006,6 +2014,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     const indexedMode = this.getIndexedMode()
 
     if (this.tottri && primflag & PrimitiveTypes.TRIS) {
+      bindForPrim(PrimitiveTypes.TRIS)
       const count = this.tottri * 3
       if (indexedMode) {
         const idx = this.getIndexBuffer(PrimitiveTypes.TRIS)
@@ -2019,13 +2028,25 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       }
     }
     if (this.totline && primflag & PrimitiveTypes.LINES) {
+      bindForPrim(PrimitiveTypes.LINES)
       const count = this.totline * 2
       pass.draw(count, 1, 0, 0)
     }
     if (this.totpoint && primflag & PrimitiveTypes.POINTS) {
-      pass.draw(this.totpoint, 1, 0, 0)
+      bindForPrim(PrimitiveTypes.POINTS)
+      // Point-sprite pipelines (e.g. MeshEditPointShader) declare their
+      // vertex buffers as instance-stepped and expect 6 verts per point
+      // primitive — `@builtin(vertex_index)` 0..5 enumerates the corners
+      // of a screen-space billboard quad. The plain non-sprite path
+      // expects 1 draw per point with the native `point-list` topology.
+      if (isInstancedPointSprite(pipeline)) {
+        pass.draw(6, this.totpoint, 0, 0)
+      } else {
+        pass.draw(this.totpoint, 1, 0, 0)
+      }
     }
     if (this.totline_tristrip && primflag & PrimitiveTypes.ADVANCED_LINES) {
+      bindForPrim(PrimitiveTypes.ADVANCED_LINES)
       pass.draw(this.totline_tristrip * 6, 1, 0, 0)
     }
   }

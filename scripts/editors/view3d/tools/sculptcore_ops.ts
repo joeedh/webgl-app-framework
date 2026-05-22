@@ -22,6 +22,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   executor?: CommandExecutor
 
   static meshLog: MeshLog | undefined
+  inStep = false
 
   static tooldef() {
     return {
@@ -43,6 +44,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   undoPre(ctx: ToolContext) {
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
+      this.inStep = true
       window.redraw_viewport()
     }
   }
@@ -114,7 +116,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   ): undefined | ISampleViewRet {
     const result = super.on_pointermove_intern(e, x, y, in_timer, isInterp)
 
-    if (!this.modalRunning) {
+    if (!this.inStep) {
       return
     }
 
@@ -197,6 +199,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   modalEnd(was_cancelled: boolean): void {
     const result = super.modalEnd(was_cancelled)
     if (SculptPaintOp.meshLog) {
+      this.inStep = false
       SculptPaintOp.meshLog.endStep()
     }
     return result

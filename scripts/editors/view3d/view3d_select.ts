@@ -10,7 +10,6 @@ import * as util from '../../util/util.js'
 import * as cconst from '../../core/const.js'
 
 import {calcUpdateHash} from './view3d_utils.js'
-import {getFBODebug} from '../debug/gldebug.js'
 
 declare global {
   interface Window {
@@ -213,8 +212,6 @@ export class GPUSelectBuffer {
     } else {
       this.fbo!.unbind(gl)
     }
-
-    getFBODebug(gl).pushFBO('select', this.fbo!)
   }
 
   sampleBlock(

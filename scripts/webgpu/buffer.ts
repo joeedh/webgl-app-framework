@@ -1,9 +1,8 @@
 /**
- * `GpuBuffer` — thin wrapper over `GPUBuffer`. Mirrors the role `VBO` plays
- * in `scripts/webgl/webgl.ts:1155-1281`, with explicit usage flags instead
+ * Thin wrapper over `GPUBuffer`. WebGPU equivalent of `VBO` in
+ * `scripts/webgl/webgl.ts:1155-1281`, with explicit usage flags instead
  * of inferring `gl.ARRAY_BUFFER` vs `gl.ELEMENT_ARRAY_BUFFER` from call
- * site. Phase 1 surface — Phase 4 swaps `SimpleIsland`'s VBO uploads to
- * use this.
+ * site.
  */
 
 import {BufferUsage} from './flags.js'

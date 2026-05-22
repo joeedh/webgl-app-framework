@@ -1,15 +1,12 @@
 /**
  * Bind-group conventions used across the WebGPU layer.
  *
- *   `@group(0)` per-frame   — view/projection matrices, time, viewport size.
+ *   `@group(0)` per-frame    — view/projection matrices, time, viewport size.
  *   `@group(1)` per-material — textures, samplers, material params.
- *   `@group(2)` per-object  — model matrix, object id.
+ *   `@group(2)` per-object   — model matrix, object id.
  *
- * `DrawQueue.submit()` (Phase 4 adapter) accepts the three groups as
- * separate fields so callers can rebind them at different cadences.
- *
- * Phase 1 surface — Phase 4 fills in the queue adapter that consumes
- * these.
+ * `DrawQueue.submit()` accepts the three groups as separate fields so
+ * callers can rebind them at different cadences.
  */
 
 export const BindGroupSlot = {

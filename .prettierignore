@@ -4,7 +4,7 @@ dist
 **/dist/
 scripts/path.ux/
 emsdk/
-sculptcore/
+#sculptcore/
 vendor/
 patches/
 **/*.min.js

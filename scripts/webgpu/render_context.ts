@@ -1,18 +1,9 @@
 /**
- * `WebGpuRenderContext` — the WebGPU sibling of
- * `RenderContext` (`scripts/renderengine/renderpass.ts:72`). Phase 5
- * scaffolding per the WebGL→WebGPU migration plan.
- *
- * The WebGL `RenderContext` bundles `gl + drawmats + size + smesh + a
- * blit shader` and gets passed to every `RenderPass.exec`. The WebGPU
- * sibling bundles `device + queue + commandEncoder + pipelineCache + a
- * full-screen quad GpuBuffer`, plus the same drawmats/size fields so the
- * shared `RenderPass` machinery can branch on which one it sees.
- *
- * Nothing wires this up yet — the per-pass ports under Phase 5b/5c will
- * extend each `RenderPass` subclass with a `renderInternGPU(ctx)` method
- * once their WGSL fragment lands in `wgsl_render_passes.ts`. Until then
- * `RenderGraph.exec` keeps dispatching through the WebGL branch.
+ * WebGPU sibling of `RenderContext`
+ * (`scripts/renderengine/renderpass.ts:72`). Bundles
+ * `device + queue + commandEncoder + pipelineCache + fullscreen quad`
+ * plus the same drawmats/size fields the WebGL `RenderContext` carries
+ * so the shared `RenderPass` machinery can branch on which one it sees.
  */
 
 import type {DrawMats} from '../webgl/webgl.js'
@@ -25,30 +16,33 @@ export interface WebGpuRenderContextOptions {
   queue?: GPUQueue
   size: [number, number]
   drawmats: DrawMats
-  /** Optional pre-existing cache; otherwise one is created. */
   pipelineCache?: PipelineCache
-  /** Preferred canvas surface format — fed into pipelines whose
-   *  color target the queue adapter needs to retarget at draw time.
-   *  Defaults to `'bgra8unorm'` when omitted, matching the registry. */
+  // Fed into pipelines whose color target the queue adapter retargets
+  // at draw time. Defaults to `'bgra8unorm'`, matching the registry.
   surfaceFormat?: GPUTextureFormat
 }
 
-/**
- * Vertex data for the full-screen blit quad — two triangles in clip
- * space (`-1..1`) with UVs in `0..1`. Mirrors the geometry that the
- * WebGL `RenderContext.smesh` carries (renderpass.ts:122-133).
- *
- * Layout: `vec2 position, vec2 uv` interleaved — stride 16 bytes.
- */
+// Full-screen blit quad: two triangles in clip space with UVs in 0..1.
+// Layout: `vec2 position, vec2 uv` interleaved — stride 16 bytes.
+//
+// UV.y is intentionally flipped relative to the GL convention. In WebGPU
+// both framebuffer (0,0) and texture (0,0) are top-left, AND NDC y=+1
+// maps to framebuffer top. So a fragment at clip y=+1 lands at framebuffer
+// top (y=0), which is where the source texture's (0,0) texel was written
+// by an upstream pass. Pairing clip(-1,+1) with UV(0,0) (rather than
+// UV(0,1) as the GL quad would) makes blits identity-preserving — texel
+// in == texel out. With the GL-style UV mapping, every blit Y-flips, and
+// the accumulator's `sampled + prior` sum on samples 2+ adds two
+// differently-oriented buffers, producing a visible vertical-mirror ghost.
 const FULLSCREEN_QUAD_DATA = new Float32Array([
   // tri 1
-  -1, -1,  0, 0,
-   1, -1,  1, 0,
-   1,  1,  1, 1,
+  -1, -1,  0, 1,
+   1, -1,  1, 1,
+   1,  1,  1, 0,
   // tri 2
-  -1, -1,  0, 0,
-   1,  1,  1, 1,
-  -1,  1,  0, 1,
+  -1, -1,  0, 1,
+   1,  1,  1, 0,
+  -1,  1,  0, 0,
 ])
 
 export const FULLSCREEN_QUAD_LAYOUT: GPUVertexBufferLayout = {
@@ -63,15 +57,13 @@ export class WebGpuRenderContext {
   readonly device: GPUDevice
   readonly queue: GPUQueue
   readonly pipelineCache: PipelineCache
-  /** Per-frame command encoder — set by `beginFrame`, cleared by `endFrame`. */
   encoder: GPUCommandEncoder | undefined
-  /** Currently open render pass encoder — set by `renderStage` while a pass
-   *  is in flight, cleared on return. The `createDrawQueue` factory reads
-   *  this to build a `WebGPUFrameContext` without the call site having to
-   *  thread the encoder through. */
+  // Set by `renderStage`/`renderStageDesc` while a pass is in flight so
+  // `createDrawQueue` can pick it up without the call site threading
+  // the encoder through.
   currentPass: GPURenderPassEncoder | undefined
-  /** Owned by the per-pass `Pipeline`s; the bridge from a GLSL ShaderProgram
-   *  to its WGSL `Pipeline` (mirrors `pipelineBindings` in `WebGPUFrameContext`). */
+  // Bridge from a GLSL ShaderProgram identity to its WGSL `Pipeline`;
+  // mirrors `pipelineBindings` in `WebGPUFrameContext`.
   readonly pipelineBindings: Map<unknown, Pipeline>
   readonly fullscreenQuad: GpuBuffer
   drawmats: DrawMats
@@ -106,13 +98,6 @@ export class WebGpuRenderContext {
     this.encoder = undefined
   }
 
-  /**
-   * Encode a single render pass against `target` using `drawCb`. Throws
-   * if no frame is open — call `beginFrame()` first.
-   *
-   * Replaces the role of `RenderContext.renderStage(fbo, size, drawCb)`
-   * on the WebGPU side.
-   */
   renderStage(
     target: RenderTarget,
     drawCb: (pass: GPURenderPassEncoder) => void,
@@ -131,16 +116,9 @@ export class WebGpuRenderContext {
     }, opts)
   }
 
-  /**
-   * Like `renderStage` but takes a raw `GPURenderPassDescriptor` instead
-   * of a `RenderTarget`. Use this when the color attachment is a view
-   * that doesn't live on a `RenderTarget` — most notably the canvas
-   * texture returned by `GPUCanvasContext.getCurrentTexture()`, which
-   * is volatile per frame and not owned by any persistent object.
-   *
-   * Sets/clears `currentPass` so `createDrawQueue` can pick it up, same
-   * as `renderStage`.
-   */
+  // For color attachments that don't live on a `RenderTarget` — most
+  // notably the canvas texture from `GPUCanvasContext.getCurrentTexture()`,
+  // which is volatile per frame and not owned by a persistent object.
   renderStageDesc(
     desc: GPURenderPassDescriptor,
     drawCb: (pass: GPURenderPassEncoder) => void
@@ -158,11 +136,8 @@ export class WebGpuRenderContext {
     }
   }
 
-  /**
-   * Issue a full-screen blit using the bundled quad buffer. The caller
-   * is responsible for `setPipeline` + `setBindGroup` — this method only
-   * binds the vertex buffer and issues the 6-vertex draw.
-   */
+  // Caller owns `setPipeline` + `setBindGroup`; this only binds the
+  // vertex buffer and issues the 6-vertex draw.
   drawFullscreenQuad(pass: GPURenderPassEncoder): void {
     pass.setVertexBuffer(0, this.fullscreenQuad.handle)
     pass.draw(6, 1, 0, 0)

@@ -1,32 +1,23 @@
 /**
- * `WebGPUBatchExecutor` — WebGPU sibling of
- * `WebGLBatchExecutor` (`scripts/webgl/batch.ts:82`). Phase 4d.
- *
- * Mirrors the WebGL executor's responsibilities: uploads wasm-owned
- * `Buffer`s into `GpuBuffer`s, caches a pipeline per shader, encodes
- * draw calls from a `DrawBatch` into a `GPURenderPassEncoder`.
- *
- * The major WebGPU shifts vs the WebGL path:
+ * Batch executor for the WebGPU backend — uploads wasm-owned `Buffer`s
+ * into `GpuBuffer`s, caches a pipeline per shader, encodes draw calls
+ * from a `DrawBatch` into a `GPURenderPassEncoder`. Parallel of
+ * `WebGLBatchExecutor` in `scripts/webgl/batch.ts`.
  *
  *   * No VAO — vertex buffers are bound per-draw on the pass.
- *   * No attribute lookup by name — the caller must hand us a
- *     `vertexLayout` matching the attribute order the WGSL source
- *     expects. Sculptcore's `ShaderDef.attrs` ordering is the source of
- *     truth for the matching `@location(n)` slots in WGSL.
+ *   * No attribute lookup by name — sculptcore's `ShaderDef.attrs`
+ *     order is the source of truth for the matching `@location(n)`
+ *     slots in WGSL.
  *   * Pipelines are immutable: every (shader, vertex layout, target
  *     format, blend, primitive) combination is its own
- *     `GPURenderPipeline`. The cache here keys on the sdef pointer +
- *     primitive topology since the rest is fixed per executor instance.
+ *     `GPURenderPipeline`. The cache keys on sdef pointer + topology
+ *     since the rest is fixed per executor instance.
  *   * Uniforms aren't bound by name — the caller supplies a
- *     `bindGroupForCommand` callback that returns a ready
- *     `GPUBindGroup` for the active draw.
+ *     `bindGroupForCommand` callback returning a ready `GPUBindGroup`.
  *
- * The wasm-side `ShaderDef` still carries GLSL sources for the WebGL
- * path; the WGSL equivalent must be plumbed in via the
- * `wgslForShader(sdef)` lookup the caller provides. Phase 4d only sets
- * up the execution plumbing — wiring sculptcore's shaders through to
- * WGSL strings is a follow-on once `wgsl_shaders.ts` covers the
- * sculptcore basic-mesh/line variants.
+ * The wasm-side `ShaderDef` still carries GLSL sources used by the WebGL
+ * fallback; this executor consumes the WGSL equivalent via the
+ * `wgslForShader(sdef)` lookup the caller provides.
  */
 
 import {Buffer, DrawBatch, DrawCommand, ShaderDef} from '@sculptcore/api'
@@ -106,15 +97,9 @@ export interface WebGPUBatchExecutorOptions {
   device: GPUDevice
   wasm: IWasmInterface
   pipelineCache?: PipelineCache
-  /** Returns the WGSL source for a given sculptcore `ShaderDef`. The
-   *  executor caches the resulting pipeline keyed on `sdef.ptr` +
-   *  topology. */
   wgslForShader: (sdef: ShaderDef) => string
-  /** Per-draw bind group provider. Receives the active `DrawCommand`
-   *  and pipeline; returns a `GPUBindGroup` matching `@group(0)` of the
-   *  WGSL source. */
+  // Returns a `GPUBindGroup` matching `@group(0)` of the WGSL source.
   bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup
-  /** Color target state for every pipeline this executor builds. */
   colorTargets: GPUColorTargetState[]
   depthStencil?: GPUDepthStencilState
 }
@@ -125,9 +110,9 @@ export class WebGPUBatchExecutor {
   readonly wasm: IWasmInterface
   readonly pipelineCache: PipelineCache
   private readonly bufferCache = new Map<number, CachedGpuBuffer>()
-  /** sdef.ptr | topology → Pipeline. */
   private readonly pipelinesByShader = new Map<string, Pipeline>()
   private readonly opts: WebGPUBatchExecutorOptions
+
 
   constructor(opts: WebGPUBatchExecutorOptions) {
     this.device = opts.device
@@ -225,10 +210,7 @@ export class WebGPUBatchExecutor {
     return pipeline
   }
 
-  /**
-   * Encode `batch` into `pass`. The pass must already be open and the
-   * viewport set by the caller.
-   */
+  // Caller must already have opened the pass and set the viewport.
   dispatch(batch: DrawBatch, pass: GPURenderPassEncoder): void {
     const commands = batch.commands
     if (commands.length === 0) return

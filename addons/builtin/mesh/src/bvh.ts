@@ -3078,10 +3078,6 @@ export class BVH<
 
     this._i = 0
 
-    if (this.constructor === BVH) {
-      Object.seal(this)
-    }
-
     this.sampler = {
       rayCast: (origin: Vector3, direction: Vector3) => {
         const result = this.castRay(origin, direction)
@@ -3132,6 +3128,9 @@ export class BVH<
           return ret
         }
       },
+    }
+    if (this.constructor === BVH) {
+      Object.seal(this)
     }
   }
 

@@ -55,7 +55,7 @@ import {BusMessage} from '../../core/bus'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 import * as sculptcore_demo from '../../sculptcore_demo'
 import {isWebGPU} from '../../core/renderer_flag'
-import {drawViewportWebGpu, makeWebGpuGlStub} from './view3d_draw_webgpu'
+import {drawDrawLinesWebGpu, drawGridWebGpu, drawViewportWebGpu, makeWebGpuGlStub, primeWebGpuViewport} from './view3d_draw_webgpu'
 
 export interface ITempText {
   co: Vector3
@@ -196,16 +196,15 @@ export function loadShaders(gl: WebGL2RenderingContext) {
 }
 
 /**
- * Stand-in for `loadShaders` on the WebGPU path. The WebGL2 program
- * object is replaced by a tag carrying the WGSL registry key. The
- * `WebGPUDrawQueueAdapter` reads `.wgslKey` off the submission's
+ * Stand-in for `loadShaders` under the default WebGPU renderer. The
+ * WebGL2 program object is replaced by a tag carrying the WGSL registry
+ * key; `WebGPUDrawQueueAdapter` reads `.wgslKey` off the submission's
  * pipeline to resolve a `Pipeline` from `wgsl_shaders.ts`.
  *
- * Methods that the WebGL path would call on the `ShaderProgram` —
- * `bind`, `uniformloc`, etc. — are stubbed to no-ops so a stray
- * legacy code path doesn't crash before we can route it through
- * the queue. `uniforms` stays as a plain bag so callers that read
- * defaults off it still get something back.
+ * The `ShaderProgram` methods (`bind`, `uniformloc`, etc.) are stubbed
+ * to no-ops so legacy GL-style call sites that haven't been routed
+ * through the queue yet don't crash. `uniforms` stays as a plain bag
+ * so callers that read defaults off it still get something back.
  */
 function loadWgslShaderStubs(): void {
   for (const k in view3d_shaders.ShaderDef) {
@@ -1471,28 +1470,6 @@ View3D {
     }
   }
 
-  drawRender = function (this: View3D<OPT & {started: true}>, extraDrawCB: (matrix: Matrix4) => void) {
-    const gl = this.gl
-
-    gl.enable(gl.DEPTH_TEST)
-    gl.depthMask(true)
-    gl.disable(gl.SCISSOR_TEST)
-
-    if (this.renderEngine === undefined) {
-      this.renderEngine = new RealtimeEngine(this)
-    }
-
-    this.renderEngine.renderSettings = this.renderSettings
-    this.renderEngine.renderSettings.ao = !!(this.ctx.scene.envlight.flag & EnvLightFlags.USE_AO)
-
-    this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene, extraDrawCB)
-  }
-
-  /** @deprecated */
-  drawThreeScene() {
-    // do nothing
-  }
-
   updatePointClouds() {
     /*
     let scene = this.ctx.scene;
@@ -1524,183 +1501,78 @@ View3D {
       this.makeGraphNodes()
     }
 
-    if (isWebGPU()) {
-      // WebGPU smoke-test path — bypasses the WebGL imperative state
-      // setup below. See scripts/editors/view3d/view3d_draw_webgpu.ts
-      // for what's implemented and what's stubbed.
-      const aspect = this.size[0] / this.size[1]
-      this.activeCamera.regen_mats(aspect)
-      const dpi = this.canvas.dpi
-      const x = this.owning_sarea.pos[0] * dpi
-      const y = this.owning_sarea.pos[1] * dpi
-      const w = this.owning_sarea.size[0] * dpi
-      const h = this.owning_sarea.size[1] * dpi
-      this.glPos = new Vector2([~~x, ~~y])
-      this.glSize = new Vector2([~~w, ~~h])
-      drawViewportWebGpu(this as unknown as Parameters<typeof drawViewportWebGpu>[0])
-      return
-    }
-
-    const graphnode = this._graphnode!
-    graphnode.outputs.onDrawPre.immediateUpdate()
-
-    const scene = this.ctx.scene
-
-    const gl = this.gl
-    const dpi = this.canvas.dpi //UIBase.getDPI();
-
+    const aspect = this.size[0] / this.size[1]
+    this.activeCamera.regen_mats(aspect)
+    const dpi = this.canvas.dpi
     const x = this.owning_sarea.pos[0] * dpi
-    let y = this.owning_sarea.pos[1] * dpi
+    const y = this.owning_sarea.pos[1] * dpi
     const w = this.owning_sarea.size[0] * dpi
     const h = this.owning_sarea.size[1] * dpi
-    //console.log("DPI", dpi);
-
-    const screen = this.ctx.screen
-    const rect = screen.getBoundingClientRect()
-
-    y = screen.size[1] * dpi - y - h
-    //y += h;
-
     this.glPos = new Vector2([~~x, ~~y])
     this.glSize = new Vector2([~~w, ~~h])
 
-    gl.enable(gl.SCISSOR_TEST)
-    gl.viewport(~~x, ~~y, ~~w, ~~h)
-    gl.scissor(~~x, ~~y, ~~w, ~~h)
-
-    //if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-    gl.clearColor(0.15, 0.15, 0.15, 1.0)
-    //} else {
-    //  gl.clearColor(0.8, 0.8, 1.0, 1.0);
-    //}
-    //gl.clearColor(1.0, 1.0, 1.0, 0.0);
-
-    gl.clearDepth(this.activeCamera.far + 1)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    gl.disable(gl.BLEND)
-    gl.enable(gl.DEPTH_TEST)
-    gl.depthMask(true)
-
-    const aspect = this.size[0] / this.size[1]
-    this.activeCamera.regen_mats(aspect)
-
-    if (0) {
-      const {near, far} = this.activeCamera
-      sculptcore_demo.drawSculptcoreDemo(
-        gl,
-        this.activeCamera.rendermat,
-        aspect,
-        near,
-        far,
-        this.size as ArrayLike<number>
-      )
-    }
-    //this.drawThreeScene();
-
-    const finish = (projmat?: Matrix4) => {
-      this.activeCamera.regen_mats(aspect)
-      if (projmat) {
-        this.activeCamera.rendermat = projmat
-      }
-
-      const drawgrid = this.flag & View3DFlags.SHOW_GRID
-
-      gl.depthMask(true)
-      gl.enable(gl.DEPTH_TEST)
-
-      if (this.grid !== undefined && drawgrid) {
-        //console.log("drawing grid");
-
-        this.grid.program = view3d_shaders.Shaders.BasicLineShader
-
-        this.grid.uniforms.near = this.activeCamera.near
-        this.grid.uniforms.far = this.activeCamera.far
-        this.grid.uniforms.size = this.glSize
-        this.grid.uniforms.aspect = this.activeCamera.aspect
-
-        this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat
-        this.grid.uniforms.objectMatrix = new Matrix4()
-
-        this.grid.draw(gl)
-      }
-
-      this.drawThreeScene()
-      this.drawObjects()
-
-      if (scene.toolmode) {
-        scene.toolmode.on_drawstart(this, gl)
-      }
-
-      gl.disable(gl.BLEND)
-    }
-
+    // Outside rendered mode (SHOW_RENDER / ONLY_RENDER) fall through to
+    // the smoke-test path — it still encodes grid, widgets, toolmode
+    // overlays etc., just without the full renderengine pipeline.
+    // Render graph when active:
+    //   [NormalPass → AOPass] → BasePass → AccumPass → PassThruPass
+    //   → [SharpenPass.x → SharpenPass.y] → OutputPass → canvas swap-chain.
     if (this.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)) {
-      this.drawRender(finish)
-      this.activeCamera.regen_mats()
-    } else {
-      finish()
-    }
-
-    if (this.drawlines.length > 0) {
-      this.drawDrawLines(gl)
-    }
-
-    gl.depthMask(true)
-    gl.enable(gl.DEPTH_TEST)
-
-    graphnode.outputs.onDrawPost.immediateUpdate()
-
-    if (scene.toolmode) {
-      scene.toolmode.on_drawend(this, gl)
-    }
-
-    gl.clear(gl.DEPTH_BUFFER_BIT)
-    this.widgets.draw(this, this.gl)
-  }
-
-  drawDrawLines(gl: WebGL2RenderingContext) {
-    const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
-    const sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
-
-    for (const dl of this.drawlines) {
-      let line
-
-      if (!dl.useZ) {
-        line = sm2.line(dl.v1, dl.v2)
-      } else {
-        line = sm.line(dl.v1, dl.v2)
+      const viewport = primeWebGpuViewport(this.canvas)
+      if (!viewport) return
+      if (this.renderEngine === undefined) {
+        this.renderEngine = new RealtimeEngine(this)
       }
-
-      line.uvs(new Vector2([0, 0]), new Vector2([1.0, 1.0]))
-      line.colors(dl.color, dl.color)
+      const engine = this.renderEngine as RealtimeEngine
+      engine.renderSettings = this.renderSettings
+      engine.renderSettings.ao = !!(this.ctx.scene.envlight.flag & EnvLightFlags.USE_AO)
+      // Overlay encode: grid + drawDrawLines + drawObjects (non-renderables)
+      // + toolmode overlays + widgets, all through the engine's overlay pass.
+      // createDrawQueue reads ctx.currentPass (set by the engine's
+      // renderStageDesc), so SimpleMesh.draw routes automatically.
+      // Overlays encode once per frame (no per-sample jitter), so the
+      // jittered projmat from BasePass is ignored here.
+      const view3dLike = this as unknown as Parameters<typeof drawGridWebGpu>[0]
+      const self = this
+      engine.encodeOverlaysCB = (_rctx, _pass, _projmat) => {
+        void _rctx; void _pass; void _projmat
+        drawGridWebGpu(view3dLike)
+        drawDrawLinesWebGpu(view3dLike)
+        try {
+          self.drawObjects()
+        } catch (err) {
+          console.error('[overlay] drawObjects threw:', err)
+        }
+        // Toolmode overlays — mesh-edit verts/edges/faces, sculpt brush
+        // ring, BVH debug. SimpleMesh.draw inside these routes through
+        // the queue adapter while the overlay pass is open.
+        const scene = self.ctx?.scene
+        if (scene?.toolmode) {
+          try {
+            scene.toolmode.on_drawstart?.(self, self.gl)
+          } catch (err) {
+            console.error('[overlay] toolmode.on_drawstart threw:', err)
+          }
+          try {
+            scene.toolmode.on_drawend?.(self, self.gl)
+          } catch (err) {
+            console.error('[overlay] toolmode.on_drawend threw:', err)
+          }
+        }
+        // Widgets last so transform gizmos overdraw the scene.
+        // WidgetMeshShader declares no depth state so it always passes
+        // depth, matching the legacy `clear(DEPTH); widgets.draw` ordering.
+        try {
+          self.widgets?.draw(self, self.gl)
+        } catch (err) {
+          console.error('[overlay] widgets.draw threw:', err)
+        }
+      }
+      engine.render(this.activeCamera, this.gl, this.glPos as unknown as number[], this.glSize as unknown as number[], this.ctx.scene)
+      return
     }
 
-    const uniforms = {
-      projectionMatrix: this.activeCamera.rendermat,
-      aspect          : this.activeCamera.aspect,
-      size            : this.glSize,
-      near            : this.activeCamera.near,
-      far             : this.activeCamera.far,
-      objectMatrix    : new Matrix4(),
-      polygonOffset   : 2.5,
-      alpha           : 1.0,
-    }
-
-    const program = view3d_shaders.Shaders.BasicLineShader
-
-    gl.depthMask(false)
-    gl.disable(gl.DEPTH_TEST)
-    sm2.draw(gl, uniforms, program)
-
-    gl.enable(gl.BLEND)
-    gl.enable(gl.DEPTH_TEST)
-
-    sm.draw(gl, uniforms, program)
-
-    gl.depthMask(true)
-
-    sm.destroy(gl)
+    drawViewportWebGpu(this as unknown as Parameters<typeof drawViewportWebGpu>[0])
   }
 
   makeDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4 | number[], useZ = true): DrawQuad {
@@ -1845,7 +1717,11 @@ View3D {
         }
       }
 
-      if (this.flag & View3DFlags.SHOW_RENDER) {
+      // Skip renderables in SHOW_RENDER mode — the renderengine already
+      // drew them. Non-renderables (empties, lights, cameras, helpers)
+      // still draw so their icon/frustum geometry shows up over the
+      // rendered scene.
+      if ((this.flag & View3DFlags.SHOW_RENDER) && ob.data?.usesMaterial) {
         continue
       }
 

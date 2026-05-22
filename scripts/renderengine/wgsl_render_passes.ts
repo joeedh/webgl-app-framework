@@ -22,7 +22,7 @@
 
 import type {PipelineDescriptor} from '../webgpu/pipeline.js'
 import {FULLSCREEN_QUAD_LAYOUT} from '../webgpu/render_context.js'
-import {preprocess, type PreprocessOptions} from './preprocess.js'
+import {preprocess, type PreprocessOptions} from '../shaders/preprocess.js'
 
 /**
  * Shared full-screen vertex shader. Pass-fragment WGSL is appended
@@ -59,7 +59,8 @@ struct PassUniforms {
   uSample           : f32,
   weightSum         : f32,
 };
-@group(0) @binding(0) var<uniform> pass : PassUniforms;
+// "pass" is a WGSL reserved keyword, so the binding is named "passU".
+@group(0) @binding(0) var<uniform> passU : PassUniforms;
 `
 
 /**
@@ -78,7 +79,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct FsOut {
   @location(0)         color : vec4f,
@@ -89,8 +91,8 @@ struct FsOut {
 fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
   let sampled = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
-  out.color = vec4f(sampled.rgb / pass.weightSum, 1.0);
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  out.color = vec4f(sampled.rgb / passU.weightSum, 1.0);
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -107,7 +109,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct FsOut {
   @location(0)         color : vec4f,
@@ -117,8 +120,12 @@ struct FsOut {
 @fragment
 fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
-  out.color = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  // Multiply by 1 + (passU.weightSum * 0) so the WGSL compiler can't
+  // strip the binding-0 uniform. Without this, getBindGroupLayout(0)
+  // drops binding 0 and the engine bind group fails validation.
+  let keep : f32 = 1.0 + passU.weightSum * 0.0;
+  out.color = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv) * keep;
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -128,8 +135,12 @@ fn fs_main(in : VsOut) -> FsOut {
  * the input pass into the accumulator with weight `w` (one extra
  * uniform on top of the base PassUniforms).
  *
- * Bindings: same as OUTPUT_PASS_WGSL; uses pass.weightSum (already in
- * PassUniforms) and an extra inline uniform `w` via @group(0) @binding(4).
+ * Bindings: PassUniforms + input color/depth at 1/2/3, AccumUniforms at 4,
+ * plus `last_buf_tex` at binding 5 — the previous frame's accumulator
+ * (PassThruPass's ping-pong slot). The GL formula is
+ *   color = current*w + last*(uSample > 1 ? 1 : 0)
+ * which only adds the prior accumulator after the first sample so the
+ * very first frame doesn't double-count uninitialized texels.
  */
 export const ACCUM_PASS_WGSL = `
 ${VS_BLIT_WGSL}
@@ -137,12 +148,15 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct AccumUniforms {
   w : f32,
 };
 @group(0) @binding(4) var<uniform> accum : AccumUniforms;
+
+@group(0) @binding(5) var last_buf_tex  : texture_2d<f32>;
 
 struct FsOut {
   @location(0)         color : vec4f,
@@ -153,8 +167,10 @@ struct FsOut {
 fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
   let sampled = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
-  out.color = vec4f(sampled.rgb * accum.w, 1.0);
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  let prior   = textureSample(last_buf_tex, fbo_smp, in.v_Uv);
+  let carry   = select(0.0, 1.0, passU.uSample > 1.0);
+  out.color = vec4f(sampled.rgb * accum.w + prior.rgb * carry, 1.0);
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -181,7 +197,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct FsOut {
   @location(0)         color : vec4f,
@@ -193,7 +210,7 @@ fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
   var accum = vec4f(0.0);
   var tot : f32 = 0.0;
-  var p = in.v_Uv * pass.size;
+  var p = in.v_Uv * passU.size;
 
   for (var i : i32 = -BLUR_SAMPLES; i < BLUR_SAMPLES; i = i + 1) {
     let w = 1.0 - abs(f32(i) / f32(BLUR_SAMPLES));
@@ -203,14 +220,14 @@ fn fs_main(in : VsOut) -> FsOut {
 #else
     p2.x = p2.x + f32(i);
 #endif
-    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / passU.size);
     accum = accum + color * w;
     tot = tot + w;
   }
 
   accum = accum / tot;
   out.color = accum;
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -227,7 +244,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct SharpenUniforms {
   sharpen : f32,
@@ -244,7 +262,7 @@ fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
   var accum = vec4f(0.0);
   var tot : f32 = 0.0;
-  let p = in.v_Uv * pass.size;
+  let p = in.v_Uv * passU.size;
 
   for (var i : i32 = -SAMPLES; i < SAMPLES; i = i + 1) {
     var w = 1.0 - abs(f32(i) / f32(SAMPLES));
@@ -256,7 +274,7 @@ fn fs_main(in : VsOut) -> FsOut {
 #else
     p2.x = p2.x + f32(i);
 #endif
-    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    let color = textureSample(fbo_rgba_tex, fbo_smp, p2 / passU.size);
     accum = accum + color * w;
     tot = tot + w;
   }
@@ -265,7 +283,7 @@ fn fs_main(in : VsOut) -> FsOut {
   let center = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
   let mixed = accum + (center - accum) * (1.0 - sharpenU.sharpen);
   out.color = vec4f(mixed.xyz, 1.0);
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -294,7 +312,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct FsOut {
   @location(0)         color : vec4f,
@@ -306,7 +325,7 @@ fn fs_main(in : VsOut) -> FsOut {
   var out : FsOut;
   var accum = vec4f(0.0);
   var tot : f32 = 0.0;
-  let p = in.v_Uv * pass.size;
+  let p = in.v_Uv * passU.size;
 
   let samp = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
   let persw = samp.a;
@@ -320,7 +339,7 @@ fn fs_main(in : VsOut) -> FsOut {
 #else
     p2.x = p2.x + f32(i);
 #endif
-    var color = textureSample(fbo_rgba_tex, fbo_smp, p2 / pass.size);
+    var color = textureSample(fbo_rgba_tex, fbo_smp, p2 / passU.size);
     let d2 = (color.b * DEPTH_PRESCALE + DEPTH_OFFSET) * DEPTH_SCALE;
     color.r = color.r * d2;
     accum = accum + color * w;
@@ -336,7 +355,7 @@ fn fs_main(in : VsOut) -> FsOut {
 #else
   out.color = vec4f(accum.r, accum.r, d, persw);
 #endif
-  out.depth = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   return out;
 }
 `
@@ -363,7 +382,8 @@ ${PASS_UNIFORMS_WGSL}
 
 @group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
 @group(0) @binding(2) var fbo_smp       : sampler;
-@group(0) @binding(3) var fbo_depth_tex : texture_2d<f32>;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
 
 struct AOUniforms {
   blueUVOff   : vec2f,
@@ -385,7 +405,7 @@ fn sampleBlue(uv : vec2f) -> vec4f {
 }
 
 fn unproject(p : vec4f) -> vec4f {
-  var p2 = pass.iprojectionMatrix * vec4f(p.xyz, 1.0);
+  var p2 = passU.iprojectionMatrix * vec4f(p.xyz, 1.0);
   p2 = vec4f(p2.xyz / p2.w, p2.w);
   return p2;
 }
@@ -393,7 +413,7 @@ fn unproject(p : vec4f) -> vec4f {
 fn rng(uv : vec2f, seed_in : f32) -> f32 {
   var sf = sampleBlue(uv).x;
   sf = floor(sf * 10.0) / 10.0;
-  sf = sf + fract(pass.uSample * sqrt(3.0)) * 0.1;
+  sf = sf + fract(passU.uSample * sqrt(3.0)) * 0.1;
   var seed = seed_in + sf * 1012.23432;
   var f = fract(fract(seed * 312.23432) + seed);
   f = fract(1.0 / (f * 0.00001 + 0.00001));
@@ -406,10 +426,13 @@ struct FsOut {
 };
 
 @fragment
-fn fs_main(in : VsOut, @builtin(position) fragCoord : vec4f) -> FsOut {
-  var p = vec4f(fragCoord.xyz, 1.0);
-  p = vec4f((p.xy / pass.size) * 2.0 - vec2f(1.0), p.z, p.w);
-  let depthSample = textureSampleLevel(fbo_depth_tex, fbo_smp, in.v_Uv, 0.0).r;
+fn fs_main(in : VsOut) -> FsOut {
+  // VsOut.clipPos is the framebuffer position when read in the fragment
+  // stage (the @builtin(position) interp does that automatically). Don't
+  // redeclare a second @builtin(position) param — WGSL rejects duplicates.
+  var p = vec4f(in.clipPos.xyz, 1.0);
+  p = vec4f((p.xy / passU.size) * 2.0 - vec2f(1.0), p.z, p.w);
+  let depthSample = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
   p.z = depthSample;
   let pWorld = unproject(p);
 
@@ -427,13 +450,13 @@ fn fs_main(in : VsOut, @builtin(position) fragCoord : vec4f) -> FsOut {
     if (dot(n, nin) < 0.0) { n = -n; }
     n = n * ao.dist;
 
-    var p2 = pass.projectionMatrix * vec4f(pWorld.xyz + n, 1.0);
+    var p2 = passU.projectionMatrix * vec4f(pWorld.xyz + n, 1.0);
     p2 = vec4f(p2.xyz / p2.w, p2.w);
     let oldz = p2.z;
 
     let uv2 = p2.xy * 0.5 + vec2f(0.5);
     let c = textureSample(fbo_rgba_tex, fbo_smp, uv2);
-    let z2 = textureSampleLevel(fbo_depth_tex, fbo_smp, uv2, 0.0).r;
+    let z2 = textureSampleLevel(fbo_depth_tex, depth_smp, uv2, 0);
     let p3 = unproject(vec4f(p2.xy, z2, 1.0));
     var w = length(p3.xyz - pWorld.xyz) / ao.dist;
     w = select(min(w, 1.0), 0.0, w > 2.0);

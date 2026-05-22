@@ -1,12 +1,7 @@
 /**
- * `RenderTarget` — color + depth `GPUTextureView` bundle. Replaces the
- * role `FBO` plays in `scripts/webgl/fbo.ts`.
- *
- * Unlike a WebGL FBO, a WebGPU render target is **just a bundle of texture
- * views**; the actual render pass is encoded in `GPURenderPassEncoder` via
- * a `GPURenderPassDescriptor` (see Phase 5 for `RenderPass.exec()` swap).
- *
- * Phase 1 surface — Phase 5 builds this into the render pass graph.
+ * Color + depth `GPUTextureView` bundle. WebGPU equivalent of `FBO` in
+ * `scripts/webgl/fbo.ts`. Unlike a WebGL FBO this is just the texture
+ * views; the actual render pass is encoded via `GPURenderPassDescriptor`.
  */
 
 import {GpuTexture} from './texture.js'
@@ -16,9 +11,8 @@ export interface RenderTargetOptions {
   device: GPUDevice
   width: number
   height: number
-  /** One or more color attachment formats. */
   colorFormats: GPUTextureFormat[]
-  /** Depth attachment format, or undefined for no depth. */
+  // Undefined for no depth attachment.
   depthFormat?: GPUTextureFormat
   sampleCount?: number
   label?: string
@@ -59,10 +53,6 @@ export class RenderTarget {
       : undefined
   }
 
-  /**
-   * Build a `GPURenderPassDescriptor` for `commandEncoder.beginRenderPass()`.
-   * Phase 5 uses this from `RenderPass.exec()`.
-   */
   passDescriptor(
     clearColor: GPUColor | undefined = {r: 0, g: 0, b: 0, a: 1},
     clearDepth: number | undefined = 1.0
@@ -85,15 +75,8 @@ export class RenderTarget {
     }
   }
 
-  /**
-   * Open a render pass against this target — convenience wrapper that
-   * matches the legacy `renderStage(fbo, size, drawCb)` shape on the
-   * WebGL side. The caller's `drawCb` receives the pass encoder and is
-   * responsible for `setPipeline`/`setBindGroup`/`setVertexBuffer`/
-   * `draw` plus calling nothing else (the wrapper handles `end`).
-   *
-   * Phase 5 ports `RenderPass.renderStage` consumers to this helper.
-   */
+  // Matches the legacy `renderStage(fbo, size, drawCb)` shape on the
+  // WebGL side. Wrapper handles `pass.end()`; the callback should not.
   beginPass(
     encoder: GPUCommandEncoder,
     drawCb: (pass: GPURenderPassEncoder) => void,

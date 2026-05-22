@@ -85,7 +85,7 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
   if (f1 < 0.0) { f = -f1 * 0.2; }
   f = f * 0.8 + 0.2;
 
-  var vcolor = vec4f(1.0, 1.0, 1.0, 1.0);
+  var vcolor = vec4f(1.0, 1.0, 1.0, 1.0) * spatial.uColor;
   if (f1 < 0.0) {
     vcolor.z = vcolor.z * 0.8;
     vcolor.x = vcolor.x * 0.5;
@@ -99,7 +99,7 @@ export function wgslForSpatialShader(sdef: ShaderDef): string {
   if (name === 'Basic Mesh Shader') return SPATIAL_BASIC_MESH_WGSL
   if (name === 'Basic Line Shader') return SPATIAL_BASIC_LINE_WGSL
   throw new Error(
-    `litemesh_wgsl: no WGSL port registered for sculptcore ShaderDef "${name}". ` +
-      `Add it to litemesh_wgsl.ts.`
+    `litemesh_wgsl: no WGSL port registered for sculptcore ShaderDef "${name}". ` + `Add it to litemesh_wgsl.ts.`
   )
 }
+

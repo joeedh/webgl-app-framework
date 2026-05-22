@@ -18,9 +18,12 @@ import {SceneObject} from '@framework/api'
 import {makeDefaultMaterial} from '@framework/api'
 import {Light} from '@framework/api'
 import {LiteMesh} from '@framework/api'
+import {Mesh} from './mesh'
+import {makeCube} from './mesh_shapes'
 
 setDefaultSceneBuilder((ctx: ToolContext, lib: Library, scene: Scene) => {
-  const mesh = new LiteMesh()
+  const mesh = new Mesh()
+  makeCube(mesh)
   lib.add(mesh)
 
   const mat = makeDefaultMaterial()

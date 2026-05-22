@@ -90,7 +90,7 @@ export type {IUniformsBlock, ShaderProgram} from './webgl/webgl.js'
 export * as webgl from './webgl/webgl.js'
 export {Shapes, setShapesObjLoader} from './webgl/simplemesh_shapes.js'
 
-// render/* — DrawQueue scaffold (WebGL→WebGPU migration)
+// render/* — backend-agnostic DrawQueue dispatch
 export {WebGLDrawQueueAdapter} from './render/queue.js'
 export type {DrawQueue, FrameContext, Submission, Drawable} from './render/queue.js'
 

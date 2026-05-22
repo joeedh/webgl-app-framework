@@ -53,3 +53,21 @@ After the `@framework/api` rewrite, two cross-addon refs remain hard-coded to
 but actually lives in the main bundle (pre-extraction):
 
 - `addons/builtin/mesh/src/mesh_ops.ts:3461` — `import {BVHToolMode} from '../../../../scripts/editors/view3d/tools/pbvh.js'` used only for an `instanceof` check at mesh_ops.ts:948. BVHToolMode is the pbvh_sculpt addon's public class; mesh shouldn't know about it. Either: (a) eliminate the `instanceof` check via a behavior interface on ToolMode, or (b) the pbvh_sculpt addon installs a "bvh sculpt is active" predicate into a shared context that mesh consults.
+
+## WebGPU debug-capture coverage
+
+The FBO debug editor's WebGPU path (`scripts/editors/debug/webgpu_debug.ts`)
+only captures `render_final` today because the WebGPU draw path
+(`scripts/editors/view3d/view3d_draw_webgpu.ts`) is the MVP that draws
+straight to the canvas — it has no `RenderTarget`-based per-pass
+intermediates yet. The WebGL counterpart
+(`renderengine_realtime.ts:686–705`) iterates a full `rendergraph` and
+captures each `FBOSocket` output (`NormalPass_fbo`, `AccumPass_fbo`,
+`OutputPass_fbo`, etc).
+
+Action when the WebGPU render graph lands (the TODO referenced in
+`view3d_draw_webgpu.ts`'s `drawSceneWebGpu` comment block): at each
+WGSL render-pass encode site, call
+`getWebGpuDebug(device).pushTexture(passName, target.colors[0].handle, encoder)`
+before the encoder is submitted. The debug editor's history dropdown
+populates from the same registry, so new entries surface automatically.

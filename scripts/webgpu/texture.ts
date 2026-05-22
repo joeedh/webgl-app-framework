@@ -1,10 +1,6 @@
 /**
- * `GpuTexture` — wraps `GPUTexture` + default `GPUTextureView` + a default
- * `GPUSampler`. Mirrors the role `Texture` plays in
- * `scripts/webgl/webgl.ts:1339-1593`.
- *
- * Phase 1 surface — Phase 4 swaps existing `Texture` consumers in
- * `simplemesh.ts` / `shaders.ts` to use this against the WebGPU backend.
+ * Wraps `GPUTexture` + a default `GPUTextureView` + a default `GPUSampler`.
+ * WebGPU equivalent of `Texture` in `scripts/webgl/webgl.ts:1339-1593`.
  */
 
 import {TextureUsage} from './flags.js'

@@ -1,12 +1,9 @@
 /**
- * `Pipeline` + `PipelineCache` — immutable render pipeline objects keyed
- * by (wgsl-hash, vertex-layout, target-format, blend-state, primitive
- * topology). Replaces the role `ShaderProgram` plays in
- * `scripts/webgl/webgl.ts:442-1150` with the major mental shift that
- * state which varies per-draw goes into a separate pipeline variant.
- *
- * Phase 1 surface — Phase 2 fills in WGSL reflection / uniform layout,
- * Phase 4 wires this into `WebGPUDrawQueueAdapter`.
+ * Immutable render pipeline objects keyed by (wgsl-hash, vertex-layout,
+ * target-format, blend-state, primitive topology). WebGPU equivalent of
+ * `ShaderProgram` in `scripts/webgl/webgl.ts:442-1150`, with the major
+ * mental shift that state which varies per-draw goes into a separate
+ * pipeline variant.
  */
 
 export interface PipelineDescriptor {
@@ -64,12 +61,8 @@ export class Pipeline {
   }
 }
 
-/**
- * Cheap structural hash of a `PipelineDescriptor`. Stable enough to use as
- * a `Map` key — WGSL source contributes to the key, so a `#define`
- * variant produces a distinct entry. (Phase 2 preprocessor expands defines
- * upstream of this point.)
- */
+// WGSL source contributes to the key, so a `#define` variant produces a
+// distinct entry (defines are expanded upstream of this point).
 function hashDescriptor(desc: PipelineDescriptor): string {
   const parts = [
     desc.wgsl,
@@ -82,6 +75,30 @@ function hashDescriptor(desc: PipelineDescriptor): string {
     JSON.stringify(desc.multisample ?? null),
   ]
   return parts.join('|')
+}
+
+/**
+ * Marks a pipeline as expecting point-sprite-style instanced expansion:
+ * vertex buffers are instance-stepped and `@builtin(vertex_index)` 0..5
+ * enumerates the corners of a screen-space quad per primitive. The mesh
+ * draw path uses this signal to switch its POINTS dispatch from
+ * `pass.draw(totpoint, 1, 0, 0)` to `pass.draw(6, totpoint, 0, 0)` so
+ * the legacy `GL_POINTS + gl_PointSize` mesh-edit verts get a sized
+ * splat on WebGPU (the native `point-list` topology is 1 px only).
+ *
+ * Set by the `WebGPUDrawQueueAdapter` after resolving a point-sprite
+ * pipeline variant; read by `SimpleIsland.drawGPU`. Lives here rather
+ * than in queue_adapter.ts to avoid the simplemesh ↔ queue_adapter
+ * import cycle.
+ */
+const instancedPointSpritePipelines = new WeakSet<GPURenderPipeline>()
+
+export function markInstancedPointSprite(handle: GPURenderPipeline): void {
+  instancedPointSpritePipelines.add(handle)
+}
+
+export function isInstancedPointSprite(handle: GPURenderPipeline): boolean {
+  return instancedPointSpritePipelines.has(handle)
 }
 
 export class PipelineCache {

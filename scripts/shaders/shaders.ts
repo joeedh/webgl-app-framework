@@ -1,6 +1,25 @@
 import {Matrix4} from '../util/vectormath'
 import {IDefinesBlock, IUniformsBlock, ShaderProgram} from '../webgl/webgl'
 
+/**
+ * GLSL shader sources for the WebGL backend.
+ *
+ * The exported constants in this file (BasicLineShader, ObjectLineShader,
+ * BasicLitMesh, WidgetMeshShader, BasicLitMesh2, BasicLineShader2, etc.)
+ * play a dual role now that WebGPU is the default renderer:
+ *
+ *   1. Their **identity** is used by the queue adapters as a stable
+ *      per-program key — the WebGPU adapter resolves them to a WGSL
+ *      pipeline via the `.wgslKey` tag, the WebGL adapter consumes the
+ *      embedded `vertex` / `fragment` GLSL source directly.
+ *   2. The embedded GLSL is only exercised when the browser lacks
+ *      `navigator.gpu` and falls through to WebGL via `isWebGPU()`.
+ *
+ * Do not delete the constants without first auditing the matching WGSL
+ * entries in `scripts/shaders/wgsl_shaders.ts` and the `.wgslKey` tags
+ * that point at them.
+ */
+
 export const PolygonOffset = {
   //pre : '',
   //vertex : (posname) => {return '';},

@@ -20,7 +20,7 @@
  * rectangles.
  *
  * The legacy WebGL `ShaderProgram` objects in `view3d_shaders.Shaders`
- * are replaced by `wgslKey`-tagged stubs on the WebGPU path (see
+ * are replaced by `wgslKey`-tagged stubs at init (see
  * `loadWgslShaderStubs` in `view3d.ts`), so existing `ob.draw(view3d,
  * gl, uniforms, program)` calls flow through `createDrawQueue` →
  * `WebGPUDrawQueueAdapter`, which resolves the pipeline from the
@@ -39,12 +39,13 @@ import {GpuTexture} from '../../webgpu/texture.js'
 import {TextureUsage} from '../../webgpu/flags.js'
 import {setActiveWebGpuContext, createDrawQueue} from '../../render/queue_factory.js'
 import {View3DFlags} from './view3d_base.js'
+import {getWebGpuDebug} from '../debug/webgpu_debug.js'
 import * as view3d_shaders from '../../shaders/shaders.js'
 import {buildMaterialPipelineDescriptor} from '../../shaders/wgsl_shaders.js'
 import type {Pipeline} from '../../webgpu/pipeline.js'
 import {LightGenWgsl, type IRenderLights} from '../../shadernodes/shader_lib_wgsl.js'
 
-interface WebGpuViewport {
+export interface WebGpuViewport {
   gpu: GpuContext
   ctx: WebGpuRenderContext
   /** Cached depth texture; recreated when canvas surface size changes. */
@@ -53,6 +54,17 @@ interface WebGpuViewport {
 }
 
 const viewports = new WeakMap<HTMLCanvasElement | OffscreenCanvas, WebGpuViewport>()
+
+// Lookup the viewport state for a canvas. Returned object exposes the
+// `GpuContext` (device, canvasContext, surfaceFormat) and the live
+// `WebGpuRenderContext` — needed by the FBO debug editor to encode its
+// own blit pass against the canvas after view3d's frame submit.
+export function getActiveWebGpuViewport(
+  canvas: HTMLCanvasElement | OffscreenCanvas | undefined,
+): WebGpuViewport | undefined {
+  if (!canvas) return undefined
+  return viewports.get(canvas)
+}
 const inflightInits = new WeakMap<HTMLCanvasElement | OffscreenCanvas, Promise<WebGpuViewport>>()
 
 function fakeDrawMats(): DrawMats {
@@ -85,6 +97,13 @@ async function initViewport(
   return viewport
 }
 
+// Canvas-sized depth attachment, cached on the viewport. Used both by
+// the smoke-test `drawViewportWebGpu` path and by `RealtimeEngine`'s
+// OutputPass surface attachment so both stay in sync on resize.
+export function ensureCanvasDepth(viewport: WebGpuViewport, w: number, h: number): GpuTexture {
+  return ensureDepth(viewport, w, h)
+}
+
 function ensureDepth(viewport: WebGpuViewport, w: number, h: number): GpuTexture {
   if (viewport.depth && viewport.depthSize[0] === w && viewport.depthSize[1] === h) {
     return viewport.depth
@@ -108,6 +127,39 @@ function warnOnce(key: string, message: string): void {
   console.warn(`[webgpu] ${key}: ${message}`)
 }
 
+// Kick (or look up) the per-canvas WebGPU init. Returns the viewport
+// once GpuContext.create has resolved, undefined while still pending.
+// Used by `view3d.viewportDraw_intern` to drive the renderengine without
+// invoking the smoke-test `drawSceneWebGpu` draws.
+export function primeWebGpuViewport(
+  canvas: HTMLCanvasElement | OffscreenCanvas,
+): WebGpuViewport | undefined {
+  const existing = viewports.get(canvas)
+  if (existing) return existing
+  let pending = inflightInits.get(canvas)
+  if (!pending) {
+    const initSize: [number, number] = [
+      Math.max(1, canvas.width | 0),
+      Math.max(1, canvas.height | 0),
+    ]
+    pending = initViewport(canvas, initSize).finally(() => {
+      inflightInits.delete(canvas)
+    })
+    inflightInits.set(canvas, pending)
+    pending.then(() => {
+      // The first frame's caller returned early before init resolved.
+      // Nothing else will schedule a frame (the rAF loop only re-fires
+      // on redraw_viewport() / interaction), so kick one ourselves once
+      // the device is up.
+      const w = window as unknown as {redraw_viewport?: () => void}
+      w.redraw_viewport?.()
+    }).catch(err => {
+      console.error('[webgpu] init failed — falling back to WebGL on next frame', err)
+    })
+  }
+  return undefined
+}
+
 /**
  * `view3d.viewportDraw_intern`'s WebGPU sibling. Synchronous —
  * kicks the async device init on the first call and returns; the
@@ -118,31 +170,8 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
   const canvas = view3d.canvas
   if (!canvas) return
 
-  let viewport = viewports.get(canvas)
-  if (!viewport) {
-    let pending = inflightInits.get(canvas)
-    if (!pending) {
-      const initSize: [number, number] = [
-        Math.max(1, canvas.width | 0),
-        Math.max(1, canvas.height | 0),
-      ]
-      pending = initViewport(canvas, initSize).finally(() => {
-        inflightInits.delete(canvas)
-      })
-      inflightInits.set(canvas, pending)
-      pending.then(() => {
-        // The first frame's drawViewportWebGpu call returned early
-        // before init resolved. Nothing else will schedule a frame
-        // (the rAF loop only re-fires on `redraw_viewport()` /
-        // interaction), so kick one ourselves once the device is up.
-        const w = window as unknown as {redraw_viewport?: () => void}
-        w.redraw_viewport?.()
-      }).catch(err => {
-        console.error('[webgpu] init failed — falling back to WebGL on next frame', err)
-      })
-    }
-    return
-  }
+  const viewport = primeWebGpuViewport(canvas)
+  if (!viewport) return
 
   if (view3d.activeCamera) viewport.ctx.drawmats = view3d.activeCamera
 
@@ -185,6 +214,18 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
       }
       drawSceneWebGpu(view3d)
     })
+
+    // Mirror the WebGL `getFBODebug(gl).pushFBO('render_final', ...)`
+    // call in renderengine_realtime.ts. No-op unless a DebugEditor sarea
+    // is open. The encoder is still the active frame's encoder, so the
+    // copy is submitted atomically with the canvas pass.
+    if (viewport.ctx.encoder) {
+      getWebGpuDebug(viewport.gpu.device).pushTexture(
+        'render_final',
+        canvasTex,
+        viewport.ctx.encoder,
+      )
+    }
   } finally {
     viewport.ctx.endFrame()
   }
@@ -440,7 +481,7 @@ function drawRenderWebGpu(view3d: ViewLike): void {
 }
 let loggedRenderSummary = false
 
-function drawGridWebGpu(view3d: ViewLike): void {
+export function drawGridWebGpu(view3d: ViewLike): void {
   if (!view3d.grid) return
   if (view3d.flag === undefined || !(view3d.flag & View3DFlags.SHOW_GRID)) return
 
@@ -463,7 +504,7 @@ function drawGridWebGpu(view3d: ViewLike): void {
   }
 }
 
-function drawDrawLinesWebGpu(view3d: ViewLike): void {
+export function drawDrawLinesWebGpu(view3d: ViewLike): void {
   const drawlines = view3d.drawlines
   if (!drawlines || drawlines.length === 0) return
 
@@ -609,7 +650,7 @@ interface DrawLineLike {
 // WebGL state-management methods that have no per-call WebGPU
 // equivalent (handled by pipeline state / pass descriptor instead).
 // These are SILENT NO-OPS on the stub — legacy code that calls them
-// is harmless on the WebGPU path.
+// is harmless.
 const SILENT_NOOP_METHODS = new Set([
   'enable', 'disable', 'isEnabled',
   'depthMask', 'depthFunc', 'depthRange',

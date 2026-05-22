@@ -286,6 +286,95 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 `
 
 /**
+ * MeshEditPointShader — billboard expansion of mesh-edit verts/handles.
+ * The legacy GL_POINTS + gl_PointSize path doesn't translate to WebGPU
+ * (the native `point-list` topology is locked at 1 px), so each instance
+ * (one point primitive) expands into a 6-vertex screen-space quad sized
+ * by `object.pointSize` in pixels. Vertex buffers are instance-stepped
+ * (`POS_COLOR_ID_INSTANCE_LAYOUT`) and the encoder issues
+ * `pass.draw(6, totpoint, 0, 0)` so `@builtin(vertex_index)` enumerates
+ * the six corners while `position/color/id` advance per point.
+ */
+export const MESH_EDIT_POINT_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+struct ObjectUniforms {
+  objectMatrix    : mat4x4f,
+  active_color    : vec4f,
+  highlight_color : vec4f,
+  last_color      : vec4f,
+  alpha           : f32,
+  active_id       : f32,
+  highlight_id    : f32,
+  last_id         : f32,
+  pointSize       : f32,
+  _pad0           : f32,
+  _pad1           : f32,
+  _pad2           : f32,
+};
+@group(2) @binding(0) var<uniform> object : ObjectUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) color    : vec4f,
+  @location(2) id       : f32,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor : vec4f,
+  @location(1) vCorner : vec2f,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vid : u32, in : VsIn) -> VsOut {
+  var corners : array<vec2f, 6> = array<vec2f, 6>(
+    vec2f(-1.0, -1.0),
+    vec2f( 1.0, -1.0),
+    vec2f(-1.0,  1.0),
+    vec2f(-1.0,  1.0),
+    vec2f( 1.0, -1.0),
+    vec2f( 1.0,  1.0),
+  );
+  let corner = corners[vid];
+
+  let center = frame.projectionMatrix * object.objectMatrix * vec4f(in.position, 1.0);
+  // pointSize is the full diameter in pixels. Half-extent in NDC is
+  // (pointSize / 2) / (size / 2) = pointSize / size; multiply by w to
+  // cancel the perspective divide so the clip-space offset lands at the
+  // right pixel size after rasterizer division.
+  let halfExtent = (object.pointSize / frame.size) * center.w;
+  var out : VsOut;
+  out.clipPos = vec4f(center.xy + corner * halfExtent, center.z, center.w);
+  out.vCorner = corner;
+
+  if (object.highlight_id == in.id) {
+    out.vColor = object.highlight_color;
+  } else if (object.last_id == in.id) {
+    out.vColor = object.last_color;
+  } else if (object.active_id == in.id) {
+    out.vColor = object.active_color;
+  } else {
+    out.vColor = in.color;
+  }
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  // Soft circular splat: discard outside the inscribed disc and feather
+  // the last pixel for a less aliased dot. Matches the visual feel of
+  // GL_POINTS with a small point sprite.
+  let d = length(in.vCorner);
+  if (d > 1.0) {
+    discard;
+  }
+  let alpha = object.alpha * smoothstep(1.0, 0.85, d);
+  return vec4f(in.vColor.rgb, in.vColor.a * alpha);
+}
+`
+
+/**
  * BasicLineShader2D — port of `BasicLineShader2D` (shaders.ts:1373-1409).
  * UI overlay; bypasses projectionMatrix and maps `position.xy / size`
  * to NDC directly.
@@ -483,6 +572,22 @@ export const POS_COLOR_ID_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
   null,
   colorLayout(1),
   idLayout(2),
+]
+
+/**
+ * Per-instance variant of `POS_COLOR_ID_VERTEX_LAYOUT`. Each per-vertex
+ * attribute advances once per instance instead of once per vertex, so the
+ * vertex shader expands `@builtin(vertex_index)` ∈ 0..5 into a screen-space
+ * billboard around a single point primitive. Used by `MeshEditPointShader`
+ * to give the legacy `GL_POINTS` mesh-edit verts a sized splat on WebGPU
+ * (the native `point-list` topology is 1-pixel only).
+ */
+export const POS_COLOR_ID_INSTANCE_LAYOUT: Array<GPUVertexBufferLayout | null> = [
+  {...locLayout(0), stepMode: 'instance'},
+  null,
+  null,
+  {...colorLayout(1), stepMode: 'instance'},
+  {...idLayout(2), stepMode: 'instance'},
 ]
 
 /**
@@ -1278,6 +1383,14 @@ registerWgslShader({
   key          : 'MeshEditShader',
   source       : MESH_EDIT_WGSL,
   vertexBuffers: POS_COLOR_ID_VERTEX_LAYOUT,
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'MeshEditPointShader',
+  source       : MESH_EDIT_POINT_WGSL,
+  vertexBuffers: POS_COLOR_ID_INSTANCE_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })
