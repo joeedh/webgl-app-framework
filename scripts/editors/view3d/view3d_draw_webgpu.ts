@@ -261,7 +261,7 @@ function drawSceneWebGpu(view3d: ViewLike): void {
   const scene = (view3d as ViewLike & {ctx?: {scene?: SceneLike}}).ctx?.scene
   if (scene?.toolmode) {
     try {
-      scene.toolmode.on_drawstart?.(view3d, view3d.gl as WebGL2RenderingContext)
+      scene.toolmode.on_drawstart?.(view3d)
     } catch (err) {
       warnOnce('toolmode.on_drawstart', `${(err as Error).message}`)
     }
@@ -277,7 +277,7 @@ function drawSceneWebGpu(view3d: ViewLike): void {
 
   if (scene?.toolmode) {
     try {
-      scene.toolmode.on_drawend?.(view3d, view3d.gl as WebGL2RenderingContext)
+      scene.toolmode.on_drawend?.(view3d)
     } catch (err) {
       warnOnce('toolmode.on_drawend', `${(err as Error).message}`)
     }
@@ -571,7 +571,10 @@ function sharedUniforms(view3d: ViewLike): IUniformsBlock {
 
 // Minimal structural type — we don't import View3D to avoid pulling
 // the whole editor module graph into the WebGPU module.
-interface ViewLike {
+// Structural view3d shape consumed by the WebGPU draw helpers. Exported so
+// View3D can satisfy it without `as unknown as Parameters<typeof …>` casts
+// at the callsites in view3d.ts.
+export interface ViewLike {
   canvas: HTMLCanvasElement | OffscreenCanvas
   activeCamera: DrawMatsCamera
   glSize: ArrayLike<number>
@@ -587,8 +590,8 @@ interface ViewLike {
 
 interface SceneLike {
   toolmode?: {
-    on_drawstart?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
-    on_drawend?: (view3d: ViewLike, gl: WebGL2RenderingContext) => void
+    on_drawstart?: (view3d: ViewLike) => void
+    on_drawend?: (view3d: ViewLike) => void
   }
   envlight?: {color?: unknown; power?: number}
   objects?: {renderable: Iterable<SceneObjectLike>}
@@ -688,6 +691,23 @@ const SAFE_GETTER_METHODS = new Set([
 
 const noop = () => undefined
 
+/**
+ * Per-name access counter for stub members. Opt-in: enable from devtools
+ * via `window.__webgpuStubAudit = true` then run the app for a session
+ * and read `window.__webgpuStubAuditCounts` to see which
+ * `SILENT_NOOP_METHODS` / `SAFE_GETTER_METHODS` / enum entries are
+ * still live. Zero-count entries are candidates for removal — moving
+ * them out of the no-op set causes a clear runtime error if any caller
+ * actually depended on them.
+ */
+const stubAuditCounts = new Map<string, number>()
+function bumpAudit(name: string): void {
+  const w = globalThis as unknown as {__webgpuStubAudit?: boolean; __webgpuStubAuditCounts?: Map<string, number>}
+  if (!w.__webgpuStubAudit) return
+  stubAuditCounts.set(name, (stubAuditCounts.get(name) ?? 0) + 1)
+  w.__webgpuStubAuditCounts = stubAuditCounts
+}
+
 export function makeWebGpuGlStub(canvas: HTMLCanvasElement | OffscreenCanvas): WebGL2RenderingContext {
   const target = {canvas} as {canvas: typeof canvas}
   const proxy = new Proxy(target, {
@@ -695,15 +715,22 @@ export function makeWebGpuGlStub(canvas: HTMLCanvasElement | OffscreenCanvas): W
       if (prop === 'canvas') return t.canvas
       if (typeof prop === 'symbol') return undefined
       const name = prop as string
-      if (SILENT_NOOP_METHODS.has(name)) return noop
+      if (SILENT_NOOP_METHODS.has(name)) {
+        bumpAudit(name)
+        return noop
+      }
       if (SAFE_GETTER_METHODS.has(name)) {
+        bumpAudit(name)
         // Return a function that gives `null` for any lookup (which is
         // exactly what WebGL returns for missing uniforms/attribs/extensions).
         return () => null
       }
       // WebGL enum constants are all-caps. Return a placeholder number so
       // legacy code can read e.g. `gl.DEPTH_TEST` without crashing.
-      if (/^[A-Z][A-Z0-9_]*$/.test(name)) return 0
+      if (/^[A-Z][A-Z0-9_]*$/.test(name)) {
+        bumpAudit(name)
+        return 0
+      }
       throw new Error(
         `[webgpu] WebGL property "${name}" accessed on WebGPU stub — ` +
           `this code path needs an isWebGPU() guard (or, if it's harmless ` +

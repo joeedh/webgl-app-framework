@@ -167,9 +167,10 @@ export function makeParamToolMode(api) {
       }
     }
 
-    on_drawend(view3d, gl) {
+    on_drawend(view3d) {
+      const gl = view3d.gl
       if (this.drawVerts) {
-        super.on_drawend(view3d, gl)
+        super.on_drawend(view3d)
       }
 
       let ob = this.ctx.object

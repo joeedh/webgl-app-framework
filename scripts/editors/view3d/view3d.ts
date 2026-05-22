@@ -55,7 +55,7 @@ import {BusMessage} from '../../core/bus'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 import * as sculptcore_demo from '../../sculptcore_demo'
 import {isWebGPU} from '../../core/renderer_flag'
-import {drawDrawLinesWebGpu, drawGridWebGpu, drawViewportWebGpu, makeWebGpuGlStub, primeWebGpuViewport} from './view3d_draw_webgpu'
+import {drawDrawLinesWebGpu, drawGridWebGpu, drawViewportWebGpu, makeWebGpuGlStub, primeWebGpuViewport, type ViewLike} from './view3d_draw_webgpu'
 
 export interface ITempText {
   co: Vector3
@@ -1532,10 +1532,9 @@ View3D {
       // renderStageDesc), so SimpleMesh.draw routes automatically.
       // Overlays encode once per frame (no per-sample jitter), so the
       // jittered projmat from BasePass is ignored here.
-      const view3dLike = this as unknown as Parameters<typeof drawGridWebGpu>[0]
+      const view3dLike = this as unknown as ViewLike
       const self = this
-      engine.encodeOverlaysCB = (_rctx, _pass, _projmat) => {
-        void _rctx; void _pass; void _projmat
+      engine.encodeOverlaysCB = () => {
         drawGridWebGpu(view3dLike)
         drawDrawLinesWebGpu(view3dLike)
         try {
@@ -1549,12 +1548,12 @@ View3D {
         const scene = self.ctx?.scene
         if (scene?.toolmode) {
           try {
-            scene.toolmode.on_drawstart?.(self, self.gl)
+            scene.toolmode.on_drawstart?.(self)
           } catch (err) {
             console.error('[overlay] toolmode.on_drawstart threw:', err)
           }
           try {
-            scene.toolmode.on_drawend?.(self, self.gl)
+            scene.toolmode.on_drawend?.(self)
           } catch (err) {
             console.error('[overlay] toolmode.on_drawend threw:', err)
           }
@@ -1572,7 +1571,7 @@ View3D {
       return
     }
 
-    drawViewportWebGpu(this as unknown as Parameters<typeof drawViewportWebGpu>[0])
+    drawViewportWebGpu(this as unknown as ViewLike)
   }
 
   makeDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4 | number[], useZ = true): DrawQuad {

@@ -766,9 +766,10 @@ export class MeshEditor extends MeshToolBase {
     }
   }
 
-  on_drawend(view3d: any, gl: WebGL2RenderingContext): void {
-    super.on_drawend(view3d, gl)
+  on_drawend(view3d: any): void {
+    super.on_drawend(view3d)
 
+    const gl = view3d.gl as WebGL2RenderingContext
     const ob = this.ctx.object
     const color = [1, 0.8, 0.7, 1.0]
 
@@ -819,7 +820,7 @@ export class MeshEditor extends MeshToolBase {
     }
   }
 
-  on_drawstart(view3d: any, gl: WebGL2RenderingContext): void {
+  on_drawstart(view3d: any): void {
     if (!this.ctx) return
 
     this._getObject()
@@ -837,7 +838,7 @@ export class MeshEditor extends MeshToolBase {
       }
     }
 
-    super.on_drawstart(view3d, gl)
+    super.on_drawstart(view3d)
   }
 
   dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {

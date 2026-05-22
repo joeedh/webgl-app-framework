@@ -8,7 +8,7 @@ import '../core/const'
 import {loadShader, Shaders} from '../shaders/shaders'
 import {RenderBuffer} from './webgl'
 import {OptionalIf} from '../util/optionalIf'
-import {GpuBuffer} from '../webgpu/buffer.js'
+import {GpuBuffer, ensureGpuBuffer} from '../webgpu/buffer.js'
 import {isWebGPU} from '../core/renderer_flag.js'
 import {getActiveWebGpuContext, createDrawQueue} from '../render/queue_factory.js'
 import {isInstancedPointSprite} from '../webgpu/pipeline.js'
@@ -1943,16 +1943,14 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       if (byteLength === 0) continue
       const view = new Uint8Array(data.buffer as ArrayBuffer, data.byteOffset, byteLength)
 
-      let gpu = this._gpuBuffers.get(layer.bufferKey)
-      if (!gpu || gpu.size < byteLength) {
-        gpu?.destroy()
-        gpu = new GpuBuffer(device, {
+      const gpu = ensureGpuBuffer(
+        this._gpuBuffers, layer.bufferKey, byteLength,
+        {
           label: `SimpleIsland.${layer.bufferKey}`,
-          size : Math.max(byteLength, 16),
           usage: layer.type === LayerTypes.INDEX ? 'index' : 'vertex',
-        })
-        this._gpuBuffers.set(layer.bufferKey, gpu)
-      }
+        },
+        device, /*exactMatch*/ false,
+      )
       gpu.write(view as unknown as BufferSource)
     }
   }

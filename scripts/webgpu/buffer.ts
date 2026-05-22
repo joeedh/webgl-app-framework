@@ -67,3 +67,33 @@ export class GpuBuffer {
     this.handle.destroy()
   }
 }
+
+/**
+ * Get-or-allocate helper used by both the WASM batch executor and the
+ * JS-side `SimpleIsland`. Keeps the existing entry if it can hold
+ * `byteSize` bytes, otherwise destroys + reallocates.
+ *
+ * Callers diverge on policy:
+ *  - batch.ts reallocates on any size change (exact-match cache).
+ *  - SimpleIsland keeps oversized buffers (grow-only cache).
+ *
+ * `exactMatch` selects between the two: `true` ⇒ realloc when sizes
+ * differ, `false` ⇒ realloc only when too small.
+ */
+export function ensureGpuBuffer<K>(
+  cache: Map<K, GpuBuffer>,
+  key: K,
+  byteSize: number,
+  options: Omit<GpuBufferOptions, 'size'>,
+  device: GPUDevice,
+  exactMatch: boolean,
+): GpuBuffer {
+  const existing = cache.get(key)
+  const needRealloc = !existing ||
+    (exactMatch ? existing.size !== byteSize : existing.size < byteSize)
+  if (!needRealloc) return existing!
+  existing?.destroy()
+  const buf = new GpuBuffer(device, {...options, size: Math.max(byteSize, 4)})
+  cache.set(key, buf)
+  return buf
+}

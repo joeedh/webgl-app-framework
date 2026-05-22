@@ -101,6 +101,33 @@ export function isInstancedPointSprite(handle: GPURenderPipeline): boolean {
   return instancedPointSpritePipelines.has(handle)
 }
 
+/**
+ * The registry color targets default to `'bgra8unorm'`, but Chrome on
+ * some platforms prefers `'rgba8unorm'` for the canvas. Rewrite the
+ * interchangeable 8-bit unorm formats so they match the open canvas
+ * pass. Other formats (e.g. `'rgba32float'` for ID picking) pass
+ * through unchanged.
+ *
+ * Pure — no device or `this` access. Live callers pass
+ * `WebGpuRenderContext.surfaceFormat` as the second argument.
+ */
+const SURFACE_INTERCHANGEABLE: ReadonlySet<GPUTextureFormat> = new Set<GPUTextureFormat>([
+  'bgra8unorm',
+  'rgba8unorm',
+])
+export function applySurfaceFormat(
+  desc: PipelineDescriptor,
+  surfaceFormat: GPUTextureFormat | undefined,
+): PipelineDescriptor {
+  if (!surfaceFormat) return desc
+  return {
+    ...desc,
+    colorTargets: desc.colorTargets.map((t) =>
+      SURFACE_INTERCHANGEABLE.has(t.format) ? {...t, format: surfaceFormat} : t,
+    ),
+  }
+}
+
 export class PipelineCache {
   private readonly device: GPUDevice
   private readonly entries = new Map<string, Pipeline>()

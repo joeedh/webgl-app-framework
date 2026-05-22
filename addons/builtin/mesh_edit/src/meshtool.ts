@@ -518,11 +518,12 @@ export class MeshToolBase extends ToolMode {
     )
   }
 
-  on_drawend(view3d: any, gl: WebGL2RenderingContext): void {
+  on_drawend(view3d: any): void {
     if (!this.ctx) {
       return
     }
 
+    const gl = view3d.gl as WebGL2RenderingContext
     const cam = this.ctx.view3d.activeCamera
 
     const uniforms: any = {

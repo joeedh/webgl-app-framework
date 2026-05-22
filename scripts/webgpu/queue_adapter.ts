@@ -11,7 +11,7 @@
 import type {DrawQueue, FrameContext, Submission} from '../render/queue.js'
 import type {IUniformsBlock} from '../webgl/webgl.js'
 import type {Pipeline, PipelineCache, PipelineDescriptor} from './pipeline.js'
-import {markInstancedPointSprite} from './pipeline.js'
+import {applySurfaceFormat, markInstancedPointSprite} from './pipeline.js'
 import {buildPipelineDescriptor, lookupWgslShader} from '../shaders/wgsl_shaders.js'
 import {BufferUsage} from './flags.js'
 import {PrimitiveTypes} from '../webgl/simplemesh.js'
@@ -163,7 +163,7 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
           `WebGPUDrawQueueAdapter: point-sprite remap target "${pointSpriteKey}" not registered.`
         )
       }
-      pipeline = this.frame.pipelineCache.get(this._applySurfaceFormat(buildPipelineDescriptor(entry)))
+      pipeline = this.frame.pipelineCache.get(applySurfaceFormat(buildPipelineDescriptor(entry), this.frame.surfaceFormat))
       markInstancedPointSprite(pipeline.handle)
     } else {
       pipeline = this.frame.pipelineBindings.get(s.pipeline)
@@ -182,7 +182,7 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
             `frame.pipelineBindings.`
         )
       }
-      const desc = this._applySurfaceFormat(buildPipelineDescriptor(entry))
+      const desc = applySurfaceFormat(buildPipelineDescriptor(entry), this.frame.surfaceFormat)
       pipeline = this.frame.pipelineCache.get(desc)
       this.frame.pipelineBindings.set(s.pipeline, pipeline)
     }
@@ -228,22 +228,6 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
       if (slots[i]) this.frame.passEncoder.setVertexBuffer(i, dummy)
     }
     s.mesh.drawGPU(this.frame.passEncoder, pipeline.handle, uniforms)
-  }
-
-  /**
-   * The registry color targets default to 'bgra8unorm', but Chrome on some
-   * platforms prefers 'rgba8unorm' for the canvas. Rewrite interchangeable
-   * 8-bit unorm formats to match the open canvas-targeted render pass.
-   * Other formats (e.g. 'rgba32float' for ID picking) are left alone.
-   */
-  _applySurfaceFormat(desc: PipelineDescriptor): PipelineDescriptor {
-    const surfaceFormat = this.frame.surfaceFormat
-    if (!surfaceFormat) return desc
-    const interchangeable = new Set<GPUTextureFormat>(['bgra8unorm', 'rgba8unorm'])
-    desc.colorTargets = desc.colorTargets.map((t) =>
-      interchangeable.has(t.format) ? {...t, format: surfaceFormat} : t
-    )
-    return desc
   }
 
   scheduleRawGLPass(): void {

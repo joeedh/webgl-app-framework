@@ -474,11 +474,11 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
 
   on_mouseup(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {}
 
-  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
+  on_drawstart(view3d: View3D): boolean | void {}
 
   draw(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
 
-  on_drawend(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
+  on_drawend(view3d: View3D): boolean | void {}
 
   /*
 get view3d() {

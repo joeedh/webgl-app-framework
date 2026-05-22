@@ -607,7 +607,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     return false
   }
 
-  on_drawend(view3d: View3D, gl: WebGL2RenderingContext): void {
+  on_drawend(view3d: View3D): void {
     this.ctx = view3d.ctx
     this.drawBrush(view3d)
   }

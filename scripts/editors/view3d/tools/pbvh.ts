@@ -678,11 +678,12 @@ export class BVHToolMode extends PaintToolModeBase {
     }
   }
 
-  on_drawend(view3d: any, gl: WebGL2RenderingContext): void {
+  on_drawend(view3d: any): void {
     if (!this.ctx?.scene) {
       return
     }
 
+    const gl = view3d.gl as WebGL2RenderingContext
     this.drawBrush(view3d)
 
     const ctx = this.ctx

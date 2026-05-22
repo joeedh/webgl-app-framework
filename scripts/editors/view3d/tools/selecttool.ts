@@ -204,8 +204,8 @@ export class ObjectEditor extends ToolMode {
     }
   }
 
-  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext): void {
-    super.on_drawstart(view3d, gl)
+  on_drawstart(view3d: View3D): void {
+    super.on_drawstart(view3d)
   }
 
   /*
@@ -250,8 +250,8 @@ export class ObjectEditor extends ToolMode {
     return true
   }
 
-  on_drawend(view3d: any, gl: WebGL2RenderingContext): void {
-    super.on_drawend(view3d, gl)
+  on_drawend(view3d: any): void {
+    super.on_drawend(view3d)
   }
 
   findnearest(ctx: any, x: number, y: number, selmask: number = SelMask.OBJECT, limit: number = 25): any | undefined {
