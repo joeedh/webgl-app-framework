@@ -32,6 +32,33 @@ guide. Key conventions:
   add a new class that needs registering, either add it manually to that
   list or rerun `node tools/migrate-mesh-registers.js` to regenerate it.
 
+## Rendering
+
+The realtime renderer is WebGPU-only. See
+[documentation/rendering.md](documentation/rendering.md) for the frame
+topology (`NormalPass → AOPass → BasePass → AccumPass ⇄ PassThruPass →
+SharpenPass.{x,y} → OutputPass`), bind-group conventions, and how to add
+new post-process or scene-walk passes. Key conventions:
+
+- Offscreen targets are `rgba16float` + `depth24plus`; the canvas
+  swap-chain is `bgra8unorm`. Pipelines registered against the
+  offscreen format are transparently re-cached against the swap-chain
+  format when `node.surface` is set on the `OutputPass` node.
+- New post-process passes go in
+  `scripts/renderengine/wgsl_render_passes.ts` (WGSL + `registerWgslPass`),
+  then a `GraphNodeRef` is emitted from
+  `RealtimeEngine.rebuildGraphWebGPU`. Bindings 0/1/2/3/7 are wired
+  generically by `_buildPostProcessBindGroup`; pass-specific extras
+  (binding 4+) need code there.
+- Scene-walk passes (`NormalPass`, `BasePass`) are marker entries —
+  `WebGpuRenderGraph.exec` special-cases the `passKey` and calls
+  `hooks.encodeMeshNormalPass` / `encodeMeshBasePass` instead of
+  drawing the fullscreen quad.
+- Overlays (grid, widgets, drawDrawLines, toolmode debug) install
+  themselves via `engine.encodeOverlaysCB`; the engine reopens a
+  `loadOp: 'load'` pass against the same swap-chain view OutputPass
+  wrote.
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig
