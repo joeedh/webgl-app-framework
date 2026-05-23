@@ -27,5 +27,7 @@
       "onAutoForward": "notify",
       "protocol": "http"
     }
-  }
+  },
+  "workspaceMount": "source=webgl-app-framework,target=/workspaces/webgl-app-framework,type=volume",
+  "workspaceFolder": "/workspaces/webgl-app-framework"
 }

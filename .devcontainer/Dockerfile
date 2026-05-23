@@ -14,6 +14,11 @@ RUN sudo apt-get install -y gh vim
 RUN sudo apt-get update
 RUN git config --global core.editor vim
 
+# Clear root's password so `su root` works without a password inside the
+# container. The base image locks root by default; this unlocks it for
+# interactive debugging convenience.
+RUN sudo passwd -d root
+
 WORKDIR /home/vscode
 
 ENV PATH=/usr/local/bin:$PATH
@@ -39,7 +44,8 @@ RUN . /tmp/versions.env && \
 
 RUN echo "export PATH=/usr/local/bin:$PATH" >> /home/vscode/.bashrc
 
-RUN npm i -g pnpm turbo
+RUN . /tmp/versions.env && \
+    npm i -g "pnpm@${PNPM_VERSION}" turbo
 RUN pnpm setup
 
 # ===========================================================================
@@ -62,7 +68,7 @@ RUN . /tmp/versions.env && \
     sudo apt-get update && sudo apt-get install -y --no-install-recommends \
         ca-certificates curl wget git xz-utils unzip \
         build-essential pkg-config python3 python3-pip python-is-python3 \
-        cmake ninja-build gnupg lsb-release software-properties-common && \
+        cmake ninja-build gnupg lsb-release && \
     curl -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     sudo bash /tmp/llvm.sh "${LLVM_VERSION}" && \
     sudo apt-get install -y --no-install-recommends \
@@ -74,9 +80,13 @@ RUN . /tmp/versions.env && \
 
 # Tint (WGSL validator) — built from Dawn standalone at the pinned commit.
 # Only the `tint` binary is kept; the rest of Dawn is discarded.
+# Fetch-by-SHA pattern (not `git clone` + `checkout`) so any reachable commit
+# works — including ones that only live on chromium/* milestone branches.
 RUN . /tmp/versions.env && \
-    git clone https://dawn.googlesource.com/dawn /tmp/dawn && \
-    cd /tmp/dawn && git checkout "${TINT_COMMIT}" && \
+    git init /tmp/dawn && cd /tmp/dawn && \
+    git remote add origin https://dawn.googlesource.com/dawn && \
+    git -c protocol.version=2 fetch --depth=1 origin "${TINT_COMMIT}" && \
+    git checkout FETCH_HEAD && \
     cp scripts/standalone.gclient .gclient && \
     python3 tools/fetch_dawn_dependencies.py --use-test-deps && \
     cmake -S . -B out -G Ninja \
@@ -109,10 +119,24 @@ RUN . /tmp/versions.env && \
     sudo install -m0755 /tmp/glslang/build/StandAlone/glslang /usr/local/bin/ && \
     rm -rf /tmp/glslang
 
+# From here on we use bash for RUN steps because the CUDA / OpenCL blocks
+# rely on ${var/x/y} pattern substitution, which dash (the default /bin/sh)
+# does not support. Earlier steps stay on /bin/sh to keep their cache.
+SHELL ["/bin/bash", "-c"]
+
 # CUDA toolkit (nvcc + headers; no driver / GPU needed for --cuda --dryrun)
+#
+# Debian 12 trixie's apt uses Sequoia (sqv) for OpenPGP verification, with a
+# policy that rejects SHA1 second-preimage-resistance signatures after
+# 2026-02-01. NVIDIA's cuda-keyring still ships SHA1 self-signatures, so apt
+# rejects the InRelease file. We relax the sqv policy *just* for SHA1 before
+# the apt-get update; everything else stays at the trixie default.
 RUN . /tmp/versions.env && \
     CUDA_MAJOR_MINOR="${CUDA_VERSION%.*}" && \
     CUDA_DEB_REPO="https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64" && \
+    sudo mkdir -p /etc/crypto-policies/back-ends && \
+    printf '[hash_algorithms]\nsha1.collision_resistance = "always"\nsha1.second_preimage_resistance = "always"\n' \
+        | sudo tee /etc/crypto-policies/back-ends/sequoia.config > /dev/null && \
     curl -fsSL "${CUDA_DEB_REPO}/cuda-keyring_1.1-1_all.deb" -o /tmp/cuda-keyring.deb && \
     sudo dpkg -i /tmp/cuda-keyring.deb && \
     sudo apt-get update && \
@@ -125,28 +149,41 @@ RUN . /tmp/versions.env && \
 ENV PATH=/usr/local/cuda/bin:$PATH \
     CUDA_HOME=/usr/local/cuda
 
-# ROCm / HIP — syntax-only hipcc, no AMD driver needed
-RUN . /tmp/versions.env && \
-    curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" \
-        | sudo gpg --dearmor -o /usr/share/keyrings/rocm.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rocm.gpg] \
-          https://repo.radeon.com/rocm/apt/${ROCM_VERSION} jammy main" \
-        | sudo tee /etc/apt/sources.list.d/rocm.list && \
-    sudo apt-get update && \
-    sudo apt-get install -y --no-install-recommends \
-        hipcc hip-dev hip-runtime-amd rocm-llvm && \
-    sudo rm -rf /var/lib/apt/lists/*
-
-ENV PATH=/opt/rocm/bin:$PATH \
-    HIP_PLATFORM=amd
+# ROCm / HIP — DEFERRED TO WAVE 5.
+#
+# Two upstream problems block installing AMD's ROCm on Debian 12 trixie:
+#
+#   1. AMD's rocm.gpg.key has an invalid binding self-signature that
+#      trixie's sequoia (sqv) verifier rejects. [trusted=yes] bypasses
+#      this, but is a workaround, not a fix.
+#   2. AMD only ships ROCm packages for Ubuntu (jammy / noble). The
+#      `rocm-llvm` package depends on `libstdc++-{5,7,11}-dev`, none of
+#      which exist on Debian trixie (which ships libstdc++-14-dev).
+#      `hipcc` transitively needs `rocm-llvm` for its clang, so we can't
+#      cleanly install hipcc syntax-only either.
+#
+# Options to revisit when Wave 5 lands:
+#   * Switch the base image to ubuntu:22.04 (loses Debian-trixie ergonomics)
+#   * Multi-stage: install HIP in a jammy stage, copy bins+libs into trixie
+#     (fragile — runtime libstdc++ ABI mismatch)
+#   * Use AMD's HIP CPU runtime (hipCPU) for syntax-only checks instead
+#   * Wait for AMD's Debian 13 packages (announced, not yet shipped)
+#
+# For now the image ships without hipcc. The Wave 5 HIP emitter will gate
+# its validator on `which hipcc` and skip cleanly when absent.
+#
+# ENV PATH=/opt/rocm/bin:$PATH HIP_PLATFORM=amd  # restore when re-enabled
 
 # OpenCL — clspv (OpenCL C → SPIR-V) + POCL headers for OpenCL C parsing
+# clspv pins to a commit (no upstream release tags); fetch-by-SHA like Dawn.
 RUN . /tmp/versions.env && \
     sudo apt-get update && sudo apt-get install -y --no-install-recommends \
         opencl-headers ocl-icd-opencl-dev pocl-opencl-icd && \
-    git clone --depth=1 -b "${CLSPV_COMMIT}" \
-        https://github.com/google/clspv.git /tmp/clspv && \
-    cd /tmp/clspv && python3 utils/fetch_sources.py --shallow && \
+    git init /tmp/clspv && cd /tmp/clspv && \
+    git remote add origin https://github.com/google/clspv.git && \
+    git -c protocol.version=2 fetch --depth=1 origin "${CLSPV_COMMIT}" && \
+    git checkout FETCH_HEAD && \
+    python3 utils/fetch_sources.py --shallow --ci && \
     cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --target clspv && \
     sudo install -m0755 build/bin/clspv /usr/local/bin/ && \
@@ -154,11 +191,12 @@ RUN . /tmp/versions.env && \
 
 # Sanity check: every advertised validator resolves on PATH at image build
 # time. If any of these fails, the image build fails — which is what we want.
-RUN clang --version && \
-    node --version && pnpm --version && \
-    tint --version && \
-    spirv-val --version && spirv-opt --version && \
-    glslang --version && \
-    nvcc --version && \
-    hipcc --version && \
-    clspv --version
+# hipcc is intentionally omitted (see ROCm block above; Wave 5 follow-up).
+# We use `command -v` for existence rather than `--version`, since some
+# binaries (tint) treat `--version` as an unknown flag and exit non-zero.
+RUN for tool in clang node pnpm tint spirv-val spirv-opt spirv-dis glslang nvcc clspv; do \
+        if ! command -v "$tool" > /dev/null; then \
+            echo "missing: $tool"; exit 1; \
+        fi; \
+        echo "ok: $tool -> $(command -v $tool)"; \
+    done
