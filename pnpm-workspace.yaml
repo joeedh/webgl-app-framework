@@ -8,6 +8,7 @@ packages:
   - sculptcore
   - sculptcore/tests/testViewer3D
   - scripts
+  - scripts/path.ux
   - tests
   - vendor/nstructjs
   - scripts/mathl

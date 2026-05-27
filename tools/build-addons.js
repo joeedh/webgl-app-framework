@@ -27,6 +27,32 @@ import {frameworkApiPlugin} from './framework_api_plugin.js'
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
 
+/**
+ * Stub out framework-global side-effect imports (numeric.js, the extern Math
+ * shim, jszip) in addon bundles. These libraries attach themselves to
+ * `globalThis` and are loaded once by the host bundle before any addon runs,
+ * so addons import them purely for their side effect. Left as plain esbuild
+ * externals they emit a relative specifier (e.g. `../../scripts/util/
+ * numeric.js`) that esbuild rebases against the addon `outbase`; from the
+ * deeper `build/addons/_chunks/` output dir that path resolves to
+ * `/build/scripts/...` and 404s. Resolving them to an empty module drops the
+ * redundant (and broken) re-fetch and works in both the web and electron
+ * layouts since the global is already present.
+ */
+function frameworkGlobalsStubPlugin() {
+  const STUB = /(^|\/)(numeric(\.js)?|scripts\/util\/numeric(\.js)?|scripts\/extern\/Math(\.js)?|scripts\/extern\/jszip\/.*)$/
+  return {
+    name: 'framework-globals-stub',
+    setup(build) {
+      build.onResolve({filter: STUB}, (args) => ({path: args.path, namespace: 'framework-global-stub'}))
+      build.onLoad({filter: /.*/, namespace: 'framework-global-stub'}, () => ({
+        contents: '',
+        loader  : 'js',
+      }))
+    },
+  }
+}
+
 const args = process.argv.slice(2)
 const WATCH = args.includes('--watch') || args.includes('-w')
 const INCLUDE_FIXTURES = args.includes('--include-fixtures')
@@ -110,7 +136,7 @@ function buildOptionsFor(entries) {
     // instead of inlining the upstream addon's code. See plan §2.5.
     // @framework/api and @framework/pathux are resolved similarly against
     // globalThis._framework (set in scripts/_framework_runtime.ts).
-    plugins    : [frameworkApiPlugin(REPO_ROOT), addonApiPlugin(REPO_ROOT)],
+    plugins    : [frameworkGlobalsStubPlugin(), frameworkApiPlugin(REPO_ROOT), addonApiPlugin(REPO_ROOT)],
   }
 }
 

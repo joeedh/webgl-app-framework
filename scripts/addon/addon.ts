@@ -334,7 +334,13 @@ export class AddonManager {
 
     for (const m of toLoad) {
       const entryJs = m.entry.replace(/\.ts$/, '.js')
-      const url = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
+      const rel = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
+      // `baseUrl` is document-relative (e.g. "./build/addons"), matching the
+      // fetch() of index.json. But `import()` resolves its specifier relative
+      // to *this* module's URL — a bundled chunk already under /build/ — so a
+      // raw "./build/addons/..." doubles into "/build/build/addons/..." and
+      // 404s. Anchor to the document base so import() agrees with fetch().
+      const url = typeof document !== 'undefined' ? new URL(rel, document.baseURI).href : rel
 
       let module: IAddon
       try {

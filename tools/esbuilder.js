@@ -10,6 +10,15 @@ let options = {
   entryPoints: [
     './scripts/entry_point.js',
     {in: './sculptcore/typescript/build/sculptcore-browser.wasm', out: 'sculptcore-browser'},
+    // Emit the Emscripten glue at a stable, unhashed path. Its pthread pool
+    // spawns workers via `new Worker(new URL('sculptcore-browser.js',
+    // import.meta.url))` (see PThread.allocateUnusedWorker in the generated
+    // glue); if esbuild content-hashes the chunk, that bare filename 404s and
+    // every pool worker dies on startup. Pinning the name to
+    // `build/sculptcore-browser.js` makes the self-reference resolve. The
+    // dynamic `import('../build/sculptcore-browser.js')` in wasm.ts dedupes
+    // onto this same output.
+    {in: './sculptcore/typescript/build/sculptcore-browser.js', out: 'sculptcore-browser'},
   ],
   alias: {
     '@framework/api': Path.join(REPO_ROOT, 'scripts', 'framework_api.ts'),
@@ -26,6 +35,8 @@ let options = {
   loader     : {'.wasm': 'copy'},
   external: [
     'fs',
+    'path',
+    'marked',
     '*/build/sculptcore.js',
     'electron',
     'scripts/util/numeric.js',
