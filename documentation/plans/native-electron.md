@@ -268,9 +268,19 @@ length), with the index accessors (`0..length`) and a constant `length` on the
 bug). The per-instance base pointer is held by the `napi_wrap`'d `ArrayInstData`;
 each `arrayGetter`/`arraySetter` unwraps `this` to recover `base`, then indexes
 `base + i*elemSize` straight into C++ memory (no ArrayBuffer, so writes survive
-the V8 sandbox). Verified via `source/napi/electron_smoke.cjs`:
-`float2.vec` writes `[1.5, 3.0]` and reads them back with `firstElementOk` /
-`allOk` both true (`node make.mjs node --smoke`).
+the V8 sandbox). Verified via `source/napi/electron_smoke.cjs` (`float2.vec`
+writes `[1.5, 3.0]`, reads back with `firstElementOk`/`allOk` true), and
+**re-verified in the running app over CDP** (`--backend native`): the
+previously-deterministic repro `[v.vec[0], v.vec[1], v.vec[2]]` is correct, and
+3000 fresh-construct + write + fresh-wrapper-read iterations (with GC churn) were
+0/3000 bad.
+
+This is **distinct** from the transient boot-time-GC garbage read noted above:
+the `float3` ring's *first* call right after boot was observed once to yield a
+garbage element[0] (a subnormal double — reinterpreted bits, not a float read),
+but that did not reproduce in 3000 steady-state reads. It remains the
+lifetime/finalizer watch-item tied to the deferred identity cache, **not** the
+accessor bug.
 
 The old per-base `arrayCache_` was dropped — wrappers are now created per access
 like embedded-struct wrappers (no identity caching yet; folds into the deferred
