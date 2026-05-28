@@ -307,10 +307,16 @@ GPUManager natively" goal — through the existing reflection method-invoke path
 not on the critical path).
 
 **Remaining for native *sculpt*:** in-app native GPU rendering is still gated on a
-native **litemesh scene** — `litemesh.ts rayCast`'s `_rawAlloc`/`HEAPF32`/`F32SHIFT`
-heap poking must become backend-agnostic, and the scene must build/drive natively,
-before the now-wired native `gpuExecutor.dispatch` actually executes per-frame. The
-float3-ring boot-GC transient above also remains. ✅ `Mesh_free` now exists —
+native **litemesh scene** actually building/driving natively, before the now-wired
+native `gpuExecutor.dispatch` executes per-frame. ✅ `litemesh.ts rayCast` is now
+backend-agnostic — it passes the ray endpoints as bound `float3`s through the
+`wasm.float3(...)` ring (both backends marshal the reference-arg address; native
+keeps the pointer in C++) instead of `_rawAlloc`/`HEAPF32`/`F32SHIFT` heap poking,
+and disposes `CastRayIsect` in a `finally` (guarded for native GC-finalization),
+fixing a pre-existing hit-path leak; WASM-verified over CDP. The litemesh
+constructor path (`Mesh_createCube(120,…)`, `update(gpu)`, `getDrawBatch`,
+`buildLeafBoundsBatch`) is the next thing to exercise natively. The float3-ring
+boot-GC transient above also remains. ✅ `Mesh_free` now exists —
 `extern "C" Mesh_free` (`mesh_shapes.cc`, `alloc::Delete<Mesh>`) exposed as the
 addon's `meshFree`/`NativeManager.Mesh_free`; it nulls the wrapper's pointer so
 a later access/finalizer can't touch freed storage. Verified via the smoke

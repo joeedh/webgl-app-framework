@@ -13,7 +13,7 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
-import {DrawBatch, float3, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import {DrawBatch, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl/index'
 import type {View3D} from '../editors/all'
@@ -220,27 +220,20 @@ export class LiteMesh extends SceneObjectData {
 
   rayCast(origin: Vector3, dir: Vector3): GenericIsect | undefined {
     const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
-    const originPtr = this.wasm._rawAlloc(3 * 4)
-    const dirPtr = this.wasm._rawAlloc(3 * 4)
+    try {
+      // Backend-agnostic: pass the ray endpoints as bound float3s (the wasm/native
+      // ring helper) rather than poking raw heap pointers — castRay takes them by
+      // reference, so both backends marshal the wrapper's address. (Native keeps
+      // the pointer in C++; there is no HEAPF32 to write through.)
+      const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+      const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
 
-    const f32 = this.wasm.HEAPF32
-    const fshift = this.wasm.F32SHIFT
+      const result = this.spatial.castRay(originF3, dirF3, isectOut)
+      if (!result) {
+        return undefined
+      }
 
-    let idx = originPtr >> fshift
-    f32[idx++] = origin[0]
-    f32[idx++] = origin[1]
-    f32[idx++] = origin[2]
-
-    idx = dirPtr >> fshift
-    f32[idx++] = dir[0]
-    f32[idx++] = dir[1]
-    f32[idx++] = dir[2]
-
-    const result = this.spatial.castRay(originPtr as unknown as float3, dirPtr as unknown as float3, isectOut)
-
-    let isect: GenericIsect | undefined
-    if (result) {
-      isect = new GenericIsect()
+      const isect = new GenericIsect()
       for (let i = 0; i < 3; i++) {
         isect.p[i] = isectOut.p.vec[i]
         isect.normal[i] = isectOut.normal.vec[i]
@@ -250,12 +243,11 @@ export class LiteMesh extends SceneObjectData {
       isect.uv[0] = isectOut.uv.vec[0]
       isect.uv[1] = isectOut.uv.vec[1]
       return isect
+    } finally {
+      // WASM exposes an explicit disposer; the native backend GC-finalizes the
+      // owning wrapper, so the disposer is absent there.
+      ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
     }
-
-    this.wasm._rawRelease(originPtr)
-    this.wasm._rawRelease(dirPtr)
-    isectOut[Symbol.dispose]()
-    return isect
   }
 
   regenTreeBatch() {

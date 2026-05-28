@@ -93,9 +93,14 @@ sites to make backend-agnostic before native can actually run the app:
   internally, native forwards the wrapper. `typescriptRuntime` untouched.
   Verified natively over CDP (Mesh → SpatialTree → `getBoundVector(leaves)`
   → length 2, iterates).
-- `scripts/lite-mesh/litemesh.ts` `rayCast()` — uses `wasm._rawAlloc`, `HEAPF32`,
-  `F32SHIFT`, `ptr >> shift`. WASM-linear-memory-specific; needs a backend-agnostic
-  path (pass float3s by value / through the runtime rather than poking a heap).
+- ~~`scripts/lite-mesh/litemesh.ts` `rayCast()` — uses `wasm._rawAlloc`, `HEAPF32`,
+  `F32SHIFT`, `ptr >> shift`.~~ **Done.** Now passes the ray endpoints as bound
+  `float3`s via the `wasm.float3([...])` ring (both backends marshal the
+  reference-arg wrapper's address; native keeps the pointer in C++), and the
+  `CastRayIsect` disposer moved into a `finally` (guarded — native GC-finalizes,
+  so the disposer is absent) which also fixed a pre-existing leak on the hit
+  path. WASM-verified over CDP (ray hits the spherized cube at z≈0.5, correct
+  normal, zero console errors).
 - `sculptcore/typescript/api/gpuExecutor.ts` — ✅ **native bulk-data path wired.**
   `bufferBytes(buf, bytes)` now branches: WASM keeps the zero-copy
   `new Uint8Array(HEAPU8.buffer, buf.data, bytes)` (byte-identical, re-verified
