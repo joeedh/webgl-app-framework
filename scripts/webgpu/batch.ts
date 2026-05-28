@@ -122,14 +122,48 @@ export class WebGPUBatchExecutor {
     this.opts = opts
   }
 
-  private uploadBuffer(buf: Buffer): GpuBuffer {
-    const ptr = (buf as unknown as BoundLike).ptr
-    const dataPtr = buf.data
-    const size = buf.size
-    const elemsize = buf.elemsize
-    const bytes = size * elemsize * gpuTypeBytes(buf.type)
+  // --- backend-agnostic seams (see TODO.md "native-electron: de-numbering") ---
+  // WASM keeps a numeric heap `.ptr` + a numeric `buf.data` and reads the
+  // linear-memory heap directly; the native (N-API) backend keeps real pointers
+  // in C++, so identity comes from `objectAddress` (an opaque key) and bytes from
+  // `pointerBytes` (a copy under the V8 sandbox). Vector *members* are array-like
+  // on WASM but plain bound instances natively, so route them through
+  // `getBoundVector`.
 
-    let cached = this.bufferCache.get(ptr)
+  /** Stable per-Buffer identity for the GPU-buffer cache. */
+  private bufferKey(buf: Buffer): number {
+    const wasmKey = (buf as unknown as BoundLike).ptr
+    if (typeof wasmKey === 'number') return wasmKey
+    const addr = this.wasm.objectAddress?.(buf as unknown as object)
+    if (typeof addr === 'number') return addr
+    throw new Error('WebGPUBatch: no stable buffer identity (objectAddress missing)')
+  }
+
+  /** The buffer's backing bytes (WASM heap view vs native pointerBytes copy). */
+  private bufferBytes(buf: Buffer, bytes: number): Uint8Array<ArrayBuffer> {
+    const heap = this.wasm.HEAPU8
+    if (heap !== undefined) {
+      const dataPtr = (buf as unknown as {data: number}).data
+      return new Uint8Array(heap.buffer as ArrayBuffer, dataPtr, bytes)
+    }
+    const view = this.wasm.pointerBytes?.(buf as unknown as object, 'data', bytes)
+    if (view) return view as Uint8Array<ArrayBuffer>
+    throw new Error('WebGPUBatch: native bulk-data path not wired (pointerBytes missing)')
+  }
+
+  /** A bound Vector member as array-like (`.length` + numeric index). */
+  private vecMember<T>(v: unknown): ArrayLike<T> {
+    if (this.wasm.HEAPU8 !== undefined) {
+      return v as ArrayLike<T>
+    }
+    return this.wasm.getBoundVector('', v as object) as ArrayLike<T>
+  }
+
+  private uploadBuffer(buf: Buffer): GpuBuffer {
+    const key = this.bufferKey(buf)
+    const bytes = buf.size * buf.elemsize * gpuTypeBytes(buf.type)
+
+    let cached = this.bufferCache.get(key)
     if (!cached || cached.uploadedSize !== bytes) {
       cached?.buf.destroy()
       cached = {
@@ -141,13 +175,19 @@ export class WebGPUBatchExecutor {
         uploadedSize   : bytes,
         uploadedDataPtr: -1,
       }
-      this.bufferCache.set(ptr, cached)
+      this.bufferCache.set(key, cached)
     }
 
-    if (cached.uploadedDataPtr !== dataPtr || buf.update_buffer) {
-      const view = new Uint8Array(this.wasm.HEAPU8.buffer as ArrayBuffer, dataPtr, bytes)
+    // WASM tracks the data pointer to detect a realloc; native relies on the
+    // engine's `update_buffer` dirty flag (the pointer stays in C++).
+    const dataPtr =
+      this.wasm.HEAPU8 !== undefined ? (buf as unknown as {data: number}).data : undefined
+    const needsWrite =
+      (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
+    if (needsWrite) {
+      const view = this.bufferBytes(buf, bytes)
       cached.buf.write(view)
-      cached.uploadedDataPtr = dataPtr
+      if (dataPtr !== undefined) cached.uploadedDataPtr = dataPtr
       buf.update_buffer = false
     }
 
@@ -155,11 +195,11 @@ export class WebGPUBatchExecutor {
   }
 
   releaseBuffer(buf: Buffer): void {
-    const ptr = (buf as unknown as BoundLike).ptr
-    const cached = this.bufferCache.get(ptr)
+    const key = this.bufferKey(buf)
+    const cached = this.bufferCache.get(key)
     if (cached) {
       cached.buf.destroy()
-      this.bufferCache.delete(ptr)
+      this.bufferCache.delete(key)
     }
   }
 
@@ -173,7 +213,7 @@ export class WebGPUBatchExecutor {
     // `vec4f` slot — missing components default to 0, w to 1). Keying
     // off the buffer shape lets sculptcore feed vec3 normals into a
     // WGSL `vec4f` declaration without the pipeline rejecting the bind.
-    const attrs = Array.from(sdef.attrs)
+    const attrs = Array.from(this.vecMember<{name: string}>(sdef.attrs))
     const slotShape: Array<{stride: number; format: GPUVertexFormat} | null> = attrs.map((a) => {
       const found = cmdAttrs.find((b) => b.name === a.name)
       if (!found) return null
@@ -212,20 +252,21 @@ export class WebGPUBatchExecutor {
 
   // Caller must already have opened the pass and set the viewport.
   dispatch(batch: DrawBatch, pass: GPURenderPassEncoder): void {
-    const commands = batch.commands
+    const commands = this.vecMember<DrawCommand>(batch.commands)
     if (commands.length === 0) return
 
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]
       if (!cmd.shader) continue
 
-      // `cmd.attrs` arrives from the WASM/Embind boundary as a
-      // Vector-like iterable, not a JS Array — `.find()` isn't on the
-      // prototype. Normalize once per command so the lookups below work.
-      const cmdAttrs = Array.from(cmd.attrs)
+      // `cmd.attrs` arrives from the WASM/Embind (or native N-API) boundary as a
+      // Vector-like, not a JS Array — `.find()` isn't on the prototype, and the
+      // native member wrapper isn't even array-like. Normalize once per command
+      // (vecMember handles the native case) so the lookups below work.
+      const cmdAttrs = Array.from(this.vecMember<Buffer>(cmd.attrs))
 
       const pipeline = this.getPipeline(cmd.shader, cmd, cmdAttrs)
-      const sdefAttrs = Array.from(cmd.shader.attrs)
+      const sdefAttrs = Array.from(this.vecMember<{name: string}>(cmd.shader.attrs))
       const count = cmd.end - cmd.start
 
       pass.setPipeline(pipeline.handle)

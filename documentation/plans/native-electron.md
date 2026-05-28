@@ -315,25 +315,44 @@ returns the correct `dis:4.5`/`tri:195` (matching WASM). So the whole native
 factory + GPU-bulk-data + dispatch chain *executes*. Two concrete bugs remain
 before the mesh is actually **visible/correct**:
 
-1. **Invisible mesh — Vector-member iteration.** `gpuExecutor.dispatch` reads
-   `batch.commands` and `cmd.attrs` as *embedded* `Vector` members. On WASM the
-   typescriptRuntime makes member-accessed Vectors array-like (`.length`/`[i]`);
-   natively a member getter returns a plain bound-`Vector` *class instance* with
-   no `length`/index accessors, so `commands.length` is `undefined`, the draw
-   loop runs 0 iterations, and nothing is drawn (silently — `undefined === 0` and
-   `0 < undefined` are both false, hence no error). Fix = give native
-   member-accessed Vectors the same array-like surface as `getBoundVector`'s
-   `NativeBoundVector` proxy (the deferred "Vector iterator protocol" from B3),
-   either by detecting `isVectorStruct` in the member-get path or by routing the
-   dispatch loop through `getBoundVector`.
-2. **First-element garbage — lifetime/identity watch-item.** `isectOut.p.vec[0]`
-   reads a denormal (`~9.9e-311`, a pointer reinterpreted as a double) on the
-   first native read after a GC-heavy scene build, while `vec[1]`/`vec[2]` are
-   correct. This is the documented boot-GC transient tied to the deferred
-   identity cache (a fresh wrapper per `getBoundPointer`), reproduced here on the
-   embedded-struct-member → array path (`p` is a non-owning embedded `float3`
-   wrapper). Likely needs the `Map<void*, napi_ref>` identity cache so a wrapper's
-   value lifetime is stable across the read.
+1. ✅ **Vector-member iteration — fixed.** The visible viewport path is WebGPU
+   (`isWebGPU()` → `litemesh.drawQGPU` → `scripts/webgpu/batch.ts`
+   `WebGPUBatchExecutor`), **not** `api/gpuExecutor.ts` (a separate consumer,
+   also fixed). Both executors read `batch.commands`/`cmd.attrs` as embedded
+   `Vector` members — array-like on WASM, plain bound instances natively, so the
+   native draw loop iterated 0 commands. Both now route those through a
+   `vecMember` helper (`getBoundVector` on native, identity on WASM). After the
+   fix the native dispatch sees all 300 commands.
+2. ✅ **String members — fixed.** `litestl::util::string` is bound as a
+   member-less `Struct("litestl::util::String")`, so member access returned an
+   empty `{}` wrapper. The WebGPU executor matches buffers to shader slots by
+   `buf.name === shaderAttr.name`, so every match failed → no vertex buffer bound.
+   `getBoundPointer`'s Struct case now detects that struct name and reads
+   `data_` (a null-terminated `char*` at offset 0) as a JS string. Verified
+   natively: buffer/shader-attr names read as `"position"`/`"normal"`.
+3. 🔴 **Native mesh still not visibly rendering (open).** With (1)+(2) the native
+   dispatch now has everything correct — 300 commands, distinct+stable buffer
+   cache keys (`objectAddress`), buffer/attr names match, and the position buffer
+   reads as **sane sphere vertices** (`[-0.388, 0.049, 0.310, …]`, r≈0.5) via
+   `pointerBytes`. Yet the mesh isn't visible **and the move-tool overlay widget
+   disappears** once the dispatch goes from no-op to active — strongly implying a
+   **WebGPU validation error inside the draw aborts the render pass** (overlays
+   are encoded into the same pass afterward, so they vanish too). No JS console
+   error — GPU validation errors surface via the device error scope, not
+   `console.error`. **Next step (needs CDP):** wrap `dispatch` in
+   `device.pushErrorScope('validation')` / `popErrorScope()` to capture the exact
+   error. Leading hypotheses: a per-command vertex-buffer size vs. draw-count
+   mismatch, or `bindGroupForCommand` producing an invalid `@group(0)` natively.
+   The `chrome-devtools-electron` MCP server disconnected during this session
+   (it's bound to the live CDP session); resuming this needs a Claude Code
+   restart to restore it.
+4. **First-element garbage — lifetime/identity watch-item (separate, non-blocking
+   for render).** `isectOut.p.vec[0]` / a first `objectAddress` call read a
+   denormal (pointer-as-double) on the first native read after a GC-heavy scene
+   build; steady-state reads are correct (`objectAddress` returns distinct stable
+   addresses, `vec[1]`/`vec[2]` fine). The documented boot-GC transient tied to
+   the deferred identity cache (a fresh wrapper per `getBoundPointer`). Likely
+   needs the `Map<void*, napi_ref>` identity cache.
 
 ✅ `litemesh.ts rayCast` is now
 backend-agnostic — it passes the ray endpoints as bound `float3`s through the
