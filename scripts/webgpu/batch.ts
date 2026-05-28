@@ -139,16 +139,22 @@ export class WebGPUBatchExecutor {
     throw new Error('WebGPUBatch: no stable buffer identity (objectAddress missing)')
   }
 
-  /** The buffer's backing bytes (WASM heap view vs native pointerBytes copy). */
+  /**
+   * The buffer's backing bytes (WASM heap view vs native pointerBytes copy). An
+   * empty view for a not-yet-filled buffer (`bytes === 0` / null `data`) — the
+   * WASM path likewise yields a zero-length view there; do NOT throw, or the
+   * first frame (before the spatial tree fills its buffers) would abort the
+   * whole drawObjects pass.
+   */
   private bufferBytes(buf: Buffer, bytes: number): Uint8Array<ArrayBuffer> {
     const heap = this.wasm.HEAPU8
     if (heap !== undefined) {
       const dataPtr = (buf as unknown as {data: number}).data
       return new Uint8Array(heap.buffer as ArrayBuffer, dataPtr, bytes)
     }
+    if (bytes === 0) return new Uint8Array(0)
     const view = this.wasm.pointerBytes?.(buf as unknown as object, 'data', bytes)
-    if (view) return view as Uint8Array<ArrayBuffer>
-    throw new Error('WebGPUBatch: native bulk-data path not wired (pointerBytes missing)')
+    return (view as Uint8Array<ArrayBuffer>) ?? new Uint8Array(0)
   }
 
   /** A bound Vector member as array-like (`.length` + numeric index). */

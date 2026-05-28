@@ -330,22 +330,21 @@ before the mesh is actually **visible/correct**:
    `getBoundPointer`'s Struct case now detects that struct name and reads
    `data_` (a null-terminated `char*` at offset 0) as a JS string. Verified
    natively: buffer/shader-attr names read as `"position"`/`"normal"`.
-3. 🔴 **Native mesh still not visibly rendering (open).** With (1)+(2) the native
-   dispatch now has everything correct — 300 commands, distinct+stable buffer
-   cache keys (`objectAddress`), buffer/attr names match, and the position buffer
-   reads as **sane sphere vertices** (`[-0.388, 0.049, 0.310, …]`, r≈0.5) via
-   `pointerBytes`. Yet the mesh isn't visible **and the move-tool overlay widget
-   disappears** once the dispatch goes from no-op to active — strongly implying a
-   **WebGPU validation error inside the draw aborts the render pass** (overlays
-   are encoded into the same pass afterward, so they vanish too). No JS console
-   error — GPU validation errors surface via the device error scope, not
-   `console.error`. **Next step (needs CDP):** wrap `dispatch` in
-   `device.pushErrorScope('validation')` / `popErrorScope()` to capture the exact
-   error. Leading hypotheses: a per-command vertex-buffer size vs. draw-count
-   mismatch, or `bindGroupForCommand` producing an invalid `@group(0)` natively.
-   The `chrome-devtools-electron` MCP server disconnected during this session
-   (it's bound to the live CDP session); resuming this needs a Claude Code
-   restart to restore it.
+3. ✅ **Native mesh renders (FIXED 2026-05-28).** The litemesh cube now renders
+   end-to-end on the native backend — verified by screenshot (purple sphere at
+   origin, identical to WASM), and WASM re-verified for no regression. It was
+   **not** a GPU validation error (the error-scope probe came back clean): the
+   WebGPU executor's native `bufferBytes` *threw* `"native bulk-data path not
+   wired (pointerBytes missing)"` on the **first frame**, when the spatial tree
+   hasn't filled its GPU buffers yet (so `bytes === 0` / null `data` → C++
+   `pointerBytes` returns undefined → `if (view)` false → throw). That throw was
+   caught by `drawObjects` and logged only as a *warning*, aborting the whole pass
+   mid-encode — which is why the overlay widget vanished too. WASM never hit this
+   because `new Uint8Array(heap.buffer, ptr, 0)` is a harmless empty view. Fix:
+   native `bufferBytes` returns an **empty `Uint8Array`** for a not-yet-filled
+   buffer instead of throwing (in both `scripts/webgpu/batch.ts` and
+   `api/gpuExecutor.ts`). Lesson: don't throw on the bulk-data seam — match WASM's
+   tolerance of empty buffers, since the first frame races buffer fill.
 4. **First-element garbage — lifetime/identity watch-item (separate, non-blocking
    for render).** `isectOut.p.vec[0]` / a first `objectAddress` call read a
    denormal (pointer-as-double) on the first native read after a GC-heavy scene
