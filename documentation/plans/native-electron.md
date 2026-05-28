@@ -286,10 +286,31 @@ The old per-base `arrayCache_` was dropped — wrappers are now created per acce
 like embedded-struct wrappers (no identity caching yet; folds into the deferred
 identity-cache work).
 
-**Remaining for native *sculpt*:** the `gpu` manager (construct `GPUManager`
-natively — GPU-backend care), the WASM-heap reworks (`litemesh.ts rayCast`'s
-`_rawAlloc`/`HEAPF32`, `gpuExecutor`'s `HEAPU8.buffer` view → bulk-data copy),
-and the float3-ring boot-GC transient above. ✅ `Mesh_free` now exists —
+**GPU bulk-data path — ✅ done (primitives + gpuExecutor seam).** Two new addon
+exports (`source/napi/napi_runtime.cc`): `pointerBytes(boundObj, memberName,
+byteLen)` reads a raw-pointer member (e.g. `gpu::Buffer.data`, a `void*` that
+deliberately never crosses to JS as a number) off the descriptor and returns a
+`Uint8Array` over it — same external→copy fallback as `vectorView` (V8 sandbox);
+and `objectAddress(boundObj)` returns the wrapped C++ address as an opaque
+identity key (never dereferenced). `gpuExecutor.ts` now branches both seams:
+`bufferBytes(buf, bytes)` (WASM `HEAPU8` view vs native `pointerBytes`) and
+`bufferKey(buf)` (WASM `.ptr` vs native `objectAddress`); the WASM path is
+byte-identical (re-verified rendering litemesh-cube over CDP, zero console
+errors). **Verified at the C++/addon level** by the Electron smoke test driving
+the real native frontend pipeline: `meshCreateCube → buildSpatialTree →
+tree.update(gpu)` populates **2 vertex buffers** C++-side; `pointerBytes(buf,
+'data', size*elemsize*4)` returns a correct-length (21168-byte), real-data view;
+`objectAddress` is stable + nonzero. Note `tree.update(gpu)` exercises native
+**GPUManager construction + buffer creation + fill** — the headline "construct
+GPUManager natively" goal — through the existing reflection method-invoke path
+(the per-frame loop calls `createBuffer` in C++, so JS string-arg marshalling is
+not on the critical path).
+
+**Remaining for native *sculpt*:** in-app native GPU rendering is still gated on a
+native **litemesh scene** — `litemesh.ts rayCast`'s `_rawAlloc`/`HEAPF32`/`F32SHIFT`
+heap poking must become backend-agnostic, and the scene must build/drive natively,
+before the now-wired native `gpuExecutor.dispatch` actually executes per-frame. The
+float3-ring boot-GC transient above also remains. ✅ `Mesh_free` now exists —
 `extern "C" Mesh_free` (`mesh_shapes.cc`, `alloc::Delete<Mesh>`) exposed as the
 addon's `meshFree`/`NativeManager.Mesh_free`; it nulls the wrapper's pointer so
 a later access/finalizer can't touch freed storage. Verified via the smoke
@@ -312,10 +333,12 @@ test's create→buildTree→free lifecycle (no crash).
      `SculptHandle`, not a number). WASM unwraps the numeric `.ptr` internally;
      native forwards the wrapper. `typescriptRuntime` left untouched (per
      Workstream D). Verified natively over CDP. **Done.**
-   - `sculptcore/typescript/api/gpuExecutor.ts:142-143` — `buf.ptr` /
-     `buf.data`. Route through the external-ArrayBuffer fast path (Workstream
-     B) for the native backend. *(Still TODO — needs the native bulk-data path
-     + GPU manager; part of "Remaining for native sculpt" above.)*
+   - **✅ `sculptcore/typescript/api/gpuExecutor.ts`** — `buf.ptr` / `buf.data`
+     are now backend-branched: `bufferKey(buf)` (WASM `.ptr` vs native
+     `objectAddress`) and `bufferBytes(buf, bytes)` (WASM `HEAPU8` view vs native
+     `pointerBytes(buf,'data',bytes)`). The pointer stays in C++. WASM
+     byte-identical (CDP-verified); native primitives smoke-verified. **Done** at
+     the seam level; in-app native execution still waits on the litemesh scene.
 3. **✅ Opaque pointer handle type** — `SculptHandle` in `wasm.ts` (a backend-
    private object reference: WASM = numeric heap pointer, native = wrapped C++
    object). App code passes it through the `IWasmInterface` helpers instead of

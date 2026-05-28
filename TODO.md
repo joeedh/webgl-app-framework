@@ -96,16 +96,25 @@ sites to make backend-agnostic before native can actually run the app:
 - `scripts/lite-mesh/litemesh.ts` `rayCast()` — uses `wasm._rawAlloc`, `HEAPF32`,
   `F32SHIFT`, `ptr >> shift`. WASM-linear-memory-specific; needs a backend-agnostic
   path (pass float3s by value / through the runtime rather than poking a heap).
-- `sculptcore/typescript/api/gpuExecutor.ts` — 🟡 **seam extracted.** The inline
-  `new Uint8Array(this.wasm.HEAPU8.buffer, dataPtr, bytes)` is now the single
-  `bufferBytes(dataPtr, bytes)` method (WASM byte-identical, verified rendering
-  litemesh-cube over CDP; dead `f32view` removed). The native branch still needs
-  the bulk-data view (`napiRuntime` `vectorView`, a **copy** under Electron's V8
-  sandbox — see plan B3) + a backend-stable cache key (the `.ptr` Map key is
-  WASM-numeric); both blocked on the native GPU manager. Same pattern still
-  inline in `scripts/webgl/batch.ts` and `scripts/webgpu/batch.ts`.
+- `sculptcore/typescript/api/gpuExecutor.ts` — ✅ **native bulk-data path wired.**
+  `bufferBytes(buf, bytes)` now branches: WASM keeps the zero-copy
+  `new Uint8Array(HEAPU8.buffer, buf.data, bytes)` (byte-identical, re-verified
+  rendering litemesh-cube over CDP); native reads `gpu::Buffer.data` through the
+  addon's new `pointerBytes(buf, 'data', bytes)` (pointer stays in C++; a copy
+  under the V8 sandbox). The WASM-numeric `.ptr` cache key is replaced by
+  `bufferKey(buf)` — WASM `.ptr`, native `objectAddress(buf)` (the C++ address as
+  an opaque identity key, never dereferenced). Verified end-to-end at the
+  addon/C++ level by the Electron smoke test (`tree.update(gpu)` → 2 populated
+  vertex buffers → `pointerBytes` returns the correct-length, real-data view;
+  `objectAddress` stable). **In-app native GPU rendering still blocked on the
+  litemesh native scene** (rayCast HEAP rework, below) — that's what actually
+  drives `gpuExecutor.dispatch` natively. Same inline `HEAPU8` pattern still in
+  `scripts/webgl/batch.ts` and `scripts/webgpu/batch.ts`.
 
 Remaining Workstream C (the big piece): a native manager presenting
 `construct` / `getBoundPointer` / `getBoundVector` that does **not** depend on the
 WASM linear-memory heap, plus native factory free-functions, so `loadWasm`'s
-native branch can return a real `IWasmInterface` instead of falling back.
+native branch can return a real `IWasmInterface` instead of falling back. The GPU
+bulk-data primitives (`pointerBytes`/`objectAddress`) now exist; the open native
+items are `litemesh.ts rayCast` (above) and constructing/driving a native litemesh
+scene so the wired native `gpuExecutor` path actually executes per-frame.
