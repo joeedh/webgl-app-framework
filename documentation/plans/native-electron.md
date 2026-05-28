@@ -306,9 +306,36 @@ GPUManager natively" goal — through the existing reflection method-invoke path
 (the per-frame loop calls `createBuffer` in C++, so JS string-arg marshalling is
 not on the critical path).
 
-**Remaining for native *sculpt*:** in-app native GPU rendering is still gated on a
-native **litemesh scene** actually building/driving natively, before the now-wired
-native `gpuExecutor.dispatch` executes per-frame. ✅ `litemesh.ts rayCast` is now
+**Native litemesh scene runs end-to-end (reconnaissance, 2026-05-28).** Launching
+`--backend native --gen-scene litemesh-cube` boots with `__backend:'native'`,
+`HEAPU8` absent, the scene builds (`Mesh_createCube(120)` → `buildSpatialTree` →
+`update(gpu)` → `getDrawBatch`/`buildLeafBoundsBatch`), the render loop pumps
+frames with **zero console errors**, and native `rayCast([0,0,5],[0,0,-1])`
+returns the correct `dis:4.5`/`tri:195` (matching WASM). So the whole native
+factory + GPU-bulk-data + dispatch chain *executes*. Two concrete bugs remain
+before the mesh is actually **visible/correct**:
+
+1. **Invisible mesh — Vector-member iteration.** `gpuExecutor.dispatch` reads
+   `batch.commands` and `cmd.attrs` as *embedded* `Vector` members. On WASM the
+   typescriptRuntime makes member-accessed Vectors array-like (`.length`/`[i]`);
+   natively a member getter returns a plain bound-`Vector` *class instance* with
+   no `length`/index accessors, so `commands.length` is `undefined`, the draw
+   loop runs 0 iterations, and nothing is drawn (silently — `undefined === 0` and
+   `0 < undefined` are both false, hence no error). Fix = give native
+   member-accessed Vectors the same array-like surface as `getBoundVector`'s
+   `NativeBoundVector` proxy (the deferred "Vector iterator protocol" from B3),
+   either by detecting `isVectorStruct` in the member-get path or by routing the
+   dispatch loop through `getBoundVector`.
+2. **First-element garbage — lifetime/identity watch-item.** `isectOut.p.vec[0]`
+   reads a denormal (`~9.9e-311`, a pointer reinterpreted as a double) on the
+   first native read after a GC-heavy scene build, while `vec[1]`/`vec[2]` are
+   correct. This is the documented boot-GC transient tied to the deferred
+   identity cache (a fresh wrapper per `getBoundPointer`), reproduced here on the
+   embedded-struct-member → array path (`p` is a non-owning embedded `float3`
+   wrapper). Likely needs the `Map<void*, napi_ref>` identity cache so a wrapper's
+   value lifetime is stable across the read.
+
+✅ `litemesh.ts rayCast` is now
 backend-agnostic — it passes the ray endpoints as bound `float3`s through the
 `wasm.float3(...)` ring (both backends marshal the reference-arg address; native
 keeps the pointer in C++) instead of `_rawAlloc`/`HEAPF32`/`F32SHIFT` heap poking,
