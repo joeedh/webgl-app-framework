@@ -96,10 +96,14 @@ sites to make backend-agnostic before native can actually run the app:
 - `scripts/lite-mesh/litemesh.ts` `rayCast()` — uses `wasm._rawAlloc`, `HEAPF32`,
   `F32SHIFT`, `ptr >> shift`. WASM-linear-memory-specific; needs a backend-agnostic
   path (pass float3s by value / through the runtime rather than poking a heap).
-- `sculptcore/typescript/api/gpuExecutor.ts:142-156` — `buf.data` +
-  `new Uint8Array(this.wasm.HEAPU8.buffer, dataPtr, bytes)`. Native path uses the
-  bulk-data view (`napiRuntime` `vectorView`, a **copy** under Electron's V8 sandbox
-  — see plan B3). Route through a backend-agnostic `bufferBytes(buf)`.
+- `sculptcore/typescript/api/gpuExecutor.ts` — 🟡 **seam extracted.** The inline
+  `new Uint8Array(this.wasm.HEAPU8.buffer, dataPtr, bytes)` is now the single
+  `bufferBytes(dataPtr, bytes)` method (WASM byte-identical, verified rendering
+  litemesh-cube over CDP; dead `f32view` removed). The native branch still needs
+  the bulk-data view (`napiRuntime` `vectorView`, a **copy** under Electron's V8
+  sandbox — see plan B3) + a backend-stable cache key (the `.ptr` Map key is
+  WASM-numeric); both blocked on the native GPU manager. Same pattern still
+  inline in `scripts/webgl/batch.ts` and `scripts/webgpu/batch.ts`.
 
 Remaining Workstream C (the big piece): a native manager presenting
 `construct` / `getBoundPointer` / `getBoundVector` that does **not** depend on the
