@@ -16,9 +16,12 @@ packages:
 ignoredBuiltDependencies:
   - '@swc/core'
   - core-js
-  - electron
   - esbuild
   - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@kmamal/gpu'
+  - electron
 
 patchedDependencies:
   eslint-plugin-prettier: patches/eslint-plugin-prettier.patch

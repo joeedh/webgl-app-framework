@@ -4,6 +4,12 @@ const {app, BrowserWindow, dialog, nativeTheme} = require('electron')
 const {ipcMain, Menu, MenuItem} = require('electron')
 const path = require('path')
 
+// The sculptcore wasm uses a shared-memory (SharedArrayBuffer) wasm.Memory that
+// is transferred to web workers. Chromium gates that behind cross-origin
+// isolation, which Electron won't grant a file:// page. Re-enable the
+// SharedArrayBuffer feature so the transfer is allowed. Must run before ready.
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer')
+
 // Addon storage path lookup. The renderer (with nodeIntegration:true)
 // performs the actual fs reads/writes via NodeFsAddonStorage; it just needs
 // the userData root from the main process. See scripts/addon/storage_electron.ts.
