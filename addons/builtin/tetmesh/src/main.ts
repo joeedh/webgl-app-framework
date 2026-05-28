@@ -9,8 +9,7 @@
 
 import type {AddonAPI, IAddon, IAddonDefine} from '@framework/api'
 import {TetMeshTool} from './tetmesh.js'
-import '../../../../scripts/tet/tet_ops.js'
-import '../../../../scripts/tet/tet_selectops.js'
+import {MakeTetMesh, TetSmoothVerts, TetToMesh, Tetrahedralize, TetTest, TetFixNormalsOp} from './tet_ops.js'
 
 export const addonDefine: IAddonDefine = {
   name       : 'Tet Mesh',
@@ -20,7 +19,7 @@ export const addonDefine: IAddonDefine = {
 }
 
 export function register(api: AddonAPI<IAddon>) {
-  api.register(TetMeshTool)
+  api.registerAll(MakeTetMesh, TetSmoothVerts, TetToMesh, Tetrahedralize, TetTest, TetFixNormalsOp, TetMeshTool)
 }
 export function unregister() {}
 export function handleArgv() {}

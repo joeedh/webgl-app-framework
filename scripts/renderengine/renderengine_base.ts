@@ -1,0 +1,91 @@
+import type {View3D} from '../editors/all.js'
+import {nstructjs, util} from '../path.ux/pathux.js'
+
+const sdigest = new util.HashDigest()
+
+export class RenderSettings {
+  sharpen: boolean
+  filterWidth: number
+  sharpenWidth: number
+  sharpenFac: number
+  minSamples: number
+  ao: boolean
+
+  static STRUCT: string
+
+  constructor() {
+    this.sharpen = false
+    this.filterWidth = 1.5
+    this.sharpenWidth = 1
+    this.sharpenFac = 0.4
+    this.minSamples = 1
+    this.ao = true
+  }
+
+  calcUpdateHash() {
+    sdigest.reset()
+    sdigest.add(!!this.sharpen)
+    sdigest.add(this.filterWidth)
+    sdigest.add(this.sharpenWidth)
+    sdigest.add(this.ao)
+
+    return sdigest.get()
+  }
+}
+RenderSettings.STRUCT = `
+renderengine_realtime.RenderSettings {
+  sharpen      : bool;
+  filterWidth  : float;
+  sharpenWidth : int;
+  sharpenFac   : float;
+  minSamples   : int;
+}
+`
+nstructjs.register(RenderSettings)
+
+export class RenderEngine {
+  settings: RenderSettings
+  renderSettings: RenderSettings
+  view3d: View3D
+
+  static engines: (typeof RenderEngine)[]
+
+  constructor(view3d: View3D, settings?: RenderSettings) {
+    this.view3d = view3d
+    this.settings = settings ?? new RenderSettings()
+    this.renderSettings = this.settings
+  }
+  update(gl: WebGL2RenderingContext, view3d: unknown): void {
+    void gl
+    void view3d
+  }
+
+  resetRender(): void {}
+
+  // `gl` stays in the signature for source-compat with legacy call sites
+  // that still pass it; the realtime engine ignores it. Overlay encoding
+  // is no longer part of this contract — install
+  // `RealtimeEngine.encodeOverlaysCB` instead.
+  render(
+    camera: unknown,
+    gl: WebGL2RenderingContext,
+    viewbox_pos: unknown,
+    viewbox_size: unknown,
+    scene: unknown
+  ): void {
+    void camera
+    void gl
+    void viewbox_pos
+    void viewbox_size
+    void scene
+  }
+
+  destroy(gl: WebGL2RenderingContext): void {
+    void gl
+  }
+
+  static register(cls: typeof RenderEngine) {
+    this.engines.push(cls)
+  }
+}
+RenderEngine.engines = []

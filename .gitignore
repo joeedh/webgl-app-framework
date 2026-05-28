@@ -65,3 +65,9 @@ typings/
 
 # next.js build output
 .next
+
+# Playwright e2e
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

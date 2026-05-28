@@ -98,6 +98,15 @@ const serv = http.createServer(
     const qidx = p.search(/[?#]/)
     if (qidx >= 0) p = p.slice(0, qidx)
 
+    // Percent-decode so paths with spaces/special chars (e.g.
+    // "/examples/sculpt%20test.wproj") map to the real filename. The
+    // `..` traversal guard below runs on the decoded+normalized path.
+    try {
+      p = decodeURIComponent(p)
+    } catch {
+      return res.sendError(400, 'malformed path encoding')
+    }
+
     globalThis.ORIGIN = req.headers['origin'] ?? '*' //Boolean(origin.trim().length) ? origin : undefined
 
     console.log(req.method, p, ORIGIN)

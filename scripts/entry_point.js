@@ -39,6 +39,9 @@ import '../addons/builtin/mesh_edit/src/addon_register.js'
 // Same pattern for curve toolmode (depends on mesh + mesh_edit). See plan §6 step 8.
 import '../addons/builtin/curve/src/addon_register.js'
 
+// Same pattern for tetmesh toolmode (depends on mesh). See plan §6 step 8.
+import '../addons/builtin/tetmesh/src/addon_register.js'
+
 // Registers mesh-grid file-version migrations against core/file_migrations.
 // Once mesh moves out of the main bundle this side-effect import disappears.
 import '../addons/builtin/mesh/src/migrations.js'

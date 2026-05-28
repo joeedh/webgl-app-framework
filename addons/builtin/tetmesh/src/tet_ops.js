@@ -1,6 +1,6 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
-import * as util from '../util/util.js'
-import * as math from '../util/math.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
+import {math} from '@framework/api'
 import {
   nstructjs,
   ToolOp,
@@ -12,13 +12,12 @@ import {
   Vec3Property,
   Vec2Property,
   StringProperty,
-} from '../path.ux/scripts/pathux.js'
-import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js'
-import {TetMesh} from './tetgen.js'
-import {saveUndoMesh, loadUndoMesh} from '../../addons/builtin/mesh/src/mesh_ops_base.js'
-import {meshToTetMesh, vertexSmooth, tetMeshToMesh, tetrahedralizeMesh} from './tetgen_utils.js'
+} from '@framework/pathux'
+import {TetTypes, TetFlags, TetRecalcFlags, TetMesh} from '@framework/api'
+import {meshToTetMesh, vertexSmooth, tetMeshToMesh, tetrahedralizeMesh, tetSolve} from '@framework/api'
+import {saveUndoMesh, loadUndoMesh} from '../../mesh/src/mesh_ops_base.js'
+import {Mesh} from '@addon/mesh/api'
 import {saveUndoTetMesh, loadUndoTetMesh, TetDeformOp, TetMeshOp} from './tet_ops_base.js'
-import {tetSolve} from './tet_deform.js'
 
 function makeCube(tm = new TetMesh()) {
   let d = 0.5
@@ -139,8 +138,6 @@ export class MakeTetMesh extends ToolOp {
   }
 }
 
-ToolOp.register(MakeTetMesh)
-
 export class TetSmoothVerts extends TetDeformOp {
   static tooldef() {
     return {
@@ -167,8 +164,6 @@ export class TetSmoothVerts extends TetDeformOp {
     }
   }
 }
-
-ToolOp.register(TetSmoothVerts)
 
 export class TetToMesh extends ToolOp {
   static tooldef() {
@@ -253,8 +248,6 @@ export class TetToMesh extends ToolOp {
   }
 }
 
-ToolOp.register(TetToMesh)
-
 export class Tetrahedralize extends TetMeshOp {
   static tooldef() {
     return {
@@ -277,7 +270,6 @@ export class Tetrahedralize extends TetMeshOp {
     }
   }
 }
-ToolOp.register(Tetrahedralize)
 
 export class TetTest extends TetDeformOp {
   static tooldef() {
@@ -305,7 +297,6 @@ export class TetTest extends TetDeformOp {
     }
   }
 }
-ToolOp.register(TetTest)
 
 function fixNormals(tm) {
   let cent = new Vector3()
@@ -351,4 +342,3 @@ export class TetFixNormalsOp extends TetMeshOp {
     }
   }
 }
-ToolOp.register(TetFixNormalsOp)

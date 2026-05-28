@@ -70,6 +70,18 @@ export type {IDataDefine} from './sceneobject/sceneobject_base.js'
 export {StandardTools} from './sceneobject/stdtools.js'
 export {View3DOp} from './editors/view3d/view3d_ops.js'
 
+// tet — TetMesh DataBlock + the geometry helpers the tetmesh addon's ops
+// reach for. TetMesh extends SceneObjectData (above) and is referenced by
+// core/context.ts and the in-bundle sculpt toolmode (pbvh*), so it must stay
+// a single class in the main bundle; the addon imports it through here rather
+// than inlining scripts/tet/tetgen.js (which would re-run its module-scope
+// nstructjs/DataBlock/SceneObjectData.register and throw a duplicate-struct
+// error). Placed after SceneObjectData to avoid TDZ.
+export {TetMesh} from './tet/tetgen.js'
+export {TetTypes, TetFlags, TetRecalcFlags} from './tet/tetgen_base.js'
+export {meshToTetMesh, vertexSmooth, tetMeshToMesh, tetrahedralizeMesh} from './tet/tetgen_utils.js'
+export {tetSolve} from './tet/tet_deform.js'
+
 export {ViewContext} from './core/context.js'
 export type {ToolContext} from './core/context.js'
 export {Node, NodeFlags, CallbackNode} from './core/graph.js'

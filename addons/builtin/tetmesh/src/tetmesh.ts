@@ -3,8 +3,6 @@ import {ToolMode} from '@framework/api'
 import {Icons} from '@framework/api'
 import {SelMask} from '@framework/api'
 
-import '../../../../scripts/tet/tet_ops.js'
-import '../../../../scripts/tet/tet_selectops.js'
 import type {ViewContext} from '@framework/api'
 import type {StructReader} from '@framework/api'
 

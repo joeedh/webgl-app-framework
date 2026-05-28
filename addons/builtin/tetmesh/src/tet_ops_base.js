@@ -1,5 +1,5 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
-import * as util from '../util/util.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
+import {util} from '@framework/api'
 import {
   nstructjs,
   ToolOp,
@@ -11,9 +11,8 @@ import {
   Vec3Property,
   Vec2Property,
   StringProperty,
-} from '../path.ux/scripts/pathux.js'
-import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js'
-import {TetMesh} from './tetgen.js'
+} from '@framework/pathux'
+import {TetTypes, TetFlags, TetRecalcFlags, TetMesh} from '@framework/api'
 
 export function saveUndoTetMesh(mesh) {
   let data = []

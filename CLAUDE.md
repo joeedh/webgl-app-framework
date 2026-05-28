@@ -66,6 +66,25 @@ baseline is 58 pre-existing errors concentrated in
 `scripts/editors/view3d/tools/pbvh_sculptops.ts`,
 `scripts/sculptcore_demo.ts`, and the sculptcore wasm bindings.
 
+## Data API paths
+
+Valid `path` strings for `container.prop("...")` (and `slider`, `check`,
+`checkenum`, `listenum`, `pathlabel`, `textbox`, plus `<prop path="...">`
+xmlpage tags) are catalogued by walking `getDataAPI()`
+(`scripts/data_api/api_define.js`). Run `pnpm gen:paths` after editing
+`api_define.js` to regenerate `scripts/data_api/generated/`:
+
+- `API_PATHS.md` — human/LLM reference (path, type, UI name, range, unit, enum)
+- `api-paths.json` — machine-readable catalog
+- `datapaths.ts` — `DataPathRegistry` augmentation that powers `KnownDataPath`
+  autocomplete; it's committed and listed in `tsconfig.json`'s `files`
+
+`pnpm typecheck` runs `gen:paths` first, so the catalog never goes stale during
+type-checking (`pnpm build` does not — generation is type/lint-only). The
+`pathux/valid-datapath` ESLint rule (warn) flags `prop(...)` strings not in the
+catalog; dynamically-indexed paths (e.g. `flag[ENUMNAME]`) warn because the
+walker can't enumerate them — those are expected and harmless.
+
 ## Cross-layer follow-ups
 
 `TODO.md` (repo root) tracks non-addon consumers of addon files and

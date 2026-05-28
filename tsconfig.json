@@ -27,5 +27,5 @@
       "@addon/tetmesh/api": ["./addons/builtin/tetmesh/src/api.ts"]
     },
   },
-  "files": ["scripts/typescript_entry.ts"],
+  "files": ["scripts/typescript_entry.ts", "scripts/data_api/generated/datapaths.ts"],
 }
