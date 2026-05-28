@@ -288,8 +288,12 @@ identity-cache work).
 
 **Remaining for native *sculpt*:** the `gpu` manager (construct `GPUManager`
 natively — GPU-backend care), the WASM-heap reworks (`litemesh.ts rayCast`'s
-`_rawAlloc`/`HEAPF32`, `gpuExecutor`'s `HEAPU8.buffer` view → bulk-data copy), the
-float3-ring bug above, and an extern-"C" `Mesh_free` (the Mesh leaks).
+`_rawAlloc`/`HEAPF32`, `gpuExecutor`'s `HEAPU8.buffer` view → bulk-data copy),
+and the float3-ring boot-GC transient above. ✅ `Mesh_free` now exists —
+`extern "C" Mesh_free` (`mesh_shapes.cc`, `alloc::Delete<Mesh>`) exposed as the
+addon's `meshFree`/`NativeManager.Mesh_free`; it nulls the wrapper's pointer so
+a later access/finalizer can't touch freed storage. Verified via the smoke
+test's create→buildTree→free lifecycle (no crash).
 
 1. In `sculptcore/typescript/api/wasm.ts` `loadWasm()` (`:54`), branch the
    existing `insideNode` check further: when running under Electron with the
