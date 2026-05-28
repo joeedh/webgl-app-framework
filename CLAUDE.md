@@ -59,6 +59,42 @@ new post-process or scene-walk passes. Key conventions:
   `loadOp: 'load'` pass against the same swap-chain view OutputPass
   wrote.
 
+## Electron test harness / CLI
+
+The Electron shell takes CLI args to boot the real app and build/save/dump
+deterministic test scenes headlessly — the orchestration layer for the
+sculptcore native-addon work. See
+[documentation/plans/native-electron-test-harness.md](documentation/plans/native-electron-test-harness.md)
+for the full flag reference. Key conventions:
+
+- `electron/main.js` does NOT get args into the renderer via `process.argv`
+  (Electron drops them). It forwards them as a base64 `--apptest-argv=<…>`
+  token in `webPreferences.additionalArguments`; `scripts/core/app_argv.ts`
+  decodes it (falling back to the legacy `arguments.txt`). The browser build
+  sees an empty arg list, so the harness is inert there.
+- Main-process-only flags are parsed in `main.js` (they act before the window
+  exists): `--remote-debug[=PORT]` (CDP endpoint for chrome-devtools-mcp),
+  `--headless`, `--no-devtools`. Renderer flags are parsed in
+  `scripts/core/test_harness.ts`: `--gen-scene <name>`, `--scene-arg k=v`,
+  `--run "tool.path(...)"`, `--save`, `--dump`, `--screenshot`, `--backend`,
+  `--list-scenes`, `--exit`. None set → normal launch, unaffected.
+- Test scenes live in a name→builder registry (`scripts/core/test_scenes.ts`,
+  mirroring `core/default_file.ts`'s single-builder hook). Builders register
+  **downward** into this core registry from the layer that owns their deps —
+  core must not import lite-mesh/sculptcore. `litemesh-cube` is registered from
+  `scripts/lite-mesh/litemesh_test_scene.ts` (side-effect import in
+  `entry_point.js`). Add a scene with `registerTestScene(name, builder)` from
+  the appropriate layer, not from core.
+- `--gen-scene` rebuilds the startup file via the **non-cached**
+  `genDefaultFile(appstate, 1)` path, so the localStorage startup snapshot is
+  ignored and the scene is exactly what the builder produced. LiteMesh
+  serialization is still stubbed, so scenes are built procedurally, not loaded
+  from `.wproj`.
+- `--remote-debug` exposes a standard CDP endpoint; point the chrome-devtools
+  plugin at it with a separate `chrome-devtools-electron` MCP server (`.mcp.json`,
+  `npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222`). Adding
+  an MCP server requires a Claude Code restart to take effect.
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig

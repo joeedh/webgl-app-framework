@@ -63,33 +63,44 @@ export {mesh, mesh_types, customdata, mesh_customdata, mesh_base}
 
 import addon, {startAddons} from './addon/addon.js'
 
+// Registers the 'litemesh-cube' test scene into core's test-scene registry so
+// the CLI harness (`--gen-scene litemesh-cube`) can build a sculptcore-backed
+// LiteMesh scene. Side-effect import; lite-mesh layer registering downward.
+// See documentation/plans/native-electron.md (Workstream F).
+import './lite-mesh/litemesh_test_scene.js'
+
+import {getAppArgv, getArg} from './core/app_argv.js'
+import {runTestHarness} from './core/test_harness.js'
+
 import config from './config/config.js'
 import {setupPathux} from './setup_pathux.js'
 import {nstructjs} from './path.ux/pathux.js'
 import * as sculptcore from '@sculptcore/api/api'
 
+// Backend selection (Workstream C seam) must be set BEFORE the initial
+// loadWasm() — it runs at module load, before handleNodeArguments(). The test
+// harness's later --backend handling is too late for this first load.
+const _backend = getArg('backend')
+if (_backend) {
+  globalThis.__SCULPTCORE_BACKEND = _backend
+}
+
 await sculptcore.loadWasm()
 
 export function handleNodeArguments() {
-  console.error('arguments', process, process.arguments, process.argv)
-
-  //XXX stupid electron
-
-  let fs = require('fs')
-  console.error(fs.existsSync('arguments.txt'))
-
-  if (!fs.existsSync('arguments.txt')) {
-    return
-  }
-
-  let buf = fs.readFileSync('arguments.txt', 'utf8')
-  buf = buf.replace(/[ \t]+/g, ' ').trim()
-
-  let args = buf.split(' ')
+  // getAppArgv reads the forwarded argv (electron/main.js injects it as a
+  // base64 --apptest-argv token via webPreferences.additionalArguments, with
+  // the legacy arguments.txt as fallback). See scripts/core/app_argv.ts.
+  let args = getAppArgv()
   _appstate.arguments = args
-  console.log(args)
+  console.log('app arguments', args)
 
   addon.handleArgv(args)
+
+  // Run the scripted test harness if any --gen-scene/--save/--dump/--run/
+  // --screenshot/--exit flags are present (a no-op otherwise). This is the
+  // orchestration entry point for documentation/plans/native-electron.md.
+  runTestHarness(args).catch((err) => console.error('test harness error', err))
 }
 
 export async function init() {

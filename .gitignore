@@ -1,3 +1,4 @@
+scripts/config/config_local.js
 electron/arguments.txt
 .turbo
 # Logs

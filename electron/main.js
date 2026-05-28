@@ -10,6 +10,46 @@ const path = require('path')
 // SharedArrayBuffer feature so the transfer is allowed. Must run before ready.
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer')
 
+// --- application argv -------------------------------------------------------
+// Electron does NOT forward the user args of `electron main.js <args...>` into
+// the renderer's process.argv. We capture them here and re-inject them into the
+// renderer via webPreferences.additionalArguments (see createWindow). The
+// renderer parses them in scripts/core/app_argv.ts + test_harness.ts.
+//
+// process.defaultApp is true when launched as `electron <script>` (dev), where
+// argv is [electron, main.js, ...userArgs]; packaged it's [exe, ...userArgs].
+const APP_ARGV = process.argv.slice(process.defaultApp ? 2 : 1)
+
+function findFlag(name) {
+  const flag = '--' + name
+  for (const a of APP_ARGV) {
+    if (a === flag) return ''
+    if (a.startsWith(flag + '=')) return a.slice(flag.length + 1)
+  }
+  return undefined
+}
+
+const HEADLESS = findFlag('headless') !== undefined
+const NO_DEVTOOLS = findFlag('no-devtools') !== undefined
+
+// --remote-debug[=PORT] exposes a Chrome DevTools Protocol endpoint so the
+// chrome-devtools-mcp plugin can drive the live renderer. Connect it with
+// `npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:<PORT>`.
+// remote-allow-origins is required by modern Chromium to accept the CDP
+// websocket from a non-matching origin. Both switches must precede app ready.
+const remoteDebug = findFlag('remote-debug')
+if (remoteDebug !== undefined) {
+  const port = remoteDebug && /^\d+$/.test(remoteDebug) ? remoteDebug : '9222'
+  app.commandLine.appendSwitch('remote-debugging-port', port)
+  app.commandLine.appendSwitch('remote-allow-origins', '*')
+  console.log(`[apptest] CDP remote debugging on http://127.0.0.1:${port}`)
+}
+
+// Lets the renderer test harness (--exit) shut the app down cleanly.
+ipcMain.handle('apptest:quit', async () => {
+  app.quit()
+})
+
 // Addon storage path lookup. The renderer (with nodeIntegration:true)
 // performs the actual fs reads/writes via NodeFsAddonStorage; it just needs
 // the userData root from the main process. See scripts/addon/storage_electron.ts.
@@ -146,10 +186,15 @@ ipcMain.handle('show-save-dialog', async (event, args, then, catchf) => {
 })
 
 function createWindow() {
+  // Forward the application argv into the renderer's process.argv as a base64
+  // token (decoded by scripts/core/app_argv.ts). base64 avoids quoting issues.
+  const argvToken = '--apptest-argv=' + Buffer.from(JSON.stringify(APP_ARGV)).toString('base64')
+
   // Create the browser window.
   win = new BrowserWindow({
     width         : 1400,
     height        : 900,
+    show          : !HEADLESS,
     webPreferences: {
       nodeIntegration            : true,
       nodeIntegrationInWorker    : true,
@@ -158,13 +203,16 @@ function createWindow() {
       enableRemoteModule         : true,
       experimentalFeatures       : true,
       allowRunningInsecureContent: true,
+      additionalArguments        : [argvToken],
     },
   })
 
   // and load the index.html of the app.
   win.loadFile('window.html')
 
-  win.webContents.openDevTools()
+  if (!NO_DEVTOOLS && !HEADLESS) {
+    win.webContents.openDevTools()
+  }
 }
 
 app.whenReady().then(createWindow)
