@@ -302,15 +302,20 @@ float3-ring bug above, and an extern-"C" `Mesh_free` (the Mesh leaks).
    - `wasm.ts:77-89` (`Mesh_createCube`, `Mesh_buildSpatialTree`,
      `SpatialTree_free`) — `ptr as unknown as number`. Native versions pass
      wrapper objects directly; no numeric ptr.
-   - `scripts/editors/view3d/tools/sculptcore_ops.ts:183` —
-     `getBoundVector(name, nodes.ptr)`. Change `getBoundVector` to accept a
-     **wrapper object** (or make `.ptr` an opaque backend-specific handle),
-     not a raw number.
+   - **✅ `scripts/editors/view3d/tools/sculptcore_ops.ts:183`** —
+     `getBoundVector(name, nodes.ptr)` is now the backend-agnostic
+     `wasm.getBoundVector(name, nodes)` on `IWasmInterface` (takes the opaque
+     `SculptHandle`, not a number). WASM unwraps the numeric `.ptr` internally;
+     native forwards the wrapper. `typescriptRuntime` left untouched (per
+     Workstream D). Verified natively over CDP. **Done.**
    - `sculptcore/typescript/api/gpuExecutor.ts:142-143` — `buf.ptr` /
      `buf.data`. Route through the external-ArrayBuffer fast path (Workstream
-     B) for the native backend.
-3. Define a small TS type for the opaque pointer handle so neither backend
-   leaks the representation (WASM: `number`; native: the wrapper/external).
+     B) for the native backend. *(Still TODO — needs the native bulk-data path
+     + GPU manager; part of "Remaining for native sculpt" above.)*
+3. **✅ Opaque pointer handle type** — `SculptHandle` in `wasm.ts` (a backend-
+   private object reference: WASM = numeric heap pointer, native = wrapped C++
+   object). App code passes it through the `IWasmInterface` helpers instead of
+   reading `.ptr` as a number. **Done.**
 
 ## Workstream D — 64-bit pointer audit (reduced scope)
 

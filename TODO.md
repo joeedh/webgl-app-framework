@@ -71,3 +71,37 @@ WGSL render-pass encode site, call
 `getWebGpuDebug(device).pushTexture(passName, target.colors[0].handle, encoder)`
 before the encoder is submitted. The debug editor's history dropdown
 populates from the same registry, so new entries surface automatically.
+
+## native-electron: de-numbering / Workstream C+D
+
+See [documentation/plans/native-electron.md](documentation/plans/native-electron.md).
+The native N-API backend keeps real `void*`s in C++, so JS must stop assuming a
+sculptcore handle is a `number` / a WASM-heap offset. A gated, opt-in seam exists
+(`sculptcore/typescript/api/nativeBackend.ts` + the `nativeBackendRequested()`
+branch in `wasm.ts`); it detects the addon and falls back to WASM. The boundary
+sites to make backend-agnostic before native can actually run the app:
+
+- `sculptcore/typescript/api/wasm.ts` — `Mesh_createCube` / `Mesh_buildSpatialTree`
+  / `SpatialTree_free` extract a numeric `.ptr` (`as unknown as number`) and call
+  `manager.getBoundPointer(name, ptr)`. WASM-specific factories; the native backend
+  needs its own (the addon does **not** yet export `Mesh_createCube` etc. — they
+  live in the WASM Embind glue, not the binding system).
+- ~~`scripts/editors/view3d/tools/sculptcore_ops.ts:183` —
+  `manager.getBoundVector(name, nodes.ptr)`.~~ **Done.** Now calls the
+  backend-agnostic `wasm.getBoundVector(name, nodes)` on `IWasmInterface`
+  (opaque `SculptHandle`, not a number): WASM unwraps the numeric `.ptr`
+  internally, native forwards the wrapper. `typescriptRuntime` untouched.
+  Verified natively over CDP (Mesh → SpatialTree → `getBoundVector(leaves)`
+  → length 2, iterates).
+- `scripts/lite-mesh/litemesh.ts` `rayCast()` — uses `wasm._rawAlloc`, `HEAPF32`,
+  `F32SHIFT`, `ptr >> shift`. WASM-linear-memory-specific; needs a backend-agnostic
+  path (pass float3s by value / through the runtime rather than poking a heap).
+- `sculptcore/typescript/api/gpuExecutor.ts:142-156` — `buf.data` +
+  `new Uint8Array(this.wasm.HEAPU8.buffer, dataPtr, bytes)`. Native path uses the
+  bulk-data view (`napiRuntime` `vectorView`, a **copy** under Electron's V8 sandbox
+  — see plan B3). Route through a backend-agnostic `bufferBytes(buf)`.
+
+Remaining Workstream C (the big piece): a native manager presenting
+`construct` / `getBoundPointer` / `getBoundVector` that does **not** depend on the
+WASM linear-memory heap, plus native factory free-functions, so `loadWasm`'s
+native branch can return a real `IWasmInterface` instead of falling back.
