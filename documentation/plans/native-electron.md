@@ -34,7 +34,11 @@ de-numbering the few JS sites that today assume `.ptr` is a `number`.
 - **Electron**: keep `nodeIntegration:true`/`contextIsolation:false`; bump to
   `^42.2.0`; ABI-rebuild the addon; fix any 41→42 API breaks.
 - **Tooling**: `cmake-js` + `node-addon-api`, as a new target in the existing
-  native CMake tree.
+  native CMake tree. **Spike update (see Workstream A):** keep `cmake-js`, but
+  the spike found node-addon-api's C++ `CallbackInfo` miscompiles under the
+  repo's clang-on-Windows toolchain (`Length()` returns garbage) while the raw C
+  N-API is correct — so the runtime should use `node_api.h` directly and
+  node-addon-api can be dropped.
 - **Parity tests** required between native and WASM backends.
 - **Deferred**: `litestl::util::Vector` Array-method completeness
   (map/filter/…) and its allocation semantics (shallow JS clone vs
@@ -73,6 +77,22 @@ The native CMake tree already exists and builds `libsculptcore` as `SHARED`
 (`sculptcore/CMakeLists.txt:127`), driven by `make.mjs native` with the
 clang toolchain `build_files/native-clang.cmake`, into `build/native`.
 
+**Status: ✅ DONE.** `node make.mjs node [--smoke]` builds
+`build/native-node/sculptcore_node.node` for the Electron ABI and (with
+`--smoke`) loads it in Electron. Verified: the full engine links and runs
+natively — `bindingCount()` calls `initBindings()` and reports **103** registered
+binding descriptors inside the Electron process. Implementation notes vs the
+steps below: (1) **node-addon-api dropped** — the entry (`source/napi/
+napi_entry.cc`) uses the raw C N-API per spike A.5; only `cmake-js` was added as
+a dev dep. (2) The `sculptcore_node` MODULE target lives in the root
+`CMakeLists.txt`, gated on `DEFINED CMAKE_JS_VERSION` so a plain
+`make.mjs configure native` never sees it; it links `sculptcore_core ${LIB}`.
+(3) `make.mjs node` uses cmake-js for *configure* (Electron header/`node.lib`
+download + `CMAKE_JS_*`) then builds only `--target sculptcore_node` with the
+clang toolchain into a separate `build/native-node` dir (cmake-js's `/MT` CRT,
+so it stays consistent within the addon and leaves `build/native` untouched).
+The spike's `/DELAYLOAD` clang-syntax fix is carried into that target.
+
 1. Add `node-addon-api` (and `cmake-js`) as dev deps (likely in
    `sculptcore/` and/or root). Vendor headers via `cmake-js`'s include path.
 2. Add a new CMake target in `sculptcore/CMakeLists.txt` under the
@@ -92,9 +112,62 @@ clang toolchain `build_files/native-clang.cmake`, into `build/native`.
 5. Confirm early that the Windows **clang** toolchain links against
    Electron's MSVC-built `node.lib` — N-API's C ABI normally makes this fine,
    but validate with a trivial "hello" addon before building the full
-   runtime. **(First milestone / spike.)**
+   runtime. **(First milestone / spike.)** ✅ **DONE** — see
+   `sculptcore/spike/napi/` + `RESULTS.md`. clang 20.1.8 builds a `.node` that
+   links Electron 41.1.1's `node.lib` and runs in the Electron process; raw
+   `napi_*` calls round-trip correctly. Two carry-forwards for the real target:
+   (a) cmake-js passes `/DELAYLOAD:NODE.EXE` in `link.exe` syntax, which the
+   clang++ driver rejects — re-add it via CMake `LINKER:/DELAYLOAD:node.exe` +
+   `delayimp.lib`; (b) use raw `node_api.h`, not node-addon-api (see Tooling note).
 
 ## Workstream B — C++ N-API reflection runtime (the core)
+
+**Status: 🟡 slices B1 + B2 done** (`sculptcore/source/napi/napi_runtime.{h,cc}`).
+Implemented and verified in Electron:
+- **B1 — structs/members/getBoundPointer/construct.** A JS class per `StructType`
+  built at load (`napi_define_class`, accessors on the prototype), member
+  **get/set** at `ptr + member.offset` switching on member type (Number subtypes
+  → number, Int64 → BigInt, bool, Enum → int, embedded Struct → non-owning wrap,
+  Pointer/Reference → deref + recurse, null → undefined), `getBoundPointer`, and
+  `construct(name)` via a struct's 0-arg constructor thunk (owning wrapper;
+  finalizer runs `destructorThunk` + frees). Proof: `CastRayIsect.t` round-trip
+  (write 42 → read 42) + embedded `float3` `p` read as a wrapper (31
+  default-constructible structs discovered).
+- **B2 — methods.** Method properties on the prototype; `methodInvoker` marshals
+  JS args → C++ (Number → typed slot, bool, Pointer → `void*` slot, Reference /
+  by-value Struct → object address), calls the `MethodThunk(self, args, ret)`,
+  and marshals the return (void → undefined, value/pointer via `getBoundPointer`,
+  by-value struct → owning wrapper). Proof: constructed `mesh::Mesh`, called
+  `recalc_normals()` (0-arg void) — returns undefined, no crash.
+
+- **B3 — bulk-data fast path + minimal Vector.** `vectorView(vec)` returns a
+  typed array (Float32Array/…) over a `litestl::util::Vector`'s contiguous
+  storage; `vectorLength(vec)` reads `size_`. ⚠️ **Important finding:** Electron
+  enables the V8 sandbox, which **forbids external (out-of-sandbox)
+  ArrayBuffers** — `napi_create_external_arraybuffer` returns
+  `napi_no_external_buffers_allowed`, so true zero-copy is unavailable. The view
+  falls back to a **one-shot copy** into a sandbox-internal ArrayBuffer (still
+  O(1) napi calls + one memcpy per buffer, vs O(n) per-element getters). Proof:
+  `Vector<float,4>.resize(4)` (an int-arg method call — also confirms B2 arg
+  marshalling) → `vectorLength` 4 → `vectorView` is a length-4 Float32Array
+  reading the zero-initialized storage; the write-then-re-view probe reports
+  `zeroCopyExternal:false` (copy path) in Electron. Also fixed a class-cache key
+  collision: all `Vector<T,N>` share the bare name `litestl::util::Vector`, so
+  the cache is keyed by `buildFullName()`.
+
+The runtime is the raw-C-N-API style spike A.5 recommended. Vector indexed
+**get** (`vectorGet`) + length + bulk view are done (see Workstream C
+native-pipeline proof). **Fixed-size Array members** (e.g. `float3.vec`,
+`BindingType::Array`) also work — a live indexable wrapper with per-index get/set
+straight into C++ memory (no ArrayBuffer, so write-back survives the V8 sandbox;
+verified `float3.vec` write-then-reread), which unblocks the `float2/3` ring
+helpers. **Deferred to later B slices:** Vector indexed *set* +
+JS iterator protocol, strings, static methods, signature-based overload
+resolution, and the `Map<void*,Napi::Reference>` identity cache (currently a
+fresh wrapper per `getBoundPointer`, matching the WASM runtime's no-cache
+behavior). Full
+arg-*value* verification across more methods is left to the parity suite
+(Workstream F).
 
 A faithful port of the TS runtime logic, but reading descriptors directly
 instead of out of a serialized heap. New C++ sources, e.g. under
@@ -127,6 +200,87 @@ Notes:
 
 ## Workstream C — TS backend selection + de-numbering the boundary
 
+**Status: 🟡 seam + audit done; native manager remaining.** A gated, opt-in,
+non-breaking selection seam is in place: `sculptcore/typescript/api/nativeBackend.ts`
+loads `sculptcore_node.node` via the renderer's `require` (guarded; `undefined`
+in the browser), and `loadWasm()` branches on `nativeBackendRequested()`
+(`globalThis.__SCULPTCORE_BACKEND === 'native'`, set e.g. by the test harness's
+`--backend native`). Today that branch *detects + reports* the native runtime and
+falls back to WASM, because returning a real `IWasmInterface` from native needs
+the two things below. The `--backend` flag is set on `globalThis` *before* the
+initial `loadWasm()` in `entry_point.js` (the harness's post-init handling is too
+late for the first load). **Verified end-to-end:** launching the real app with
+`--backend native --remote-debug` and reading the renderer over CDP gave
+`{backend:"native", addonBindings:103, wasmUp:true}` — the flag forwards, the live
+renderer loads + calls the native addon, and the app still boots on WASM
+(non-breaking). The de-numbering boundary is inventoried in `TODO.md`
+("native-electron: de-numbering / Workstream C+D"): `wasm.ts` factories,
+`sculptcore_ops.ts:183` `getBoundVector(nodes.ptr)`, `litemesh.ts rayCast`
+(`_rawAlloc`/`HEAPF32`), `gpuExecutor.ts:142-156` (`buf.data` heap view).
+**Native factory free-functions: ✅ DONE.** The addon exports `meshCreateCube` /
+`meshBuildSpatialTree` / `spatialTreeFree` (calling the engine's extern-"C"
+`Mesh_createCube` etc. in the linked mesh/spatial libs) and wraps the returned
+pointers as bound objects. **Verified in Electron — a full native pipeline:**
+`meshCreateCube(8,0.5,0)` → a real `Mesh` whose `mesh.v.capacity_` reads `4096`
+(real vertex buffer), `mesh.recalc_normals()` runs on the populated mesh,
+`meshBuildSpatialTree(mesh,0,0)` builds a real BVH, `spatialTreeFree` frees it.
+Vector iteration too: `tree.leaves()` (a method returning `Vector<SpatialNode*>`
+**by value** → owning wrapper) → `vectorLength` 2 → `vectorGet(0)` resolves the
+element through a pointer to a bound `SpatialNode`. So construct / members /
+methods / factories / **Vector iteration** all drive the real engine natively.
+
+**NativeManager assembled (TS): ✅.** `sculptcore/typescript/api/nativeManager.ts`
+wraps the addon into the BindingManager-shaped surface — `construct`,
+`getBoundVector` (a `NativeBoundVector` Proxy: `.length`, numeric index via
+`vectorGet`, iterator), `Mesh_createCube`/`Mesh_buildSpatialTree`/`SpatialTree_free`,
+and `float2/3` rings (using the Array-member support). Under `--backend native`
+`loadWasm` builds it and exposes it on `globalThis.__nativeManager` (then falls
+back to WASM). **Verified end-to-end via CDP in the running app:** `Mesh_createCube(8)`
+→ `mesh.v.capacity_` 4096; `Mesh_buildSpatialTree` → `getBoundVector(tree.leaves())`
+→ length 2, `[0]` a bound `SpatialNode`, iterates; `float3([1.5,-2.5,7])` round-trips.
+(One caveat observed: a transient garbage read during heavy boot-time GC that
+didn't reproduce in steady state — a lifetime/finalizer robustness item to watch,
+tied to the deferred identity cache.)
+
+**The app boots on the native backend: ✅.** `loadWasm`'s native branch now
+*returns* the NativeManager-backed `IWasmInterface` (lazy `gpu` so boot never
+constructs `GPUManager`; WASM-heap fields absent — only the sculpt path touches
+them). **Verified end-to-end (`--backend native`):** the Electron app boots with
+`hasScreen:true`, the default scene built (`sceneObjs:2`), **zero renderer errors**,
+`getWasm().__backend === 'native'` (no WASM loaded), and the live `wasm` interface
+drives the engine (`Mesh_createCube` → cap 4096, `Mesh_buildSpatialTree` +
+`getBoundVector(leaves)` → 2). So the default (sculptcore-free) scene runs natively.
+
+**Fixed — array-element accessor (was: garbage *first* element).** Reading
+fixed-size Array members (`float2/3.vec`) via `obj.vec[i]` used to return a
+garbage first element. It was **specific to the two-layer array path**
+(`memberGetter(vec)` → wrapper → `arrayGetter[i]`): plain struct-member getters
+were always fine, but the array path returned a tiny denormal double (~`5e-310`,
+a pointer reinterpreted as a double) for element[0]. Root cause was the array
+wrapper being a **plain object with `napi_define_properties` accessors** — the
+same class of value-lifetime fragility seen with `node-addon-api` under this
+clang toolchain.
+
+The fix (in `napi_runtime.cc`): build the array wrapper as a real
+`napi_define_class` **instance** — one cached JS class per (element-descriptor,
+length), with the index accessors (`0..length`) and a constant `length` on the
+**prototype**, exactly like struct member accessors (which never exhibited the
+bug). The per-instance base pointer is held by the `napi_wrap`'d `ArrayInstData`;
+each `arrayGetter`/`arraySetter` unwraps `this` to recover `base`, then indexes
+`base + i*elemSize` straight into C++ memory (no ArrayBuffer, so writes survive
+the V8 sandbox). Verified via `source/napi/electron_smoke.cjs`:
+`float2.vec` writes `[1.5, 3.0]` and reads them back with `firstElementOk` /
+`allOk` both true (`node make.mjs node --smoke`).
+
+The old per-base `arrayCache_` was dropped — wrappers are now created per access
+like embedded-struct wrappers (no identity caching yet; folds into the deferred
+identity-cache work).
+
+**Remaining for native *sculpt*:** the `gpu` manager (construct `GPUManager`
+natively — GPU-backend care), the WASM-heap reworks (`litemesh.ts rayCast`'s
+`_rawAlloc`/`HEAPF32`, `gpuExecutor`'s `HEAPU8.buffer` view → bulk-data copy), the
+float3-ring bug above, and an extern-"C" `Mesh_free` (the Mesh leaks).
+
 1. In `sculptcore/typescript/api/wasm.ts` `loadWasm()` (`:54`), branch the
    existing `insideNode` check further: when running under Electron with the
    addon present, `require` the `.node` and construct a manager object
@@ -149,6 +303,12 @@ Notes:
    leaks the representation (WASM: `number`; native: the wrapper/external).
 
 ## Workstream D — 64-bit pointer audit (reduced scope)
+
+**Status: 🟡 audit done.** The sweep found exactly the four sculptcore-relevant
+sites (the rest of the `.ptr` / `as unknown as number` hits in `scripts/**` are
+path.ux's own, unrelated). They're recorded in `TODO.md` ("native-electron:
+de-numbering / Workstream C+D") for conversion alongside the native manager.
+`typescriptRuntime/*` stays unchanged (wasm32, number-based) as planned.
 
 Because native pointers stay in C++, this is **not** a bigint conversion of
 `typescriptRuntime/`. The WASM runtime is wasm32 and stays 32-bit/number —
@@ -200,6 +360,15 @@ API. Reuse the repo's existing tolerant-diff pattern (`make.mjs`'s `diffDump`
    the same bytes as the WASM heap view).
 4. Wire into CI alongside the existing native ctest and WASM harness.
 
+**Full-shell scenarios** (running sculptcore inside the actual app, not just a
+unit harness) are driven by the Electron test-harness CLI — see
+[`native-electron-test-harness.md`](native-electron-test-harness.md). It boots
+the real app, builds a deterministic `LiteMesh` scene (`--gen-scene
+litemesh-cube`), and `--dump`s a backend-comparable snapshot, so the same
+scenario can run under `--backend wasm` today and `--backend native` once
+Workstream B/C land. Because LiteMesh serialization is still stubbed, scenes are
+built procedurally rather than loaded from `.wproj`.
+
 ## Deferred (explicitly out of scope now)
 - `litestl::util::Vector` full `Array` method surface (map/filter/reduce/…)
   on both backends.
@@ -210,10 +379,15 @@ API. Reuse the repo's existing tolerant-diff pattern (`make.mjs`'s `diffDump`
 
 ## Suggested sequencing
 1. **Spike** (A.5): trivial Electron N-API addon built via cmake-js with the
-   clang toolchain — de-risk the link/ABI question first.
-2. Addon build target wired into `make.mjs` (A).
+   clang toolchain — de-risk the link/ABI question first. ✅ **DONE**
+   (`sculptcore/spike/napi/RESULTS.md`).
+2. Addon build target wired into `make.mjs` (A). ✅ **DONE** (`make.mjs node`).
 3. C++ N-API runtime: structs/members/methods/getBoundPointer (B core).
+   🟡 structs/members/getBoundPointer/construct **DONE** (B1) + methods **DONE**
+   (B2). Remaining B: bulk-data fast path, Vector, strings.
 4. TS backend selection + de-numbered boundary (C), minimal Vector (B).
+   🟡 selection seam + de-numbering audit **DONE**; minimal Vector **DONE** (B3);
+   native manager + factory free-functions remaining.
 5. Bulk-data external-ArrayBuffer fast path (B) + gpuExecutor (C.2).
 6. Electron bump + IPC audit (E).
 7. Parity tests (F); pointer-audit sweep + TODO.md entries (D).
@@ -232,8 +406,13 @@ API. Reuse the repo's existing tolerant-diff pattern (`make.mjs`'s `diffDump`
 
 ## Risks / things to validate early
 - **Clang↔Electron `node.lib` link** on Windows (spike A.5) — primary risk.
-- **Hot-loop performance**: confirm all per-frame bulk reads use the
-  external-ArrayBuffer fast path, not per-property napi getters.
+- **Hot-loop performance**: confirm all per-frame bulk reads use the bulk-data
+  fast path, not per-property napi getters. ⚠️ **Resolved/updated by B3:** the
+  *zero-copy* external-ArrayBuffer is **not available under Electron** (V8 sandbox
+  → `napi_no_external_buffers_allowed`). The fast path therefore copies into a
+  sandbox-internal ArrayBuffer (one memcpy per buffer). Still vastly better than
+  per-element getters, but not zero-copy — factor the per-frame copy into perf
+  budgets, and prefer fewer/larger buffers.
 - **Object lifetime**: napi finalizers vs litestl's leak-tracking allocator —
   ensure owned-object destruction matches the WASM `[Symbol.dispose]` path and
   doesn't trip the leak tracker.
