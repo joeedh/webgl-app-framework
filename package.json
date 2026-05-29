@@ -45,7 +45,7 @@
   "type": "module",
   "dependencies": {
     "btoa": ">=1.2.1",
-    "turbo": "^2.9.6"
+    "turbo": "^2.9.14"
   },
   "packageManager": "pnpm@10.30.3"
 }
