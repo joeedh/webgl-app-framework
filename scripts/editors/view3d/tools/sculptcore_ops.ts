@@ -174,7 +174,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
       const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
 
-      mesh.spatial.filterNodes(wasm.float3(origin), radius, nodes)
+      mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
       // Backend-agnostic inspection handle (array-like .length/[i]); the native
       // backend keeps the pointer in C++. See IWasmInterface.getBoundVector.
       const boundNodes = wasm.getBoundVector(vecCls!.buildFullName(), nodes) as any
