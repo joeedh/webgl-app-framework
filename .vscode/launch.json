@@ -24,6 +24,23 @@
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
+        },
+        {
+            // Native sculptcore debug harness. The binary is built by clang
+            // with PDB symbols (debug_app.pdb sits next to the .exe), which the
+            // Microsoft C/C++ extension's cppvsdbg engine reads natively.
+            // Build it first: `node make.mjs build native` from sculptcore/.
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug sculptcore debug_app",
+            "program": "${workspaceFolder}/sculptcore/build/native/source/debug/debug_app.exe",
+            "args": [
+                "--script", "tests/scripts/cube_draw.txt",
+                "--interactive",
+                "--no-headless"
+            ],
+            "cwd": "${workspaceFolder}/sculptcore",
+            "console": "integratedTerminal"
         }
     ]
 }

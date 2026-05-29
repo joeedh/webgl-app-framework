@@ -95,12 +95,52 @@ for the full flag reference. Key conventions:
   `npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222`). Adding
   an MCP server requires a Claude Code restart to take effect.
 
+## Native sculptcore backend (N-API)
+
+`sculptcore` runs from the TS app through **two interchangeable backends behind
+one `IWasmInterface`** (`sculptcore/typescript/api/wasm.ts`): **WASM** (browser;
+TS runtime over linear memory, 32-bit, `HEAP32[ptr>>shift]`) and **native
+N-API** (Electron; a C++ reflection runtime in `sculptcore/source/napi/` that
+reads `litestl::binding` descriptors directly and dereferences real `void*`s).
+See [documentation/native-napi-electron.md](documentation/native-napi-electron.md)
+for the full model, and [documentation/plans/native-electron.md](documentation/plans/native-electron.md)
+for status. Key conventions:
+
+- Build the addon with `node sculptcore/make.mjs node [--smoke]` →
+  `build/native-node/sculptcore_node.node`. It's a CMake `MODULE` in the **root**
+  `CMakeLists.txt` gated on `DEFINED CMAKE_JS_VERSION`; cmake-js does *configure*
+  (Electron headers + `node.lib`), clang builds it into `build/native-node/`
+  (untouching `build/native`). Re-run after an Electron bump to ABI-rebuild.
+  Entry: `source/napi/napi_entry.cc`. **Raw C N-API** (`node_api.h`), **not**
+  node-addon-api (its `CallbackInfo` miscompiles under this clang toolchain).
+- The native path is **opt-in**: `--backend native` (test harness) sets
+  `globalThis.__SCULPTCORE_BACKEND` early in `entry_point.js`; `loadWasm()`
+  branches and falls back to WASM if the `.node` is absent. The browser is always
+  WASM.
+- **Pointers never cross to JS as numbers natively** — C++ does every
+  dereference. App code must treat bound objects as the opaque `SculptHandle`
+  (never read `.ptr`) and pass them through the backend-agnostic
+  `IWasmInterface` helpers (`getBoundVector`, `Mesh_*`, `bufferBytes`/`bufferKey`
+  via `pointerBytes`/`objectAddress`). The WASM `typescriptRuntime/*` stays
+  unchanged (wasm32/number-based).
+- **No zero-copy bulk reads natively.** Electron's V8 sandbox forbids external
+  ArrayBuffers (`napi_no_external_buffers_allowed`), so `vectorView`/
+  `pointerBytes` **copy** into a sandbox-internal buffer (read-only; one memcpy
+  per buffer). **Never throw on the bulk-data seam** — return an empty
+  `Uint8Array` for a not-yet-filled buffer (a throw is swallowed as a
+  `drawObjects` warning and silently aborts the whole render pass).
+- Parity is guarded by `tests/integration/sculptcore_parity.test.ts` (under
+  `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
+  signatures + leaf counts; self-skips when the bundle or `.node` is absent.
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig
-baseline is 58 pre-existing errors concentrated in
-`scripts/editors/view3d/tools/pbvh_sculptops.ts`,
-`scripts/sculptcore_demo.ts`, and the sculptcore wasm bindings.
+baseline is 106 pre-existing errors concentrated in
+`scripts/editors/view3d/tools/pbvh_sculptops.ts` (~62),
+`addons/builtin/subsurf/src/subsurf_mesh.ts`,
+`scripts/editors/view3d/transform/transform_types.ts`,
+`sculptcore/typescript/api/wasm.ts`, and `scripts/sculptcore_demo.ts`.
 
 ## Data API paths
 
