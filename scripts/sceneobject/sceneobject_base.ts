@@ -1,14 +1,22 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, IDataBlockConstructor} from '../core/lib_api'
-import {Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js'
 
 import {StandardTools} from './stdtools.js'
 import {INodeDef, INodeSocketSet, Node, NodeFlags, NodeInheritFlag} from '../core/graph'
 import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
-import type {ToolContext} from '../core/context'
+import {aabb_ray_isect} from '../util/isect.js'
+import {FindNearestRet} from '../editors/view3d/findnearest.js'
+import type {ScreenPickResult} from '../editors/view3d/findnearest.js'
+import type {ToolContext, ViewContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
 import type {View3D} from '../editors/all'
 import type {DrawQueue, FrameContext} from '../render/queue'
+
+/** Empty area-pick result (no elements). */
+function emptyPickResult(): ScreenPickResult {
+  return {elements: [], elementObjects: [], elementDists: []}
+}
 
 export interface IDataDefine {
   name: string
@@ -114,6 +122,177 @@ SceneObjectData {
     console.warn('getBoundingBox: implement me!')
 
     return [new Vector3([d, d, d]), new Vector3([d, d, d])]
+  }
+
+  /**
+   * Geometric viewport picking API. These replace the old framebuffer-based
+   * `castViewRay`/`findnearest` dispatch (the WebGL-only GPUSelectBuffer is
+   * gone; the renderer is WebGPU-only). Core's `findnearest.ts` walks the
+   * visible scene objects, filters by `dataDefine().selectMask`, and dispatches
+   * to these methods on each object's data.
+   *
+   * `mpos`/`min`/`max` are view-local screen coordinates (see
+   * `View3D.getLocalMouse`). The base implementations provide object-level
+   * picking from `getBoundingBox()` + the projected origin, so any data type
+   * with a sane bounding box is pickable without bespoke code. Mesh-like data
+   * overrides these to return per-element (vertex/edge/face) hits.
+   *
+   * `castViewRay`/`findNearest` return `FindNearestRet[]` (or undefined for a
+   * miss). `dis` is the distance from the camera along the ray for
+   * `castViewRay`, and the screen-space pixel distance for `findNearest` — the
+   * dispatcher aggregates across objects using those metrics.
+   */
+
+  /** This data type's own selection bit (from `dataDefine().selectMask`). */
+  _ownSelectMask(): number {
+    const ctor = this.constructor as unknown as {dataDefine?: () => IDataDefine}
+    return ctor.dataDefine?.().selectMask ?? 0
+  }
+
+  castViewRay(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    mpos: Vector2
+  ): FindNearestRet[] | undefined {
+    if (!(selectMask & this._ownSelectMask())) {
+      return undefined
+    }
+
+    const origin = new Vector3(view3d.activeCamera.pos)
+    const dir = new Vector3(view3d.getViewVec(mpos[0], mpos[1]))
+
+    const [min, max] = object.getBoundingBox()
+    if (!aabb_ray_isect(origin, dir, min, max)) {
+      return undefined
+    }
+
+    const center = new Vector3(min).interp(max, 0.5)
+    const dis = Math.max(new Vector3(center).sub(origin).dot(dir), 0.0)
+
+    const ret = new FindNearestRet()
+    ret.object = object
+    ret.p3d.load(center)
+
+    const p2 = new Vector3(center)
+    view3d.project(p2)
+    ret.p2d.load(p2)
+    ret.dis = dis
+
+    return [ret]
+  }
+
+  findNearest(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    mpos: Vector2,
+    limit = 25
+  ): FindNearestRet[] | undefined {
+    if (!(selectMask & this._ownSelectMask())) {
+      return undefined
+    }
+
+    const matrix = object.outputs.matrix.getValue()
+    // getBoundingBox() is already world-space; origin is the matrix translation.
+    const [min, max] = object.getBoundingBox()
+
+    const origin = new Vector3()
+    origin.multVecMatrix(matrix)
+    const cands: Vector3[] = [origin]
+    for (let i = 0; i < 8; i++) {
+      cands.push(new Vector3([i & 1 ? max[0] : min[0], i & 2 ? max[1] : min[1], i & 4 ? max[2] : min[2]]))
+    }
+
+    let bestDis = Number.MAX_VALUE
+    let bestWorld: Vector3 | undefined
+    const p2 = new Vector3()
+
+    for (const co of cands) {
+      p2.load(co)
+      view3d.project(p2)
+      const dx = p2[0] - mpos[0]
+      const dy = p2[1] - mpos[1]
+      const dis = Math.sqrt(dx * dx + dy * dy)
+      if (dis < bestDis) {
+        bestDis = dis
+        bestWorld = co
+      }
+    }
+
+    if (bestWorld === undefined || bestDis > limit) {
+      return undefined
+    }
+
+    const ret = new FindNearestRet()
+    ret.object = object
+    ret.p3d.load(bestWorld)
+    p2.load(bestWorld)
+    view3d.project(p2)
+    ret.p2d.load(p2)
+    ret.dis = bestDis
+
+    return [ret]
+  }
+
+  castScreenCircle(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    mpos: Vector2,
+    radius: number
+  ): ScreenPickResult {
+    const result = emptyPickResult()
+
+    if (!(selectMask & this._ownSelectMask())) {
+      return result
+    }
+
+    const co = new Vector3()
+    co.multVecMatrix(object.outputs.matrix.getValue())
+    view3d.project(co)
+
+    const dx = co[0] - mpos[0]
+    const dy = co[1] - mpos[1]
+    const dis = Math.sqrt(dx * dx + dy * dy)
+
+    if (dis <= radius) {
+      result.elements.push(object)
+      result.elementObjects.push(object)
+      result.elementDists.push(dis)
+    }
+
+    return result
+  }
+
+  castScreenRect(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    min: Vector2,
+    max: Vector2
+  ): ScreenPickResult {
+    const result = emptyPickResult()
+
+    if (!(selectMask & this._ownSelectMask())) {
+      return result
+    }
+
+    const co = new Vector3()
+    co.multVecMatrix(object.outputs.matrix.getValue())
+    view3d.project(co)
+
+    if (co[0] >= min[0] && co[0] <= max[0] && co[1] >= min[1] && co[1] <= max[1]) {
+      result.elements.push(object)
+      result.elementObjects.push(object)
+      result.elementDists.push(0)
+    }
+
+    return result
   }
 
   /**

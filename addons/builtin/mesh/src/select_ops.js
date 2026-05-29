@@ -11,7 +11,7 @@ import {
   ListProperty,
 } from '@framework/pathux'
 import {MeshTypes, MeshFlags} from './mesh_base.js'
-import {Vector3} from '@framework/api'
+import {Vector2, Vector3, Vector4} from '@framework/api'
 import {SelMask, SelOneToolModes, SelToolModes} from '@framework/api'
 import {DataRefProperty} from '@framework/api'
 import {Icons} from '@framework/api'
@@ -20,7 +20,6 @@ import {SceneObject} from '@framework/api'
 import {Element} from './mesh_types.js'
 import {FindNearest} from '@framework/api'
 import {getEdgeLoop} from './mesh_utils.js'
-import {FindnearestMesh} from '@framework/api'
 
 export class SelectOpBase extends MeshOp {
   constructor() {
@@ -1226,12 +1225,7 @@ export class CircleSelectOp extends SelectOpBase {
 
     let radius = this.inputs.radius.getValue() * window.devicePixelRatio
 
-    let x1 = mpos[0] - radius
-    let y1 = mpos[1] - radius
-    //let ret = view3d.selectbuf.sampleBlock(this.modal_ctx, view3d.gl, view3d, x1, y1, radius, radius, false, selmask);
-
-    let ret = FindnearestMesh.castScreenCircle(this.modal_ctx, selmask, mpos, radius, view3d)
-    //let bvh = mesh.getBVH(undefined, undefined, undefined, true);
+    let ret = mesh.castScreenCircle(this.modal_ctx, view3d, ob, selmask, mpos, radius)
 
     for (let i = 0; i < ret.elements.length; i++) {
       let ob2 = ret.elementObjects[i]
@@ -1318,6 +1312,161 @@ export class CircleSelectOp extends SelectOpBase {
   exec(ctx) {
     let mesh = ctx.mesh
     //don't support multiple meshes
+
+    mesh.selectNone()
+    for (let eid of this.inputs.selElems) {
+      let elem = mesh.eidMap.get(eid)
+
+      if (!elem) {
+        console.warn('Invalid element ' + eid)
+        continue
+      }
+
+      elem.flag |= MeshFlags.UPDATE
+      mesh.setSelect(elem, true)
+    }
+
+    mesh.regenRender()
+    window.redraw_viewport(true)
+  }
+}
+
+export class BoxSelectOp extends SelectOpBase {
+  constructor() {
+    super()
+
+    this.mdown = false
+    this.start = new Vector2()
+    this.end = new Vector2()
+  }
+
+  static tooldef() {
+    return {
+      uiname  : 'Box Select',
+      toolpath: 'mesh.select_box',
+      icon    : Icons.CIRCLE_SEL,
+      inputs: ToolOp.inherit({
+        selElems: new ListProperty(IntProperty),
+      }),
+      is_modal: true,
+      outputs : ToolOp.inherit({}),
+    }
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx)
+  }
+
+  on_mousedown(e) {
+    let view3d = this.modal_ctx.view3d
+    let mpos = view3d.getLocalMouse(e.x, e.y)
+
+    this.start.load(mpos)
+    this.end.load(mpos)
+    this.mdown = true
+  }
+
+  on_mousemove(e) {
+    if (!this.mdown) {
+      return
+    }
+
+    let view3d = this.modal_ctx.view3d
+    this.end.load(view3d.getLocalMouse(e.x, e.y))
+    this.drawRect()
+  }
+
+  on_mouseup(e) {
+    if (this.mdown) {
+      this.end.load(this.modal_ctx.view3d.getLocalMouse(e.x, e.y))
+      this.sample(e)
+    }
+
+    this.mdown = false
+    this.resetDrawLines()
+    this.modalEnd(false)
+  }
+
+  drawRect() {
+    this.resetDrawLines()
+    this.resetTempGeom()
+
+    let color = new Vector4([1, 1, 1, 1])
+    let a = this.start
+    let b = this.end
+
+    let p1 = new Vector2([a[0], a[1]])
+    let p2 = new Vector2([b[0], a[1]])
+    let p3 = new Vector2([b[0], b[1]])
+    let p4 = new Vector2([a[0], b[1]])
+
+    this.addDrawLine2D(p1, p2, color)
+    this.addDrawLine2D(p2, p3, color)
+    this.addDrawLine2D(p3, p4, color)
+    this.addDrawLine2D(p4, p1, color)
+  }
+
+  sample(e) {
+    let sel = true
+
+    if ((e.button === 0 && (e.altKey || e.ctrlKey)) || e.buttons & 2) {
+      sel = false
+    }
+
+    let mesh = this.modal_ctx.mesh
+    let ob = this.modal_ctx.object
+    let view3d = this.modal_ctx.view3d
+    let selmask = this.inputs.selmask.getValue()
+
+    let min = new Vector2([Math.min(this.start[0], this.end[0]), Math.min(this.start[1], this.end[1])])
+    let max = new Vector2([Math.max(this.start[0], this.end[0]), Math.max(this.start[1], this.end[1])])
+
+    let ret = mesh.castScreenRect(this.modal_ctx, view3d, ob, selmask, min, max)
+
+    for (let i = 0; i < ret.elements.length; i++) {
+      let ob2 = ret.elementObjects[i]
+
+      if (ob2 !== ob) {
+        continue
+      }
+
+      let elem = ret.elements[i]
+
+      mesh.setSelect(elem, sel)
+      elem.flag |= MeshFlags.UPDATE
+
+      if (elem.type === MeshTypes.EDGE) {
+        elem.v1.flag |= MeshFlags.UPDATE
+        elem.v2.flag |= MeshFlags.UPDATE
+      } else if (elem.type === MeshTypes.FACE) {
+        for (let v of elem.verts) {
+          v.flag |= MeshFlags.UPDATE
+        }
+      }
+    }
+
+    mesh.selectFlush(selmask)
+    mesh.regenRender()
+    window.redraw_viewport(true)
+  }
+
+  modalEnd(wasCancelled) {
+    if (!wasCancelled) {
+      let mesh = this.modal_ctx.mesh
+      let prop = this.inputs.selElems
+
+      for (let elem of mesh.elements) {
+        if (elem.flag & MeshFlags.SELECT) {
+          prop.push(elem.eid)
+        }
+      }
+    }
+
+    return super.modalEnd(wasCancelled)
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh
 
     mesh.selectNone()
     for (let eid of this.inputs.selElems) {

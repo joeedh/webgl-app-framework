@@ -22,6 +22,8 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '@framework/api'
 
 import {DataBlock} from '@framework/api'
 import {IDataDefine, SceneObjectData} from '@framework/api'
+import {FindNearestRet} from '@framework/api'
+import type {ScreenPickResult} from '@framework/api'
 import {math, Matrix4, Number3, util, Vector2, Vector3, Vector3Like, Vector4} from '@framework/api'
 import {nstructjs} from '@framework/pathux'
 
@@ -83,7 +85,7 @@ import type {IGridConstructor} from './mesh_grids.js'
 import type {View3D} from '@framework/api'
 import type {SceneObject} from '@framework/api'
 //import {Utf8DecodeWorker} from '@framework/api'
-import type {ToolContext} from '@framework/api'
+import type {ToolContext, ViewContext} from '@framework/api'
 import type {Material} from '@framework/api'
 import type {IUniformsBlock, ShaderProgram} from '@framework/api'
 import type {DrawQueue, FrameContext} from '@framework/api'
@@ -4886,6 +4888,580 @@ mesh.Mesh {
     }
 
     return this.bvh
+  }
+
+  /* ----- Viewport picking (overrides SceneObjectData defaults) -----
+   * Geometric, BVH-backed picking. Lives here so the mesh addon owns its own
+   * picking (the old GPUSelectBuffer + FindnearestMesh/FindnearestObject statics
+   * are gone). `mpos`/`min`/`max` are view-local screen coords. */
+
+  /** Cast a screen-space ray and return the nearest surface hit (object-level). */
+  castViewRay(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    mpos: Vector2
+  ): FindNearestRet[] | undefined {
+    if (!(selectMask & (SelMask.GEOM | SelMask.OBJECT))) {
+      return undefined
+    }
+
+    const origin = new Vector3(view3d.activeCamera.pos)
+    const dir = new Vector3(view3d.getViewVec(mpos[0], mpos[1]))
+
+    // Transform the ray into object-local space (where the BVH lives).
+    const obmatrix = object.outputs.matrix.getValue()
+    const imat = new Matrix4(obmatrix)
+    imat.invert()
+
+    const lorigin = new Vector3(origin)
+    lorigin.multVecMatrix(imat)
+    const lend = new Vector3(origin).add(dir)
+    lend.multVecMatrix(imat)
+    const ldir = new Vector3(lend).sub(lorigin)
+    ldir.normalize()
+
+    const bvh = this.getLastBVH()
+    const isect = bvh.castRay(lorigin, ldir)
+    if (!isect) {
+      return undefined
+    }
+
+    const wp = new Vector3(lorigin).addFac(ldir, isect.dist)
+    wp.multVecMatrix(obmatrix)
+
+    const ret = new FindNearestRet()
+    ret.object = object
+    ret.mesh = this
+    ret.p3d.load(wp)
+
+    const p2 = new Vector3(wp)
+    view3d.project(p2)
+    ret.p2d.load(p2)
+    ret.dis = new Vector3(wp).sub(origin).dot(dir)
+
+    return [ret]
+  }
+
+  /** Find the nearest element(s) to a screen point (delegates to a small cone). */
+  findNearest(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    mpos: Vector2,
+    limit = 25
+  ): FindNearestRet[] | undefined {
+    if (!(selmask & (SelMask.GEOM | SelMask.OBJECT))) {
+      return undefined
+    }
+
+    const results = new Map<number, FindNearestRet>()
+
+    const getFindRet = (type: number) => {
+      let ret = results.get(type)
+      if (ret === undefined) {
+        ret = new FindNearestRet()
+        ret.dis = Number.MAX_SAFE_INTEGER
+        results.set(type, ret)
+      }
+      return ret
+    }
+
+    const ret = this.castScreenCircle(ctx, view3d, object, selmask, mpos, limit)
+    const p1 = new Vector3()
+    const p2 = new Vector3()
+
+    for (let i = 0; i < ret.elements.length; i++) {
+      const ob = ret.elementObjects[i]
+      const elem = ret.elements[i] as Element
+      const dist = ret.elementDists[i]
+
+      if (selmask & SelMask.OBJECT) {
+        const f = getFindRet(SelMask.OBJECT)
+        if (dist < f.dis!) {
+          f.data = ob
+          f._object = ob.lib_id
+          f.p3d.zero().multVecMatrix(ob.outputs.matrix.getValue())
+          f.p2d.load(f.p3d)
+          view3d.project(f.p2d)
+          f.dis = dist
+        }
+      }
+
+      // Element-level rets only in edit mode; object mode returns the OBJECT ret.
+      if (!(selmask & SelMask.GEOM)) {
+        continue
+      }
+
+      switch (elem.type) {
+        case MeshTypes.VERTEX: {
+          const ft = getFindRet(SelMask.VERTEX)
+          if (dist < ft.dis!) {
+            ft.data = elem
+            ft._object = ob.lib_id
+            ft._mesh = (ob.data as Mesh).lib_id
+            ft.p3d.load((elem as Vertex).co)
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
+          }
+          break
+        }
+        case MeshTypes.EDGE: {
+          const ft = getFindRet(SelMask.EDGE)
+          if (dist < ft.dis!) {
+            ft.data = elem
+            ft._object = ob.lib_id
+            ft._mesh = (ob.data as Mesh).lib_id
+            p1.load((elem as Edge).v1.co)
+            p2.load((elem as Edge).v2.co)
+            p1.multVecMatrix(ob.outputs.matrix.getValue())
+            p2.multVecMatrix(ob.outputs.matrix.getValue())
+            ft.p3d.load(p1).interp(p2, 0.5)
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
+          }
+          break
+        }
+        case MeshTypes.FACE: {
+          const ft = getFindRet(SelMask.FACE)
+          if (dist < ft.dis!) {
+            ft._object = ob.lib_id
+            ft._mesh = (ob.data as Mesh).lib_id
+            ft.data = elem
+            ft.p3d.load((elem as Face).cent).multVecMatrix(ob.outputs.matrix.getValue())
+            ft.p2d.load(ft.p3d)
+            view3d.project(ft.p2d)
+            ft.dis = dist
+          }
+          break
+        }
+      }
+    }
+
+    return Array.from(results.values())
+  }
+
+  /**
+   * Brush/circle select: every element whose screen-space representative point
+   * is within `radius` pixels of `mpos`. Traces a view cone through the BVH.
+   */
+  castScreenCircle(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    mpos: Vector2,
+    radius: number
+  ): ScreenPickResult {
+    const x = ~~mpos[0]
+    const y = ~~mpos[1]
+
+    // Object-mode probing locates the object by its faces.
+    if (!(selmask & SelMask.GEOM)) {
+      selmask |= SelMask.FACE
+    }
+    const selmask2 = selmask
+
+    const distOut = [0]
+    const origin3 = new Vector3()
+    const origin = new Vector4()
+    const tmp1 = new Vector3()
+    const tmp2 = new Vector3()
+    const tmp3 = new Vector3()
+
+    const ret_elems: Element[] = []
+    const ret_objects: SceneObject[] = []
+    const ret_dists: number[] = []
+    const visit = new WeakSet<Element>()
+
+    const obmatrix = object.outputs.matrix.getValue()
+
+    function elemDist(mat: Matrix4, elem: Element): number {
+      if (!(elem.type & selmask2) || visit.has(elem)) {
+        return Number.MAX_SAFE_INTEGER
+      }
+
+      if (elem.type === MeshTypes.VERTEX) {
+        tmp1.load((elem as Vertex).co).multVecMatrix(mat)
+        view3d.project(tmp1)
+
+        tmp2.load(mpos as unknown as Vector3)
+        tmp2[2] = 0.0
+        tmp1[2] = 0.0
+
+        return tmp1.vectorDistance(tmp2)
+      } else if (elem.type === MeshTypes.EDGE) {
+        const e = elem as Edge
+
+        tmp1.load(e.v1.co).multVecMatrix(mat)
+        tmp2.load(e.v2.co).multVecMatrix(mat)
+
+        view3d.project(tmp1)
+        view3d.project(tmp2)
+
+        tmp3.load(mpos as unknown as Vector3)
+        tmp3[2] = 0.0
+
+        return math.dist_to_line_2d(tmp3, tmp1, tmp2, true)
+      } else if (elem.type === MeshTypes.FACE) {
+        tmp1.load((elem as Face).cent).multVecMatrix(mat)
+        view3d.project(tmp1)
+
+        tmp2.load(mpos as unknown as Vector3)
+        tmp2[2] = 0.0
+        tmp1[2] = 0.0
+
+        return tmp1.vectorDistance(tmp2)
+      }
+      return Number.MAX_SAFE_INTEGER
+    }
+
+    function tubeTest(mat: Matrix4, elem: Element, disOut: number[]): boolean {
+      if (!(elem.type & selmask2) || visit.has(elem)) {
+        return false
+      }
+      const dist = elemDist(mat, elem)
+      disOut[0] = dist
+      return dist < radius
+    }
+
+    function push(elem: Element, dist: number): void {
+      if (visit.has(elem)) {
+        return
+      }
+      visit.add(elem)
+      ret_elems.push(elem)
+      ret_objects.push(object)
+      ret_dists.push(dist)
+    }
+
+    const bvh = this.getLastBVH()
+
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+
+    // Build the view cone (near→far through the cursor), local to the object.
+    const p1 = new Vector4()
+    const p2 = new Vector4()
+
+    const d = 0.9999
+    const znear = -1.0 * d
+    const zfar = 1.0 * d
+
+    p1[0] = x
+    p1[1] = y
+    p1[2] = znear
+    p1[3] = 1.0
+    view3d.unproject(p1, imat)
+    p1[3] = 0.0
+
+    origin.load3(p1)
+    origin[3] = 1.0
+
+    p2[0] = x + 1.0
+    p2[1] = y + 1.0
+    p2[2] = znear
+    p2[3] = 1.0
+    view3d.unproject(p2, imat)
+    p2[3] = 0.0
+
+    const radius1 = (p2.vectorDistance(p1) * radius) / Math.sqrt(2)
+
+    p1[0] = x
+    p1[1] = y
+    p1[2] = zfar
+    p1[3] = 1.0
+    view3d.unproject(p1, imat)
+    p1[3] = 0.0
+
+    const dest = new Vector3(p1)
+    const ray2 = new Vector3().load(dest).sub(origin)
+
+    p2[0] = x + 1.0
+    p2[1] = y + 1.0
+    p2[2] = zfar
+    p2[3] = 1.0
+    view3d.unproject(p2, imat)
+    p2[3] = 0.0
+
+    const radius2 = (p2.vectorDistance(p1) * radius) / Math.sqrt(2)
+
+    origin3.load(origin)
+
+    const fs = bvh.facesInCone(origin3, ray2, radius1, radius2, true, false)
+    for (const f of fs) {
+      if (selmask & SelMask.FACE) {
+        push(f, elemDist(obmatrix, f))
+      }
+
+      const doVert = selmask & SelMask.VERTEX
+      const doEdge = selmask & SelMask.EDGE
+      if (doVert || doEdge) {
+        for (const list of f.lists) {
+          for (const l of list) {
+            if (doVert && tubeTest(obmatrix, l.v, distOut)) {
+              push(l.v, distOut[0])
+            }
+            if (doEdge && tubeTest(obmatrix, l.e, distOut)) {
+              push(l.e, distOut[0])
+            }
+          }
+        }
+      }
+    }
+
+    if (selmask & SelMask.VERTEX) {
+      const vs = bvh.vertsInCone(origin3, ray2, radius1, radius2, false)
+      for (const v of vs) {
+        const vert = v as unknown as Vertex
+        let skip = false
+
+        // wires/vertices not part of faces
+        for (const e of vert.edges) {
+          if (e.l) {
+            skip = true
+            break
+          }
+        }
+
+        if (skip) {
+          continue
+        }
+
+        push(vert, elemDist(obmatrix, vert))
+
+        if (selmask & SelMask.EDGE) {
+          for (const e of vert.edges) {
+            if (tubeTest(obmatrix, e, distOut)) {
+              push(e, distOut[0])
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      elements      : ret_elems,
+      elementObjects: ret_objects,
+      elementDists  : ret_dists,
+    }
+  }
+
+  /**
+   * Box select: every element whose screen-space representative point falls
+   * inside the screen rectangle [min,max]. Uses a frustum query through the BVH
+   * (broad phase) refined by a 2D rectangle containment test (exact phase).
+   */
+  castScreenRect(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    min: Vector2,
+    max: Vector2
+  ): ScreenPickResult {
+    if (!(selmask & SelMask.GEOM)) {
+      selmask |= SelMask.FACE
+    }
+    const selmask2 = selmask
+
+    const tmp1 = new Vector3()
+    const tmp2 = new Vector3()
+
+    const ret_elems: Element[] = []
+    const ret_objects: SceneObject[] = []
+    const ret_dists: number[] = []
+    const visit = new WeakSet<Element>()
+
+    const obmatrix = object.outputs.matrix.getValue()
+    const cx = (min[0] + max[0]) * 0.5
+    const cy = (min[1] + max[1]) * 0.5
+
+    // Returns screen-distance to the rect center if the element's representative
+    // point is inside the rect, else -1.
+    function rectDist(mat: Matrix4, elem: Element): number {
+      if (!(elem.type & selmask2) || visit.has(elem)) {
+        return -1
+      }
+
+      if (elem.type === MeshTypes.VERTEX) {
+        tmp1.load((elem as Vertex).co)
+      } else if (elem.type === MeshTypes.EDGE) {
+        const e = elem as Edge
+        tmp1.load(e.v1.co).interp(e.v2.co, 0.5)
+      } else if (elem.type === MeshTypes.FACE) {
+        tmp1.load((elem as Face).cent)
+      } else {
+        return -1
+      }
+
+      tmp1.multVecMatrix(mat)
+      view3d.project(tmp1)
+
+      if (tmp1[0] < min[0] || tmp1[0] > max[0] || tmp1[1] < min[1] || tmp1[1] > max[1]) {
+        return -1
+      }
+
+      const dx = tmp1[0] - cx
+      const dy = tmp1[1] - cy
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    function push(elem: Element, dist: number): void {
+      if (visit.has(elem)) {
+        return
+      }
+      visit.add(elem)
+      ret_elems.push(elem)
+      ret_objects.push(object)
+      ret_dists.push(dist)
+    }
+
+    const bvh = this.getLastBVH()
+
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+
+    const planes = this._buildScreenRectFrustum(view3d, imat, min, max)
+
+    const fs = bvh.facesInFrustum(planes)
+    for (const f of fs) {
+      if (selmask & SelMask.FACE) {
+        const dist = rectDist(obmatrix, f)
+        if (dist >= 0) {
+          push(f, dist)
+        }
+      }
+
+      const doVert = selmask & SelMask.VERTEX
+      const doEdge = selmask & SelMask.EDGE
+      if (doVert || doEdge) {
+        for (const list of f.lists) {
+          for (const l of list) {
+            if (doVert) {
+              const dv = rectDist(obmatrix, l.v)
+              if (dv >= 0) {
+                push(l.v, dv)
+              }
+            }
+            if (doEdge) {
+              const de = rectDist(obmatrix, l.e)
+              if (de >= 0) {
+                push(l.e, de)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (selmask & SelMask.VERTEX) {
+      const vs = bvh.vertsInFrustum(planes)
+      for (const v of vs) {
+        const vert = v as unknown as Vertex
+        let skip = false
+
+        for (const e of vert.edges) {
+          if (e.l) {
+            skip = true
+            break
+          }
+        }
+
+        if (skip) {
+          continue
+        }
+
+        const dv = rectDist(obmatrix, vert)
+        if (dv >= 0) {
+          push(vert, dv)
+        }
+
+        if (selmask & SelMask.EDGE) {
+          for (const e of vert.edges) {
+            const de = rectDist(obmatrix, e)
+            if (de >= 0) {
+              push(e, de)
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      elements      : ret_elems,
+      elementObjects: ret_objects,
+      elementDists  : ret_dists,
+    }
+  }
+
+  /**
+   * Build the 6 inward-facing frustum planes (object-local) for a screen
+   * rectangle. Unprojects the 4 rect corners at the near and far clip planes
+   * (8 world/local points) and fits a plane to each face, orienting every
+   * normal so the 8-corner centroid is on its positive side (so winding/order
+   * never matters).
+   */
+  _buildScreenRectFrustum(view3d: View3D, imat: Matrix4, min: Vector2, max: Vector2): Vector4[] {
+    const corners2d = [
+      [min[0], min[1]],
+      [max[0], min[1]],
+      [max[0], max[1]],
+      [min[0], max[1]],
+    ]
+
+    const near: Vector3[] = []
+    const far: Vector3[] = []
+    const d = 0.9999
+
+    for (const [px, py] of corners2d) {
+      const pn = new Vector4([px, py, -d, 1.0])
+      view3d.unproject(pn, imat)
+      near.push(new Vector3(pn))
+
+      const pf = new Vector4([px, py, d, 1.0])
+      view3d.unproject(pf, imat)
+      far.push(new Vector3(pf))
+    }
+
+    const cent = new Vector3()
+    for (const p of near) cent.add(p)
+    for (const p of far) cent.add(p)
+    cent.mulScalar(1.0 / 8.0)
+
+    const planes: Vector4[] = []
+    const e1 = new Vector3()
+    const e2 = new Vector3()
+    const n = new Vector3()
+
+    const addPlane = (a: Vector3, b: Vector3, c: Vector3) => {
+      e1.load(b).sub(a)
+      e2.load(c).sub(a)
+      n.load(e1).cross(e2).normalize()
+
+      let pd = -n.dot(a)
+      if (n.dot(cent) + pd < 0.0) {
+        n.negate()
+        pd = -n.dot(a)
+      }
+
+      planes.push(new Vector4([n[0], n[1], n[2], pd]))
+    }
+
+    addPlane(near[0], near[1], near[2]) // near
+    addPlane(far[0], far[1], far[2]) // far
+    addPlane(near[0], near[1], far[1]) // bottom edge (corners 0→1)
+    addPlane(near[1], near[2], far[2]) // right edge (1→2)
+    addPlane(near[2], near[3], far[3]) // top edge (2→3)
+    addPlane(near[3], near[0], far[0]) // left edge (3→0)
+
+    return planes
   }
 
   genRenderBasic(combinedWireframe = true) {

@@ -42,7 +42,15 @@ export * as util from './util/util.js'
 export * as math from './util/math.js'
 export * as parseutil from './util/parseutil.js'
 export {aabb_sphere_dist, closest_point_on_tri} from './util/math.js'
-export {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './util/isect.js'
+export {
+  aabb_ray_isect,
+  ray_tri_isect,
+  aabb_cone_isect,
+  tri_cone_isect,
+  point_in_frustum,
+  aabb_frustum_isect,
+  tri_frustum_isect,
+} from './util/isect.js'
 export {GenericIsect} from './util/spatial.js'
 export type {IGenericIsect, ISurfaceSampler, IBVHCreateArgs, IBVHVertex} from './util/spatial.js'
 export * as spatial from './util/spatial.js'
@@ -112,8 +120,8 @@ export {Shaders, BasicLineShader, MeshIDShader} from './shaders/shaders.js'
 // editors/*
 export {ToolMode} from './editors/view3d/view3d_toolmode.js'
 export {SelMask, SelOneToolModes, SelToolModes} from './editors/view3d/selectmode.js'
-export {FindNearest, FindNearestRet} from './editors/view3d/findnearest.js'
-export {FindnearestMesh} from './editors/view3d/findnearest/findnearest_mesh.js'
+export {FindNearest, FindNearestRet, castViewRay, CastModes} from './editors/view3d/findnearest.js'
+export type {ScreenPickResult} from './editors/view3d/findnearest.js'
 export {InflateOp, TranslateOp, TransformOp} from './editors/view3d/transform/transform_ops.js'
 export {
   InflateWidget,

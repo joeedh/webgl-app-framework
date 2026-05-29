@@ -128,6 +128,7 @@ import {
   SelectLongestLoop,
   SelectSimilarOp,
   CircleSelectOp,
+  BoxSelectOp,
 } from './select_ops.js'
 import {CVElem} from './unwrapping.js'
 export const ALL_MESH_REGISTRATIONS: unknown[] = [
@@ -256,5 +257,6 @@ export const ALL_MESH_REGISTRATIONS: unknown[] = [
   SelectLongestLoop,
   SelectSimilarOp,
   CircleSelectOp,
+  BoxSelectOp,
   CVElem,
 ]

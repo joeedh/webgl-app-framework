@@ -1,28 +1,40 @@
-/*view picking functionality*/
+/* view picking functionality
+ *
+ * Picking is geometric and lives on the object data: each SceneObjectData
+ * subclass implements `findNearest` / `castViewRay` / `castScreenCircle` /
+ * `castScreenRect` (the base class provides bounding-box object-level defaults;
+ * the mesh addon overrides them with BVH-backed element picking). The functions
+ * here are thin dispatchers that walk the visible scene objects and aggregate
+ * the per-object results. The old framebuffer GPUSelectBuffer + FindnearestClass
+ * registry are gone (the renderer is WebGPU-only).
+ */
 
 import type {ViewContext} from '../../core/context.js'
-import {IUniformsBlock} from '../../webgl/webgl.js'
-import type {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
-import {SceneObject} from '../../sceneobject/sceneobject.js'
-import {IVectorOrHigher, Vector2, Vector3} from '../../util/vectormath.js'
-import {View3D} from '../all.js'
-import {SelMask} from './selectmode.js'
+import {Vector2, Vector3} from '../../util/vectormath.js'
+import type {SceneObject} from '../../sceneobject/sceneobject.js'
+import type {View3D} from './view3d.js'
 
 export const CastModes = {
-  FRAMEBUFFER: 0, //castViewRay p parameter is in screen space (through view3d.getLocalMouse)
-  GEOMETRIC  : 1, //implement me! castRay p parameter is in world space
+  FRAMEBUFFER: 0, // legacy: castViewRay p is in screen space (kept for call-site compat; geometric now)
+  GEOMETRIC  : 1,
 }
 
-export const FindNearestTypes = [] as IFindnearestConstructor[]
-
-export interface IFindnearestDef {
-  selectMask: number
+/**
+ * Result of a screen-space area pick (`castScreenCircle` / `castScreenRect`).
+ *
+ * `elements` is intentionally `unknown[]` so core never depends on the concrete
+ * element type owned by an addon: the mesh addon stores `Element`s, LiteMesh
+ * stores integer indices, and the SceneObjectData base default stores the
+ * `SceneObject` itself. Consumers narrow `elements` locally.
+ *
+ * The three arrays are parallel: `elements[i]` belongs to `elementObjects[i]`
+ * and was picked at screen distance `elementDists[i]`.
+ */
+export interface ScreenPickResult {
+  elements: unknown[]
+  elementObjects: SceneObject[]
+  elementDists: number[]
 }
-
-export type IFindnearestConstructor<T extends FindnearestClass = FindnearestClass> = {
-  new (): T
-  _define?: IFindnearestDef
-} & typeof FindnearestClass
 
 export class FindNearestRet<D = unknown> {
   data?: D
@@ -80,133 +92,89 @@ export class FindNearestRet<D = unknown> {
   }
 }
 
-function getDefine(cls: IFindnearestConstructor) {
-  if (cls._define) {
-    return cls._define
-  }
-
-  cls._define = cls.define()
-  return cls._define
-}
-
 /**
- * Finds geometry close to (screen-space) x/y
- * @param ctx : context
- * @param selectMask : see SelMask, what type of data to find
- * @param mpos : mouse position
- * @param view3d : View3D, defaults to ctx.view3d
- * @param limit : maximum distance in screen space from x/y
- * @returns {Array<FindNearestRet>}
- * @constructor
+ * Find geometry near (screen-space) `mpos`. Walks the visible scene objects and
+ * dispatches to each object data's `findNearest`; results are concatenated and
+ * sorted by screen distance so `[0]` is the nearest hit across all objects.
+ *
+ * `mpos` is assumed to already be view-local (see `View3D.getLocalMouse`).
+ * `selectMask` (see SelMask) selects which element/object kinds to consider —
+ * each data method gates on it.
  */
-//if view3d is undefined, will use ctx.view3d
-//mpos is assumed to already have view3d.getLocalMouse called on it
 export function FindNearest(
   ctx: ViewContext,
   selectMask: number,
-  mpos: IVectorOrHigher<2>,
+  mpos: Vector2 | Vector3,
   view3d?: View3D,
   limit = 25
 ): FindNearestRet[] {
   view3d = view3d === undefined ? ctx.view3d : view3d
 
-  let ret = [] as FindNearestRet[]
+  const mp = new Vector2()
+  mp[0] = mpos[0]
+  mp[1] = mpos[1]
 
-  for (const cls of FindNearestTypes) {
-    const def = getDefine(cls)
+  let ret: FindNearestRet[] = []
 
-    if (def.selectMask & selectMask) {
-      const ret2 = cls.findnearest(ctx, selectMask, mpos, view3d, limit)
-      if (ret2 !== undefined) {
-        ret = ret.concat(ret2)
-      }
+  for (const ob of view3d.sortedObjects) {
+    const data = ob.data
+    if (!data) {
+      continue
+    }
+
+    const ret2 = data.findNearest(ctx, view3d, ob, selectMask, mp, limit)
+    if (ret2 !== undefined && ret2.length > 0) {
+      ret = ret.concat(ret2)
     }
   }
+
+  ret.sort((a, b) => (a.dis ?? Number.MAX_VALUE) - (b.dis ?? Number.MAX_VALUE))
 
   return ret
 }
 
+/**
+ * Cast a ray from the camera through the screen point `mpos` and return the
+ * single closest surface hit across all visible objects. `mode` is retained for
+ * call-site compatibility but picking is always geometric now.
+ */
 export function castViewRay(
   ctx: ViewContext,
   selectMask: number,
-  mpos: IVectorOrHigher<3>,
+  mpos: Vector2 | Vector3,
   view3d?: View3D,
   mode = CastModes.FRAMEBUFFER
 ): FindNearestRet[] {
   view3d = view3d === undefined ? ctx.view3d : view3d
 
-  let ret = [] as FindNearestRet[]
+  const mp = new Vector2()
+  mp[0] = mpos[0]
+  mp[1] = mpos[1]
 
-  for (const cls of FindNearestTypes) {
-    const def = getDefine(cls)
+  let ret: FindNearestRet[] = []
 
-    if (def.selectMask & selectMask) {
-      const ret2 = cls.castViewRay(ctx, selectMask, mpos, view3d, mode)
-      if (ret2 !== undefined) {
-        ret = ret.concat(ret2)
-      }
+  for (const ob of view3d.sortedObjects) {
+    const data = ob.data
+    if (!data) {
+      continue
+    }
+
+    const ret2 = data.castViewRay(ctx, view3d, ob, selectMask, mp)
+    if (ret2 !== undefined) {
+      ret = ret.concat(ret2)
     }
   }
 
   //return closest item
   let mindis = 1e17
-  let ret2: FindNearestRet | undefined = undefined
+  let best: FindNearestRet | undefined = undefined
 
   for (const item of ret) {
-    if (item.dis !== undefined && (ret2 === undefined || (item.dis > 0 && item.dis < mindis))) {
+    if (item.dis !== undefined && (best === undefined || (item.dis > 0 && item.dis < mindis))) {
       mindis = item.dis
-      ret2 = item
+      best = item
     }
   }
 
-  return ret2 ? [ret2] : []
-}
-
-export class FindnearestClass {
-  static define() {
-    return {
-      selectMask: 0,
-    }
-  }
-
-  static drawsObjectExclusively(view3d: View3D, object: SceneObject) {
-    return false
-  }
-
-  /**
-   *
-   * @param ctx
-   * @param selectMask
-   * @param mpos
-   * @param view3d
-   * @param limit
-   *
-   * @return array of 1 or more FindNearestRet instances
-   */
-  static findnearest(ctx: ViewContext, selectMask: number, mpos: IVectorOrHigher<2>, view3d: View3D, limit = 25) {}
-
-  /**
-   *
-   * @return array of 1 or more FindNearestRet instances
-   */
-  static castViewRay(
-    ctx: ViewContext,
-    selectMask: number,
-    p: IVectorOrHigher<3>,
-    view3d: View3D,
-    mode = CastModes.FRAMEBUFFER
-  ) {}
-
-  /*
-   * called for all objects;  returns true
-   * if an object is valid for this class (and was drawn)
-   *
-   * When drawing pass the object id to red and any subdata
-   * to green.
-   * */
-  drawIDs(view3d: View3D, gl: WebGL2RenderingContext, uniforms: IUniformsBlock, object: SceneObject, mesh: Mesh) {}
-
-  static register(cls: IFindnearestConstructor) {
-    FindNearestTypes.push(cls)
-  }
+  return best ? [best] : []
 }

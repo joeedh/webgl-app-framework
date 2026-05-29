@@ -1,4 +1,6 @@
-import {Matrix4, nstructjs, Vector3} from '../path.ux/pathux'
+import {Matrix4, nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
+import type {ScreenPickResult} from '../editors/view3d/findnearest'
+import type {ViewContext} from '../core/context'
 import {AttrSet} from './litemesh_attrSet'
 import {AttrType} from './litemesh_base'
 import {
@@ -181,7 +183,7 @@ export class LiteMesh extends SceneObjectData {
       name      : 'LiteMesh',
       selectMask: SelMask.MESH,
       tools     : undefined,
-      dataKind  : 'mesh',
+      dataKind  : 'litemesh',
     }
   }
 
@@ -287,6 +289,171 @@ export class LiteMesh extends SceneObjectData {
       // owning wrapper, so the disposer is absent there.
       ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
     }
+  }
+
+  /* ----- Viewport area picking (overrides SceneObjectData defaults) -----
+   * Backed by the sculptcore SpatialTree's cone (circle) / frustum (rect)
+   * queries. Backend-agnostic: ray endpoints and rect corners are marshaled as
+   * bound float3s, and the face/vert index out-params as bound Vector<int>s
+   * (WASM via the binding runtime; native via the N-API makeIntVector helper).
+   * Elements are mesh face/vertex indices, so `ScreenPickResult.elements` holds
+   * numbers (consistent with the `unknown[]` contract). */
+
+  /** Construct two empty bound Vector<int> out-params + an array-like reader. */
+  private _intVecOut() {
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}).findVectorClass(
+      'int'
+    )
+    const ctor = cls.findDefaultConstructor()
+    const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    return {vec, read}
+  }
+
+  castScreenCircle(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    mpos: Vector2,
+    radius: number
+  ): ScreenPickResult {
+    const obmatrix = object.outputs.matrix.getValue()
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+
+    // Build the view cone (near→far through the cursor) in object-local space,
+    // exactly as the WebGL BVH brush path does.
+    const x = ~~mpos[0]
+    const y = ~~mpos[1]
+    const d = 0.9999
+
+    const p1 = new Vector4()
+    const p2 = new Vector4()
+
+    p1[0] = x
+    p1[1] = y
+    p1[2] = -d
+    p1[3] = 1.0
+    view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+
+    p2[0] = x + 1.0
+    p2[1] = y + 1.0
+    p2[2] = -d
+    p2[3] = 1.0
+    view3d.unproject(p2, imat)
+    const radius1 = (new Vector3(p2).vectorDistance(origin) * radius) / Math.sqrt(2)
+
+    p1[0] = x
+    p1[1] = y
+    p1[2] = d
+    p1[3] = 1.0
+    view3d.unproject(p1, imat)
+    const dest = new Vector3(p1)
+    const ray = new Vector3(dest).sub(origin)
+
+    p2[0] = x + 1.0
+    p2[1] = y + 1.0
+    p2[2] = d
+    p2[3] = 1.0
+    view3d.unproject(p2, imat)
+    const radius2 = (new Vector3(p2).vectorDistance(dest) * radius) / Math.sqrt(2)
+
+    const faces = this._intVecOut()
+    const verts = this._intVecOut()
+
+    this.spatial.castScreenCircle(
+      this.wasm.float3([origin[0], origin[1], origin[2]]) as never,
+      this.wasm.float3([ray[0], ray[1], ray[2]]) as never,
+      radius1,
+      radius2,
+      faces.vec as never,
+      verts.vec as never
+    )
+
+    return this._buildPickResult(object, faces.read(), verts.read())
+  }
+
+  castScreenRect(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    min: Vector2,
+    max: Vector2
+  ): ScreenPickResult {
+    const obmatrix = object.outputs.matrix.getValue()
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+
+    // Unproject the 4 rect corners at the near and far clip planes → 8
+    // object-local corners (the SpatialTree builds + orients the planes).
+    const corners2d = [
+      [min[0], min[1]],
+      [max[0], min[1]],
+      [max[0], max[1]],
+      [min[0], max[1]],
+    ]
+    const d = 0.9999
+    const local: Vector3[] = []
+
+    for (const [px, py] of corners2d) {
+      const pn = new Vector4([px, py, -d, 1.0])
+      view3d.unproject(pn, imat)
+      local.push(new Vector3(pn))
+    }
+    for (const [px, py] of corners2d) {
+      const pf = new Vector4([px, py, d, 1.0])
+      view3d.unproject(pf, imat)
+      local.push(new Vector3(pf))
+    }
+
+    const f3 = (v: Vector3) => this.wasm.float3([v[0], v[1], v[2]]) as never
+
+    const faces = this._intVecOut()
+    const verts = this._intVecOut()
+
+    this.spatial.castScreenRect(
+      f3(local[0]),
+      f3(local[1]),
+      f3(local[2]),
+      f3(local[3]),
+      f3(local[4]),
+      f3(local[5]),
+      f3(local[6]),
+      f3(local[7]),
+      faces.vec as never,
+      verts.vec as never
+    )
+
+    return this._buildPickResult(object, faces.read(), verts.read())
+  }
+
+  /** Pack face + vert index arrays into a ScreenPickResult (elements = indices). */
+  private _buildPickResult(
+    object: SceneObject,
+    faces: ArrayLike<number>,
+    verts: ArrayLike<number>
+  ): ScreenPickResult {
+    const elements: number[] = []
+    const elementObjects: SceneObject[] = []
+    const elementDists: number[] = []
+
+    for (let i = 0; i < faces.length; i++) {
+      elements.push(faces[i])
+      elementObjects.push(object)
+      elementDists.push(0)
+    }
+    for (let i = 0; i < verts.length; i++) {
+      elements.push(verts[i])
+      elementObjects.push(object)
+      elementDists.push(0)
+    }
+
+    return {elements, elementObjects, elementDists}
   }
 
   regenTreeBatch() {

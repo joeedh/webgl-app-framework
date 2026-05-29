@@ -485,3 +485,8 @@ export function aabb_ray_isect(co: Vec3Arg, indir: Vec3Arg, min: Vec3Arg, max: V
 
   return false
 }
+
+/* Frustum predicates live in their own dependency-free module so they remain
+ * unit-testable in isolation (see frustum.ts). Re-exported here so existing
+ * `@framework/api` / isect.js consumers keep one import surface. */
+export {point_in_frustum, aabb_frustum_isect, tri_frustum_isect} from './frustum.js'

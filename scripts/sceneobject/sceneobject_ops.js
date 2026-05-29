@@ -67,6 +67,10 @@ export class ObjectTools extends StandardTools {
     ctx.api.execTool(ctx, `object.toggle_select_all(mode=${mode})`)
   }
 
+  static BoxSelect(ctx) {
+    ctx.api.execTool(ctx, 'object.select_box()')
+  }
+
   static Delete(ctx) {
     ctx.api.execTool(ctx, 'object.delete_selected()')
     s

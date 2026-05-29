@@ -9,6 +9,7 @@ const normalRets = util.cachering.fromConstructor(Vector3, 512)
 
 import {math} from '@framework/api'
 import {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from '@framework/api'
+import {aabb_frustum_isect, tri_frustum_isect, point_in_frustum} from '@framework/api'
 
 import {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from './mesh_types.js'
 
@@ -1470,6 +1471,66 @@ export class BVHNode<
         }
 
         if (dis < rsqr) {
+          out.add(v)
+        }
+      }
+    }
+  }
+
+  /** Faces whose triangles intersect a frustum (array of inward planes). */
+  facesInFrustum(planes: Vector4[], out: Set<Face>, tris?: Set<BVHTri>) {
+    if (!this.leaf) {
+      for (const c of this.children!) {
+        if (!aabb_frustum_isect(planes, c.min, c.max)) {
+          continue
+        }
+
+        c.facesInFrustum(planes, out, tris)
+      }
+
+      return
+    }
+
+    for (const t of this.allTris) {
+      if (!tri_frustum_isect(planes, t.v1.co, t.v2.co, t.v3.co)) {
+        continue
+      }
+
+      if (tris) {
+        tris.add(t)
+      }
+
+      if (t.l1) {
+        out.add(t.l1.f)
+      } else if (t.f) {
+        out.add(t.f)
+      }
+    }
+  }
+
+  /** Verts inside a frustum (array of inward planes). */
+  vertsInFrustum(planes: Vector4[], out: Set<IBVHVertex>) {
+    if (!this.leaf) {
+      for (const c of this.children!) {
+        if (!aabb_frustum_isect(planes, c.min, c.max)) {
+          continue
+        }
+
+        c.vertsInFrustum(planes, out)
+      }
+
+      return
+    }
+
+    for (let i = 0; i < 2; i++) {
+      const set = i ? this.wireVerts : this.uniqueVerts
+
+      if (!set) {
+        continue
+      }
+
+      for (const v of set) {
+        if (point_in_frustum(planes, v.co)) {
           out.add(v)
         }
       }
@@ -4175,6 +4236,32 @@ export class BVH<
     }
 
     this.root.facesInCone(origin, ray, radius1, radius2, visibleOnly, isSquare, ret)
+
+    return ret
+  }
+
+  /** Faces whose triangles intersect the frustum (array of inward planes). */
+  facesInFrustum(planes: Vector4[]) {
+    const ret = new Set<Face>()
+
+    if (!this.root) {
+      return ret
+    }
+
+    this.root.facesInFrustum(planes, ret)
+
+    return ret
+  }
+
+  /** Verts inside the frustum (array of inward planes). */
+  vertsInFrustum(planes: Vector4[]) {
+    const ret = new Set<IBVHVertex>()
+
+    if (!this.root) {
+      return ret
+    }
+
+    this.root.vertsInFrustum(planes, ret)
 
     return ret
   }

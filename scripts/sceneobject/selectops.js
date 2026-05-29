@@ -15,6 +15,7 @@ import {
   ToolOp,
   ToolFlags,
   UndoFlags,
+  ListProperty,
 } from '../path.ux/scripts/pathux.js'
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js'
 import {CallbackNode, NodeFlags} from '../core/graph.js'
@@ -205,3 +206,126 @@ export class ObjectToggleSelectOp extends ObjectSelectOpBase {
 }
 
 ToolOp.register(ObjectToggleSelectOp)
+
+export class ObjectBoxSelectOp extends ObjectSelectOpBase {
+  constructor() {
+    super()
+
+    this.mdown = false
+    this.start = new Vector2()
+    this.end = new Vector2()
+  }
+
+  static tooldef() {
+    return {
+      uiname  : 'Box Select (Object)',
+      name    : 'object_box_select',
+      toolpath: 'object.select_box',
+      icon    : -1,
+      is_modal: true,
+      inputs: ToolOp.inherit({
+        mode     : new EnumProperty('ADD', SelToolModes),
+        objectIds: new ListProperty(IntProperty).private(),
+      }),
+    }
+  }
+
+  on_mousedown(e) {
+    let view3d = this.modal_ctx.view3d
+    let mpos = view3d.getLocalMouse(e.x, e.y)
+
+    this.start.load(mpos)
+    this.end.load(mpos)
+    this.mdown = true
+  }
+
+  on_mousemove(e) {
+    if (!this.mdown) {
+      return
+    }
+
+    let view3d = this.modal_ctx.view3d
+    this.end.load(view3d.getLocalMouse(e.x, e.y))
+    this._drawRect(view3d)
+  }
+
+  on_mouseup(e) {
+    let view3d = this.modal_ctx.view3d
+
+    if (this.mdown) {
+      this.end.load(view3d.getLocalMouse(e.x, e.y))
+      this.sample(this.modal_ctx)
+    }
+
+    this.mdown = false
+
+    if (view3d.overdraw) {
+      view3d.overdraw.clear()
+    }
+
+    this.modalEnd(false)
+  }
+
+  _drawRect(view3d) {
+    if (!view3d.overdraw) {
+      return
+    }
+
+    view3d.overdraw.clear()
+
+    let a = this.start
+    let b = this.end
+    let color = 'white'
+
+    let p1 = [a[0], a[1]]
+    let p2 = [b[0], a[1]]
+    let p3 = [b[0], b[1]]
+    let p4 = [a[0], b[1]]
+
+    view3d.overdraw.line(p1, p2, color)
+    view3d.overdraw.line(p2, p3, color)
+    view3d.overdraw.line(p3, p4, color)
+    view3d.overdraw.line(p4, p1, color)
+  }
+
+  sample(ctx) {
+    let view3d = ctx.view3d
+
+    let min = new Vector2([Math.min(this.start[0], this.end[0]), Math.min(this.start[1], this.end[1])])
+    let max = new Vector2([Math.max(this.start[0], this.end[0]), Math.max(this.start[1], this.end[1])])
+
+    let selmask = ctx.selectMask || SelMask.OBJECT
+    let prop = this.inputs.objectIds
+
+    for (let ob of view3d.sortedObjects) {
+      if (!ob.data) {
+        continue
+      }
+
+      let ret = ob.data.castScreenRect(ctx, view3d, ob, selmask, min, max)
+      if (ret.elements.length > 0) {
+        prop.push(ob.lib_id)
+      }
+    }
+
+    this.exec(ctx)
+  }
+
+  exec(ctx) {
+    let scene = ctx.scene
+    let mode = this.inputs.mode.getValue()
+
+    for (let id of this.inputs.objectIds) {
+      let ob = ctx.datalib.get(id)
+      if (ob === undefined) {
+        continue
+      }
+
+      scene.objects.setSelect(ob, mode !== SelToolModes.SUB)
+    }
+
+    window.redraw_viewport(true)
+  }
+}
+
+ToolOp.register(ObjectBoxSelectOp)

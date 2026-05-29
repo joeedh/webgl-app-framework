@@ -118,7 +118,8 @@ Light {
   static dataDefine() {
     return {
       name      : 'Light',
-      selectMask: 0,
+      selectMask: SelMask.LIGHT,
+      dataKind  : 'light',
       //tools      :
     }
   }

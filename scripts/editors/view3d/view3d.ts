@@ -16,7 +16,6 @@ import {getBlueMask} from '../../shadernodes/shader_lib'
 import {ToolMode} from './view3d_toolmode'
 
 import './transform/all'
-import './findnearest/all'
 import './tools/tools'
 import * as textsprite from '../../webgl/textsprite'
 import {RealtimeEngine} from '../../renderengine/renderengine_realtime'
@@ -32,7 +31,6 @@ import {SimpleMesh, LayerTypes} from '../../webgl/simplemesh'
 import {Vector3, Vector2, Vector4, Matrix4, Vector3Like} from '../../util/vectormath'
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops'
 import '../../../addons/builtin/mesh_edit/src/mesheditor'
-import {GPUSelectBuffer} from './view3d_select'
 import {KeyMap, HotKey} from '../editor_base'
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query'
 import {CallbackNode, Node} from '../../core/graph'
@@ -240,7 +238,6 @@ export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
   glPos: Vector2
   camera: Camera
   activeCamera: Camera
-  selectbuf: GPUSelectBuffer
   _last_selectmode: number
   transformSpace: number
   renderEngine: OptionalIfNot<RenderEngine, OPT['started']>
@@ -335,8 +332,6 @@ View3D {
     this.last_mpos = new Vector2()
 
     this.drawlines = []
-
-    this.selectbuf = new GPUSelectBuffer()
 
     this.camera.pos = new Vector3([20, 0, 10])
     this.camera.target = new Vector3([0, 0, 0])
@@ -1337,25 +1332,6 @@ View3D {
     this.camera.far = 10000.0
 
     this.T += 0.01
-  }
-
-  getSelectBuffer(ctx: ViewContext) {
-    //XXX should make use of scene's onSelect output slot to trigger
-    //updates for this
-
-    this.selectbuf.dirty()
-    return this.selectbuf
-    /*
-    for (const ob of ctx.selectedMeshObjects) {
-      const mesh = ob.mesh
-
-      if (!this.meshcache.has(mesh.lib_id) || this.meshcache.get(mesh.lib_id).gen !== mesh.updateGen) {
-        this.selectbuf.dirty()
-        break
-      }
-    }
-    return this.selectbuf
-    */
   }
 
   destroy() {
