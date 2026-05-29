@@ -180,8 +180,8 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
 
       mesh.spatial.filterNodes(wasm.float3(origin), radius, nodes)
-      // Backend-agnostic: pass the bound vector handle, not its numeric `.ptr`
-      // (the native backend keeps the pointer in C++). See IWasmInterface.getBoundVector.
+      // Backend-agnostic inspection handle (array-like .length/[i]); the native
+      // backend keeps the pointer in C++. See IWasmInterface.getBoundVector.
       const boundNodes = wasm.getBoundVector(vecCls!.buildFullName(), nodes) as any
 
       console.log('boundNodes', boundNodes, boundNodes.length, boundNodes.length > 0 ? boundNodes[0] : undefined)
@@ -190,7 +190,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       wasmBrush.radius = radius
       wasmBrush.writeProps()
       wasmExec.meshLog = SculptPaintOp.meshLog
-      wasmExec.execBrush(SculptBrushes.DRAW, boundNodes, wasm.float3(p), wasm.float3(normal))
+      // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
+      // execBrush's `Vector<SpatialNode*>*` param needs an unwrappable handle,
+      // which `nodes` (the constructWith result) is on both backends.
+      wasmExec.execBrush(SculptBrushes.DRAW, nodes, wasm.float3(p), wasm.float3(normal))
     }
 
     mesh.regenTreeBatch()
