@@ -353,6 +353,35 @@ before the mesh is actually **visible/correct**:
    the deferred identity cache (a fresh wrapper per `getBoundPointer`). Likely
    needs the `Map<void*, napi_ref>` identity cache.
 
+**Native sculpt stroke runs end-to-end (FIXED 2026-05-28).** A DRAW dab now
+mutates real geometry on the native backend, through the exact path
+`SculptPaintOp.on_pointermove_intern` uses — verified two ways:
+- **Smoke test** (`source/napi/electron_smoke.cjs`): `constructWith(
+  'CommandExecutor','main', tree, brush)` (parameterized ctor with two pointer
+  args), `exec.meshLog = meshLog` (pointer-member set), `makeNodeVector()` +
+  `tree.filterNodes(center, r, nodes)` (Vector\* out-param), and
+  `exec.execBrush(0 /*DRAW*/, nodes, p, normal)` (enum + Vector\* + by-value
+  float3 args) all marshal correctly; a GPU-buffer byte checksum moves
+  (`425267292 → 3510884925`, `geometryChanged:true`).
+- **In-app over CDP**: against the live `--gen-scene litemesh-cube` litemesh
+  through the real `NativeManager` wiring (`get(...).findConstructor('main')` →
+  `constructWith`, `findVectorClass('…SpatialNode*').findDefaultConstructor()` →
+  `makeNodeVector`), `filterNodes` returns `nodeCount:307`, `execBrush` runs, the
+  buffer checksum moves (`2181972476 → 3441081597`), no crash. WASM re-verified
+  identical (`nodeCount:307`, `execBrush` ok) — the shared `sculptcore_ops.ts`
+  `execBrush` arg fix (pass the raw bound `nodes` Vector, not the `getBoundVector`
+  inspection proxy) is backend-neutral.
+
+Runtime additions that made it work (`source/napi/napi_runtime.cc`):
+`marshalArg` (Number/Enum/Boolean/Pointer → `args[i]`-slot; Reference/Struct →
+object address), `memberSetter` Pointer + Enum cases, `ConstructWith` (named
+parameterized ctor, args from `argv[2]`), and `MakeNodeVector` (recovers the
+`Vector<SpatialNode*>` specialization from `SpatialTree::leaves()`'s by-value
+return descriptor, since it can't be looked up by element type). Note: a native
+`abort()` bypasses JS try/catch, so the smoke test flushes a per-stage marker to
+disk to localize crashes; `execBrush` freezes topology for DRAW, so
+`recalc_normals()` (auto-thaws) is called before re-walking the tree.
+
 ✅ `litemesh.ts rayCast` is now
 backend-agnostic — it passes the ray endpoints as bound `float3`s through the
 `wasm.float3(...)` ring (both backends marshal the reference-arg address; native
