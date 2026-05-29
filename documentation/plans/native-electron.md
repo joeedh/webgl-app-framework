@@ -446,6 +446,24 @@ Because native pointers stay in C++, this is **not** a bigint conversion of
 
 ## Workstream E — Electron upgrade (`^41.1.1` → `^42.2.0`)
 
+**Status: ✅ DONE (2026-05-28).** Bumped to `^42.2.0` (pnpm resolves **42.3.0**,
+Chromium 148 / Node 24). The native addon rebuilds clean against the v42.2.0
+N-API headers (`make.mjs node` → `cmake-js -r electron -v 42.2.0`; clean-rebuild
+recompiles `napi_entry.cc`/`napi_runtime.cc` and links) and **loads under
+42.3.0**: smoke test green (`bindingCount:103`, sculpt-stroke
+`geometryChanged:true`), and the full app boots with `--backend native
+--gen-scene litemesh-cube` — renders the litemesh, **zero console errors**, and
+an in-app native DRAW dab moves geometry (`nodeCount:307`,
+`geometryChanged:true`). `webPreferences` unchanged (step 2). IPC audit (step 4):
+the renderer uses only stable APIs (`ipcRenderer.invoke`/`on`, promise-based
+`dialog.show{Open,Save}Dialog`, `nativeTheme`, `Menu.setApplicationMenu`); the
+`@electron/remote` removal is already handled by the explicit fallback in
+`electron_api.ts:51-53` (→ `ipcRenderer.invoke("nativeTheme")`), and the
+commented-out `nativeImage` calls are dead. Menus build at boot (so
+`set-menu-bar`/`popup-menu`/`close-menu` IPC works). The only un-exercised path
+is the modal open/save **dialogs** (blocking to trigger headlessly) — same
+unchanged promise IPC, low risk.
+
 1. Bump `electron/package.json:5` to `^42.2.0`; `pnpm i`.
 2. Keep `webPreferences` as-is in `electron/main.js:147-155`
    (`nodeIntegration:true`, `contextIsolation:false`) — required so the
