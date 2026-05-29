@@ -125,10 +125,12 @@ sites to make backend-agnostic before native can actually run the app:
   live app on both backends (12 DRAW dabs → ~0.9-unit bulge, native `rayCast`
   confirms, screenshot-verified, WASM no regression).
 
-Remaining Workstream C (the big piece): a native manager presenting
-`construct` / `getBoundPointer` / `getBoundVector` that does **not** depend on the
-WASM linear-memory heap, plus native factory free-functions, so `loadWasm`'s
-native branch can return a real `IWasmInterface` instead of falling back. The GPU
-bulk-data primitives (`pointerBytes`/`objectAddress`) now exist; the open native
-items are `litemesh.ts rayCast` (above) and constructing/driving a native litemesh
-scene so the wired native `gpuExecutor` path actually executes per-frame.
+Workstream C is functionally landed: `NativeManager` presents the
+`construct`/`getBoundVector`/`constructWith`/`get`/`findVectorClass` surface
+without the WASM heap, `loadWasm`'s native branch returns a real
+`IWasmInterface`, the native litemesh scene builds + renders + sculpts in-app,
+and the wired native `gpuExecutor`/WebGPU path executes per-frame. Workstreams E
+(Electron→42, parent `f80e5ff`) and F (native↔WASM parity test
+`tests/integration/sculptcore_parity.test.ts`, parent `eb99ca0`) are done. The
+only open item is the deferred boot-GC identity cache (`Map<void*, napi_ref>`),
+a non-blocking lifetime watch-item (see native-electron.md).
