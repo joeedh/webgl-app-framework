@@ -115,6 +115,15 @@ sites to make backend-agnostic before native can actually run the app:
   litemesh native scene** (rayCast HEAP rework, below) — that's what actually
   drives `gpuExecutor.dispatch` natively. Same inline `HEAPU8` pattern still in
   `scripts/webgl/batch.ts` and `scripts/webgpu/batch.ts`.
+- ~~`scripts/editors/view3d/tools/sculptcore_ops.ts` `execBrush(..., boundNodes, ...)`
+  — passed the `getBoundVector` inspection proxy (native-only, not napi-unwrappable).~~
+  **Done.** Now passes the bound Vector (`nodes`, the `constructWith` result),
+  which is unwrappable on both backends. The native sculpt-stroke primitives
+  (`constructWith` with pointer args, enum/pointer method+member marshalling,
+  `makeNodeVector`) + `NativeManager.get/findVectorClass/constructWith` shims
+  landed in sculptcore so the stroke code is backend-agnostic. Verified in the
+  live app on both backends (12 DRAW dabs → ~0.9-unit bulge, native `rayCast`
+  confirms, screenshot-verified, WASM no regression).
 
 Remaining Workstream C (the big piece): a native manager presenting
 `construct` / `getBoundPointer` / `getBoundVector` that does **not** depend on the
