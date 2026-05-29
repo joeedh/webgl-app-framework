@@ -231,6 +231,16 @@ export class AddonAPI<T> {
    */
   deps: {[id: string]: AddonAPI<unknown>} = {}
 
+  /**
+   * Application-menu contributions made by this addon, keyed by menu id (e.g.
+   * `'add'` for the View3D "Add" menu). Populated by `api.menuEntries(...)` from
+   * inside `register()` and cleared by `unregisterAll()`, so entries track the
+   * addon's enabled state. `AddonManager.getAddonMenuEntries()` reads these.
+   * Entries are toolpath strings; a `Menu.SEP` symbol inserts a separator
+   * within the addon's own block.
+   */
+  menuContributions: {[menuId: string]: (string | symbol)[]} = {}
+
   readonly lib_api: {
     DataBlock: typeof DataBlock
     DataRef: typeof DataRef
@@ -272,6 +282,26 @@ export class AddonAPI<T> {
    */
   exportNamespace(name: string, exports: Record<string, unknown>): void {
     this.exports[name] = exports
+  }
+
+  /**
+   * Contribute entries to a named application menu. Call from `register(api)`:
+   *
+   *   api.menuEntries('add', ['mesh.make_cube()', 'mesh.make_sphere()'])
+   *
+   * Each entry is a toolpath string evaluated by the menu builder. Entries are
+   * removed automatically when the addon is disabled (via `unregisterAll()`), so
+   * the "Add" menu only shows ops from currently-enabled addons. `menuId`
+   * defaults to `'add'` (the only dynamic menu today); pass another id to
+   * target a different menu as the system grows.
+   */
+  menuEntries(menuId: string, entries: (string | symbol)[]): void
+  menuEntries(entries: (string | symbol)[]): void
+  menuEntries(menuIdOrEntries: string | (string | symbol)[], maybeEntries?: (string | symbol)[]): void {
+    const menuId = Array.isArray(menuIdOrEntries) ? 'add' : menuIdOrEntries
+    const entries = Array.isArray(menuIdOrEntries) ? menuIdOrEntries : maybeEntries ?? []
+    const list = this.menuContributions[menuId] ?? (this.menuContributions[menuId] = [])
+    list.push(...entries)
   }
 
   /** Returns another loaded addon's API by manifest id, or undefined. */
@@ -499,6 +529,7 @@ export class AddonAPI<T> {
     }
 
     this.classes = new AddonClasses()
+    this.menuContributions = {}
     return this
   }
 }

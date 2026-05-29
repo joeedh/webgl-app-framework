@@ -2,11 +2,13 @@
 import './selecttool'
 import './view3d_panmode'
 
-// The remaining toolmodes are addons. addon_register.ts side-effect-imports
-// each one (registering it with ToolMode.register at import time) and then
-// announces them to AddonManager so they show up in the addon system. See
-// plan §6 step 8.
-import './addon_register'
+// The remaining toolmodes are addons. Each module registers itself with
+// ToolMode.register at import time; they are announced to AddonManager (so they
+// show up in the addon system) by addons/builtin/{pbvh_sculpt,sculptcore}'s
+// register() hooks, wired through addons/builtin/builtin_registry.ts.
+import './pbvh.js'
+import './pbvh_base.js'
+import './sculptcore.js'
 
 // sculptcore_ops still needs to be imported for ToolOp side-effect registrations
 // — those are addon-owned but the operator classes aren't currently routed

@@ -2,13 +2,34 @@ import {AddonAPI, IAddon} from './addon_base'
 import * as util from '../util/util'
 import {IAddonManifest, sortManifestsByDeps, validateManifest} from './manifest'
 import type {AddonStorage} from './storage'
+import {Menu} from '../path.ux/scripts/widgets/ui_menu'
 
-export function getAddonPrefix() {
-  if (window.haveElectron) {
-    return '../addons/'
-  } else {
-    return '../../addons/'
-  }
+/**
+ * Result of an enable()/disable() request. `ok` is false when the request was
+ * blocked or failed; `message` is a human-readable explanation (e.g. the
+ * dependent-addons block message) suitable for a UI toast.
+ */
+export interface AddonOpResult {
+  ok: boolean
+  reason?: 'unknown' | 'missing-dep' | 'register-threw' | 'has-dependents' | 'unregister-threw'
+  dependents?: AddonRecord<IAddon>[]
+  message?: string
+  error?: unknown
+}
+
+/**
+ * How the manager obtains an addon's IAddon module. Builtin (in-bundle) sources
+ * return the already-statically-imported module; external sources dynamic-import
+ * it from a URL.
+ */
+type AddonModuleLoader = () => IAddon | Promise<IAddon>
+
+interface AddonSource {
+  manifest: IAddonManifest
+  loadModule: AddonModuleLoader
+  builtin: boolean
+  /** Present only for external addons; becomes the AddonRecord.url + urlmap key. */
+  url?: string
 }
 
 export class AddonRecord<T extends IAddon> {
@@ -16,17 +37,15 @@ export class AddonRecord<T extends IAddon> {
   addonAPI: AddonAPI<T>
   url: string
   _enabled: boolean
-  forceEnabled: boolean
+  /** True once onAddonCreate() has run (it must run at most once). */
+  _created: boolean
   key: string
   name: string
 
-  /**
-   * Parsed manifest if this record was loaded via the manifest-based pipeline
-   * (see plan §2). Undefined for legacy `addons/list.json` entries.
-   */
+  /** Parsed manifest. Every record now flows through the manifest pipeline. */
   manifest?: IAddonManifest
 
-  /** True for first-party addons under `addons/builtin/`. See plan §2.4. */
+  /** True for first-party addons shipped with the app (builtin or in `index.json`). */
   builtin: boolean = false
 
   constructor(url: string, addon: T, addonAPI: AddonAPI<T>) {
@@ -34,7 +53,7 @@ export class AddonRecord<T extends IAddon> {
     this.addonAPI = addonAPI
     this.url = url
     this._enabled = false
-    this.forceEnabled = false //prevent disabling of addon once enabled
+    this._created = false
 
     let key = url.replace(/\.js/g, '').replace(/\./g, '')
     key = key.replace(/\//g, '').replace(/\\/g, '')
@@ -70,11 +89,14 @@ export class AddonRecord<T extends IAddon> {
     return this._enabled
   }
 
+  /**
+   * Low-level enable/disable primitive: runs the addon's register()/unregister()
+   * and (on first enable) onAddonCreate(). Does NOT do dependency logic — that
+   * lives in AddonManager.enable()/disable(), which has the manifest graph and
+   * wraps the setter in error handling. Prefer routing toggles through the
+   * manager so dependencies are respected.
+   */
   set enabled(val) {
-    if (!val && this.forceEnabled) {
-      return
-    }
-
     if (!!val === !!this._enabled) {
       return
     }
@@ -84,11 +106,12 @@ export class AddonRecord<T extends IAddon> {
       this.addonAPI.unregisterAll()
       this.addon.unregister()
     } else {
+      if (!this._created) {
+        this.addon.onAddonCreate?.(this.addonAPI)
+        this._created = true
+      }
       this.addon.register(this.addonAPI)
-      //if (this.addon.handleArgv) {
-      //this.addon.handleArgv(this.addonAPI, _appstate.arguments);
-      //}
-      this._enabled = !!val
+      this._enabled = true
     }
   }
 }
@@ -96,20 +119,51 @@ export class AddonRecord<T extends IAddon> {
 export class AddonManager {
   addons: AddonRecord<IAddon>[]
   urlmap: Map<string, AddonRecord<IAddon>>
-  /** Lookup by manifest id (only populated for manifest-loaded addons). */
+  /** Lookup by manifest id. Populated for every loaded addon. */
   idmap: Map<string, AddonRecord<IAddon>>
 
   /**
    * Storage backend for third-party addons. Set once at boot via setStorage().
    * Built-in addons don't go through storage — they ship in the main bundle
-   * via registerInternalAddon. See plan §2.4 / §6 step 10.
+   * via registerBuiltin.
    */
   storage: AddonStorage | undefined
+
+  /**
+   * Sources awaiting record creation in start(). Keyed by manifest id. Builtin
+   * sources are added synchronously at import time (by the builtin registry
+   * module); external sources are added by start()'s collectors.
+   */
+  private pendingSources: Map<string, AddonSource>
+  private started: boolean
 
   constructor() {
     this.addons = []
     this.urlmap = new Map()
     this.idmap = new Map()
+    this.pendingSources = new Map()
+    this.started = false
+  }
+
+  /**
+   * Collects the dynamic menu entries contributed by every enabled addon for a
+   * given menu (default the View3D "Add" menu). Addons declare these from their
+   * `register(api)` hook via `api.menuEntries('add', [...])`; the contributions
+   * live on each addon's AddonAPI and are cleared on disable, so this naturally
+   * reflects the currently-enabled set. A separator is inserted before each
+   * contributing addon's block.
+   */
+  getAddonMenuEntries(menuId = 'add'): any[] {
+    let list = [] as any[]
+    for (const addon of this.addons) {
+      if (!addon.enabled) continue
+      const entries = addon.addonAPI?.menuContributions?.[menuId]
+      if (entries && entries.length) {
+        list.push(Menu.SEP)
+        list = list.concat(entries)
+      }
+    }
+    return list
   }
 
   /** Sets the storage backend for third-party addons. */
@@ -118,279 +172,43 @@ export class AddonManager {
   }
 
   /**
-   * Loads every third-party addon previously installed into storage. Reads
-   * each manifest.json, topo-sorts, then dynamic-imports the entry through
-   * `storage.urlFor()` (which returns a blob: URL the loader can `import()`).
-   * No-op if no storage is set or storage is empty.
-   */
-  async loadInstalledAddons(register = true): Promise<void> {
-    const storage = this.storage
-    if (!storage) return
-
-    const ids = await storage.list()
-    if (ids.length === 0) return
-
-    const manifests: IAddonManifest[] = []
-    for (const id of ids) {
-      try {
-        const raw = await storage.readJSON(id, 'manifest.json')
-        const m = validateManifest(raw, `${id}/manifest.json`)
-        if (m.id !== id) {
-          console.error(`storage entry "${id}" has manifest.id "${m.id}" — skipping`)
-          continue
-        }
-        manifests.push(m)
-      } catch (err) {
-        console.error(`failed to read manifest for installed addon "${id}":`, err)
-      }
-    }
-
-    const sorted = sortManifestsByDeps(manifests)
-    for (const m of sorted) {
-      if (this.idmap.has(m.id)) {
-        console.warn(`installed addon "${m.id}" collides with already-loaded id; skipping`)
-        continue
-      }
-      const entryJs = m.entry.replace(/\.ts$/, '.js')
-      let url: string
-      try {
-        url = await storage.urlFor(m.id, entryJs)
-      } catch (err) {
-        console.error(`failed to make URL for installed addon "${m.id}":`, err)
-        continue
-      }
-      try {
-        const module = (await import(url)) as IAddon
-        const api = new AddonAPI<IAddon>()
-        api.addon = module
-        api.addonId = m.id
-        for (const depId of m.dependencies ?? []) {
-          const depApi = this.getAddonAPI(depId)
-          if (depApi) api.deps[depId] = depApi
-        }
-        const rec = new AddonRecord(url, module, api)
-        rec.manifest = m
-        rec.builtin = false
-        if (register) {
-          this._loadAddon(rec, (err) => console.error(`installed addon "${m.id}" register failed:`, err))
-        }
-        this.addons.push(rec)
-        this.urlmap.set(url, rec)
-        this.idmap.set(m.id, rec)
-      } catch (err) {
-        console.error(`failed to import installed addon "${m.id}" from ${url}:`, err)
-      }
-    }
-  }
-
-  /**
-   * Removes an installed (third-party) addon from disk + from the in-process
-   * registries. No-op for builtin addons (they can be disabled, not
-   * uninstalled).
-   */
-  async uninstall(id: string): Promise<boolean> {
-    const rec = this.idmap.get(id)
-    if (rec?.builtin) {
-      console.warn(`refusing to uninstall builtin addon "${id}"`)
-      return false
-    }
-    if (rec) {
-      try {
-        rec.addonAPI.unregisterAll()
-        rec.addon.unregister()
-      } catch (err) {
-        console.error(`addon "${id}" unregister threw:`, err)
-      }
-      this.addons = this.addons.filter((r) => r !== rec)
-      this.urlmap.delete(rec.url)
-      this.idmap.delete(id)
-    }
-    if (this.storage) {
-      await this.storage.remove(id)
-    }
-    return true
-  }
-
-  /** Returns the AddonAPI for a loaded addon, keyed by manifest id. */
-  getAddonAPI(id: string): AddonAPI<unknown> | undefined {
-    return this.idmap.get(id)?.addonAPI as AddonAPI<unknown> | undefined
-  }
-
-  /**
-   * Registers an "internal" addon whose code lives in the main bundle (not as
-   * a separately-built `build/addons/<id>/` artifact). Used during the
-   * mesh-into-addon transition: the mesh subsystem ships in the main bundle
-   * but announces itself to the addon registry so other addons can declare
-   * `dependencies: ['mesh']` and resolve its exports via
-   * `_addons.getAddonAPI('mesh').exports['mesh']`. See plan §6 step 6.
+   * Declares an in-bundle (builtin) addon source. The `module` is the
+   * statically-imported IAddon for this addon. Does NOT register or enable —
+   * the addon flows through the same enable() lifecycle as external ones during
+   * start(). Idempotent: a second call for the same id is ignored.
    *
-   * Internal addons are always considered "builtin" and "enabled" — they
-   * cannot be unloaded.
+   * Builtins are the duplication-unavoidable subsystems (mesh, subsurf, …) that
+   * still ship in the main bundle; this lets them load through the unified path
+   * without a separate compile.
    */
-  registerInternalAddon(opts: {
-    manifest: IAddonManifest
-    exports?: Record<string, Record<string, unknown>>
-    /**
-     * Optional lifecycle hook. Called immediately after the addon record is
-     * wired in. Use this to dispatch the addon's classes through
-     * `api.register(...)` instead of registering them at module scope.
-     */
-    register?: (api: AddonAPI<IAddon>) => void
-  }): AddonRecord<IAddon> {
-    if (this.idmap.has(opts.manifest.id)) {
-      throw new Error(`internal addon "${opts.manifest.id}" is already registered`)
+  registerBuiltin(rawManifest: unknown, module: IAddon): void {
+    let m: IAddonManifest
+    try {
+      m = validateManifest(rawManifest, `builtin:${(rawManifest as {id?: string})?.id}`)
+    } catch (err) {
+      console.error('registerBuiltin: invalid manifest:', err)
+      return
     }
-
-    const api = new AddonAPI<IAddon>()
-    api.addonId = opts.manifest.id
-
-    // Funnel pre-populated exports through exportNamespace so the contract
-    // matches what external addons do from their register(api) hook.
-    if (opts.exports) {
-      for (const name of Object.keys(opts.exports)) {
-        api.exportNamespace(name, opts.exports[name])
-      }
+    if (this.pendingSources.has(m.id) || this.idmap.has(m.id)) {
+      return
     }
+    const source: AddonSource = {manifest: m, loadModule: () => module, builtin: true}
+    this.pendingSources.set(m.id, source)
 
-    const userRegister = opts.register
-    const stub: IAddon = {
-      addonDefine: {
-        name       : opts.manifest.name,
-        version    : 0,
-        author     : opts.manifest.author,
-        description: opts.manifest.description,
-      },
-      register(api) {
-        userRegister?.(api)
-      },
-      unregister() {},
-      handleArgv() {},
-      validArgv() {},
-    }
-
-    const rec = new AddonRecord<IAddon>(`internal:${opts.manifest.id}`, stub, api)
-    rec.manifest = opts.manifest
-    rec.builtin = true
-    rec._enabled = true
-    rec.forceEnabled = true
-
-    this.addons.push(rec)
-    this.idmap.set(opts.manifest.id, rec)
-
-    if (userRegister) {
-      try {
-        userRegister(api)
-      } catch (err) {
-        console.error(`internal addon "${opts.manifest.id}" register threw:`, err)
-        api.unregisterAll()
-        throw err
-      }
-    }
-
-    return rec
-  }
-
-  /**
-   * Loads a set of addons in topological dependency order. Each manifest is
-   * resolved against the given base URL: `<baseUrl>/<id>/<built-entry>`. The
-   * built entry is the entry path with `.ts` mapped to `.js`, since the
-   * runtime always loads JS.
-   *
-   * See plan §2.4. Used by `loadAddonIndex` for the project-wide load.
-   */
-  async loadFromManifests(
-    manifests: IAddonManifest[],
-    baseUrl: string,
-    options: {builtin?: boolean; register?: boolean} = {}
-  ): Promise<void> {
-    // Internal builtin addons (mesh, subsurf, etc.) are registered before
-    // this runs via registerInternalAddon. sortManifestsByDeps doesn't know
-    // about them and would reject deps pointing at them. Synthesize stub
-    // manifests for already-loaded addons so the sort succeeds, then filter
-    // them out of the load loop.
-    const preLoadedIds = new Set(this.idmap.keys())
-    const stubs: IAddonManifest[] = []
-    for (const id of preLoadedIds) {
-      if (manifests.find((m) => m.id === id)) {
-        continue
-      }
-      const rec = this.idmap.get(id)
-      if (rec?.manifest) {
-        stubs.push(rec.manifest)
-      } else {
-        stubs.push({
-          id,
-          name        : id,
-          version     : '0.0.0',
-          entry       : 'internal',
-          dependencies: [],
-          buildMode   : 'prebuilt',
-        })
-      }
-    }
-    const sorted = sortManifestsByDeps([...stubs, ...manifests])
-    const register = options.register ?? true
-    const toLoad = sorted.filter((m) => !preLoadedIds.has(m.id))
-
-    for (const m of toLoad) {
-      const entryJs = m.entry.replace(/\.ts$/, '.js')
-      const rel = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
-      // `baseUrl` is document-relative (e.g. "./build/addons"), matching the
-      // fetch() of index.json. But `import()` resolves its specifier relative
-      // to *this* module's URL — a bundled chunk already under /build/ — so a
-      // raw "./build/addons/..." doubles into "/build/build/addons/..." and
-      // 404s. Anchor to the document base so import() agrees with fetch().
-      const url = typeof document !== 'undefined' ? new URL(rel, document.baseURI).href : rel
-
-      let module: IAddon
-      try {
-        module = (await import(url)) as IAddon
-      } catch (err) {
-        console.error(`failed to import addon "${m.id}" from ${url}:`, err)
-        continue
-      }
-
-      const api = new AddonAPI<IAddon>()
-      api.addon = module
-      api.addonId = m.id
-
-      // Wire up resolved deps before register() runs.
-      for (const depId of m.dependencies ?? []) {
-        const depApi = this.getAddonAPI(depId)
-        if (depApi !== undefined) {
-          api.deps[depId] = depApi
-        } else {
-          console.warn(`addon "${m.id}": dep "${depId}" loaded as undefined`)
-        }
-      }
-
-      const rec = new AddonRecord(url, module, api)
-      rec.manifest = m
-      rec.builtin = options.builtin ?? false
-
-      try {
-        if (register) {
-          this._loadAddon(rec, (err) => {
-            console.error(`addon "${m.id}" register() failed:`, err)
-          })
-        }
-      } catch (err) {
-        console.error(`addon "${m.id}" load failed:`, err)
-      }
-
-      this.addons.push(rec)
-      this.urlmap.set(url, rec)
-      this.idmap.set(m.id, rec)
+    // Late registration (after start() already ran, e.g. tests/HMR): create the
+    // record + enable immediately so it behaves like a boot-time builtin.
+    if (this.started) {
+      this._materializePending([m.id]).then(() => this.enable(m.id))
     }
   }
 
   /**
-   * Fetches `build/addons/index.json` (the discovery index produced by
-   * tools/build-addons.js) and loads everything listed there in dependency
-   * order. Replaces the legacy `loadAddonList`-from-`addons/list.json` path
-   * for the addon-manifest world (see plan §2.1).
+   * Fetches `build/addons/index.json` and adds each entry as an EXTERNAL source
+   * (dynamic-imported at materialize time). Skips ids already present as builtin
+   * sources or loaded records — the in-bundle builtin wins over its (dead)
+   * index.json bundle. Non-fatal on any failure.
    */
-  async loadAddonIndex(register = false): Promise<void> {
+  private async collectIndexSources(): Promise<void> {
     const indexUrl = window.haveElectron ? '../build/addons/index.json' : './build/addons/index.json'
 
     let json: unknown
@@ -407,36 +225,307 @@ export class AddonManager {
       return
     }
 
-    const builtinManifests: IAddonManifest[] = []
-    const thirdPartyManifests: IAddonManifest[] = []
+    const baseUrl = window.haveElectron ? '../build/addons' : './build/addons'
 
     for (const raw of json) {
+      let m: IAddonManifest
       try {
-        const m = validateManifest((raw as {manifest?: unknown}).manifest ?? raw)
-        if ((raw as {builtin?: boolean}).builtin) {
-          builtinManifests.push(m)
-        } else {
-          thirdPartyManifests.push(m)
-        }
+        m = validateManifest((raw as {manifest?: unknown}).manifest ?? raw)
       } catch (err) {
         console.error('invalid entry in addon index:', err)
+        continue
       }
-    }
 
-    const builtinBase = window.haveElectron ? '../build/addons' : './build/addons'
-    if (builtinManifests.length > 0) {
-      await this.loadFromManifests(builtinManifests, builtinBase, {builtin: true, register})
-    }
-    if (thirdPartyManifests.length > 0) {
-      await this.loadFromManifests(thirdPartyManifests, builtinBase, {builtin: false, register})
+      if (this.pendingSources.has(m.id) || this.idmap.has(m.id)) {
+        continue // builtin / already-loaded wins
+      }
+
+      const builtin = !!(raw as {builtin?: boolean}).builtin
+      const entryJs = m.entry.replace(/\.ts$/, '.js')
+      const rel = `${baseUrl.replace(/\/$/, '')}/${m.id}/${entryJs}`
+      // Anchor to the document base so import() agrees with fetch() (a raw
+      // "./build/addons/..." would resolve relative to this chunk's URL and
+      // double into "/build/build/addons/...").
+      const url = typeof document !== 'undefined' ? new URL(rel, document.baseURI).href : rel
+
+      this.pendingSources.set(m.id, {
+        manifest  : m,
+        loadModule: () => import(/* @vite-ignore */ url) as Promise<IAddon>,
+        builtin,
+        url,
+      })
     }
   }
 
-  unload(addon_or_url: string | IAddon) {
+  /**
+   * Reads each installed third-party addon's manifest from storage and adds it
+   * as an external source. Skips id collisions (warns). Non-fatal on failure.
+   */
+  private async collectInstalledSources(): Promise<void> {
+    const storage = this.storage
+    if (!storage) return
+
+    let ids: string[]
+    try {
+      ids = await storage.list()
+    } catch (err) {
+      console.warn('addon storage list failed:', err)
+      return
+    }
+    if (ids.length === 0) return
+
+    for (const id of ids) {
+      let m: IAddonManifest
+      try {
+        const raw = await storage.readJSON(id, 'manifest.json')
+        m = validateManifest(raw, `${id}/manifest.json`)
+      } catch (err) {
+        console.error(`failed to read manifest for installed addon "${id}":`, err)
+        continue
+      }
+      if (m.id !== id) {
+        console.error(`storage entry "${id}" has manifest.id "${m.id}" — skipping`)
+        continue
+      }
+      if (this.pendingSources.has(m.id) || this.idmap.has(m.id)) {
+        console.warn(`installed addon "${m.id}" collides with an already-loaded id; skipping`)
+        continue
+      }
+      const entryJs = m.entry.replace(/\.ts$/, '.js')
+      this.pendingSources.set(m.id, {
+        manifest  : m,
+        loadModule: async () => {
+          const url = await storage.urlFor(m.id, entryJs)
+          return (await import(/* @vite-ignore */ url)) as IAddon
+        },
+        builtin: false,
+      })
+    }
+  }
+
+  /**
+   * Materializes a set of pending sources into AddonRecords, in topological
+   * dependency order, wiring api.deps from already-created records. Does NOT
+   * enable them. `ids` defaults to every pending source. Removes materialized
+   * entries from pendingSources.
+   */
+  private async _materializePending(ids?: string[]): Promise<void> {
+    const wanted = ids ?? [...this.pendingSources.keys()]
+    const manifests: IAddonManifest[] = []
+    for (const id of wanted) {
+      const src = this.pendingSources.get(id)
+      if (src) manifests.push(src.manifest)
+    }
+    if (manifests.length === 0) return
+
+    // Topo-sort the union of (already-loaded records) + (pending manifests) so
+    // dependencies on already-loaded addons resolve, then materialize only the
+    // pending ones in that order.
+    const loadedStubs: IAddonManifest[] = []
+    for (const rec of this.addons) {
+      if (rec.manifest && !this.pendingSources.has(rec.manifest.id)) {
+        loadedStubs.push(rec.manifest)
+      }
+    }
+
+    let sorted: IAddonManifest[]
+    try {
+      sorted = sortManifestsByDeps([...loadedStubs, ...manifests])
+    } catch (err) {
+      console.error('addon dependency sort failed:', err)
+      // Fall back to unsorted pending order so we at least try to load.
+      sorted = manifests
+    }
+
+    for (const m of sorted) {
+      const src = this.pendingSources.get(m.id)
+      if (!src) continue // an already-loaded stub; skip
+
+      let module: IAddon
+      try {
+        module = await src.loadModule()
+      } catch (err) {
+        console.error(`failed to load addon "${m.id}":`, err)
+        this.pendingSources.delete(m.id)
+        continue
+      }
+
+      const api = new AddonAPI<IAddon>()
+      api.addon = module
+      api.addonId = m.id
+      for (const depId of m.dependencies ?? []) {
+        const depApi = this.getAddonAPI(depId)
+        if (depApi !== undefined) {
+          api.deps[depId] = depApi
+        } else {
+          console.warn(`addon "${m.id}": dep "${depId}" not yet loaded`)
+        }
+      }
+
+      const rec = new AddonRecord(src.url ?? `builtin:${m.id}`, module, api)
+      rec.manifest = m
+      rec.builtin = src.builtin
+      rec.name = m.name
+
+      this.addons.push(rec)
+      this.idmap.set(m.id, rec)
+      if (src.url) this.urlmap.set(src.url, rec)
+
+      this.pendingSources.delete(m.id)
+    }
+  }
+
+  /**
+   * The single unified load pipeline. Collects builtin (already pending) +
+   * index.json + storage sources, materializes them into records in dependency
+   * order, then — when `autoEnable` — enables every record by default (deps
+   * first). Persisted per-addon enabled state is reconciled afterward by
+   * settings._loadAddons(), which disables user-disabled addons honoring deps.
+   */
+  async start(autoEnable: boolean = true): Promise<void> {
+    await this.collectIndexSources()
+    await this.collectInstalledSources()
+
+    await this._materializePending()
+
+    this.started = true
+
+    if (autoEnable) {
+      // Enable in record order (already topological from materialize); enable()
+      // is idempotent and pulls deps on first, so order is not load-bearing.
+      for (const rec of this.addons.slice()) {
+        if (rec.manifest && !rec.enabled) {
+          this.enable(rec.manifest.id)
+        }
+      }
+    }
+  }
+
+  /** Returns the AddonAPI for a loaded addon, keyed by manifest id. */
+  getAddonAPI(id: string): AddonAPI<unknown> | undefined {
+    return this.idmap.get(id)?.addonAPI as AddonAPI<unknown> | undefined
+  }
+
+  /**
+   * Enables an addon and all of its (transitive) dependencies first. Idempotent.
+   * Returns {ok:false} with a reason if a dependency is missing or the addon's
+   * register() throws (in which case it is rolled back).
+   */
+  enable(id: string): AddonOpResult {
+    const rec = this.idmap.get(id)
+    if (!rec) {
+      console.error(`enable: unknown addon "${id}"`)
+      return {ok: false, reason: 'unknown', message: `unknown addon "${id}"`}
+    }
+    if (rec.enabled) {
+      return {ok: true}
+    }
+
+    // 1. transitively enable deps first (cycles already rejected at sort time).
+    for (const depId of rec.manifest?.dependencies ?? []) {
+      const depRec = this.idmap.get(depId)
+      if (!depRec) {
+        const message = `addon "${id}": missing dependency "${depId}"`
+        console.error(message)
+        return {ok: false, reason: 'missing-dep', message}
+      }
+      const res = this.enable(depId)
+      if (!res.ok) return res
+    }
+
+    // 2. enable self — deps are live, so register() can read api.deps[*].exports.
+    try {
+      rec.enabled = true
+    } catch (error) {
+      util.print_stack(error as Error)
+      console.error(`addon "${id}" register() failed:`, error)
+      rec.addonAPI.unregisterAll()
+      rec._enabled = false
+      return {ok: false, reason: 'register-threw', error, message: `addon "${id}" failed to register`}
+    }
+
+    return {ok: true}
+  }
+
+  /**
+   * Disables an addon. BLOCKED (returns {ok:false}) when other *enabled* addons
+   * depend on it — the message names the dependents. Idempotent.
+   */
+  disable(id: string): AddonOpResult {
+    const rec = this.idmap.get(id)
+    if (!rec) {
+      return {ok: false, reason: 'unknown', message: `unknown addon "${id}"`}
+    }
+    if (!rec.enabled) {
+      return {ok: true}
+    }
+
+    const dependents = this.addons.filter(
+      (r) => r.enabled && r !== rec && (r.manifest?.dependencies ?? []).includes(id)
+    )
+    if (dependents.length > 0) {
+      const names = dependents.map((r) => r.manifest?.name ?? r.name).join(', ')
+      const message = `Cannot disable "${rec.manifest?.name ?? rec.name}": still required by ${names}. Disable those first.`
+      console.warn(message)
+      return {ok: false, reason: 'has-dependents', dependents, message}
+    }
+
+    try {
+      rec.enabled = false
+    } catch (error) {
+      util.print_stack(error as Error)
+      return {ok: false, reason: 'unregister-threw', error, message: `addon "${id}" failed to unregister`}
+    }
+
+    return {ok: true}
+  }
+
+  /**
+   * Re-scans storage for newly-installed addons, materializes the new ones, and
+   * enables them (with deps). Used by the install UI after a fresh install.
+   */
+  async loadInstalledAddons(): Promise<void> {
+    if (!this.storage) return
+    await this.collectInstalledSources()
+    const newIds = [...this.pendingSources.keys()]
+    if (newIds.length === 0) return
+    await this._materializePending(newIds)
+    for (const id of newIds) {
+      if (this.idmap.has(id)) this.enable(id)
+    }
+  }
+
+  /**
+   * Removes an installed (third-party) addon from disk + from the in-process
+   * registries. Refuses builtin addons (they can be disabled, not uninstalled).
+   */
+  async uninstall(id: string): Promise<boolean> {
+    const rec = this.idmap.get(id)
+    if (rec?.builtin) {
+      console.warn(`refusing to uninstall builtin addon "${id}"`)
+      return false
+    }
+    if (rec) {
+      const res = this.disable(id)
+      if (!res.ok && res.reason === 'has-dependents') {
+        console.warn(res.message)
+        return false
+      }
+      this.addons = this.addons.filter((r) => r !== rec)
+      this.urlmap.delete(rec.url)
+      this.idmap.delete(id)
+    }
+    if (this.storage) {
+      await this.storage.remove(id)
+    }
+    return true
+  }
+
+  unload(addon_or_url: string | IAddon): boolean {
     let rec: AddonRecord<IAddon> | undefined
 
     if (typeof addon_or_url === 'string') {
-      rec = this.urlmap.get(addon_or_url)
+      rec = this.urlmap.get(addon_or_url) ?? this.idmap.get(addon_or_url)
     } else {
       for (const rec2 of this.addons) {
         if (rec2.addon === addon_or_url) {
@@ -446,103 +535,27 @@ export class AddonManager {
       }
     }
 
-    if (!rec) {
-      throw new Error('Unknown addon ' + rec)
+    if (!rec || !rec.manifest) {
+      throw new Error('Unknown addon ' + addon_or_url)
     }
 
-    rec.addonAPI.unregisterAll()
-    try {
-      rec.addon.unregister()
-    } catch (error) {
-      util.print_stack(error as Error)
+    const res = this.disable(rec.manifest.id)
+    if (!res.ok) {
+      if (res.message) console.warn(res.message)
       return false
     }
-
     return true
   }
 
-  private _loadAddon(rec: AddonRecord<IAddon>, reject: (reason?: any) => void) {
-    const module = rec.addon
-
-    try {
-      module.onAddonCreate?.(rec.addonAPI)
-      module.register(rec.addonAPI)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      util.print_stack(error)
-      console.log('error while loading addon ' + rec.url, rec.addon)
-      rec.addonAPI.unregisterAll()
-
-      reject('error loading addon: ' + error.message + ':\n' + error.stack)
-      return false
-    }
-
-    rec._enabled = true
-    return true
-  }
-
-  load(url: string, register = true) {
-    if (this.urlmap.has(url)) {
-      const rec = this.urlmap.get(url)
-      if (!rec?._enabled && register) {
-        if (rec === undefined) {
-          throw new Error(`addon ${url} not found`)
-        }
-
-        return new Promise((accept, reject) => {
-          if (this._loadAddon(rec, reject)) {
-            accept(rec.addon)
-          }
-        })
-      }
-
-      throw new Error('addon is already loaded')
-    }
-
-    return new Promise((accept, reject) => {
-      import(getAddonPrefix() + url).then((module) => {
-        const api = new AddonAPI()
-
-        api.addon = module
-
-        const rec = new AddonRecord(url, module, api)
-
-        this._loadAddon(rec, reject)
-
-        //addon isn't enabled? unregister, but nstructjs stuff
-        //will remain
-        if (!register) {
-          rec.enabled = false
-        }
-
-        this.addons.push(rec)
-        accept(module)
-      })
-    })
-  }
-
-  loadAddonList(register = false) {
-    let url = './addons/list.json'
-
-    if (window.haveElectron) {
-      url = '../addons/list.json'
-    }
-
-    fetch(url)
-      .then((r) => r.json())
-      .then((json) => {
-        console.warn('json', json)
-        for (const url2 of json) {
-          this.load(url2, register)
-        }
-      })
-  }
-
+  /**
+   * Auto-enables addons whose validArgv() matches the CLI args, then forwards
+   * the args to every enabled addon's handleArgv(). Routes through enable() so
+   * dependencies are pulled on. Used by the --backend native test harness.
+   */
   handleArgv(argv: string[]) {
-    for (const addon of this.addons) {
-      if (!addon.enabled && addon.addon.validArgv?.(addon.addonAPI, argv)) {
-        addon.enabled = true
-        addon.forceEnabled = true
+    for (const addon of this.addons.slice()) {
+      if (!addon.enabled && addon.manifest && addon.addon.validArgv?.(addon.addonAPI, argv)) {
+        this.enable(addon.manifest.id)
       }
 
       if (addon.enabled && addon.addon.handleArgv) {
@@ -555,30 +568,24 @@ export class AddonManager {
 const manager = new AddonManager()
 export default manager
 
-export function startAddons(autoRegister?: boolean) {
-  // New manifest-based pipeline: fetches build/addons/index.json and topo-loads
-  // anything tools/build-addons.js produced. Failure is non-fatal (e.g. when
-  // the dev hasn't run a build yet) and we still fall through to the legacy
-  // addons/list.json loader for now. The legacy path goes away in step 12 once
-  // all toolmodes/builtins live under addons/builtin/.
-  manager.loadAddonIndex(autoRegister).catch((err) => {
-    console.warn('addon index load failed:', err)
-  })
+/**
+ * Boots the unified addon pipeline: materializes every source (builtin sources
+ * are already registered synchronously by the builtin registry import; index +
+ * storage sources are collected here) and, by default, enables them. Persisted
+ * disabled-state is applied later by settings._loadAddons(). Awaitable so the
+ * caller can ensure toolmodes/editors are registered before building the UI.
+ */
+export async function startAddons(autoEnable: boolean = true): Promise<void> {
+  if (!manager.storage) {
+    const storage = await initAddonStorage()
+    if (storage) manager.setStorage(storage)
+  }
 
-  // Pick a storage backend for third-party addons and load anything previously
-  // installed. The backend can be overridden by the host (e.g. tests) by
-  // calling manager.setStorage() before startAddons().
-  initAddonStorage()
-    .then((storage) => {
-      if (!storage) return
-      manager.setStorage(storage)
-      return manager.loadInstalledAddons(autoRegister ?? true)
-    })
-    .catch((err) => {
-      console.warn('installed-addon load failed:', err)
-    })
-
-  manager.loadAddonList(autoRegister)
+  try {
+    await manager.start(autoEnable)
+  } catch (err) {
+    console.warn('addon start failed:', err)
+  }
 }
 
 /**

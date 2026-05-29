@@ -23,9 +23,12 @@ import {fileURLToPath} from 'url'
 
 import {addonApiPlugin} from './addon_api_plugin.js'
 import {frameworkApiPlugin} from './framework_api_plugin.js'
+import {checkFromFiles, EXTERNAL_IDS, IN_BUNDLE_BUILTIN_IDS} from './check-addon-duplication.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
+const MAIN_META_PATH = Path.join(REPO_ROOT, 'build', 'meta-main.json')
+const ADDON_META_PATH = Path.join(REPO_ROOT, 'build', 'addons', 'meta-addons.json')
 
 /**
  * Stub out framework-global side-effect imports (numeric.js, the extern Math
@@ -104,6 +107,7 @@ function buildOptionsFor(entries) {
     platform   : 'browser',
     splitting  : true,
     keepNames  : true,
+    metafile   : true,
     chunkNames : '_chunks/[name]-[hash]',
     logOverride: {'direct-eval': 'silent'},
     // `@framework/api` and `@framework/pathux` are NOT aliased to local files
@@ -117,6 +121,8 @@ function buildOptionsFor(entries) {
     external: [
       'fs',
       'fs/promises',
+      'path',
+      'marked',
       'electron',
       'numeric',
       'numeric.js',
@@ -141,7 +147,10 @@ function buildOptionsFor(entries) {
 }
 
 async function build() {
-  const builtins = discoverManifests(BUILTIN_DIR, 'builtin')
+  // In-bundle builtins ship in the main bundle and are registered via
+  // builtin_registry.ts — they must NOT be separately compiled here (that would
+  // produce a dead, duplicated bundle). Only external addons get built.
+  const builtins = discoverManifests(BUILTIN_DIR, 'builtin').filter((m) => !IN_BUNDLE_BUILTIN_IDS.has(m.id))
   const fixtures = INCLUDE_FIXTURES ? discoverManifests(FIXTURE_DIR, 'fixture') : []
   const all = [...builtins, ...fixtures]
 
@@ -176,16 +185,46 @@ async function build() {
   const opts = buildOptionsFor(entries)
 
   if (WATCH) {
-    const ctx = await esbuild.context(opts)
+    // In watch mode, write the metafile + run the duplication guard on every
+    // rebuild via an onEnd hook.
+    const watchOpts = {
+      ...opts,
+      plugins: [
+        ...opts.plugins,
+        {
+          name: 'addon-meta-and-guard',
+          setup(build) {
+            build.onEnd((result) => {
+              if (!result.metafile) return
+              fs.mkdirSync(OUT_DIR, {recursive: true})
+              fs.writeFileSync(ADDON_META_PATH, JSON.stringify(result.metafile))
+              checkFromFiles(MAIN_META_PATH, ADDON_META_PATH, EXTERNAL_IDS)
+            })
+          },
+        },
+      ],
+    }
+    const ctx = await esbuild.context(watchOpts)
     await ctx.watch()
     console.log('build-addons: watching')
   } else {
-    await esbuild.build(opts)
+    const result = await esbuild.build(opts)
+    fs.mkdirSync(OUT_DIR, {recursive: true})
+    if (result.metafile) {
+      fs.writeFileSync(ADDON_META_PATH, JSON.stringify(result.metafile))
+    }
   }
 
   fs.mkdirSync(OUT_DIR, {recursive: true})
   fs.writeFileSync(Path.join(OUT_DIR, 'index.json'), JSON.stringify(index, null, 2) + '\n')
   console.log(`build-addons: wrote ${index.length} addon(s) to ${OUT_DIR}`)
+
+  if (!WATCH) {
+    const violations = checkFromFiles(MAIN_META_PATH, ADDON_META_PATH, EXTERNAL_IDS)
+    if (violations.length) {
+      process.exitCode = 1
+    }
+  }
 }
 
 await build()

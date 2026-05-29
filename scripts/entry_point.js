@@ -26,22 +26,6 @@ import * as mesh_base from '../addons/builtin/mesh/src/mesh_base.js'
 // away and the addon's register() hook performs the registration.
 import '../addons/builtin/mesh/src/default_scene.js'
 
-// Announces the mesh subsystem to AddonManager as an internal builtin addon so
-// other addons can declare `dependencies: ['mesh']`. See plan §6 step 6.
-import '../addons/builtin/mesh/src/addon_register.js'
-
-// Same pattern for subsurf (depends on mesh). See plan §6 step 7.
-import '../addons/builtin/subsurf/src/addon_register.js'
-
-// Same pattern for mesh_edit toolmode (depends on mesh). See plan §6 step 8.
-import '../addons/builtin/mesh_edit/src/addon_register.js'
-
-// Same pattern for curve toolmode (depends on mesh + mesh_edit). See plan §6 step 8.
-import '../addons/builtin/curve/src/addon_register.js'
-
-// Same pattern for tetmesh toolmode (depends on mesh). See plan §6 step 8.
-import '../addons/builtin/tetmesh/src/addon_register.js'
-
 // Registers mesh-grid file-version migrations against core/file_migrations.
 // Once mesh moves out of the main bundle this side-effect import disappears.
 import '../addons/builtin/mesh/src/migrations.js'
@@ -58,6 +42,13 @@ import './editors/view3d/tools/tools.js'
 // Side-effect import — registers the FBX loader against the global so other
 // callers can use it.
 import '../addons/builtin/mesh/src/fbxloader.js'
+
+// The single in-bundle builtin registry. Imported AFTER tools.js so the
+// toolmode class modules (pbvh/sculptcore) are evaluated before the registry
+// references them. Registers each in-bundle builtin as an addon source; the
+// unified startAddons() pipeline materializes + enables them. Replaces the
+// per-addon addon_register.js side-effect imports.
+import '../addons/builtin/builtin_registry.js'
 
 export {mesh, mesh_types, customdata, mesh_customdata, mesh_base}
 
@@ -121,7 +112,10 @@ export async function init() {
   appstate.preinit()
 
   console.log('Loading addons')
-  startAddons(false)
+  // Await the unified pipeline so every addon's toolmodes/editors/datablocks
+  // are registered + enabled before we build the UI (appstate.init). Builtin
+  // sources were registered synchronously by the builtin_registry import above.
+  await startAddons(true)
 
   window.setTimeout(() => {
     loadShapes()

@@ -44,6 +44,7 @@ interface AppStateLike {
   datalib: Library
   saveHandle: unknown
   createFile(args?: Record<string, unknown>): ArrayBuffer
+  loadFile(buf: ArrayBuffer): void
 }
 
 function appstate(): AppStateLike {
@@ -61,10 +62,20 @@ function writeFile(path: string, data: Uint8Array | string): void {
   fs.writeFileSync(path, data)
 }
 
+/** Read a file as an ArrayBuffer (for `--load`). */
+function readFileBuffer(path: string): ArrayBuffer {
+  const req = nodeRequire()
+  if (!req) throw new Error('node fs unavailable (not running under Electron nodeIntegration)')
+  const fs = req('fs') as {readFileSync: (p: string) => {buffer: ArrayBuffer; byteOffset: number; byteLength: number}}
+  const b = fs.readFileSync(path)
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
+}
+
 export interface HarnessOptions {
   genScene?: string
   sceneArgs: TestSceneArgs
   runTools: string[]
+  load?: string
   save?: string
   dump?: string
   screenshot?: string
@@ -85,6 +96,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
     genScene  : getArg('gen-scene', argv) || undefined,
     sceneArgs,
     runTools  : getArgList('run', argv),
+    load      : getArg('load', argv) || undefined,
     save      : getArg('save', argv) || undefined,
     dump      : getArg('dump', argv) || undefined,
     screenshot: getArg('screenshot', argv) || undefined,
@@ -97,6 +109,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
   opts.active = !!(
     opts.genScene ||
     opts.runTools.length ||
+    opts.load ||
     opts.save ||
     opts.dump ||
     opts.screenshot ||
@@ -338,6 +351,16 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
 
     if (opts.genScene) {
       result.builtScene = buildScene(opts.genScene, opts.sceneArgs) ? opts.genScene : null
+    }
+
+    if (opts.load) {
+      // Round-trip the deserialization path: load a `.wproj` (e.g. one written
+      // by an earlier `--save`), reconstructing LiteMesh geometry via its
+      // STRUCT/loadSTRUCT (Mesh_deserialize). `--dump` then snapshots the result.
+      const buf = readFileBuffer(opts.load)
+      appstate().loadFile(buf)
+      result.load = opts.load
+      console.log(`${TAG} loaded project ${opts.load} (${buf.byteLength} bytes)`)
     }
 
     for (const tool of opts.runTools) {

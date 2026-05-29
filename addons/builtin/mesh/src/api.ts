@@ -37,5 +37,6 @@ export {BVH, BVHFlags, BVHSettings, BVHTri} from './bvh.js'
 export type {IBVHCreateArgs, IBVHVertex} from './bvh.js'
 
 // ---- ops + utilities ---------------------------------------------------------
+export {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js'
 export * as mesh_utils from './mesh_utils.js'
 export * as customdata from './customdata.js'

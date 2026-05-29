@@ -155,15 +155,25 @@ AppSettings {
 
     const ast = api.mapStruct(AddonSettings, true)
     ast.bool('enabled', 'enabled', 'Enabled').on('change', function (this: {dataref: AddonSettings}, val: boolean) {
-      for (const addon of addonManager.addons) {
-        if (addon.key === this.dataref.name) {
-          console.log('found addon', addon)
-          addon.enabled = val
-        }
+      // AddonSettings.name is the manifest id. Route through the manager so
+      // dependencies are auto-enabled and disabling a depended-on addon is
+      // blocked with a message.
+      const id = this.dataref.name
+      const result = val ? addonManager.enable(id) : addonManager.disable(id)
+
+      if (!result.ok && result.message) {
+        window.alert?.(result.message)
       }
 
-      if ((window as any)._appstate && _appstate.settings) {
-        _appstate.settings.save()
+      // Reconcile every persisted flag to the real enabled state — a blocked
+      // toggle snaps the checkbox back, and an enable that pulled deps on marks
+      // those deps enabled too.
+      const settings = (window as any)._appstate?.settings as AppSettings | undefined
+      if (settings) {
+        settings.syncEnabledFlags()
+        settings.save()
+      } else {
+        this.dataref.enabled = addonManager.idmap.get(id)?.enabled ?? false
       }
     })
 
@@ -227,13 +237,58 @@ AppSettings {
   }
 
   _loadAddons(): void {
+    // One-time migration: addon settings are now keyed by manifest id. Drop any
+    // legacy url-derived keys (e.g. "internalmesh") that don't match a current
+    // addon id — builtin legacy entries unreliably stored enabled=false (they
+    // were force-enabled), so we don't trust them. syncAddonList() below then
+    // recreates id-keyed entries at their current (default-on) state. Net: a
+    // one-time reset of addon enabled prefs.
+    const validIds = new Set(addonManager.addons.map((r) => r.manifest?.id ?? r.key))
+    for (const k of Object.keys(this.addonSettings)) {
+      if (!validIds.has(k)) {
+        delete this.addonSettings[k]
+      }
+    }
+
     this.syncAddonList()
 
-    for (const addon of addonManager.addons) {
-      const addon2 = this.addonSettings[addon.key]
+    // Pass 1: enable everything the user wants enabled (pulls deps on
+    // transitively, regardless of a dep's own persisted flag).
+    for (const rec of addonManager.addons) {
+      const id = rec.manifest?.id ?? rec.key
+      const s = this.addonSettings[id]
+      if (s?.enabled && !rec.enabled) {
+        addonManager.enable(id)
+      }
+    }
 
-      if (!!addon2.enabled !== !!addon.enabled) {
-        addon.enabled = addon2.enabled
+    // Pass 2: disable user-disabled addons, honoring dependents. A disable
+    // blocked by an enabled dependent is retried after that dependent is
+    // disabled (loop until stable).
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const rec of addonManager.addons) {
+        const id = rec.manifest?.id ?? rec.key
+        const s = this.addonSettings[id]
+        if (s && !s.enabled && rec.enabled) {
+          const res = addonManager.disable(id)
+          if (res.ok) changed = true
+        }
+      }
+    }
+
+    // Truth pass: make persisted flags match reality (a dep kept on because a
+    // dependent needs it gets its flag corrected to enabled).
+    this.syncEnabledFlags()
+  }
+
+  /** Writes each addon's actual enabled state back into its AddonSettings. */
+  syncEnabledFlags(): void {
+    for (const rec of addonManager.addons) {
+      const id = rec.manifest?.id ?? rec.key
+      if (this.addonSettings[id]) {
+        this.addonSettings[id].enabled = rec.enabled
       }
     }
   }
@@ -265,8 +320,13 @@ AppSettings {
     let ret = false
 
     for (const addon of addonManager.addons) {
-      if (!(addon.key in this.addonSettings)) {
-        this.addonSettings[addon.key] = new AddonSettings(addon.key)
+      const id = addon.manifest?.id ?? addon.key
+      if (!(id in this.addonSettings)) {
+        const s = new AddonSettings(id)
+        // Capture the addon's current (default-on after start()) state so a
+        // freshly-seen addon isn't spuriously treated as user-disabled.
+        s.enabled = addon.enabled
+        this.addonSettings[id] = s
 
         ret = true
       }

@@ -151,6 +151,7 @@ export class LiteMesh extends SceneObjectData {
     this,
     `
     litemesh.LiteMesh {
+      _data : iter(byte) | this.serialize();
     }
     `
   )
@@ -193,29 +194,67 @@ export class LiteMesh extends SceneObjectData {
   }
 
   loadSTRUCT(reader: nstructjs.StructReader<this>): void {
+    reader(this)
     super.loadSTRUCT(reader)
+
+    if (this._data && this._data.length > 0) {
+      this.mesh = this.wasm.Mesh_deserialize(new Uint8Array(this._data))
+    } else {
+      // Legacy / empty block (saved before mesh serialization was wired): fall
+      // back to a default cube so the file still loads with geometry.
+      this.mesh = this.wasm.Mesh_createCube(120, 1.0, 1.0)
+    }
+    this._initSpatial()
+    this._data = undefined
   }
 
-  mesh: WasmMesh
-  spatial: SpatialTree
+  // Assigned in the constructor, or (deferInit path) in loadSTRUCT.
+  mesh!: WasmMesh
+  spatial!: SpatialTree
   wasm: IWasmInterface
   drawBatch?: DrawBatch
   treeBatch?: DrawBatch
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   private gpuUniforms?: IUniformsBlock
+  /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
+   * array from nstructjs); cleared once the mesh is rebuilt. */
+  _data?: number[] | Uint8Array
 
-  constructor(wasmMesh?: WasmMesh) {
+  constructor(wasmMesh?: WasmMesh, deferInit = false) {
     super()
 
     // this code cannot run before wasm loads
     this.wasm = getWasmImmediate()!
 
-    this.mesh = wasmMesh ?? getWasmImmediate()!.Mesh_createCube(120, 1.0, 1.0)
+    // `deferInit` is set by `newSTRUCT` when nstructjs is about to deserialize:
+    // skip building the throwaway default cube — `loadSTRUCT` reconstructs the
+    // real mesh from the blob.
+    if (deferInit) {
+      return
+    }
+
+    this.mesh = wasmMesh ?? this.wasm.Mesh_createCube(120, 1.0, 1.0)
+    this._initSpatial()
+  }
+
+  /** nstructjs instance factory — bypass the default-cube build (see ctor). */
+  static newSTRUCT(): LiteMesh {
+    return new LiteMesh(undefined, /*deferInit=*/ true)
+  }
+
+  /** Build the spatial tree + draw batches over `this.mesh`. Shared by the
+   * constructor and the deserialization path. */
+  private _initSpatial(): void {
     this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+  }
+
+  /** Serialize the mesh to a versioned, compressed blob for the STRUCT getter. */
+  serialize(): Uint8Array {
+    return this.wasm.Mesh_serialize(this.mesh)
   }
 
   rayCast(origin: Vector3, dir: Vector3): GenericIsect | undefined {
@@ -256,6 +295,38 @@ export class LiteMesh extends SceneObjectData {
       this.treeBatch = undefined
     }
     return this
+  }
+
+  /**
+   * DataBlock teardown — called by the library when the block is removed
+   * (including the scene-clear that precedes a file load). Releases the C++
+   * mesh + spatial tree (allocator-correct `Mesh_free`/`SpatialTree_free`, NOT
+   * `[Symbol.dispose]`) and the GPU batches/executors this LiteMesh owns. Nulls
+   * each handle so a double-remove can't double-free.
+   */
+  destroy(): void {
+    this.drawBatchExecutor?.dispose()
+    this.drawBatchExecutor = undefined
+    this.drawBatchExecutorGPU?.dispose()
+    this.drawBatchExecutorGPU = undefined
+
+    if (this.treeBatch) {
+      this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+      this.treeBatch = undefined
+    }
+    // drawBatch is owned by the spatial tree; freeing the tree releases it.
+    this.drawBatch = undefined
+
+    if (this.spatial) {
+      this.wasm.SpatialTree_free(this.spatial)
+      this.spatial = undefined as unknown as SpatialTree
+    }
+    if (this.mesh) {
+      this.wasm.Mesh_free(this.mesh)
+      this.mesh = undefined as unknown as WasmMesh
+    }
+
+    super.destroy()
   }
 
   drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {

@@ -168,6 +168,14 @@ by-value struct → an owning wrapper).
 
 Owned-object destruction goes through napi finalizers and must match the WASM
 `[Symbol.dispose]` path so it doesn't trip litestl's leak-tracking allocator.
+Every bound class also carries a `[Symbol.dispose]()` method on its prototype —
+the deterministic counterpart of the GC finalizer, mirroring the WASM
+bound-class dispose (`manager.destroyInstance` → `destructorThunk` + free). It
+destructs + frees an **owning** instance immediately, then nulls the wrapper's
+`ptr`/`owning` so a later member access or the finalizer can't double-free; it's
+a no-op on non-owning wrappers (engine-owned objects, embedded-struct/member
+views), which must be released by their owner. This makes `using` /
+`obj[Symbol.dispose]()` behave the same across both backends.
 
 ### Fixed-size inline arrays (`float3.vec`)
 

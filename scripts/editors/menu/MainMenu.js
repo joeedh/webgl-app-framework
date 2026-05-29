@@ -7,7 +7,7 @@ import {Editor, VelPan} from '../editor_base.ts'
 import {saveFile, loadFile, DataPathError, KeyMap, HotKey} from '../../path.ux/scripts/pathux.js'
 
 import '../../../addons/builtin/mesh/src/mesh_createops.js'
-import {UIBase, color2css, _getFont, css2color, nstructjs} from '../../path.ux/pathux.js'
+import {UIBase, color2css, _getFont, css2color, nstructjs, DropBox, createMenu} from '../../path.ux/pathux.js'
 
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
@@ -20,6 +20,7 @@ import {Menu} from '../../path.ux/scripts/widgets/ui_menu.js'
 const menuSize = 27
 
 import * as platform from '../../core/platform.js'
+import {addonManager} from '@framework/api'
 
 let electron_api
 if (window.haveElectron) {
@@ -236,18 +237,17 @@ MenuBarEditor {
       //"light.new(position='cursor')",
     ]
 
-    menubar.menu('Add', [
-      'mesh.procedural_add()',
-      Menu.SEP,
-      'mesh.make_cube()',
-      'mesh.make_sphere()',
-      'mesh.make_ico_sphere()',
-      'mesh.make_cylinder()',
-      Menu.SEP,
-      'smesh.make_cube()',
-      Menu.SEP,
-      'light.new()',
-    ])
+    // Dynamically generated menu
+    const addMenu = menubar.menu('Add', ['light.new()'])
+    addMenu._build_menu = function () {
+      if (this._menu?.parentNode !== undefined) {
+        this._menu.remove()
+      }
+
+      const list = ['light.new()', ...addonManager.getAddonMenuEntries()]
+      this._menu = createMenu(this.ctx, 'Add', list)
+      return this._menu
+    }
 
     menubar.menu('Session', [
       [

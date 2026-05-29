@@ -165,6 +165,18 @@ import {SomeMeshClass} from '@addon/mesh/api'
 This indirection lets the loader topologically sort by manifest
 `dependencies` and lets the addon be disabled cleanly.
 
+**Main-bundle lazy-access rule.** The same `@addon/<id>/api` plugin is also
+wired into the *main* esbuild (`tools/esbuilder.js`), so main-bundle code can
+import an addon's surface without statically pulling its source into the main
+bundle. But the generated stub binds `export const X = __ns['X']` at the
+consumer module's **load time**, and in the main bundle that runs *before*
+`AddonManager.start()` enables any addon — so the bindings are `undefined` if
+read eagerly at module scope. Main-bundle code must therefore access addon
+exports lazily (via the getters in `scripts/addon/addon_base.ts`'s
+`lookupAddonExport`), never through eager `@addon/<id>/api` value imports used
+at module top level. Inside an addon's own bundle the ordering is guaranteed by
+the manifest `dependencies`, so eager imports are fine there.
+
 The `api.ts` shim must list every value an addon publishes to peers, and
 the corresponding `addon_register.ts`'s `exports.<id>` object must mirror
 that list at runtime.

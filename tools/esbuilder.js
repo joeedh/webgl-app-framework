@@ -3,8 +3,11 @@ import fs from 'fs'
 import Path from 'path'
 import {fileURLToPath} from 'url'
 
+import {addonApiPlugin} from './addon_api_plugin.js'
+
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
+const MAIN_META_PATH = Path.join(REPO_ROOT, 'build', 'meta-main.json')
 
 let options = {
   entryPoints: [
@@ -51,7 +54,21 @@ let options = {
   ],
   splitting  : true,
   keepNames  : true,
+  metafile   : true,
   logOverride: {'direct-eval': 'silent'},
+  // Resolve `@addon/<id>/api` imports in main-bundle code to a runtime-lookup
+  // stub (globalThis._addons.getAddonAPI(id).exports[id]) instead of inlining
+  // the addon's source. This lets main-bundle code reference an addon without
+  // statically pulling its code in — the prerequisite for extracting addons to
+  // their own bundles without duplication.
+  //
+  // NOTE: the stub binds at the consumer module's *load time*, which in the
+  // main bundle is before start() enables any addon — so the bindings are
+  // `undefined` if read eagerly at module scope. Main-bundle code must access
+  // addon exports lazily (via the getters in scripts/addon/addon_base.ts), not
+  // through eager `@addon/<id>/api` value imports. `@framework/api` stays an
+  // alias to the real file: the main bundle *is* the framework.
+  plugins    : [addonApiPlugin(REPO_ROOT)],
 }
 
 // After the main bundle finishes, build any addon manifests we discover.
@@ -74,12 +91,37 @@ const handlers = {
     console.log('\nUsage: esbuilder --watch,-w --help\n')
   },
   async build() {
-    await esbuild.build(options)
+    const result = await esbuild.build(options)
+    // Persist the main bundle's metafile so build-addons.js can run the
+    // addon-duplication guard against it.
+    if (result.metafile) {
+      fs.mkdirSync(Path.dirname(MAIN_META_PATH), {recursive: true})
+      fs.writeFileSync(MAIN_META_PATH, JSON.stringify(result.metafile))
+    }
     await buildAddons()
   },
 
   async watch() {
-    let ctx = await esbuild.context(options)
+    // Emit the main metafile on every rebuild so the addon watcher's guard
+    // sees fresh inputs.
+    const watchOptions = {
+      ...options,
+      plugins: [
+        ...options.plugins,
+        {
+          name: 'write-main-metafile',
+          setup(build) {
+            build.onEnd((result) => {
+              if (result.metafile) {
+                fs.mkdirSync(Path.dirname(MAIN_META_PATH), {recursive: true})
+                fs.writeFileSync(MAIN_META_PATH, JSON.stringify(result.metafile))
+              }
+            })
+          },
+        },
+      ],
+    }
+    let ctx = await esbuild.context(watchOptions)
     await ctx.watch()
     // Run addon build in watch mode as a background child process so the
     // two watchers run concurrently.

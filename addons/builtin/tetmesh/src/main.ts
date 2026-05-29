@@ -19,6 +19,8 @@ export const addonDefine: IAddonDefine = {
 }
 
 export function register(api: AddonAPI<IAddon>) {
+  // Keep in sync with addons/builtin/tetmesh/src/api.ts.
+  api.exportNamespace('tetmesh', {TetMeshTool})
   api.registerAll(MakeTetMesh, TetSmoothVerts, TetToMesh, Tetrahedralize, TetTest, TetFixNormalsOp, TetMeshTool)
 }
 export function unregister() {}

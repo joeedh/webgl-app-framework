@@ -15,8 +15,7 @@ import {
 } from '@framework/pathux'
 import {TetTypes, TetFlags, TetRecalcFlags, TetMesh} from '@framework/api'
 import {meshToTetMesh, vertexSmooth, tetMeshToMesh, tetrahedralizeMesh, tetSolve} from '@framework/api'
-import {saveUndoMesh, loadUndoMesh} from '../../mesh/src/mesh_ops_base.js'
-import {Mesh} from '@addon/mesh/api'
+import {Mesh, saveUndoMesh, loadUndoMesh} from '@addon/mesh/api'
 import {saveUndoTetMesh, loadUndoTetMesh, TetDeformOp, TetMeshOp} from './tet_ops_base.js'
 
 function makeCube(tm = new TetMesh()) {

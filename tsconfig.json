@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "resolveJsonModule": true,
     "target": "es6",
     "module": "es2022",
     "lib": ["dom", "scripthost", "esnext", "ESNext.Disposable"],

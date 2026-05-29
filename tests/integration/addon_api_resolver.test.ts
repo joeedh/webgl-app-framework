@@ -31,6 +31,28 @@ const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..', '..')
 const BUILT_ENTRY = Path.join(REPO_ROOT, 'build/addons/api_consumer/src/main.js')
 
+/**
+ * Reads the built entry plus any sibling chunk(s) it statically imports, joined.
+ * esbuild's code-splitting hoists the `@addon/mesh/api` stub into a shared
+ * `_chunks/` module when more than one addon imports it (e.g. api_consumer +
+ * tetmesh), so the stub may live in a chunk rather than inline in main.js.
+ */
+function readBuiltWithChunks(entry: string): string {
+  const seen = new Set<string>()
+  const parts: string[] = []
+  const visit = (file: string) => {
+    if (seen.has(file) || !fs.existsSync(file)) return
+    seen.add(file)
+    const src = fs.readFileSync(file, 'utf-8')
+    parts.push(src)
+    for (const m of src.matchAll(/from\s*["']([^"']+\.js)["']/g)) {
+      visit(Path.resolve(Path.dirname(file), m[1]))
+    }
+  }
+  visit(entry)
+  return parts.join('\n')
+}
+
 interface MockAddonAPI {
   exports: {[name: string]: Record<string, unknown>}
 }
@@ -46,7 +68,9 @@ describe('addon_api_plugin (runtime resolver)', () => {
   }, 30000)
 
   test('emits a stub bundle, not inlined mesh source', () => {
-    const built = fs.readFileSync(BUILT_ENTRY, 'utf-8')
+    // Read main.js + any chunk it imports — esbuild may hoist the shared
+    // @addon/mesh/api stub into a _chunks/ module.
+    const built = readBuiltWithChunks(BUILT_ENTRY)
 
     // The stub reaches into globalThis._addons.getAddonAPI("mesh") and
     // pulls each requested symbol from the exports.mesh namespace.

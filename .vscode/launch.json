@@ -35,7 +35,7 @@
             "name": "Debug sculptcore debug_app",
             "program": "${workspaceFolder}/sculptcore/build/native/source/debug/debug_app.exe",
             "args": [
-                "--script", "tests/scripts/cube_draw.txt",
+                "--script", "tests/scripts/sphere_draw.txt",
                 "--interactive",
                 "--no-headless"
             ],

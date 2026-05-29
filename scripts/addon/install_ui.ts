@@ -42,7 +42,7 @@ export async function pickAndInstallAddon(): Promise<IPickResult | undefined> {
 
   // Load the just-installed addon. Rolling the whole list keeps us simple at
   // the cost of being a tiny bit chatty when many addons are installed.
-  await addonManager.loadInstalledAddons(true)
+  await addonManager.loadInstalledAddons()
   return {manifest, reloaded: true}
 }
 

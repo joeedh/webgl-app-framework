@@ -95,7 +95,7 @@ SettingsEditor {
     }
 
     for (let addon of addonManager.addons) {
-      let k = addon.key
+      let k = addon.manifest?.id ?? addon.key
       let path = `settings.addons['${k}']`
 
       let row = tab.row()

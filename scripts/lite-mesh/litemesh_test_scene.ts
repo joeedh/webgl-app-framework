@@ -10,11 +10,12 @@
  * the startup cube. It's pulled in as a side-effect import from
  * `scripts/entry_point.js`.
  *
- * Because `LiteMesh` serialization isn't wired up yet (its STRUCT is empty),
- * the scene is built *procedurally* at startup rather than loaded from a
- * serialized `.wproj` — the construction is deterministic, so the native and
- * WASM sculptcore backends build byte-identical geometry for parity diffing
- * (documentation/plans/native-electron.md, Workstream F).
+ * The scene is built *procedurally* at startup (rather than loaded from a
+ * `.wproj`): the construction is deterministic, so the native and WASM
+ * sculptcore backends build byte-identical geometry for parity diffing
+ * (documentation/plans/native-electron.md, Workstream F). `LiteMesh`
+ * serialization is now wired (`_data: iter(byte) | this.serialize()`), so the
+ * harness can also round-trip a saved `.wproj` via `--load`.
  */
 
 import type {ToolContext} from '../core/context'
