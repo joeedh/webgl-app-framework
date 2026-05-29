@@ -483,9 +483,25 @@ unchanged promise IPC, low risk.
 
 ## Workstream F — Native↔WASM parity tests
 
-Goal: prove the two backends present identical behavior through the shared JS
-API. Reuse the repo's existing tolerant-diff pattern (`make.mjs`'s `diffDump`
-/ golden approach, `:295-326`).
+**Status: ✅ DONE (2026-05-28).** `tests/integration/sculptcore_parity.test.ts`
+(Jest, under root `pnpm test`) boots the real app headlessly once per backend
+(`--headless --backend {wasm,native} --gen-scene litemesh-cube --scene-arg
+subdiv=8 --dump <tmp> --exit`) and asserts the two structured dumps match via a
+tolerant recursive numeric diff ported from `make.mjs`'s `diffDump`
+(`ATOL=1e-5`, `RTOL=1e-4`). The dump is produced by a deepened `dumpScene()`
+(`scripts/core/test_harness.ts`): per LiteMesh it captures scalar counts, the
+spatial **leaf count** (topology), and a float32 **signature** of every
+populated GPU vertex buffer keyed by name — `{size, elemsize, floatCount, sum,
+sumAbs, min, max, sample[32]}` (geometry). That signature reads the bulk-data
+seam Workstream C changed (WASM `HEAPU8` view vs native `pointerBytes`, iterated
+via `getBoundVector`) through the LiteMesh's own `.wasm` field, so `scripts/core`
+stays free of any sculptcore import. Result: the `position`/`normal`/`color`/`uv`
+buffers + `leafCount` come back **byte-identical** across backends (verified;
+the test passes 3/3 in ~10s). It **self-skips with a logged reason** when the app
+bundle or the native `.node` is absent, so CI without the clang/cmake-js
+toolchain stays green; where both exist it's a hard assertion. (Vertex `co` isn't
+JS-readable on native, which is why the GPU buffers — not raw positions — are the
+comparable geometry.) Reuse the repo's existing tolerant-diff pattern.
 
 1. A backend-parametrized test harness (Jest, matching root `pnpm test` /
    `turbo test`) that loads sculptcore once per backend and runs the same

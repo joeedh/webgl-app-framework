@@ -130,7 +130,66 @@ function buildScene(name: string, sceneArgs: TestSceneArgs): boolean {
   return true
 }
 
-/** Best-effort structured snapshot for native↔WASM parity diffing. */
+// Minimal structural view of the IWasmInterface bits the geometry dump needs.
+// Read off the LiteMesh's own `.wasm` field so `scripts/core` stays free of any
+// sculptcore import (the layering rule). `HEAPU8` present ⇒ WASM (zero-copy heap
+// view); absent ⇒ native (read `gpu::Buffer.data` through `pointerBytes`).
+interface DumpWasm {
+  HEAPU8?: {buffer: ArrayBufferLike}
+  gpu: Record<string, unknown>
+  getBoundVector(name: string, vec: unknown): ArrayLike<unknown>
+  pointerBytes?(bound: unknown, member: string, byteLen: number): Uint8Array | undefined
+}
+interface DumpBuffer {
+  size: number
+  elemsize: number
+  name?: string
+  data?: number
+}
+
+/** A backend-comparable float32 signature of one GPU buffer's contents. */
+function bufferSignature(wasm: DumpWasm, buf: DumpBuffer): Record<string, unknown> {
+  const floatCount = (buf.size | 0) * (buf.elemsize | 0)
+  const bytes = floatCount * 4
+  let u8: Uint8Array | undefined
+  if (wasm.HEAPU8 !== undefined) {
+    u8 = new Uint8Array(wasm.HEAPU8.buffer, buf.data as number, bytes)
+  } else if (bytes > 0) {
+    u8 = wasm.pointerBytes?.(buf, 'data', bytes)
+  }
+  const sig: Record<string, unknown> = {size: buf.size | 0, elemsize: buf.elemsize | 0, floatCount}
+  if (!u8 || u8.length < bytes) {
+    sig.empty = true
+    return sig
+  }
+  const f = new Float32Array(u8.buffer, u8.byteOffset, floatCount)
+  let sum = 0
+  let sumAbs = 0
+  let min = Infinity
+  let max = -Infinity
+  for (let i = 0; i < f.length; i++) {
+    const v = f[i]
+    sum += v
+    sumAbs += Math.abs(v)
+    if (v < min) min = v
+    if (v > max) max = v
+  }
+  // Strided sample so the signature also catches per-element divergence the
+  // aggregates could cancel out, without dumping every float of a 120³ cube.
+  const sample: number[] = []
+  const stride = Math.max(1, Math.floor(f.length / 32))
+  for (let i = 0; i < f.length; i += stride) sample.push(f[i])
+  return {...sig, sum, sumAbs, min, max, sample}
+}
+
+/**
+ * Structured, backend-comparable snapshot for native↔WASM parity diffing
+ * (Workstream F). For each LiteMesh it captures: scalar mesh counts, the spatial
+ * leaf count (topology), and a float32 signature of every populated GPU vertex
+ * buffer keyed by name (geometry) — the bulk-data seam that WASM reads off the
+ * heap and native reads via `pointerBytes`. The construction is deterministic, so
+ * the two backends produce a diffable-equal dump (see litemesh_test_scene.ts).
+ */
 function dumpScene(): unknown {
   const app = appstate()
   const scene = app.ctx.scene
@@ -144,8 +203,7 @@ function dumpScene(): unknown {
     }
 
     // LiteMesh exposes a sculptcore WasmMesh on `.mesh`; pull whatever scalar
-    // counts it offers without assuming a specific API (guarded). Workstream F
-    // will deepen this into a full geometry/topology dump.
+    // counts it offers without assuming a specific API (guarded).
     const mesh = data?.mesh as Record<string, unknown> | undefined
     if (mesh) {
       const counts: Record<string, unknown> = {}
@@ -160,6 +218,46 @@ function dumpScene(): unknown {
       }
       entry.mesh = counts
     }
+
+    // Geometry + topology signature (backend-agnostic; read via the LiteMesh's
+    // own `.wasm` interface so core never imports sculptcore). Vertex `co` isn't
+    // JS-readable on native, so the comparable geometry is the filled GPU vertex
+    // buffers — exactly the bytes the renderer uploads.
+    const spatial = data?.spatial as {update?: (gpu: unknown) => void; leaves?: () => unknown} | undefined
+    const wasm = data?.wasm as DumpWasm | undefined
+    if (spatial && wasm) {
+      try {
+        const gpu = wasm.gpu
+        spatial.update?.(gpu)
+        const buffersVec = (gpu as {buffers?: unknown}).buffers
+        const buffers =
+          wasm.HEAPU8 !== undefined
+            ? (buffersVec as ArrayLike<DumpBuffer>)
+            : (wasm.getBoundVector('', buffersVec) as ArrayLike<DumpBuffer>)
+        const sigs: Record<string, unknown> = {}
+        for (let i = 0; i < (buffers.length | 0); i++) {
+          const buf = buffers[i]
+          if (!buf || !(buf.size | 0) || !(buf.elemsize | 0)) continue
+          const name = (typeof buf.name === 'string' && buf.name) || `buf${i}`
+          sigs[name] = bufferSignature(wasm, buf)
+        }
+        entry.gpuBuffers = sigs
+        // Spatial leaf count — a topology signal independent of geometry.
+        try {
+          const leaves = spatial.leaves?.()
+          const lv =
+            wasm.HEAPU8 !== undefined
+              ? (leaves as ArrayLike<unknown>)
+              : wasm.getBoundVector('', leaves)
+          entry.leafCount = lv?.length | 0
+        } catch {
+          /* leaves() not available */
+        }
+      } catch (err) {
+        entry.gpuBuffersError = String(err)
+      }
+    }
+
     objects.push(entry)
   }
 
@@ -220,9 +318,11 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
   const opts = parseHarnessArgs(argv)
 
   if (opts.backend) {
+    // entry_point.js already set this from --backend before the first loadWasm
+    // (the authoritative point); re-asserting here is harmless and documents intent.
     ;(globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND = opts.backend
-    if (opts.backend !== 'wasm') {
-      console.warn(`${TAG} backend "${opts.backend}" requested; only "wasm" is wired today (see native-electron plan)`)
+    if (opts.backend !== 'wasm' && opts.backend !== 'native') {
+      console.warn(`${TAG} unknown backend "${opts.backend}"; expected "wasm" or "native"`)
     }
   }
 
