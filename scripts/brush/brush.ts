@@ -801,8 +801,6 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
       b = b.copy()
       b.lib_id = -1
 
-      console.log('adding', k, b)
-
       const tex = b.texUser.texture
       if (tex && tex.lib_id < 0) {
         ctx.datalib.add(tex)

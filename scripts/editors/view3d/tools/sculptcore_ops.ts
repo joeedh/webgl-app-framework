@@ -107,6 +107,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return this.inputs.brush.getValue().radius
   }
 
+  /** note: this runs in a special async loop */
   on_pointermove_intern(
     e: PointerEvent,
     x?: number,
@@ -139,7 +140,6 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     const mesh = ctx.object!.data as LiteMesh
 
     const r = this.sampleViewRay(view3d.activeCamera.rendermat, toolmode.mpos, viewvec, origin, 0.5, true, true)
-    console.log(r)
     const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
 
     imatrix.invert()
@@ -148,7 +148,6 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     origin.multVecMatrix(imatrix)
 
     const isect = mesh.rayCast(origin, viewvec)
-    console.log('isect', isect)
 
     let radius = this.calcRadius()
 
@@ -168,12 +167,8 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       view3d.unproject(m2)
 
       const dist = m2.vectorDistance(p)
-      console.log('dist', dist)
 
       radius *= dist
-
-      //radius *= w / view3d.glSize[1]
-      console.log('radius', radius, w, w / view3d.glSize[1])
 
       // @ts-expect-error
       const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
@@ -183,8 +178,6 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       // Backend-agnostic inspection handle (array-like .length/[i]); the native
       // backend keeps the pointer in C++. See IWasmInterface.getBoundVector.
       const boundNodes = wasm.getBoundVector(vecCls!.buildFullName(), nodes) as any
-
-      console.log('boundNodes', boundNodes, boundNodes.length, boundNodes.length > 0 ? boundNodes[0] : undefined)
 
       wasmBrush.strength = brush.strength * 0.01
       wasmBrush.radius = radius

@@ -59,6 +59,36 @@ new post-process or scene-walk passes. Key conventions:
   `loadOp: 'load'` pass against the same swap-chain view OutputPass
   wrote.
 
+## Picking
+
+Viewport picking (click-select, brush/circle select, box select, transform
+snap) is **geometric and addon-owned**: there is no GPU id-buffer (the old
+WebGL `GPUSelectBuffer` + `FindnearestClass` registry are gone). See
+[documentation/picking.md](documentation/picking.md). Key conventions:
+
+- Each object type implements picking as overridable instance methods on its
+  `SceneObjectData` subclass: `castViewRay` / `findNearest` / `castScreenCircle`
+  / `castScreenRect` (`scripts/sceneobject/sceneobject_base.ts`). The base class
+  provides bounding-box object-level defaults gated on the data's
+  `dataDefine().selectMask`, so any type with a sane `getBoundingBox()` is
+  pickable with no bespoke code (only a correct `selectMask` is required).
+- Core `scripts/editors/view3d/findnearest.ts` is a thin dispatcher:
+  `FindNearest` / `castViewRay` walk `view3d.sortedObjects` and call the data
+  method on each, then aggregate (nearest by screen distance / ray depth). It
+  does **not** pre-filter by type — methods gate on `selectMask` themselves
+  (this is how one `Mesh` serves both `SelMask.MESH` and `SelMask.GEOM`).
+- Brush/box ops call `mesh.castScreenCircle` / `mesh.castScreenRect` directly.
+  `Mesh` (mesh addon) overrides with BVH cone (circle) / frustum (rect) queries;
+  the dependency-free frustum predicates live in `scripts/util/frustum.ts`
+  (re-exported via `isect.ts` / `@framework/api`), with `facesInFrustum` /
+  `vertsInFrustum` added to `addons/builtin/mesh/src/bvh.ts`.
+- `ScreenPickResult.elements` is typed `unknown[]` so core never depends on an
+  addon's element type — narrow it in the owning addon.
+- `LiteMesh` routes circle/box select to the sculptcore `SpatialTree`
+  `castScreenCircle` / `castScreenRect` C++ queries, backend-agnostically (8
+  rect corners + cone endpoints cross as bound `float3`s, results as
+  `Vector<int>` out-params; native uses the `makeIntVector` N-API helper).
+
 ## Electron test harness / CLI
 
 The Electron shell takes CLI args to boot the real app and build/save/dump
