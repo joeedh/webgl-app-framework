@@ -10,6 +10,7 @@
     "typecheck": "node tools/gen-datapaths.mjs && turbo typecheck",
     "test": "turbo test",
     "watch-typecheck": "npx tsgo --watch",
+    "electron": "pnpm --filter @webgl-app-framework/electron_app exec electron main.js --backend native",
     "serv": "node tools/serv.js",
     "serv:restart": "node tools/serv-restart.js",
     "serv:test": "node tools/serv.js 5099",
