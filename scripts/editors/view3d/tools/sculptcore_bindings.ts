@@ -117,11 +117,13 @@ export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined 
  * (Re)build a composite brush program for one dab: the main brush command,
  * plus a chained SMOOTH command (autosmooth) when `brush.autosmooth > 0`.
  *
- * The SMOOTH command's strength is scaled so the kernel's effective smooth
- * factor (`strength * falloff * radius * 0.1`) lands at `autosmooth * falloff`
- * independent of the per-dab screen radius. The program is run over the same
- * node set, so SMOOTH re-snapshots `co_prev` after the main pass and smooths
- * the deformed result.
+ * The SMOOTH command's strength is set so its effective smooth factor lands at
+ * `autosmooth * falloff`. The `strength` intrinsic is now just `strength *
+ * falloff` (radius is no longer baked in), and the smooth kernel applies it as
+ * a relative Laplacian blend that doesn't scale by radius — so the command
+ * strength is `autosmooth` directly. The program is run over the same node set,
+ * so SMOOTH re-snapshots `co_prev` after the main pass and smooths the deformed
+ * result.
  */
 export function buildBrushProgram(
   prog: BrushProgram,
@@ -133,7 +135,7 @@ export function buildBrushProgram(
   prog.addCommand(mainBrushType)
 
   if (brush.autosmooth > 0 && radius > 0) {
-    const smoothStrength = brush.autosmooth / (radius * 0.1)
+    const smoothStrength = brush.autosmooth
     const i = prog.addCommand(SculptBrushes.SMOOTH)
     prog.setCommandFloat(i, BrushProp.STRENGTH, smoothStrength)
   }

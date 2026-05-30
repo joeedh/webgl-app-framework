@@ -33,19 +33,29 @@ CPU-vs-GPU parity gate; the app does not use them.
 5. `buildBrushProgram` → `executor.execProgram(prog, nodes, p, n)`.
 6. `mesh.regenTreeBatch()`.
 
-`strength(co)` (the value kernels actually use) is
-`brush.strength * falloffEval(t) * brush.radius * 0.1`, where `t = 1 −
-min(falloffDist(co − surfacePos), 1)`. **Radius is baked into strength** — large
-screen-space radii are why `strength` is pre-scaled by a small tuning constant
-per dab (`wasmBrush.strength = brush.strength * 0.1` in `on_pointermove_intern`).
+`strength(co)` (the falloff strength kernels start from) is
+`brush.strength * falloffEval(t)`, where `t = 1 − min(falloffDist(co −
+surfacePos), 1)`. **Radius is _not_ baked into strength** — the `strength`
+intrinsic is purely `strength · falloff`, and each kernel multiplies by
+`radius` itself only when the displacement should scale with brush size
+(`draw`/`inflate`/`pinch` use `… * radius * 0.5`; `smooth`/`sharp`/`mask` are
+relative or radius-independent and don't; the `plane` family is naturally
+radius-proportional through its `planeoff · radius` plane offset, so it doesn't
+multiply again). Because radius is no longer folded into `strength`, there is
+**no per-dab pre-scale** anymore — the bridge sets `wasmBrush.strength =
+brush.strength` directly (`SculptPaintOp` in `sculptcore_ops.ts`). Net effect:
+strokes are considerably stronger than under the old pre-baked path — that is
+intentional.
 
 ## Tool dispatch
 
 `TOOL_TO_SCULPTBRUSH` maps the TS `SculptTools` enum → `SculptBrushes` kernel.
 Wired: DRAW, SMOOTH, INFLATE, SHARP, PINCH, MASK_PAINT, and the plane family
 CLAY/SCRAPE/FILL/WING_SCRAPE. Tools with no equivalent (Grab, Snake, Paint, …)
-are absent → the op warns and skips the dab. The six base kernels read only
-`strength`/`radius`; plane/wing read extra uniforms (below).
+are absent → the op warns and skips the dab. The base kernels read `strength`
+(via the `strength` intrinsic) and, where the displacement should scale with
+brush size, the `radius` uniform directly (`draw`/`inflate`/`pinch`; `smooth`/
+`sharp`/`mask` don't); plane/wing read extra uniforms (below).
 
 ## Composite brushes / autosmooth (`BrushProgram`)
 

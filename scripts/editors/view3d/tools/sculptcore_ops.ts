@@ -8,12 +8,7 @@ import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {pointer, StructType} from '@litestl/typescript-runtime'
 import type {SculptBrush} from '../../../brush/index'
-import {
-  builSculptcoreBrush,
-  toolToSculptBrush,
-  buildBrushProgram,
-  pushBrushDeviceInputs,
-} from './sculptcore_bindings'
+import {builSculptcoreBrush, toolToSculptBrush, buildBrushProgram, pushBrushDeviceInputs} from './sculptcore_bindings'
 import {SculptTools} from '../../../brush/brush_base'
 
 export interface IGetBrushRet {
@@ -116,9 +111,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
   getProgram(): BrushProgram {
     if (!this.brushProgram) {
-      this.brushProgram = getWasmImmediate()!.manager.construct(
-        'sculptcore::brush::BrushProgram'
-      ) as BrushProgram
+      this.brushProgram = getWasmImmediate()!.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
     }
     return this.brushProgram
   }
@@ -196,13 +189,9 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       if (brushType === undefined) {
         // TS tool with no sculptcore equivalent (e.g. Grab, Snake, Paint).
         // Skip the dab rather than silently running a Draw.
-        console.warn(
-          `sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`
-        )
+        console.warn(`sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`)
       } else {
-        // Per-dab strength pre-scale; pairs with the kernel's strength·radius·0.1
-        // (CommandCtx::strength) so the effective displacement stays in range.
-        wasmBrush.strength = brush.strength * 0.01
+        wasmBrush.strength = brush.strength
         wasmBrush.radius = radius
         wasmBrush.writeProps()
         wasmExec.meshLog = SculptPaintOp.meshLog
