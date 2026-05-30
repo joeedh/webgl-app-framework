@@ -1,4 +1,4 @@
-import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush} from '@sculptcore/api'
+import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram} from '@sculptcore/api'
 import type {ToolContext} from '../../../core/context'
 import {LiteMesh} from '../../../lite-mesh/index'
 import {AttrRef, Vector3LayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
@@ -8,8 +8,13 @@ import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {pointer, StructType} from '@litestl/typescript-runtime'
 import type {SculptBrush} from '../../../brush/index'
-import {builSculptcoreBrush} from './sculptcore_bindings'
-import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
+import {
+  builSculptcoreBrush,
+  toolToSculptBrush,
+  buildBrushProgram,
+  pushBrushDeviceInputs,
+} from './sculptcore_bindings'
+import {SculptTools} from '../../../brush/brush_base'
 
 export interface IGetBrushRet {
   brush: SculptBrush
@@ -20,6 +25,7 @@ export interface IGetBrushRet {
 export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   wasmBrush?: WasmBrush
   executor?: CommandExecutor
+  brushProgram?: BrushProgram
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -107,6 +113,16 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return this.inputs.brush.getValue().radius
   }
 
+  /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
+  getProgram(): BrushProgram {
+    if (!this.brushProgram) {
+      this.brushProgram = getWasmImmediate()!.manager.construct(
+        'sculptcore::brush::BrushProgram'
+      ) as BrushProgram
+    }
+    return this.brushProgram
+  }
+
   /** note: this runs in a special async loop */
   on_pointermove_intern(
     e: PointerEvent,
@@ -175,18 +191,35 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
 
       mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
-      // Backend-agnostic inspection handle (array-like .length/[i]); the native
-      // backend keeps the pointer in C++. See IWasmInterface.getBoundVector.
-      const boundNodes = wasm.getBoundVector(vecCls!.buildFullName(), nodes) as any
 
-      wasmBrush.strength = brush.strength * 0.01
-      wasmBrush.radius = radius
-      wasmBrush.writeProps()
-      wasmExec.meshLog = SculptPaintOp.meshLog
-      // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
-      // execBrush's `Vector<SpatialNode*>*` param needs an unwrappable handle,
-      // which `nodes` (the constructWith result) is on both backends.
-      wasmExec.execBrush(SculptBrushes.DRAW, nodes, wasm.float3(p), wasm.float3(normal))
+      const brushType = toolToSculptBrush(brush.tool)
+      if (brushType === undefined) {
+        // TS tool with no sculptcore equivalent (e.g. Grab, Snake, Paint).
+        // Skip the dab rather than silently running a Draw.
+        console.warn(
+          `sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`
+        )
+      } else {
+        // Per-dab strength pre-scale; pairs with the kernel's strength·radius·0.1
+        // (CommandCtx::strength) so the effective displacement stays in range.
+        wasmBrush.strength = brush.strength * 0.01
+        wasmBrush.radius = radius
+        wasmBrush.writeProps()
+        wasmExec.meshLog = SculptPaintOp.meshLog
+
+        // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
+        // stack that loadProps applies inside execProgram.
+        pushBrushDeviceInputs(wasmBrush, e)
+
+        // Build the per-dab command list (main brush + optional autosmooth) and
+        // run it over the filtered node set.
+        const prog = this.getProgram()
+        buildBrushProgram(prog, brushType, brush, radius)
+        // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
+        // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
+        // which `nodes` (the constructWith result) is on both backends.
+        wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(normal))
+      }
     }
 
     mesh.regenTreeBatch()
@@ -199,6 +232,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     if (SculptPaintOp.meshLog) {
       this.inStep = false
       SculptPaintOp.meshLog.endStep()
+    }
+    if (this.brushProgram) {
+      this.brushProgram[Symbol.dispose]()
+      this.brushProgram = undefined
     }
     return result
   }
