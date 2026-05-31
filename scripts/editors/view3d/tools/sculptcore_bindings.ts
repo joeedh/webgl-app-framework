@@ -106,6 +106,9 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.SCRAPE]:      SculptBrushes.SCRAPE,
   [SculptTools.FILL]:        SculptBrushes.FILL,
   [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
+  [SculptTools.COLOR]:       SculptBrushes.COLOR,
+  [SculptTools.POLYGROUP]:   SculptBrushes.POLYGROUP,
+  [SculptTools.BSMOOTH]:     SculptBrushes.BSMOOTH,
 }
 
 /** Resolve a TS sculpt tool to its sculptcore kernel, or undefined if none. */
