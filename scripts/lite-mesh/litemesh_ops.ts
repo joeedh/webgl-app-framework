@@ -54,3 +54,116 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
   }
 }
 ToolOp.register(AddLiteMeshCubeOp)
+
+/** Shared mesh lookup for the attribute ToolOps. */
+class LiteMeshAttrOp<
+  Inputs extends PropertySlots = {},
+  Outputs extends PropertySlots = {},
+> extends LiteMeshOp<Inputs, Outputs> {
+  _getMesh(ctx: ToolContext): LiteMesh | undefined {
+    const data = ctx.scene?.objects?.active?.data
+    return data instanceof LiteMesh ? data : undefined
+  }
+}
+
+/**
+ * Add a new attribute layer (domain/type/use ints; see LiteMesh AttrDomain /
+ * AttrType / AttrUseFlags). Undo removes the freshly-created layer by name (it
+ * has no data worth preserving — any paint into it is a later, separately-undone
+ * op). `_name` is captured at exec for the by-name remove on undo / redo.
+ */
+export class AddAttrOp extends LiteMeshAttrOp<{
+  domain: IntProperty
+  type: IntProperty
+  use: IntProperty
+}> {
+  _name = ''
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.add_attr',
+      uiname  : 'Add Attribute',
+      inputs  : {
+        domain: new IntProperty(1),
+        type  : new IntProperty(8),
+        use   : new IntProperty(0),
+      },
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {domain, type, use} = this.getInputs()
+    mesh.addAttr(domain, type, use)
+    this._name = mesh._selectedAttr?.attrName ?? ''
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._name) {
+      mesh.removeAttrByName(this.getInputs().domain, this._name)
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(AddAttrOp)
+
+/**
+ * Remove the LiteMesh's currently-selected attribute layer (builtins refused in
+ * C++). Detaches the layer into the C++ stash (data preserved, no serialize) so
+ * undo restores it intact. The target (domain + name) is captured on the first
+ * undoPre so redo re-detaches the same layer regardless of selection state.
+ */
+export class RemoveAttrOp extends LiteMeshAttrOp {
+  _domain = -1
+  _name = ''
+  _stashId = -1
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.remove_attr',
+      uiname  : 'Remove Attribute',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    if (this._name === '') {
+      const sel = this._getMesh(ctx)?._selectedAttr
+      if (sel) {
+        this._domain = sel.domain
+        this._name = sel.attrName
+      }
+    }
+  }
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh || this._name === '') {
+      return
+    }
+    this._stashId = mesh.detachAttrLayer(this._domain, this._name)
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._stashId >= 0) {
+      mesh.reattachAttrLayer(this._stashId)
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(RemoveAttrOp)

@@ -296,26 +296,16 @@ export class LiteMesh extends SceneObjectData {
     // type/domain (validCategories). Setting a role also activates the layer.
     attrs.prop('object.data.selectedAttrCategory')
 
-    // Add / Remove (Wave 2b). Add picks a (domain, type, category) per the
-    // valid-categories table and lets C++ assign a unique name; Remove deletes
-    // the selected layer (C++ refuses builtins).
-    const meshOf = () => {
-      const m = container.ctx?.object?.data
-      return m instanceof LiteMesh ? m : undefined
-    }
-    const addBtn = (label: string, domain: number, type: number, use: number) => {
-      attrs.button(label, () => {
-        meshOf()?.addAttr(domain, type, use)
-        window.redraw_all?.()
-      })
-    }
-    addBtn('Add Color', AttrDomain.VERTEX, AttrType.Float4, AttrUseFlags.COLOR)
-    addBtn('Add UV', AttrDomain.VERTEX, AttrType.Float2, AttrUseFlags.UV)
-    addBtn('Add Poly Group', AttrDomain.FACE, AttrType.Int, AttrUseFlags.POLYGROUP)
-    attrs.button('Remove Selected', () => {
-      meshOf()?.removeSelectedAttr()
-      window.redraw_all?.()
-    })
+    // Add / Remove (Wave 2b) run through ToolOps (litemesh.add_attr /
+    // remove_attr) so they're undoable. Add picks a (domain, type, category)
+    // per the valid-categories table and lets C++ assign a unique name; Remove
+    // deletes the selected layer (C++ refuses builtins). Args are the AttrDomain
+    // / AttrType / AttrUseFlags ints.
+    const C = AttrDomain.VERTEX, F = AttrDomain.FACE
+    attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float4} use=${AttrUseFlags.COLOR})`, {label: 'Add Color'})
+    attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float2} use=${AttrUseFlags.UV})`, {label: 'Add UV'})
+    attrs.tool(`litemesh.add_attr(domain=${F} type=${AttrType.Int} use=${AttrUseFlags.POLYGROUP})`, {label: 'Add Poly Group'})
+    attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
   }
 
   afterSTRUCT(): void {
@@ -772,8 +762,14 @@ export class LiteMesh extends SceneObjectData {
     else if (category & AttrUseFlags.POLYGROUP) name = this._activeAttr.polygroup
     else if (category & AttrUseFlags.UV) name = this._activeAttr.uv
     if (!name) return -1
+    return this.layerIndexByName(LiteMesh.categoryDomain(category), name)
+  }
 
-    const grp = this._domainGroup(LiteMesh.categoryDomain(category))
+  /** Index of layer `name` within `domain`'s full (unfiltered) AttrGroup.attrs —
+   * the index space the C++ override / setAttrUse / detachAttr consume. -1 if
+   * absent. */
+  layerIndexByName(domain: number, name: string): number {
+    const grp = this._domainGroup(domain)
     if (!grp?.attrs) return -1
     const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
       'sculptcore::mesh::AttrRef'
@@ -784,6 +780,43 @@ export class LiteMesh extends SceneObjectData {
       if (arr[i].name === name) return i
     }
     return -1
+  }
+
+  /**
+   * Detach a layer (by name) into the C++ stash for undoable removal — preserves
+   * its data (no serialize, no free), clears any active-attr/selection naming it,
+   * and returns the stash id (or -1). The RemoveAttr ToolOp owns this; undo is
+   * `reattachAttrLayer`.
+   */
+  detachAttrLayer(domain: number, name: string): number {
+    const idx = this.layerIndexByName(domain, name)
+    if (idx < 0) return -1
+    const stashId = (this.mesh as unknown as {detachAttr(d: number, i: number): number}).detachAttr(domain, idx)
+    if (this._activeAttr.color === name) this._activeAttr.color = undefined
+    if (this._activeAttr.polygroup === name) this._activeAttr.polygroup = undefined
+    if (this._activeAttr.uv === name) this._activeAttr.uv = undefined
+    if (this._selectedAttr?.attrName === name) this._selectedAttr = undefined
+    this._syncDisplayAttrs()
+    return stashId
+  }
+
+  /** Reattach a stashed layer (undo of detachAttrLayer). */
+  reattachAttrLayer(stashId: number): void {
+    ;(this.mesh as unknown as {reattachAttr(id: number): number}).reattachAttr(stashId)
+    this._syncDisplayAttrs()
+  }
+
+  /** Remove the named layer outright (frees it; no undo data). Used by AddAttr
+   * undo, where the layer is newly created and has nothing to preserve. */
+  removeAttrByName(domain: number, name: string): void {
+    const idx = this.layerIndexByName(domain, name)
+    if (idx < 0) return
+    ;(this.mesh as unknown as {removeAttr(d: number, i: number): void}).removeAttr(domain, idx)
+    if (this._activeAttr.color === name) this._activeAttr.color = undefined
+    if (this._activeAttr.polygroup === name) this._activeAttr.polygroup = undefined
+    if (this._activeAttr.uv === name) this._activeAttr.uv = undefined
+    if (this._selectedAttr?.attrName === name) this._selectedAttr = undefined
+    this._syncDisplayAttrs()
   }
 
   /** True for geometry/internal attributes hidden by default in the ObData list. */
