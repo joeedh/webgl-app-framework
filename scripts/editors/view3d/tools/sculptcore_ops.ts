@@ -249,7 +249,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
         // Build the per-dab command list (main brush + optional autosmooth) and
         // run it over the filtered node set.
         const prog = this.getProgram()
-        buildBrushProgram(prog, brushType, brush, radius)
+        buildBrushProgram(prog, brushType, brush, radius, mesh)
         // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
         // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
         // which `nodes` (the constructWith result) is on both backends.
@@ -344,7 +344,7 @@ export function runSculptcoreStroke(opts: {
     pushBrushDeviceInputs(wasmBrush, ev)
 
     const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
-    buildBrushProgram(prog, brushType, brush, radius)
+    buildBrushProgram(prog, brushType, brush, radius, mesh)
     wasmExec.execProgram(prog, nodes, wasm.float3(new Vector3(dab.p)), wasm.float3(new Vector3(dab.normal)))
     prog[Symbol.dispose]()
   }

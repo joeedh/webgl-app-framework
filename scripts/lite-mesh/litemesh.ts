@@ -254,6 +254,17 @@ export class LiteMesh extends SceneObjectData {
     // pathux ListBox bound to the attribute DataList (api_define_litemesh).
     const listbox = document.createElement('listbox-x')
     listbox.setAttribute('datapath', 'object.data.attrs')
+    // Clicking a categorized row makes that attr the active layer for its
+    // category (color/poly-group/UV) — the sculptcore bridge then points the
+    // matching brush at it. The ListBox dispatches `change` with
+    // detail = {id, item}; `item` is the LiteMeshAttrItem row.
+    listbox.addEventListener('change', (e: Event) => {
+      const item = (e as CustomEvent).detail?.item as LiteMeshAttrItem | undefined
+      const mesh = container.ctx?.object?.data
+      if (item && mesh instanceof LiteMesh) {
+        mesh.setActiveAttrFromItem(item)
+      }
+    })
     attrs.add(listbox as unknown as Container<ViewContext>)
   }
 
@@ -560,6 +571,65 @@ export class LiteMesh extends SceneObjectData {
   }
   set showBuiltinAttrs(v: boolean) {
     this._showBuiltinAttrs = v
+  }
+
+  /**
+   * Active attribute *name* per category (Wave 2b brush bridge). Clicking a
+   * categorized attr in the ObData ListBox sets the entry for that category;
+   * the sculptcore bridge resolves it to a layer index per stroke and points
+   * the matching brush handle at it (replacing the hardcoded `color`/`group`).
+   * View/paint state — not serialized (the layer it names lives on the mesh).
+   * Keyed by AttrUseFlags (COLOR/POLYGROUP/UV).
+   */
+  _activeAttr: {color?: string; polygroup?: string; uv?: string} = {}
+
+  /** Domain that a given category's layers live on (mirrors the W2b table). */
+  static categoryDomain(category: number): number {
+    if (category & AttrUseFlags.COLOR) return AttrDomain.VERTEX
+    if (category & AttrUseFlags.POLYGROUP) return AttrDomain.FACE
+    if (category & AttrUseFlags.UV) return AttrDomain.VERTEX // corner later
+    return 0
+  }
+
+  /** Set the active attr for `item`'s category from a clicked ListBox row. */
+  setActiveAttrFromItem(item: LiteMeshAttrItem): void {
+    if (item.use & AttrUseFlags.COLOR) this._activeAttr.color = item.attrName
+    else if (item.use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = item.attrName
+    else if (item.use & AttrUseFlags.UV) this._activeAttr.uv = item.attrName
+  }
+
+  /** Bound `AttrGroup` for a domain (the same object attrItems enumerates). */
+  private _domainGroup(domain: number): {attrs: unknown} | undefined {
+    const m = this.mesh as unknown as {v?: {attrs?: {attrs: unknown}}; f?: {attrs?: {attrs: unknown}}}
+    if (domain === AttrDomain.VERTEX) return m.v?.attrs
+    if (domain === AttrDomain.FACE) return m.f?.attrs
+    return undefined
+  }
+
+  /**
+   * Index of the active attr for `category` within its domain's full
+   * `AttrGroup.attrs` vector (the same index space the C++ override consumes),
+   * or -1 when none is set / it no longer exists. Enumerates the *unfiltered*
+   * bound vector so the index matches `grp->attrs[layerIndex]` in C++.
+   */
+  activeAttrLayerIndex(category: number): number {
+    let name: string | undefined
+    if (category & AttrUseFlags.COLOR) name = this._activeAttr.color
+    else if (category & AttrUseFlags.POLYGROUP) name = this._activeAttr.polygroup
+    else if (category & AttrUseFlags.UV) name = this._activeAttr.uv
+    if (!name) return -1
+
+    const grp = this._domainGroup(LiteMesh.categoryDomain(category))
+    if (!grp?.attrs) return -1
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
+      'sculptcore::mesh::AttrRef'
+    )
+    if (!cls) return -1
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i].name === name) return i
+    }
+    return -1
   }
 
   /** True for geometry/internal attributes hidden by default in the ObData list. */

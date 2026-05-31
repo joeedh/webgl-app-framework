@@ -2,7 +2,7 @@ import {CommandExecutor, Brush as WasmBrush, BrushProgram} from '@sculptcore/api
 import {IWasmInterface} from '@sculptcore/api/api'
 import {SculptBrush} from '../../../brush/index'
 import {StructType} from '@litestl/typescript-runtime'
-import {LiteMesh} from '../../../lite-mesh/index'
+import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {SculptTools, BrushFlags} from '../../../brush/brush_base'
 
@@ -128,14 +128,34 @@ export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined 
  * so SMOOTH re-snapshots `co_prev` after the main pass and smooths the deformed
  * result.
  */
+/** The painted attr's category for a paint tool, else 0 (no attr handle). */
+function toolAttrCategory(tool: SculptTools): number {
+  if (tool === SculptTools.COLOR) return AttrUseFlags.COLOR
+  if (tool === SculptTools.POLYGROUP) return AttrUseFlags.POLYGROUP
+  return 0
+}
+
 export function buildBrushProgram(
   prog: BrushProgram,
   mainBrushType: SculptBrushes,
   brush: SculptBrush,
-  radius: number
+  radius: number,
+  mesh?: LiteMesh
 ): void {
   prog.clear()
-  prog.addCommand(mainBrushType)
+  const mainIdx = prog.addCommand(mainBrushType)
+
+  // Brush bridge (Wave 2b): for paint tools, point the kernel's single declared
+  // attr handle (attrIdx 0 — `color` / `group`) at the user-selected active
+  // layer for that category. -1 (no active layer chosen) leaves the codegen
+  // default ensure-by-name binding in place.
+  const category = toolAttrCategory(brush.tool)
+  if (category !== 0 && mesh) {
+    const layer = mesh.activeAttrLayerIndex(category)
+    if (layer >= 0) {
+      prog.setCommandAttrLayer(mainIdx, 0, layer)
+    }
+  }
 
   if (brush.autosmooth > 0 && radius > 0) {
     const smoothStrength = brush.autosmooth
