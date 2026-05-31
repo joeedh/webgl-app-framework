@@ -61,11 +61,15 @@ struct VsIn {
   // executor binds a float32x4 buffer here even though only .xyz is
   // read. Keep this as vec4f to match the vertex layout.
   @location(1) normal   : vec4f,
+  // @location(2): per-vertex color (float32x4), written by the color
+  // paint brush. Defaults to white until the mesh has a color attr.
+  @location(2) color    : vec4f,
 };
 
 struct VsOut {
   @builtin(position) clipPos : vec4f,
   @location(0) vNormal : vec3f,
+  @location(1) vColor  : vec4f,
 };
 
 @vertex
@@ -74,6 +78,7 @@ fn vs_main(in : VsIn) -> VsOut {
   out.clipPos = spatial.drawMatrix * vec4f(in.position, 1.0);
   let n = spatial.normalMatrix * vec4f(in.normal.xyz, 0.0);
   out.vNormal = normalize(n.xyz);
+  out.vColor = in.color;
   return out;
 }
 
@@ -85,7 +90,7 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
   if (f1 < 0.0) { f = -f1 * 0.2; }
   f = f * 0.8 + 0.2;
 
-  var vcolor = vec4f(1.0, 1.0, 1.0, 1.0) * spatial.uColor;
+  var vcolor = in.vColor * spatial.uColor;
   if (f1 < 0.0) {
     vcolor.z = vcolor.z * 0.8;
     vcolor.x = vcolor.x * 0.5;
