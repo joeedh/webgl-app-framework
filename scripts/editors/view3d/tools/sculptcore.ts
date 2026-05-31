@@ -253,22 +253,15 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     const name = this.toolModeDefine().name
 
+    // see SculptCorePaintMode.defineAPI for how these properties are defined
+    
     let strip = header.strip()
     strip.prop(`scene.tools.${name}.drawBVH`)
     strip.prop(`scene.tools.${name}.drawFlat`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
-    strip.prop(`scene.tools.${name}.drawCavityMap`)
     //strip.prop(`scene.tools.${name}.drawNodeIds`);
     //strip.prop(`scene.tools.${name}.drawColPatches`);
     strip.prop(`scene.tools.${name}.drawMask`)
-
-    strip = header.strip()
-    strip.prop(`scene.tools.${name}.editDisplaced`)
-    strip.prop(`scene.tools.${name}.drawDispDisField`)
-
-    strip = header.strip()
-    strip.useIcons(false)
-    strip.prop(`scene.tools.${name}.drawValidEdges`)
 
     let row = addHeaderRow()
     const path = `scene.tools.${name}.brush`
@@ -295,7 +288,6 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     row = addHeaderRow()
     strip = row.strip()
-    strip.tool('mesh.edgecut()')
     strip.prop(`scene.tools.${name}.reprojectCustomData`)
 
     header.flushUpdate()
@@ -337,12 +329,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
 
     st.bool('drawWireframe', 'drawWireframe', 'Draw Wireframe').on('change', onchange).icon(Icons.DRAW_SCULPT_WIREFRAME)
-    st.bool('drawValidEdges', 'drawValidEdges', 'Valid Edges Only')
-      .description('Draw sculpt wireframe with valid edges only,\n instead of all tris')
-      .on('change', onchange)
-      .icon(Icons.DRAW_SCULPT_WIREFRAME)
     st.bool('drawBVH', 'drawBVH', 'Draw BVH').on('change', onchange)
-    st.bool('drawCavityMap', 'drawCavityMap', 'Cavity Map').on('change', onchange)
     st.bool('drawMask', 'drawMask', 'Draw Mask').on('change', onchange)
 
     st.bool('drawColPatches', 'drawColPatches', 'Draw Color Patches').on('change', onchange)
@@ -351,16 +338,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     st.bool('drawFlat', 'drawFlat', 'Draw Flat').on('change', onchange).icon(Icons.DRAW_SCULPT_FLAT)
     st.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
-    st.bool('enableMaxEditDepth', 'enableMaxEditDepth', 'Multi Resolution Editing')
-    st.int('gridEditDepth', 'gridEditDepth', 'Edit Depth', 'Maximum quad tree grid edit level').range(0, 15).noUnits()
-
     st.struct('_apiBrushHelper', 'brush', 'Brush', api.mapStruct(SculptBrush))
 
     st.struct('_apiDynTopo', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettings))
     st.bool('_apiInheritDynTopo', 'inheritDynTopo', 'Inherit Everything')
 
-    st.bool('editDisplaced', 'editDisplaced', 'Displaced').on('change', onchange)
-    st.bool('drawDispDisField', 'drawDispDisField', 'Draw Dis Field').on('change', onchange)
     st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors')
 
     return st

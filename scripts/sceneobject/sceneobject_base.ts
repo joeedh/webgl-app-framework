@@ -1,5 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, IDataBlockConstructor} from '../core/lib_api'
-import {Vector2, Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Matrix4, nstructjs, Container} from '../path.ux/scripts/pathux.js'
 
 import {StandardTools} from './stdtools.js'
 import {INodeDef, INodeSocketSet, Node, NodeFlags, NodeInheritFlag} from '../core/graph'
@@ -380,5 +380,9 @@ SceneObjectData {
     const kind = def.dataKind ?? (def.name ? def.name.toLowerCase() : undefined)
     ctor._cachedDataKind = kind
     return kind
+  }
+
+  static buildPropertiesTab(container: Container<ViewContext>) {
+    container.label('Object Data Properties')
   }
 }

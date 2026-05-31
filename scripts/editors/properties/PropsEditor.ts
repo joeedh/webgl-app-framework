@@ -1085,6 +1085,37 @@ PropsEditor {
     const obpanel = UIBase.createElement('scene-object-panel-x') as ObjectPanel
     tab.add(obpanel)
 
+    const obDataTab = this.tabs.tab('ObData')
+    let obDataType: string | undefined
+    let obDataUIDatas = new Map<string, string>()
+
+    const rebuildObDataTab = () => {
+      const type = this.ctx?.object?.data?.lib_type ?? undefined
+
+      if (type !== obDataType) {
+        console.log('rebuild obdata tab', type)
+
+        if (obDataType !== undefined) {
+          obDataUIDatas.set(obDataType, saveUIData(obDataTab, 'obDataTab'))
+        }
+
+        obDataType = this.ctx?.object?.data?.lib_type
+        obDataTab.clear()
+
+        if (obDataType !== undefined && this.ctx?.object?.data !== undefined) {
+          const cls = this.ctx?.object?.data?.constructor as any
+          cls.buildPropertiesTab(obDataTab)
+
+          const uidata = obDataUIDatas.get(obDataType)
+          if (uidata !== undefined) {
+            loadUIData(obDataTab, uidata)
+          }
+          obDataTab.flushUpdate()
+        }
+      }
+    }
+    this.updateAfter(rebuildObDataTab)
+
     tab = this.texTab = this.tabs.tab('Texture')
     this.textureTab(tab)
 

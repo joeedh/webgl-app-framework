@@ -163,6 +163,15 @@ for status. Key conventions:
   `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
   signatures + leaf counts; self-skips when the bundle or `.node` is absent.
 
+## Dynamic topology (future goal)
+
+A planned feature: geometry under sculpt dabs is decimated or subdivided on
+the fly to match a target edge length, with custom attributes interpolated as
+appropriate. **Performance target:** usable sculpting (≥25fps on a laptop) on a
+5-million-triangle mesh carrying 2 custom `float4` attributes that must be
+interpolated during retopology. Keep this budget in mind when designing the
+brush/spatial/attribute hot paths.
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig
