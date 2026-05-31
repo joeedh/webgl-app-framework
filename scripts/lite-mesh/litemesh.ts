@@ -32,14 +32,16 @@ import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
 /**
- * Which per-element attribute the LiteMesh surface is colored by in the
- * viewport. Drives `SpatialTree.setColorDisplayMode` (the C++ render color
- * stream). View state only — not serialized. Values mirror the C++
- * `displayColorMode` switch in `spatial_gpu.cc`.
+ * Which per-element attributes the LiteMesh surface is colored by in the
+ * viewport. A bitmask — both can be active at once (the C++ side composites
+ * the painted color modulated by the group color). Drives
+ * `SpatialTree.setColorDisplayMode` (the C++ render color stream). View state
+ * only — not serialized. Values mirror the C++ `displayColorMode` bitmask in
+ * `spatial_gpu.cc`.
  */
 export const LiteMeshDisplayMode = {
-  VERTEX_COLOR: 0,
-  POLY_GROUP: 1,
+  VERTEX_COLOR: 1,
+  POLY_GROUP: 2,
 } as const
 
 /** Element domains (mirror the C++ `ElemType`, which isn't bound to TS). */
@@ -293,7 +295,7 @@ export class LiteMesh extends SceneObjectData {
   /** Viewport surface color source (see LiteMeshDisplayMode). View state only,
    * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
    * SpatialTree.displayColorMode (which TS can't read back). */
-  _displayColorMode = 0
+  _displayColorMode: number = LiteMeshDisplayMode.VERTEX_COLOR
 
   constructor(wasmMesh?: WasmMesh, deferInit = false) {
     super()

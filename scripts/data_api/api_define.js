@@ -272,7 +272,7 @@ export function api_define_litemesh(api) {
   let mstruct = api_define_sceneobject_data(api, LiteMesh)
 
   let def = mstruct
-    .enum('displayColorMode', 'displayColorMode', LiteMeshDisplayMode, 'Display', 'Attribute shown on the LiteMesh surface')
+    .flags('displayColorMode', 'displayColorMode', LiteMeshDisplayMode, 'Display', 'Attributes shown on the LiteMesh surface (combinable)')
     .uiNames({
       VERTEX_COLOR: 'Vertex Color',
       POLY_GROUP: 'Poly Groups',

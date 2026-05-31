@@ -26,14 +26,16 @@ export interface IGetBrushRet {
  * GPU node, so we guard against re-running it each dab).
  */
 function syncDisplayModeToBrush(mesh: LiteMesh, tool: SculptTools): void {
-  let want: number | undefined
+  // displayColorMode is a bitmask, so OR the relevant overlay on without
+  // disturbing any other enabled overlay (the user may want both at once).
+  let bit = 0
   if (tool === SculptTools.COLOR) {
-    want = LiteMeshDisplayMode.VERTEX_COLOR
+    bit = LiteMeshDisplayMode.VERTEX_COLOR
   } else if (tool === SculptTools.POLYGROUP) {
-    want = LiteMeshDisplayMode.POLY_GROUP
+    bit = LiteMeshDisplayMode.POLY_GROUP
   }
-  if (want !== undefined && mesh.displayColorMode !== want) {
-    mesh.displayColorMode = want
+  if (bit !== 0 && (mesh.displayColorMode & bit) === 0) {
+    mesh.displayColorMode = mesh.displayColorMode | bit
   }
 }
 
