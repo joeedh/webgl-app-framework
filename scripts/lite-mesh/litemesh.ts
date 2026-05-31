@@ -1,4 +1,4 @@
-import {Matrix4, nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
+import {Container, Matrix4, nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
 import type {ScreenPickResult} from '../editors/view3d/findnearest'
 import type {ViewContext} from '../core/context'
 import {AttrSet} from './litemesh_attrSet'
@@ -30,6 +30,17 @@ import {WebGPUBatchExecutor} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
+
+/**
+ * Which per-element attribute the LiteMesh surface is colored by in the
+ * viewport. Drives `SpatialTree.setColorDisplayMode` (the C++ render color
+ * stream). View state only — not serialized. Values mirror the C++
+ * `displayColorMode` switch in `spatial_gpu.cc`.
+ */
+export const LiteMeshDisplayMode = {
+  VERTEX_COLOR: 0,
+  POLY_GROUP: 1,
+} as const
 
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
@@ -187,6 +198,20 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  /**
+   * Object Data ("ObData") properties tab — LiteMesh settings reachable
+   * outside the sculptcore toolmode. Currently the surface display mode
+   * (vertex color vs poly groups); attribute info + add/remove controls will
+   * live here too. Bound through the data-API struct in
+   * `api_define_litemesh` (see the note there re: future static defineAPI).
+   */
+  static buildPropertiesTab(container: Container<ViewContext>) {
+    container.label('LiteMesh')
+
+    const panel = container.panel('Display')
+    panel.prop('object.data.displayColorMode')
+  }
+
   afterSTRUCT(): void {
     super.afterSTRUCT()
   }
@@ -222,6 +247,10 @@ export class LiteMesh extends SceneObjectData {
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array
+  /** Viewport surface color source (see LiteMeshDisplayMode). View state only,
+   * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
+   * SpatialTree.displayColorMode (which TS can't read back). */
+  _displayColorMode = 0
 
   constructor(wasmMesh?: WasmMesh, deferInit = false) {
     super()
@@ -462,6 +491,18 @@ export class LiteMesh extends SceneObjectData {
       this.treeBatch = undefined
     }
     return this
+  }
+
+  /** Surface color source; see LiteMeshDisplayMode. Setting it flags every
+   * GPU node (via the C++ setColorDisplayMode) and drops the cached draw
+   * batch so the next draw re-fills the color stream from the new source. */
+  get displayColorMode(): number {
+    return this._displayColorMode
+  }
+  set displayColorMode(mode: number) {
+    this._displayColorMode = mode
+    this.spatial?.setColorDisplayMode(mode)
+    this.regenTreeBatch()
   }
 
   /**

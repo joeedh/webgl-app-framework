@@ -129,11 +129,11 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `library.screen` | list |  |  |  |
 | `library.texture` | list |  |  |  |
 | `library.brush` | list |  |  |  |
+| `library.litemesh` | list |  |  |  |
 | `library.collection` | list |  |  |  |
 | `library.scene` | list |  |  |  |
 | `library.strands` | list |  |  |  |
 | `library.MissingDataBlock` | list |  |  |  |
-| `library.litemesh` | list |  |  |  |
 | `library.camera` | list |  |  |  |
 
 ## light
@@ -417,7 +417,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
 | `scene.tools.sculpt.drawNodeIds` | prop | BoolProperty | Draw BVH Vertex IDs |  |
 | `scene.tools.sculpt.drawFlat` | prop | BoolProperty | Draw Flat |  |
-| `scene.tools.sculpt.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculpt.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculpt.enableMaxEditDepth` | prop | BoolProperty | Multi Resolution Editing |  |
 | `scene.tools.sculpt.gridEditDepth` | prop | IntProperty | Edit Depth | range 0..15 |
 | `scene.tools.sculpt.brush` | struct |  |  |  |
@@ -435,7 +435,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.sharp` | prop | FloatProperty | Sharpening | range 0..1 |
 | `scene.tools.sculpt.brush.strength` | prop | FloatProperty | Strength | range 0.001..2 |
 | `scene.tools.sculpt.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
-| `scene.tools.sculpt.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculpt.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculpt.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
 | `scene.tools.sculpt.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |
 | `scene.tools.sculpt.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
@@ -535,16 +535,12 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
 | `scene.tools.sculptcore.drawWireframe` | prop | BoolProperty | Draw Wireframe |  |
-| `scene.tools.sculptcore.drawValidEdges` | prop | BoolProperty | Valid Edges Only |  |
 | `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |
-| `scene.tools.sculptcore.drawCavityMap` | prop | BoolProperty | Cavity Map |  |
 | `scene.tools.sculptcore.drawMask` | prop | BoolProperty | Draw Mask |  |
 | `scene.tools.sculptcore.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
 | `scene.tools.sculptcore.drawNodeIds` | prop | BoolProperty | Draw BVH Vertex IDs |  |
 | `scene.tools.sculptcore.drawFlat` | prop | BoolProperty | Draw Flat |  |
-| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
-| `scene.tools.sculptcore.enableMaxEditDepth` | prop | BoolProperty | Multi Resolution Editing |  |
-| `scene.tools.sculptcore.gridEditDepth` | prop | IntProperty | Edit Depth | range 0..15 |
+| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculptcore.brush` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `scene.tools.sculptcore.brush.graph_id` | prop | IntProperty | Graph ID |  |
@@ -560,7 +556,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.sharp` | prop | FloatProperty | Sharpening | range 0..1 |
 | `scene.tools.sculptcore.brush.strength` | prop | FloatProperty | Strength | range 0.001..2 |
 | `scene.tools.sculptcore.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
-| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculptcore.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
 | `scene.tools.sculptcore.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |
 | `scene.tools.sculptcore.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
@@ -650,8 +646,6 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.dynTopo.edgeMode` | prop | EnumProperty | Mode | enum {0, 1, SCREEN, WORLD} |
 | `scene.tools.sculptcore.dynTopo.edgeCount` | prop | IntProperty | Edge Count | range 1..2048 |
 | `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
-| `scene.tools.sculptcore.editDisplaced` | prop | BoolProperty | Displaced |  |
-| `scene.tools.sculptcore.drawDispDisField` | prop | BoolProperty | Draw Dis Field |  |
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.selectMaskEnum` | prop | FlagProperty | Selection Mode | enum {VERTEX, EDGE, FACE, HANDLE, GEOM, SGEOM, MESH, LIGHT, CAMERA, NULLOBJECT, PROCMESH, TETMESH, STRANDS, OBJECT} |
 
@@ -832,14 +826,6 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.view3d.transform_inset.propMode` | prop | EnumProperty | Prop mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
 | `toolDefaults.view3d.transform_inset.propradius` | prop | FloatProperty | Prop radius |  |
 | `toolDefaults.view3d.transform_inset.propEnabled` | prop | BoolProperty | Prop Enabled |  |
-| `toolDefaults.object` | struct |  |  |  |
-| `toolDefaults.object.selectone` | struct |  |  |  |
-| `toolDefaults.object.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
-| `toolDefaults.object.selectone.setActive` | prop | BoolProperty | Set Active |  |
-| `toolDefaults.object.toggle_select_all` | struct |  |  |  |
-| `toolDefaults.object.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.object.apply_transform` | struct |  |  |  |
-| `toolDefaults.object.apply_transform.mode` | prop | FlagProperty | Mode | enum {LOC, ROT, SCALE, ALL} |
 | `toolDefaults.brush` | struct |  |  |  |
 | `toolDefaults.brush.load_default` | struct |  |  |  |
 | `toolDefaults.brush.load_default.dataPath` | prop | StringProperty | Data Path |  |
@@ -889,6 +875,11 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.bvh.texpaint.viewSize` | prop | Vec2Property | View Size |  |
 | `toolDefaults.bvh.texpaint.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
 | `toolDefaults.bvh.texpaint.doBlur` | prop | BoolProperty | Do Blur |  |
+| `toolDefaults.litemesh` | struct |  |  |  |
+| `toolDefaults.litemesh.add_cube` | struct |  |  |  |
+| `toolDefaults.litemesh.add_cube.sphere` | prop | FloatProperty | Sphere | range 0..1 |
+| `toolDefaults.litemesh.add_cube.dimen` | prop | IntProperty | Dimen | range 1..1024 |
+| `toolDefaults.litemesh.add_cube.size` | prop | FloatProperty | Size |  |
 | `toolDefaults.sculptcore` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint.brush` | prop | BrushProperty | Brush |  |
@@ -897,6 +888,16 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.sculptcore.paint.falloff` | prop | Curve1DProperty | Falloff |  |
 | `toolDefaults.sculptcore.paint.rendermat` | prop | Mat4Property | Rendermat |  |
 | `toolDefaults.sculptcore.paint.viewportSize` | prop | Vec2Property | Viewport Size |  |
+| `toolDefaults.object` | struct |  |  |  |
+| `toolDefaults.object.selectone` | struct |  |  |  |
+| `toolDefaults.object.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
+| `toolDefaults.object.selectone.setActive` | prop | BoolProperty | Set Active |  |
+| `toolDefaults.object.toggle_select_all` | struct |  |  |  |
+| `toolDefaults.object.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
+| `toolDefaults.object.select_box` | struct |  |  |  |
+| `toolDefaults.object.select_box.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
+| `toolDefaults.object.apply_transform` | struct |  |  |  |
+| `toolDefaults.object.apply_transform.mode` | prop | FlagProperty | Mode | enum {LOC, ROT, SCALE, ALL} |
 | `toolDefaults.uveditor` | struct |  |  |  |
 | `toolDefaults.uveditor.toggle_select_all` | struct |  |  |  |
 | `toolDefaults.uveditor.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |

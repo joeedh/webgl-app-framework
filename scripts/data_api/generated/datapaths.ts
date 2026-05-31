@@ -445,13 +445,10 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.tool"
   | "scene.tools.sculptcore.brushRadius"
   | "scene.tools.sculptcore.drawBVH"
-  | "scene.tools.sculptcore.drawCavityMap"
   | "scene.tools.sculptcore.drawColPatches"
-  | "scene.tools.sculptcore.drawDispDisField"
   | "scene.tools.sculptcore.drawFlat"
   | "scene.tools.sculptcore.drawMask"
   | "scene.tools.sculptcore.drawNodeIds"
-  | "scene.tools.sculptcore.drawValidEdges"
   | "scene.tools.sculptcore.drawWireframe"
   | "scene.tools.sculptcore.dynTopo"
   | "scene.tools.sculptcore.dynTopo.decimateFactor"
@@ -467,9 +464,6 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.dynTopo.subdivMode"
   | "scene.tools.sculptcore.dynTopo.subdivideFactor"
   | "scene.tools.sculptcore.dynTopo.valenceGoal"
-  | "scene.tools.sculptcore.editDisplaced"
-  | "scene.tools.sculptcore.enableMaxEditDepth"
-  | "scene.tools.sculptcore.gridEditDepth"
   | "scene.tools.sculptcore.inheritDynTopo"
   | "scene.tools.sculptcore.reprojectCustomData"
   | "scene.tools.sculptcore.sharedBrushRadius"
@@ -601,6 +595,11 @@ export type GeneratedDataPath =
   | "toolDefaults.light.new"
   | "toolDefaults.light.new.position"
   | "toolDefaults.light.new.type"
+  | "toolDefaults.litemesh"
+  | "toolDefaults.litemesh.add_cube"
+  | "toolDefaults.litemesh.add_cube.dimen"
+  | "toolDefaults.litemesh.add_cube.size"
+  | "toolDefaults.litemesh.add_cube.sphere"
   | "toolDefaults.material"
   | "toolDefaults.material.new"
   | "toolDefaults.material.new.dataPathToSet"
@@ -640,6 +639,8 @@ export type GeneratedDataPath =
   | "toolDefaults.object"
   | "toolDefaults.object.apply_transform"
   | "toolDefaults.object.apply_transform.mode"
+  | "toolDefaults.object.select_box"
+  | "toolDefaults.object.select_box.mode"
   | "toolDefaults.object.selectone"
   | "toolDefaults.object.selectone.mode"
   | "toolDefaults.object.selectone.setActive"
@@ -1228,13 +1229,10 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.tool": true;
     "scene.tools.sculptcore.brushRadius": true;
     "scene.tools.sculptcore.drawBVH": true;
-    "scene.tools.sculptcore.drawCavityMap": true;
     "scene.tools.sculptcore.drawColPatches": true;
-    "scene.tools.sculptcore.drawDispDisField": true;
     "scene.tools.sculptcore.drawFlat": true;
     "scene.tools.sculptcore.drawMask": true;
     "scene.tools.sculptcore.drawNodeIds": true;
-    "scene.tools.sculptcore.drawValidEdges": true;
     "scene.tools.sculptcore.drawWireframe": true;
     "scene.tools.sculptcore.dynTopo": true;
     "scene.tools.sculptcore.dynTopo.decimateFactor": true;
@@ -1250,9 +1248,6 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.dynTopo.subdivMode": true;
     "scene.tools.sculptcore.dynTopo.subdivideFactor": true;
     "scene.tools.sculptcore.dynTopo.valenceGoal": true;
-    "scene.tools.sculptcore.editDisplaced": true;
-    "scene.tools.sculptcore.enableMaxEditDepth": true;
-    "scene.tools.sculptcore.gridEditDepth": true;
     "scene.tools.sculptcore.inheritDynTopo": true;
     "scene.tools.sculptcore.reprojectCustomData": true;
     "scene.tools.sculptcore.sharedBrushRadius": true;
@@ -1384,6 +1379,11 @@ declare module "@framework/pathux" {
     "toolDefaults.light.new": true;
     "toolDefaults.light.new.position": true;
     "toolDefaults.light.new.type": true;
+    "toolDefaults.litemesh": true;
+    "toolDefaults.litemesh.add_cube": true;
+    "toolDefaults.litemesh.add_cube.dimen": true;
+    "toolDefaults.litemesh.add_cube.size": true;
+    "toolDefaults.litemesh.add_cube.sphere": true;
     "toolDefaults.material": true;
     "toolDefaults.material.new": true;
     "toolDefaults.material.new.dataPathToSet": true;
@@ -1423,6 +1423,8 @@ declare module "@framework/pathux" {
     "toolDefaults.object": true;
     "toolDefaults.object.apply_transform": true;
     "toolDefaults.object.apply_transform.mode": true;
+    "toolDefaults.object.select_box": true;
+    "toolDefaults.object.select_box.mode": true;
     "toolDefaults.object.selectone": true;
     "toolDefaults.object.selectone.mode": true;
     "toolDefaults.object.selectone.setActive": true;

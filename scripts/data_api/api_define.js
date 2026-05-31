@@ -66,6 +66,7 @@ import {
   MeshSymFlags,
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
+import {LiteMesh, LiteMeshDisplayMode} from '../lite-mesh/litemesh.js'
 import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
@@ -254,6 +255,32 @@ export function api_define_sceneobject_data(api, cls) {
   ])
 
   mstruct.bool('usesMaterial', 'usesMaterial', 'Uses Material').readOnly()
+  return mstruct
+}
+
+/**
+ * LiteMesh ObData properties (surfaced in the properties editor's ObData tab
+ * via LiteMesh.buildPropertiesTab). Resolved through the `object.data`
+ * dynamicStruct, which looks the struct up by class in the global registry.
+ *
+ * NOTE: this central, old-style registration is legacy. New data-API
+ * definitions should move to a static `defineAPI(api)` method on the class
+ * itself (matching ToolMode/SculptBrush); api_define.js would then just
+ * invoke it. Keeping the pattern here for now to match api_define_mesh.
+ */
+export function api_define_litemesh(api) {
+  let mstruct = api_define_sceneobject_data(api, LiteMesh)
+
+  let def = mstruct
+    .enum('displayColorMode', 'displayColorMode', LiteMeshDisplayMode, 'Display', 'Attribute shown on the LiteMesh surface')
+    .uiNames({
+      VERTEX_COLOR: 'Vertex Color',
+      POLY_GROUP: 'Poly Groups',
+    })
+  def.on('change', function () {
+    window.redraw_viewport()
+  })
+
   return mstruct
 }
 
@@ -981,6 +1008,7 @@ export function getDataAPI() {
   */
 
   api_define_mesh(api, cstruct)
+  api_define_litemesh(api)
 
   api_define_library(api, cstruct)
   api_define_screen(api, cstruct)

@@ -1087,6 +1087,10 @@
       "kind": "list",
       "indexed": false
     },
+    "library.litemesh": {
+      "kind": "list",
+      "indexed": false
+    },
     "library.collection": {
       "kind": "list",
       "indexed": false
@@ -1100,10 +1104,6 @@
       "indexed": false
     },
     "library.MissingDataBlock": {
-      "kind": "list",
-      "indexed": false
-    },
-    "library.litemesh": {
       "kind": "list",
       "indexed": false
     },
@@ -1561,6 +1561,9 @@
         "DIRECTIONAL_FAIR",
         "SLIDE_RELAX",
         "BVH_DEFORM",
+        "COLOR",
+        "POLYGROUP",
+        "BSMOOTH",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -1806,6 +1809,9 @@
         "14",
         "15",
         "16",
+        "17",
+        "18",
+        "19",
         "128",
         "129",
         "130",
@@ -1828,6 +1834,9 @@
         "DIRECTIONAL_FAIR",
         "SLIDE_RELAX",
         "BVH_DEFORM",
+        "COLOR",
+        "POLYGROUP",
+        "BSMOOTH",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -2952,28 +2961,11 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "scene.tools.sculptcore.drawValidEdges": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Valid Edges Only",
-      "description": "Draw sculpt wireframe with valid edges only,\n instead of all tris",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
     "scene.tools.sculptcore.drawBVH": {
       "kind": "prop",
       "indexed": false,
       "propType": "BoolProperty",
       "uiname": "Draw BVH",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawCavityMap": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Cavity Map",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -3034,33 +3026,15 @@
         "DIRECTIONAL_FAIR",
         "SLIDE_RELAX",
         "BVH_DEFORM",
+        "COLOR",
+        "POLYGROUP",
+        "BSMOOTH",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
         "TEXTURE_PAINT",
         "FACE_SET_DRAW"
       ]
-    },
-    "scene.tools.sculptcore.enableMaxEditDepth": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Multi Resolution Editing",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.gridEditDepth": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Edit Depth",
-      "description": "Maximum quad tree grid edit level",
-      "range": [
-        0,
-        15
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
     },
     "scene.tools.sculptcore.brush": {
       "kind": "struct",
@@ -3279,6 +3253,9 @@
         "14",
         "15",
         "16",
+        "17",
+        "18",
+        "19",
         "128",
         "129",
         "130",
@@ -3301,6 +3278,9 @@
         "DIRECTIONAL_FAIR",
         "SLIDE_RELAX",
         "BVH_DEFORM",
+        "COLOR",
+        "POLYGROUP",
+        "BSMOOTH",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -4328,22 +4308,6 @@
       "indexed": false,
       "propType": "BoolProperty",
       "uiname": "Inherit Everything",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.editDisplaced": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Displaced",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawDispDisField": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw Dis Field",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -7220,78 +7184,6 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "toolDefaults.object": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.object.selectone": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.object.selectone.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "UNIQUE"
-      ]
-    },
-    "toolDefaults.object.selectone.setActive": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Set Active",
-      "description": "Set Active",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.object.toggle_select_all": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.object.toggle_select_all.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.object.apply_transform": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.object.apply_transform.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "LOC",
-        "ROT",
-        "SCALE",
-        "ALL"
-      ]
-    },
     "toolDefaults.brush": {
       "kind": "struct",
       "indexed": false,
@@ -7713,6 +7605,51 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.litemesh": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.add_cube": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.add_cube.sphere": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Sphere",
+      "description": "Sphere",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_cube.dimen": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Dimen",
+      "description": "Dimen",
+      "range": [
+        1,
+        1024
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_cube.size": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Size",
+      "description": "Size",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.sculptcore": {
       "kind": "struct",
       "indexed": false,
@@ -7781,6 +7718,97 @@
       "description": "Viewport Size",
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "toolDefaults.object": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.object.selectone": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.object.selectone.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ADD",
+        "SUB",
+        "UNIQUE"
+      ]
+    },
+    "toolDefaults.object.selectone.setActive": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Set Active",
+      "description": "Set Active",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.object.toggle_select_all": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.object.toggle_select_all.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ADD",
+        "SUB",
+        "AUTO"
+      ]
+    },
+    "toolDefaults.object.select_box": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.object.select_box.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ADD",
+        "SUB",
+        "AUTO"
+      ]
+    },
+    "toolDefaults.object.apply_transform": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.object.apply_transform.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "LOC",
+        "ROT",
+        "SCALE",
+        "ALL"
+      ]
     },
     "toolDefaults.uveditor": {
       "kind": "struct",
