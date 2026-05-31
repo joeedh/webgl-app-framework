@@ -295,6 +295,27 @@ export class LiteMesh extends SceneObjectData {
     // roles; selectedAttrCategory's setter rejects any not valid for the attr's
     // type/domain (validCategories). Setting a role also activates the layer.
     attrs.prop('object.data.selectedAttrCategory')
+
+    // Add / Remove (Wave 2b). Add picks a (domain, type, category) per the
+    // valid-categories table and lets C++ assign a unique name; Remove deletes
+    // the selected layer (C++ refuses builtins).
+    const meshOf = () => {
+      const m = container.ctx?.object?.data
+      return m instanceof LiteMesh ? m : undefined
+    }
+    const addBtn = (label: string, domain: number, type: number, use: number) => {
+      attrs.button(label, () => {
+        meshOf()?.addAttr(domain, type, use)
+        window.redraw_all?.()
+      })
+    }
+    addBtn('Add Color', AttrDomain.VERTEX, AttrType.Float4, AttrUseFlags.COLOR)
+    addBtn('Add UV', AttrDomain.VERTEX, AttrType.Float2, AttrUseFlags.UV)
+    addBtn('Add Poly Group', AttrDomain.FACE, AttrType.Int, AttrUseFlags.POLYGROUP)
+    attrs.button('Remove Selected', () => {
+      meshOf()?.removeSelectedAttr()
+      window.redraw_all?.()
+    })
   }
 
   afterSTRUCT(): void {
@@ -665,6 +686,44 @@ export class LiteMesh extends SceneObjectData {
     if (use & AttrUseFlags.COLOR) this._activeAttr.color = attrName
     else if (use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = attrName
     else if (use & AttrUseFlags.UV) this._activeAttr.uv = attrName
+  }
+
+  /**
+   * Add a new attribute layer (Wave 2b). C++ owns the unique name (names don't
+   * marshal) and returns the new index; we read the name back, select it, and
+   * activate it for its category. `type` is an AttrType int, `use` an
+   * AttrUseFlags int.
+   */
+  addAttr(domain: number, type: number, use: number): number {
+    const idx = (this.mesh as unknown as {addAttr(d: number, t: number, u: number): number}).addAttr(domain, type, use)
+    if (idx >= 0) {
+      const grp = this._domainGroup(domain)
+      const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
+        'sculptcore::mesh::AttrRef'
+      )
+      let name = ''
+      if (grp?.attrs && cls) {
+        const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
+        if (idx < arr.length) name = arr[idx].name
+      }
+      this._selectedAttr = {domain, layerIndex: idx, attrName: name, attrType: type}
+      if (use & AttrUseFlags.COLOR) this._activeAttr.color = name
+      else if (use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = name
+      else if (use & AttrUseFlags.UV) this._activeAttr.uv = name
+    }
+    return idx
+  }
+
+  /** Remove the selected attribute layer (refused for builtins in C++). Clears
+   * the selection and any active-attr entry that named it. */
+  removeSelectedAttr(): void {
+    const s = this._selectedAttr
+    if (!s) return
+    ;(this.mesh as unknown as {removeAttr(d: number, i: number): void}).removeAttr(s.domain, s.layerIndex)
+    if (this._activeAttr.color === s.attrName) this._activeAttr.color = undefined
+    if (this._activeAttr.polygroup === s.attrName) this._activeAttr.polygroup = undefined
+    if (this._activeAttr.uv === s.attrName) this._activeAttr.uv = undefined
+    this._selectedAttr = undefined
   }
 
   /** Category enum for the selected attr (ObData dropdown). Reads/writes the
