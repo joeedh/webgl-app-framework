@@ -66,7 +66,7 @@ import {
   MeshSymFlags,
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
-import {LiteMesh, LiteMeshDisplayMode} from '../lite-mesh/litemesh.js'
+import {LiteMesh, LiteMeshDisplayMode, LiteMeshAttrItem} from '../lite-mesh/litemesh.js'
 import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
@@ -279,6 +279,35 @@ export function api_define_litemesh(api) {
     })
   def.on('change', function () {
     window.redraw_viewport()
+  })
+
+  // ObData attribute manager (Wave 2b). The attribute ListBox binds to this
+  // `attrs` DataList; `showBuiltinAttrs` toggles the builtin filter.
+  mstruct.bool('showBuiltinAttrs', 'showBuiltinAttrs', 'Show builtin attributes').on('change', function () {
+    window.redraw_all()
+  })
+
+  let astruct = api.mapStruct(LiteMeshAttrItem, true)
+  astruct.string('attrName', 'attrName', 'Name').readOnly()
+
+  // list(valueProp, apiPathSegment, funcs): value read from mesh.attrItems,
+  // addressed in the data API as `object.data.attrs`.
+  mstruct.list('attrItems', 'attrs', {
+    getIter(api, list) {
+      return list
+    },
+    getLength(api, list) {
+      return list.length
+    },
+    get(api, list, key) {
+      return list[key]
+    },
+    getKey(api, list, obj) {
+      return list.indexOf(obj)
+    },
+    getStruct(api, list, key) {
+      return api.mapStruct(LiteMeshAttrItem)
+    },
   })
 
   return mstruct

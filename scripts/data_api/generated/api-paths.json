@@ -6352,6 +6352,52 @@
         "PaintSampleProperty"
       ]
     },
+    "toolDefaults.listbox": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.listbox.set_active": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.listbox.set_active.dataPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Data Path",
+      "description": "Data Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.listbox.set_active.key": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Key",
+      "description": "Key",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.listbox.set_active.numericKey": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Numeric Key",
+      "description": "Numeric Key",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.listbox.set_active.hasKey": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Has Key",
+      "description": "Has Key",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.velpan": {
       "kind": "struct",
       "indexed": false,

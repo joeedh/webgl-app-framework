@@ -42,6 +42,42 @@ export const LiteMeshDisplayMode = {
   POLY_GROUP: 1,
 } as const
 
+/** Element domains (mirror the C++ `ElemType`, which isn't bound to TS). */
+export const AttrDomain = {VERTEX: 1, EDGE: 2, CORNER: 4, LIST: 8, FACE: 16} as const
+const ATTR_DOMAIN_LABEL: Record<number, string> = {1: 'vert', 2: 'edge', 4: 'corner', 8: 'list', 16: 'face'}
+/** Bound `AttrType` integer values are the C++ bitflags (FLOAT=1, FLOAT4=8, …). */
+const ATTR_TYPE_LABEL: Record<number, string> = {
+  1: 'Float', 2: 'Float2', 4: 'Float3', 8: 'Float4', 16: 'Bool',
+  32: 'Int', 64: 'Int2', 128: 'Int3', 256: 'Int4', 512: 'Byte', 1024: 'Short',
+}
+/** `AttrUse` bitflags = the attribute's category/role. */
+export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8} as const
+
+/**
+ * One mesh attribute, surfaced in the ObData attribute ListBox. `name` is the
+ * composite row label (the ListBox labels by `.name`); `attrName`/`domain`/
+ * `attrType`/`use` are the underlying fields the data-API + logic use.
+ */
+export class LiteMeshAttrItem {
+  constructor(
+    public attrName: string,
+    public domain: number,
+    public attrType: number,
+    public use: number
+  ) {}
+
+  get name(): string {
+    const dom = ATTR_DOMAIN_LABEL[this.domain] ?? '?'
+    const ty = ATTR_TYPE_LABEL[this.attrType] ?? '?'
+    const cats: string[] = []
+    if (this.use & AttrUseFlags.COLOR) cats.push('Color')
+    if (this.use & AttrUseFlags.UV) cats.push('UV')
+    if (this.use & AttrUseFlags.POLYGROUP) cats.push('PolyGroup')
+    const cat = cats.length ? `   ·   ${cats.join('+')}` : ''
+    return `${this.attrName}   ·   ${dom} ${ty}${cat}`
+  }
+}
+
 export class VertexData extends AttrSet {
   static STRUCT = nstructjs.inlineRegister(this, 'litemesh.VertexData {}')
 
@@ -208,8 +244,15 @@ export class LiteMesh extends SceneObjectData {
   static buildPropertiesTab(container: Container<ViewContext>) {
     container.label('LiteMesh')
 
-    const panel = container.panel('Display')
-    panel.prop('object.data.displayColorMode')
+    const display = container.panel('Display')
+    display.prop('object.data.displayColorMode')
+
+    const attrs = container.panel('Attributes')
+    attrs.prop('object.data.showBuiltinAttrs')
+    // pathux ListBox bound to the attribute DataList (api_define_litemesh).
+    const listbox = document.createElement('listbox-x')
+    listbox.setAttribute('datapath', 'object.data.attrs')
+    attrs.add(listbox as unknown as Container<ViewContext>)
   }
 
   afterSTRUCT(): void {
@@ -504,6 +547,62 @@ export class LiteMesh extends SceneObjectData {
     this._displayColorMode = mode
     this.spatial?.setColorDisplayMode(mode)
     this.regenTreeBatch()
+  }
+
+  /** ObData attribute list: when false (default) builtin attributes (geometry
+   * + `.`-prefixed internal layers) are hidden, leaving the user/paint attrs. */
+  _showBuiltinAttrs = false
+
+  get showBuiltinAttrs(): boolean {
+    return this._showBuiltinAttrs
+  }
+  set showBuiltinAttrs(v: boolean) {
+    this._showBuiltinAttrs = v
+  }
+
+  /** True for geometry/internal attributes hidden by default in the ObData list. */
+  static isBuiltinAttr(name: string): boolean {
+    return name.startsWith('.') || name === 'positions' || name === 'normals' || name === 'select'
+  }
+
+  /**
+   * Enumerate the C++ mesh's attributes (vertex + face for now) as descriptors
+   * for the ObData ListBox. Reads the bound `AttrGroup.attrs` Vector<AttrRef>
+   * through `getBoundVector` (the cross-backend way — direct `.attrs[i]` doesn't
+   * materialize on the native backend). Builtins filtered unless
+   * `showBuiltinAttrs`.
+   */
+  get attrItems(): LiteMeshAttrItem[] {
+    const items: LiteMeshAttrItem[] = []
+    const m = this.mesh as unknown as {v?: {attrs?: {attrs: unknown}}; f?: {attrs?: {attrs: unknown}}}
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
+      'sculptcore::mesh::AttrRef'
+    )
+    if (!cls) {
+      return items
+    }
+    const groups: [number, {attrs?: {attrs: unknown}} | undefined][] = [
+      [AttrDomain.VERTEX, m.v],
+      [AttrDomain.FACE, m.f],
+    ]
+    for (const [domain, grp] of groups) {
+      if (!grp?.attrs) {
+        continue
+      }
+      const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs.attrs as never) as ArrayLike<{
+        name: string
+        type: number
+        use: number
+      }>
+      for (let i = 0; i < arr.length; i++) {
+        const a = arr[i]
+        if (!this._showBuiltinAttrs && LiteMesh.isBuiltinAttr(a.name)) {
+          continue
+        }
+        items.push(new LiteMeshAttrItem(a.name, domain, a.type, a.use))
+      }
+    }
+    return items
   }
 
   /**

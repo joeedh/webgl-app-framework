@@ -595,6 +595,12 @@ export type GeneratedDataPath =
   | "toolDefaults.light.new"
   | "toolDefaults.light.new.position"
   | "toolDefaults.light.new.type"
+  | "toolDefaults.listbox"
+  | "toolDefaults.listbox.set_active"
+  | "toolDefaults.listbox.set_active.dataPath"
+  | "toolDefaults.listbox.set_active.hasKey"
+  | "toolDefaults.listbox.set_active.key"
+  | "toolDefaults.listbox.set_active.numericKey"
   | "toolDefaults.litemesh"
   | "toolDefaults.litemesh.add_cube"
   | "toolDefaults.litemesh.add_cube.dimen"
@@ -1379,6 +1385,12 @@ declare module "@framework/pathux" {
     "toolDefaults.light.new": true;
     "toolDefaults.light.new.position": true;
     "toolDefaults.light.new.type": true;
+    "toolDefaults.listbox": true;
+    "toolDefaults.listbox.set_active": true;
+    "toolDefaults.listbox.set_active.dataPath": true;
+    "toolDefaults.listbox.set_active.hasKey": true;
+    "toolDefaults.listbox.set_active.key": true;
+    "toolDefaults.listbox.set_active.numericKey": true;
     "toolDefaults.litemesh": true;
     "toolDefaults.litemesh.add_cube": true;
     "toolDefaults.litemesh.add_cube.dimen": true;

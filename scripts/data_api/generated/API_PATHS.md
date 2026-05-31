@@ -732,6 +732,12 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.app.prop_set.flagBit` | prop | IntProperty | Flag Bit |  |
 | `toolDefaults.app.prop_set.useFlagBit` | prop | BoolProperty | Use Flag Bit |  |
 | `toolDefaults.app.prop_set.destType` | prop | EnumProperty | Dest Type | enum {INT, STRING, BOOL, ENUM, FLAG, FLOAT, VEC2, VEC3, VEC4, MATRIX4, QUAT, PROPLIST, STRSET, CURVE, FLOAT_ARRAY, REPORT, DataRefProperty, DataRefListProperty, BrushProperty, PaintSampleProperty} |
+| `toolDefaults.listbox` | struct |  |  |  |
+| `toolDefaults.listbox.set_active` | struct |  |  |  |
+| `toolDefaults.listbox.set_active.dataPath` | prop | StringProperty | Data Path |  |
+| `toolDefaults.listbox.set_active.key` | prop | StringProperty | Key |  |
+| `toolDefaults.listbox.set_active.numericKey` | prop | BoolProperty | Numeric Key |  |
+| `toolDefaults.listbox.set_active.hasKey` | prop | BoolProperty | Has Key |  |
 | `toolDefaults.velpan` | struct |  |  |  |
 | `toolDefaults.velpan.pan` | struct |  |  |  |
 | `toolDefaults.velpan.pan.velpanPath` | prop | StringProperty | Velpan Path |  |
