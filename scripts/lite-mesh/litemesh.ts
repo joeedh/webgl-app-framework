@@ -55,17 +55,39 @@ const ATTR_TYPE_LABEL: Record<number, string> = {
 /** `AttrUse` bitflags = the attribute's category/role. */
 export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8} as const
 
+/** User-selectable attribute categories for the ObData dropdown (the brushable
+ * subset of AttrUse + None). Values match AttrUseFlags so they pass straight to
+ * the C++ `setAttrUse`. */
+export const LiteMeshAttrCategory = {NONE: 0, COLOR: 2, UV: 4, POLYGROUP: 8} as const
+
 /**
  * One mesh attribute, surfaced in the ObData attribute ListBox. `name` is the
  * composite row label (the ListBox labels by `.name`); `attrName`/`domain`/
  * `attrType`/`use` are the underlying fields the data-API + logic use.
  */
+/**
+ * Categories (AttrUse roles) a layer of the given type/domain may take, plus
+ * NONE. Mirrors the Wave 2b valid-categories table; the ObData category
+ * dropdown offers exactly this set, and `setAttrCategory` rejects anything
+ * outside it. `type`/`domain` are the bound AttrType / LiteMesh AttrDomain ints.
+ */
+export function validCategories(type: number, domain: number): number[] {
+  const out: number[] = [AttrUseFlags.NONE]
+  if (domain === AttrDomain.VERTEX && type === AttrType.Float4) out.push(AttrUseFlags.COLOR)
+  if (type === AttrType.Float2) out.push(AttrUseFlags.UV) // vertex now, corner later
+  if (domain === AttrDomain.FACE && type === AttrType.Int) out.push(AttrUseFlags.POLYGROUP)
+  return out
+}
+
 export class LiteMeshAttrItem {
   constructor(
     public attrName: string,
     public domain: number,
     public attrType: number,
-    public use: number
+    public use: number,
+    /** Index of this layer in its domain's full AttrGroup.attrs (the index
+     * space the C++ setAttrUse / brush override consume). */
+    public layerIndex: number = -1
   ) {}
 
   get name(): string {
@@ -262,10 +284,17 @@ export class LiteMesh extends SceneObjectData {
       const item = (e as CustomEvent).detail?.item as LiteMeshAttrItem | undefined
       const mesh = container.ctx?.object?.data
       if (item && mesh instanceof LiteMesh) {
+        mesh.setSelectedAttrFromItem(item)
         mesh.setActiveAttrFromItem(item)
+        window.redraw_all?.()
       }
     })
     attrs.add(listbox as unknown as Container<ViewContext>)
+
+    // Category dropdown for the selected attr (Wave 2b). The enum offers all
+    // roles; selectedAttrCategory's setter rejects any not valid for the attr's
+    // type/domain (validCategories). Setting a role also activates the layer.
+    attrs.prop('object.data.selectedAttrCategory')
   }
 
   afterSTRUCT(): void {
@@ -598,6 +627,59 @@ export class LiteMesh extends SceneObjectData {
     else if (item.use & AttrUseFlags.UV) this._activeAttr.uv = item.attrName
   }
 
+  /** The ObData ListBox's selected attribute (Wave 2b category dropdown acts on
+   * it). Stored by its stable fields, not object identity (attrItems rebuilds
+   * its LiteMeshAttrItems each enumeration). */
+  _selectedAttr?: {domain: number; layerIndex: number; attrName: string; attrType: number}
+
+  setSelectedAttrFromItem(item: LiteMeshAttrItem): void {
+    this._selectedAttr = {
+      domain: item.domain,
+      layerIndex: item.layerIndex,
+      attrName: item.attrName,
+      attrType: item.attrType,
+    }
+  }
+
+  /** Live AttrUse (category) of the layer at (domain, layerIndex), via the bound
+   * AttrGroup.attrs proxy. 0 (NONE) when out of range. */
+  private _attrUseAt(domain: number, layerIndex: number): number {
+    const grp = this._domainGroup(domain)
+    if (!grp?.attrs || layerIndex < 0) return 0
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
+      'sculptcore::mesh::AttrRef'
+    )
+    if (!cls) return 0
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{use: number}>
+    return layerIndex < arr.length ? arr[layerIndex].use : 0
+  }
+
+  /**
+   * Write a layer's category (AttrUse) through the C++ `setAttrUse` primitive
+   * (`AttrRef.use` is read-only via the native proxy; the layer is addressed by
+   * index, since names don't marshal). Setting a real category also makes the
+   * layer the active attr for it (so the matching brush targets it).
+   */
+  setAttrCategory(domain: number, layerIndex: number, attrName: string, use: number): void {
+    ;(this.mesh as unknown as {setAttrUse(d: number, i: number, u: number): void}).setAttrUse(domain, layerIndex, use)
+    if (use & AttrUseFlags.COLOR) this._activeAttr.color = attrName
+    else if (use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = attrName
+    else if (use & AttrUseFlags.UV) this._activeAttr.uv = attrName
+  }
+
+  /** Category enum for the selected attr (ObData dropdown). Reads/writes the
+   * live AttrUse; the setter ignores categories invalid for the attr's type. */
+  get selectedAttrCategory(): number {
+    const s = this._selectedAttr
+    return s ? this._attrUseAt(s.domain, s.layerIndex) : AttrUseFlags.NONE
+  }
+  set selectedAttrCategory(use: number) {
+    const s = this._selectedAttr
+    if (!s) return
+    if (!validCategories(s.attrType, s.domain).includes(use)) return
+    this.setAttrCategory(s.domain, s.layerIndex, s.attrName, use)
+  }
+
   /** Bound `AttrGroup` for a domain (the same object attrItems enumerates). */
   private _domainGroup(domain: number): {attrs: unknown} | undefined {
     const m = this.mesh as unknown as {v?: {attrs?: {attrs: unknown}}; f?: {attrs?: {attrs: unknown}}}
@@ -671,7 +753,9 @@ export class LiteMesh extends SceneObjectData {
         if (!this._showBuiltinAttrs && LiteMesh.isBuiltinAttr(a.name)) {
           continue
         }
-        items.push(new LiteMeshAttrItem(a.name, domain, a.type, a.use))
+        // `i` is the index in the *unfiltered* group vector — the index space
+        // the C++ setAttrUse / brush override consume.
+        items.push(new LiteMeshAttrItem(a.name, domain, a.type, a.use, i))
       }
     }
     return items

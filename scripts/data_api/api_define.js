@@ -66,7 +66,7 @@ import {
   MeshSymFlags,
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
-import {LiteMesh, LiteMeshDisplayMode, LiteMeshAttrItem} from '../lite-mesh/litemesh.js'
+import {LiteMesh, LiteMeshDisplayMode, LiteMeshAttrItem, LiteMeshAttrCategory} from '../lite-mesh/litemesh.js'
 import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
@@ -286,6 +286,16 @@ export function api_define_litemesh(api) {
   mstruct.bool('showBuiltinAttrs', 'showBuiltinAttrs', 'Show builtin attributes').on('change', function () {
     window.redraw_all()
   })
+
+  // Category (AttrUse) of the attr selected in the ListBox. The setter rejects
+  // roles invalid for the attr's type/domain (validCategories), so offering the
+  // full set here is safe; setting a role also activates the layer.
+  mstruct
+    .enum('selectedAttrCategory', 'selectedAttrCategory', LiteMeshAttrCategory, 'Category', 'Attribute category / role')
+    .uiNames({NONE: 'None', COLOR: 'Color', UV: 'UV', POLYGROUP: 'Poly Group'})
+    .on('change', function () {
+      window.redraw_all()
+    })
 
   let astruct = api.mapStruct(LiteMeshAttrItem, true)
   astruct.string('attrName', 'attrName', 'Name').readOnly()
