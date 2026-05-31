@@ -309,6 +309,7 @@ export class LiteMesh extends SceneObjectData {
         isect.normal[i] = isectOut.normal.vec[i]
       }
       isect.tri = isectOut.triIndex
+      isect.face = isectOut.faceIndex
       isect.dis = isectOut.t
       isect.uv[0] = isectOut.uv.vec[0]
       isect.uv[1] = isectOut.uv.vec[1]

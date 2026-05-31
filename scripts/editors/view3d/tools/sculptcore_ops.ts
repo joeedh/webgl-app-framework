@@ -41,6 +41,9 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   wasmBrush?: WasmBrush
   executor?: CommandExecutor
   brushProgram?: BrushProgram
+  /** Poly-group id for the active stroke (computed once on the first dab:
+   * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
+  strokeGroupId?: number
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -63,6 +66,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   }
 
   undoPre(ctx: ToolContext) {
+    this.strokeGroupId = undefined
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
       this.inStep = true
@@ -215,6 +219,22 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
         // display-mode toggle.
         syncDisplayModeToBrush(mesh, brush.tool)
 
+        // Poly-group paint: choose the stroke's group id once, on the first dab.
+        // Default = a fresh incremented id (max existing + 1); holding shift
+        // samples the group under the cursor and extends it (falling back to a
+        // new id when that face has no group yet).
+        if (brush.tool === SculptTools.POLYGROUP) {
+          if (this.strokeGroupId === undefined) {
+            if (e.shiftKey && isect.face >= 0) {
+              const sampled = mesh.mesh.faceGroup(isect.face)
+              this.strokeGroupId = sampled > 0 ? sampled : mesh.mesh.maxFaceGroup() + 1
+            } else {
+              this.strokeGroupId = mesh.mesh.maxFaceGroup() + 1
+            }
+          }
+          wasmBrush.activeGroup = this.strokeGroupId
+        }
+
         wasmBrush.strength = brush.strength
         wasmBrush.radius = radius
         wasmBrush.writeProps()
@@ -292,6 +312,11 @@ export function runSculptcoreStroke(opts: {
   // Mirror SculptPaintOp: show the painted attribute (color/polygroup).
   syncDisplayModeToBrush(mesh, brush.tool)
 
+  // Poly-group: allocate a fresh incremented id (max existing + 1) for this
+  // driver stroke. The interactive op also supports shift-to-extend; the driver
+  // always starts a new group.
+  const polyGroupId = brush.tool === SculptTools.POLYGROUP ? mesh.mesh.maxFaceGroup() + 1 : 0
+
   let wasmBrush: WasmBrush | undefined = undefined
   let wasmExec: CommandExecutor | undefined = undefined
   // Mouse-equivalent device sample (full pressure).
@@ -307,6 +332,9 @@ export function runSculptcoreStroke(opts: {
     const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
     mesh.spatial.filterNodes(wasm.float3(new Vector3(dab.p)), radius, nodes)
 
+    if (brush.tool === SculptTools.POLYGROUP) {
+      wasmBrush.activeGroup = polyGroupId
+    }
     wasmBrush.strength = brush.strength
     wasmBrush.radius = radius
     wasmBrush.writeProps()
