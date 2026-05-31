@@ -1,6 +1,6 @@
 import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram} from '@sculptcore/api'
 import type {ToolContext} from '../../../core/context'
-import {LiteMesh} from '../../../lite-mesh/index'
+import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {AttrRef, Vector3LayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
 import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
 import {ISampleViewRet, PaintOpBase} from './pbvh_base'
@@ -15,6 +15,26 @@ export interface IGetBrushRet {
   brush: SculptBrush
   wasmExec: CommandExecutor
   wasmBrush: WasmBrush
+}
+
+/**
+ * "Show what you paint": switch the LiteMesh surface display to the attribute
+ * the active attribute-brush writes (color → vertex color, polygroup → poly
+ * groups), so painted results are visible without manually toggling the ObData
+ * display mode. Sculpting brushes (draw/smooth/…) leave the display untouched.
+ * No-op when the display is already in the right mode (the setter dirties every
+ * GPU node, so we guard against re-running it each dab).
+ */
+function syncDisplayModeToBrush(mesh: LiteMesh, tool: SculptTools): void {
+  let want: number | undefined
+  if (tool === SculptTools.COLOR) {
+    want = LiteMeshDisplayMode.VERTEX_COLOR
+  } else if (tool === SculptTools.POLYGROUP) {
+    want = LiteMeshDisplayMode.POLY_GROUP
+  }
+  if (want !== undefined && mesh.displayColorMode !== want) {
+    mesh.displayColorMode = want
+  }
 }
 
 export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
@@ -191,6 +211,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
         // Skip the dab rather than silently running a Draw.
         console.warn(`sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`)
       } else {
+        // Make the painted attribute visible (color/polygroup) without a manual
+        // display-mode toggle.
+        syncDisplayModeToBrush(mesh, brush.tool)
+
         wasmBrush.strength = brush.strength
         wasmBrush.radius = radius
         wasmBrush.writeProps()
@@ -264,6 +288,9 @@ export function runSculptcoreStroke(opts: {
   }
   const meshLog = SculptPaintOp.meshLog!
   meshLog.beginStep()
+
+  // Mirror SculptPaintOp: show the painted attribute (color/polygroup).
+  syncDisplayModeToBrush(mesh, brush.tool)
 
   let wasmBrush: WasmBrush | undefined = undefined
   let wasmExec: CommandExecutor | undefined = undefined
