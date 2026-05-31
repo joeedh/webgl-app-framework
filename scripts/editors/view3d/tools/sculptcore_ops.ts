@@ -234,3 +234,86 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   }
 }
 ToolOp.register(SculptPaintOp)
+
+/**
+ * Dev/test driver: run a sculptcore brush stroke programmatically over a list of
+ * world-space dabs on a LiteMesh, with undo logging — the headless/CDP
+ * counterpart to interactively dragging the sculpt brush. Mirrors
+ * `SculptPaintOp.on_pointermove_intern`'s per-dab work (filterNodes +
+ * builSculptcoreBrush + buildBrushProgram + execProgram) but takes world-space
+ * `p`/`normal` directly instead of casting a view ray. Returns the dab count, or
+ * `skipped:true` when the tool has no sculptcore kernel.
+ */
+export function runSculptcoreStroke(opts: {
+  mesh: LiteMesh
+  brush: SculptBrush
+  dabs: {p: number[]; normal: number[]}[]
+  radius?: number
+}): {dabs: number; skipped: boolean} {
+  const wasm = getWasmImmediate()!
+  const {mesh, brush} = opts
+  const radius = opts.radius ?? brush.radius
+
+  const brushType = toolToSculptBrush(brush.tool)
+  if (brushType === undefined) {
+    return {dabs: 0, skipped: true}
+  }
+
+  if (SculptPaintOp.meshLog === undefined) {
+    SculptPaintOp.meshLog = wasm.manager.construct('sculptcore::meshlog::MeshLog')
+  }
+  const meshLog = SculptPaintOp.meshLog!
+  meshLog.beginStep()
+
+  let wasmBrush: WasmBrush | undefined = undefined
+  let wasmExec: CommandExecutor | undefined = undefined
+  // Mouse-equivalent device sample (full pressure).
+  const ev = {pointerType: 'mouse', pressure: 1.0, tiltX: 0, tiltY: 0} as unknown as PointerEvent
+
+  for (const dab of opts.dabs) {
+    const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec})
+    wasmBrush = r.wasmBrush
+    wasmExec = r.wasmExec
+
+    // @ts-expect-error — runtime helper not in the typed binding surface.
+    const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
+    const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
+    mesh.spatial.filterNodes(wasm.float3(new Vector3(dab.p)), radius, nodes)
+
+    wasmBrush.strength = brush.strength
+    wasmBrush.radius = radius
+    wasmBrush.writeProps()
+    wasmExec.meshLog = meshLog
+    pushBrushDeviceInputs(wasmBrush, ev)
+
+    const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
+    buildBrushProgram(prog, brushType, brush, radius)
+    wasmExec.execProgram(prog, nodes, wasm.float3(new Vector3(dab.p)), wasm.float3(new Vector3(dab.normal)))
+    prog[Symbol.dispose]()
+  }
+
+  meshLog.endStep()
+  mesh.regenTreeBatch()
+  return {dabs: opts.dabs.length, skipped: false}
+}
+
+// Headless/CDP-friendly entry point: _testSculptcoreStroke(toolInt, dabs?, radius?)
+// resolves the active LiteMesh + the default brush for the tool and runs a
+// stroke. dabs are world-space [{p:[x,y,z], normal:[x,y,z]}].
+;(globalThis as unknown as any)._testSculptcoreStroke = function (
+  toolInt: number,
+  dabs?: {p: number[]; normal: number[]}[],
+  radius?: number
+) {
+  const g = globalThis as unknown as any
+  const mesh = g._appstate?.ctx?.object?.data
+  if (!(mesh instanceof LiteMesh)) {
+    return {error: 'active object is not a LiteMesh'}
+  }
+  const brush = g._DefaultBrushes?.[toolInt] as SculptBrush | undefined
+  if (!brush) {
+    return {error: `no default brush for tool ${toolInt}`}
+  }
+  brush.tool = toolInt
+  return runSculptcoreStroke({mesh, brush, dabs: dabs ?? [{p: [0, 0, 0], normal: [0, 0, 1]}], radius})
+}
