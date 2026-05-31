@@ -646,6 +646,16 @@ export class LiteMesh extends SceneObjectData {
     if (item.use & AttrUseFlags.COLOR) this._activeAttr.color = item.attrName
     else if (item.use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = item.attrName
     else if (item.use & AttrUseFlags.UV) this._activeAttr.uv = item.attrName
+    this._syncDisplayAttrs()
+  }
+
+  /** Point the C++ display sources at the active color/poly-group layers so the
+   * viewport shows the active attr, not the layer literally named color/group.
+   * -1 (no active layer) falls back to the by-name default in fill_leaf_slice. */
+  _syncDisplayAttrs(): void {
+    if (!this.spatial) return
+    this.spatial.setDisplayColorAttr(this.activeAttrLayerIndex(AttrUseFlags.COLOR))
+    this.spatial.setDisplayGroupAttr(this.activeAttrLayerIndex(AttrUseFlags.POLYGROUP))
   }
 
   /** The ObData ListBox's selected attribute (Wave 2b category dropdown acts on
@@ -686,6 +696,7 @@ export class LiteMesh extends SceneObjectData {
     if (use & AttrUseFlags.COLOR) this._activeAttr.color = attrName
     else if (use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = attrName
     else if (use & AttrUseFlags.UV) this._activeAttr.uv = attrName
+    this._syncDisplayAttrs()
   }
 
   /**
@@ -710,6 +721,7 @@ export class LiteMesh extends SceneObjectData {
       if (use & AttrUseFlags.COLOR) this._activeAttr.color = name
       else if (use & AttrUseFlags.POLYGROUP) this._activeAttr.polygroup = name
       else if (use & AttrUseFlags.UV) this._activeAttr.uv = name
+      this._syncDisplayAttrs()
     }
     return idx
   }
@@ -724,6 +736,7 @@ export class LiteMesh extends SceneObjectData {
     if (this._activeAttr.polygroup === s.attrName) this._activeAttr.polygroup = undefined
     if (this._activeAttr.uv === s.attrName) this._activeAttr.uv = undefined
     this._selectedAttr = undefined
+    this._syncDisplayAttrs()
   }
 
   /** Category enum for the selected attr (ObData dropdown). Reads/writes the
