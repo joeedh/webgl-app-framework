@@ -417,6 +417,21 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  /** Resolve a ray to the mesh vertex nearest the hit point (the hit triangle's
+   * highest-barycentric-weight corner, computed in C++). -1 if the ray misses.
+   * Used by the seam-marking modal to turn a click into a path endpoint. */
+  pickVert(origin: Vector3, dir: Vector3): number {
+    const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    try {
+      const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+      const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+      const hit = this.spatial.castRay(originF3, dirF3, isectOut)
+      return hit ? (isectOut as unknown as {nearestVert: number}).nearestVert : -1
+    } finally {
+      ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
+  }
+
   /* ----- Wave 5: seam/boundary marking ----- */
 
   /** Mark (state=1) or clear (state=0) the shortest edge-path between two verts
