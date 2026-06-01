@@ -271,6 +271,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.tool`)
     strip.tool('mesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
+    strip.tool('litemesh.generate_uv()')
     strip.prop(`scene.tools.${name}.symmetryAxes`)
 
     row = addHeaderRow()

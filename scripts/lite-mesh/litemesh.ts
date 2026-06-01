@@ -460,6 +460,35 @@ export class LiteMesh extends SceneObjectData {
     return out
   }
 
+  /* ----- Wave 7: UV generation from seams ----- */
+
+  /** Corner-domain layer names (to diff what generateUVFromSeams just created). */
+  private _cornerLayerNames(): string[] {
+    const grp = this._domainGroup(AttrDomain.CORNER)
+    if (!grp?.attrs) return []
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
+      'sculptcore::mesh::AttrRef'
+    )
+    if (!cls) return []
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
+    const out: string[] = []
+    for (let i = 0; i < arr.length; i++) out.push(arr[i].name)
+    return out
+  }
+
+  /** Generate a per-corner UV map from EDGE_SEAM-bounded charts (the unwrapper).
+   * `margin` is the [0,1] shelf-pack margin. Creates a FLOAT2 corner layer
+   * (tagged UV) and returns {charts, name} — the new layer's name lets the tool
+   * undo by detaching it. */
+  generateUVFromSeams(margin = 0.01): {charts: number; name: string} {
+    const before = new Set(this._cornerLayerNames())
+    const charts = (this.mesh as unknown as {generateUVFromSeams(m: number): number}).generateUVFromSeams(
+      Math.round(margin * 1000)
+    )
+    const name = this._cornerLayerNames().find((n) => !before.has(n)) ?? ''
+    return {charts, name}
+  }
+
   /* ----- Viewport area picking (overrides SceneObjectData defaults) -----
    * Backed by the sculptcore SpatialTree's cone (circle) / frustum (rect)
    * queries. Backend-agnostic: ray endpoints and rect corners are marshaled as
@@ -787,8 +816,13 @@ export class LiteMesh extends SceneObjectData {
 
   /** Bound `AttrGroup` for a domain (the same object attrItems enumerates). */
   private _domainGroup(domain: number): {attrs: unknown} | undefined {
-    const m = this.mesh as unknown as {v?: {attrs?: {attrs: unknown}}; f?: {attrs?: {attrs: unknown}}}
+    const m = this.mesh as unknown as {
+      v?: {attrs?: {attrs: unknown}}
+      c?: {attrs?: {attrs: unknown}}
+      f?: {attrs?: {attrs: unknown}}
+    }
     if (domain === AttrDomain.VERTEX) return m.v?.attrs
+    if (domain === AttrDomain.CORNER) return m.c?.attrs
     if (domain === AttrDomain.FACE) return m.f?.attrs
     return undefined
   }
@@ -876,7 +910,11 @@ export class LiteMesh extends SceneObjectData {
    */
   get attrItems(): LiteMeshAttrItem[] {
     const items: LiteMeshAttrItem[] = []
-    const m = this.mesh as unknown as {v?: {attrs?: {attrs: unknown}}; f?: {attrs?: {attrs: unknown}}}
+    const m = this.mesh as unknown as {
+      v?: {attrs?: {attrs: unknown}}
+      c?: {attrs?: {attrs: unknown}}
+      f?: {attrs?: {attrs: unknown}}
+    }
     const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
       'sculptcore::mesh::AttrRef'
     )
@@ -885,6 +923,7 @@ export class LiteMesh extends SceneObjectData {
     }
     const groups: [number, {attrs?: {attrs: unknown}} | undefined][] = [
       [AttrDomain.VERTEX, m.v],
+      [AttrDomain.CORNER, m.c],
       [AttrDomain.FACE, m.f],
     ]
     for (const [domain, grp] of groups) {

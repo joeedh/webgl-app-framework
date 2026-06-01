@@ -2,7 +2,7 @@ import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3, Vector4, Mat
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
-import {LiteMesh} from './litemesh'
+import {LiteMesh, AttrDomain} from './litemesh'
 import {makeDefaultMaterial} from '../core/material'
 
 export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
@@ -449,3 +449,58 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(MarkSeamInteractiveOp)
+
+/**
+ * Wave 7: generate a per-corner UV map from the marked seams (EDGE_SEAM). Calls
+ * the engine unwrapper (`generateUVFromSeams`: flood-fill charts bounded by
+ * seams → group-normal projection → shelf box-pack into [0,1]), which creates a
+ * FLOAT2 corner layer tagged UV. Undo detaches that layer into the C++ stash
+ * (data preserved); redo reattaches the same layer rather than regenerating.
+ */
+export class GenerateUVOp extends LiteMeshAttrOp<{
+  margin: FloatProperty
+}> {
+  _name = ''
+  _stashId = -1
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.generate_uv',
+      uiname  : 'Generate UVs from Seams',
+      inputs  : {
+        margin: new FloatProperty(0.01).setRange(0.0, 0.25).noUnits(),
+      },
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    if (this._stashId >= 0) {
+      // redo after undo: restore the exact layer we detached
+      mesh.reattachAttrLayer(this._stashId)
+      this._stashId = -1
+    } else {
+      const {charts, name} = mesh.generateUVFromSeams(this.getInputs().margin)
+      this._name = name
+      console.log(`generate_uv: ${charts} chart(s) -> ${name || '(no layer created)'}`)
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._name) {
+      this._stashId = mesh.detachAttrLayer(AttrDomain.CORNER, this._name)
+    }
+    window.redraw_all?.()
+  }
+}
+ToolOp.register(GenerateUVOp)
