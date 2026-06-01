@@ -79,9 +79,9 @@ export function setupIconsSvg() {
     [iconsheet, iconsheet, iconsheet, iconsheet],
     [
       [32, 22],
-      [32, 42],
-      [32, 52],
-      [32, 64],
+      [32, 25],
+      [32, 38],
+      [32, 55],
     ],
     16
   )

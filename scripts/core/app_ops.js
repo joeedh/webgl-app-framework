@@ -3,6 +3,8 @@ import {ToolOp, BoolProperty, UndoFlags} from '../path.ux/scripts/pathux.js'
 import * as cconst from './const.js'
 import * as platform from './platform.js'
 import {exportSTLMesh} from '../util/stlformat.js'
+import {genDefaultFile} from './gen_default_file.js'
+
 // AppImportOBJOp moved to scripts/mesh/import_obj_op.js so core stops
 // importing from mesh. The class is registered there via ToolOp.register.
 

@@ -259,16 +259,20 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawBVH`)
     strip.prop(`scene.tools.${name}.drawFlat`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
-    //strip.prop(`scene.tools.${name}.drawNodeIds`);
-    //strip.prop(`scene.tools.${name}.drawColPatches`);
     strip.prop(`scene.tools.${name}.drawMask`)
 
     let row = addHeaderRow()
     const path = `scene.tools.${name}.brush`
 
     strip = row.strip()
+    strip.useIcons(true)
+
     //strip.listenum(path + ".tool");
     strip.prop(`scene.tools.${name}.tool`)
+
+    row = addHeaderRow()
+    strip = row.strip()
+    strip.useIcons(true)
     strip.tool('mesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.generate_uv()')
