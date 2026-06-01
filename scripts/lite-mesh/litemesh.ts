@@ -337,6 +337,10 @@ export class LiteMesh extends SceneObjectData {
   wasm: IWasmInterface
   drawBatch?: DrawBatch
   treeBatch?: DrawBatch
+  /** Persistent seam-edge overlay (EDGE_SEAM) line batch + its rebuild flag.
+   * Rebuilt only when the seam set or geometry changes (see markSeamsDirty). */
+  seamBatch?: DrawBatch
+  _seamsDirty = true
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   private gpuUniforms?: IUniformsBlock
@@ -437,9 +441,29 @@ export class LiteMesh extends SceneObjectData {
   /** Mark (state=1) or clear (state=0) the shortest edge-path between two verts
    * as a seam (EDGE_SEAM). Returns the edge count, or -1 if no path. */
   markSeamPath(vStart: number, vEnd: number, state: number): number {
-    return (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
+    const n = (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
       vStart, vEnd, state
     )
+    this._seamsDirty = true // the persistent overlay rebuilds on next draw
+    return n
+  }
+
+  /** Flag the seam overlay for rebuild (e.g. after a topology/seam change). */
+  markSeamsDirty(): void {
+    this._seamsDirty = true
+  }
+
+  /** Rebuild the seam-edge overlay batch if the seam set/geometry changed. */
+  private _ensureSeamBatch(): void {
+    if (!this._seamsDirty) {
+      return
+    }
+    this._seamsDirty = false
+    if (this.seamBatch) {
+      this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
+      this.seamBatch = undefined
+    }
+    this.seamBatch = this.spatial.buildSeamBatch(this.wasm.gpu) ?? undefined
   }
 
   /** The shortest edge-path's vertex positions as flat xyz triples (for drawing
@@ -965,6 +989,10 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
       this.treeBatch = undefined
     }
+    if (this.seamBatch) {
+      this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
+      this.seamBatch = undefined
+    }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
 
@@ -991,6 +1019,12 @@ export class LiteMesh extends SceneObjectData {
       }
     }
     this.drawBatch = this.spatial.getDrawBatch()
+    // Rebuild only when the seam *set* changes (markSeamsDirty), not on every
+    // geometry update: `.edge.vs` is freed under frozen topology, so a per-dab
+    // rebuild would thaw in the sculpt hot path. The overlay therefore tracks
+    // seam *topology*, not live vert motion mid-stroke (refreshed on next seam
+    // edit) — an acceptable trade for not thawing every frame.
+    this._ensureSeamBatch()
 
     if (drawBVH && !this.treeBatch) {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -1027,6 +1061,9 @@ export class LiteMesh extends SceneObjectData {
       }
       if (drawBVH && this.treeBatch) {
         exec.dispatch(this.treeBatch, uniforms2)
+      }
+      if (this.seamBatch) {
+        exec.dispatch(this.seamBatch, uniforms2)
       }
     })
   }
@@ -1093,6 +1130,7 @@ export class LiteMesh extends SceneObjectData {
 
     if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
     if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
+    if (this.seamBatch) exec.dispatch(this.seamBatch, pass)
   }
 
   regenRender() {
