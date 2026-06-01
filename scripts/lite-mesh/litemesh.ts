@@ -417,6 +417,34 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  /* ----- Wave 5: seam/boundary marking ----- */
+
+  /** Mark (state=1) or clear (state=0) the shortest edge-path between two verts
+   * as a seam (EDGE_SEAM). Returns the edge count, or -1 if no path. */
+  markSeamPath(vStart: number, vEnd: number, state: number): number {
+    return (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
+      vStart, vEnd, state
+    )
+  }
+
+  /** The shortest edge-path's vertex positions as flat xyz triples (for drawing
+   * the candidate/marked seam). Reads the bound Vector<float> out-param. */
+  edgePathCoords(vStart: number, vEnd: number): number[] {
+    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown} | undefined}).findVectorClass(
+      'float'
+    )
+    if (!cls) return []
+    const ctor = cls.findDefaultConstructor()
+    const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    ;(this.mesh as unknown as {edgePathCoords(a: number, b: number, out: never): void}).edgePathCoords(
+      vStart, vEnd, vec as never
+    )
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    const out: number[] = []
+    for (let i = 0; i < arr.length; i++) out.push(arr[i])
+    return out
+  }
+
   /* ----- Viewport area picking (overrides SceneObjectData defaults) -----
    * Backed by the sculptcore SpatialTree's cone (circle) / frustum (rect)
    * queries. Backend-agnostic: ray endpoints and rect corners are marshaled as

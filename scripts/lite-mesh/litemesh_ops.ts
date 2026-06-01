@@ -1,4 +1,4 @@
-import {FloatProperty, IntProperty, ToolOp, PropertySlots} from '../path.ux/scripts/pathux'
+import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3} from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
@@ -167,3 +167,80 @@ export class RemoveAttrOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(RemoveAttrOp)
+
+/**
+ * Wave 5: mark the shortest edge-path between two vertices as a seam
+ * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`
+ * runs Dijkstra + flags the path edges + recomputes derived boundary state, and
+ * `edgePathCoords` gives the path for a viewport overlay. Undo re-runs the same
+ * path with state=0 to clear it. (The interactive click-to-pick modal layer —
+ * resolving clicks to vertices + live preview — is the remaining UX increment;
+ * this op is the verified engine entry, invocable with explicit endpoints.)
+ */
+export class MarkSeamOp extends LiteMeshAttrOp<{
+  vStart: IntProperty
+  vEnd: IntProperty
+}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.mark_seam',
+      uiname  : 'Mark Seam Path',
+      inputs  : {
+        vStart: new IntProperty(-1),
+        vEnd  : new IntProperty(-1),
+      },
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {vStart, vEnd} = this.getInputs()
+    if (vStart < 0 || vEnd < 0) {
+      return
+    }
+    const n = mesh.markSeamPath(vStart, vEnd, 1)
+    if (n > 0) {
+      this._drawPath(ctx, mesh, vStart, vEnd)
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {vStart, vEnd} = this.getInputs()
+    if (vStart >= 0 && vEnd >= 0) {
+      mesh.markSeamPath(vStart, vEnd, 0)
+    }
+    const v3d = (ctx as unknown as {view3d?: {resetDrawLines?: () => void}}).view3d
+    v3d?.resetDrawLines?.()
+    window.redraw_all?.()
+  }
+
+  /** Draw the marked path as orange overlay lines (view3d.makeDrawLine). */
+  _drawPath(ctx: ToolContext, mesh: LiteMesh, v0: number, v1: number) {
+    const v3d = (ctx as unknown as {
+      view3d?: {makeDrawLine(a: Vector3, b: Vector3, c: number[]): unknown}
+    }).view3d
+    if (!v3d) {
+      return
+    }
+    const c = mesh.edgePathCoords(v0, v1)
+    for (let i = 0; i + 5 < c.length; i += 3) {
+      const a = new Vector3([c[i], c[i + 1], c[i + 2]])
+      const b = new Vector3([c[i + 3], c[i + 4], c[i + 5]])
+      v3d.makeDrawLine(a, b, [1.0, 0.4, 0.0, 1.0])
+    }
+  }
+}
+ToolOp.register(MarkSeamOp)
