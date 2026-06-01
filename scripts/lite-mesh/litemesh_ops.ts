@@ -1,4 +1,4 @@
-import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3} from '../path.ux/scripts/pathux'
+import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
@@ -244,3 +244,208 @@ export class MarkSeamOp extends LiteMeshAttrOp<{
   }
 }
 ToolOp.register(MarkSeamOp)
+
+/* Minimal structural views of the View3D/SceneObject bits the modal needs, so we
+ * don't pull the whole View3D type into the lite-mesh layer. */
+interface SeamView3D {
+  getLocalMouse(x: number, y: number): {0: number; 1: number}
+  activeCamera: {rendermat: Matrix4}
+  unproject(p: Vector4, mat: Matrix4): void
+  makeDrawLine(a: Vector3, b: Vector3, color: number[]): unknown
+  resetDrawLines(): void
+}
+interface SeamCtx {
+  view3d?: SeamView3D
+  object?: {outputs: {matrix: {getValue(): Matrix4}}}
+  scene?: {objects?: {active?: {data?: unknown}}}
+}
+
+/**
+ * Wave 5: interactive chain (knife-style) seam marking. Modal tool — click
+ * vertices in sequence; each click marks the shortest-path seam from the
+ * previous vertex (live), with a hover preview of the next segment. Enter or
+ * right-click finishes (a single undo step for the whole chain); Esc cancels.
+ *
+ * Vertex picking, path-finding and flag-writing are all engine-side
+ * (`pickVert` / `markSeamPath` / `edgePathCoords`); this op is just the
+ * interaction shell + overlay. Invoke without a pointer event (keymap/button)
+ * so the modal receives pointer move/down events, not only key events.
+ */
+export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
+  /** Committed picked verts (the confirmed chain nodes). */
+  _chain: number[] = []
+  /** Cached world-space endpoint pairs for the committed segments (so a
+   * mousemove redraw doesn't recompute every path). */
+  _committed: [Vector3, Vector3][] = []
+  _hoverVert = -1
+  _hoverLines: [Vector3, Vector3][] = []
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.mark_seam_interactive',
+      uiname  : 'Mark Seam',
+      inputs  : {},
+      is_modal: true,
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  modalStart(ctx: ViewContext) {
+    this._chain = []
+    this._committed = []
+    this._hoverLines = []
+    this._hoverVert = -1
+    return super.modalStart(ctx as never)
+  }
+
+  private _mctx(): SeamCtx | undefined {
+    return this.modal_ctx as unknown as SeamCtx | undefined
+  }
+
+  /** Build the object-local ray through screen pixel (lx, ly) — same unproject
+   * the BVH picking path uses. */
+  private _localRay(view3d: SeamView3D, obmatrix: Matrix4, lx: number, ly: number) {
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+    const d = 0.9999
+    const p1 = new Vector4([lx, ly, -d, 1.0])
+    view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+    const p2 = new Vector4([lx, ly, d, 1.0])
+    view3d.unproject(p2, imat)
+    const dir = new Vector3(p2).sub(origin)
+    return {origin, dir}
+  }
+
+  /** edgePathCoords (object-local) → world-space endpoint pairs for drawing. */
+  private _segmentLines(mesh: LiteMesh, obmatrix: Matrix4, a: number, b: number): [Vector3, Vector3][] {
+    const c = mesh.edgePathCoords(a, b)
+    const pts: Vector3[] = []
+    for (let i = 0; i + 2 < c.length; i += 3) {
+      const v = new Vector3([c[i], c[i + 1], c[i + 2]])
+      v.multVecMatrix(obmatrix)
+      pts.push(v)
+    }
+    const lines: [Vector3, Vector3][] = []
+    for (let i = 0; i + 1 < pts.length; i++) {
+      lines.push([pts[i], pts[i + 1]])
+    }
+    return lines
+  }
+
+  private _pick(e: PointerEvent): number {
+    const ctx = this._mctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    if (!ctx || !ctx.view3d || !ctx.object || !mesh) {
+      return -1
+    }
+    const m = ctx.view3d.getLocalMouse(e.x, e.y)
+    const obmatrix = ctx.object.outputs.matrix.getValue()
+    const {origin, dir} = this._localRay(ctx.view3d, obmatrix, m[0], m[1])
+    return mesh.pickVert(origin, dir)
+  }
+
+  private _redraw() {
+    const ctx = this._mctx()
+    if (!ctx || !ctx.view3d) {
+      return
+    }
+    const v3d = ctx.view3d
+    v3d.resetDrawLines()
+    for (const [a, b] of this._committed) {
+      v3d.makeDrawLine(a, b, [1.0, 0.4, 0.0, 1.0])
+    }
+    for (const [a, b] of this._hoverLines) {
+      v3d.makeDrawLine(a, b, [1.0, 0.7, 0.2, 0.7])
+    }
+    window.redraw_viewport?.()
+  }
+
+  on_pointermove(e: PointerEvent): void {
+    const v = this._pick(e)
+    if (v === this._hoverVert) {
+      return
+    }
+    this._hoverVert = v
+    this._hoverLines = []
+    const ctx = this._mctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    const anchor = this._chain.length ? this._chain[this._chain.length - 1] : -1
+    if (ctx && ctx.object && mesh && anchor >= 0 && v >= 0 && v !== anchor) {
+      this._hoverLines = this._segmentLines(mesh, ctx.object.outputs.matrix.getValue(), anchor, v)
+    }
+    this._redraw()
+  }
+
+  on_pointerdown(e: PointerEvent): void {
+    if (e.button === 2) {
+      this.modalEnd(false)
+      return
+    }
+    if (e.button !== 0) {
+      return
+    }
+    const v = this._pick(e)
+    if (v < 0) {
+      return
+    }
+    const anchor = this._chain.length ? this._chain[this._chain.length - 1] : -1
+    if (v === anchor) {
+      return
+    }
+    const ctx = this._mctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    if (anchor >= 0 && ctx && ctx.object && mesh) {
+      // mark live for immediate feedback; exec() re-marks the whole chain on redo
+      mesh.markSeamPath(anchor, v, 1)
+      this._committed.push(...this._segmentLines(mesh, ctx.object.outputs.matrix.getValue(), anchor, v))
+    }
+    this._chain.push(v)
+    this._hoverLines = []
+    this._hoverVert = -1
+    this._redraw()
+  }
+
+  on_keydown(e: KeyboardEvent): void {
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      this.modalEnd(false)
+    } else if (e.code === 'Escape') {
+      this.modalEnd(true)
+    }
+  }
+
+  modalEnd(wasCancelled: boolean) {
+    if (wasCancelled) {
+      this._mctx()?.view3d?.resetDrawLines()
+    }
+    return super.modalEnd(wasCancelled)
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    for (let i = 0; i + 1 < this._chain.length; i++) {
+      mesh.markSeamPath(this._chain[i], this._chain[i + 1], 1)
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (mesh) {
+      for (let i = 0; i + 1 < this._chain.length; i++) {
+        mesh.markSeamPath(this._chain[i], this._chain[i + 1], 0)
+      }
+    }
+    ;(ctx as unknown as {view3d?: {resetDrawLines?: () => void}}).view3d?.resetDrawLines?.()
+    window.redraw_all?.()
+  }
+}
+ToolOp.register(MarkSeamInteractiveOp)

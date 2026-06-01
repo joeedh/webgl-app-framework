@@ -270,6 +270,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     //strip.listenum(path + ".tool");
     strip.prop(`scene.tools.${name}.tool`)
     strip.tool('mesh.symmetrize()')
+    strip.tool('litemesh.mark_seam_interactive()')
     strip.prop(`scene.tools.${name}.symmetryAxes`)
 
     row = addHeaderRow()
@@ -353,6 +354,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       new HotKey('F', [], 'brush.set_radius()'),
       new HotKey('.', [], 'view3d.view_selected()'),
       new HotKey('M', ['alt'], 'paint.clear_mask()'),
+      new HotKey('K', [], 'litemesh.mark_seam_interactive()'),
     ])
   }
 
