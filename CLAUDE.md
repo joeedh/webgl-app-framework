@@ -89,6 +89,28 @@ WebGL `GPUSelectBuffer` + `FindnearestClass` registry are gone). See
   rect corners + cone endpoints cross as bound `float3`s, results as
   `Vector<int>` out-params; native uses the `makeIntVector` N-API helper).
 
+## Icons
+
+UI icons come from a single hand-authored sheet, `assets/iconsheet.svg` (the
+`iconsheet*.png` files are generated and unused — ignore them). See
+[documentation/iconsheet-guide.md](documentation/iconsheet-guide.md). Key
+conventions:
+
+- The sheet is a **16-column** grid of `32 × 32` cells; icons fill it row-wise
+  (top-left → bottom-right) in the index order of the `Icons` map in
+  `scripts/editors/icon_enum.js`. An icon's cell is `row = floor(index/16)`,
+  `col = index % 16`, at SVG box `x = col*32, y = row*32, 32 × 32`.
+- **To modify** an icon, find its index in `Icons`, compute the cell, and edit
+  that box in Inkscape. **To add** one, **append** the name to `Icons` (next
+  index) and draw into the new cell — never reorder/delete entries or every
+  later icon shifts cells.
+- `node tools/iconsheet.mjs {locate|list|add|grid}` does the index↔cell
+  arithmetic and can append to `Icons` / emit a visual locator overlay.
+- Icons are wired into the **data-path binding system**: enum/bitflag
+  properties attach a per-value icon via `prop.icons({KEY: Icons.NAME})` in
+  `scripts/data_api/api_define.js`. To resolve which path/binding an icon feeds,
+  see [documentation/datapath-bindings.md](documentation/datapath-bindings.md).
+
 ## Electron test harness / CLI
 
 The Electron shell takes CLI args to boot the real app and build/save/dump
@@ -182,6 +204,10 @@ baseline is 106 pre-existing errors concentrated in
 `sculptcore/typescript/api/wasm.ts`, and `scripts/sculptcore_demo.ts`.
 
 ## Data API paths
+
+See [documentation/datapath-bindings.md](documentation/datapath-bindings.md)
+for the binding-system overview (how `api_define.js` declares props, and how
+enum/flag icons attach via `.icons(...)`).
 
 Valid `path` strings for `container.prop("...")` (and `slider`, `check`,
 `checkenum`, `listenum`, `pathlabel`, `textbox`, plus `<prop path="...">`

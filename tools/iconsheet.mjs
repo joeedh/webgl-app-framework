@@ -1,0 +1,166 @@
+#!/usr/bin/env node
+// Icon-sheet helper. Zero dependencies (pure Node ESM).
+//
+//   node tools/iconsheet.mjs locate <NAME|index>   -> grid row/col + SVG pixel box
+//   node tools/iconsheet.mjs list                   -> dump every icon with its cell
+//   node tools/iconsheet.mjs add <NAME>             -> append NAME to the Icons map
+//   node tools/iconsheet.mjs grid                   -> write assets/iconsheet-grid.svg
+//
+// The icon sheet (assets/iconsheet.svg) is a 16-column grid; cells are 32x32
+// SVG user-units and icons occupy the TOP HALF of the 512x512 canvas (8 rows).
+// Icon order is the index order of the `Icons` map in scripts/editors/icon_enum.js.
+
+import {readFileSync, writeFileSync} from 'node:fs'
+import {fileURLToPath} from 'node:url'
+import {dirname, join} from 'node:path'
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ENUM_PATH = join(ROOT, 'scripts/editors/icon_enum.js')
+const GRID_OUT = join(ROOT, 'assets/iconsheet-grid.svg')
+
+const COLS = 16 // columns in the sheet
+const CELL = 32 // SVG user-units per cell (512 / 16)
+
+function parseIcons() {
+  const src = readFileSync(ENUM_PATH, 'utf8')
+  // anchor on the `Icons = {` map (not the `import {...}` brace on line 3)
+  const start = src.indexOf('{', src.indexOf('Icons'))
+  const body = src.slice(start + 1, src.indexOf('}', start))
+  const map = []
+  for (const line of body.split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*:\s*(\d+)\s*,?/)
+    if (m) map[Number(m[2])] = m[1]
+  }
+  return map
+}
+
+function cellOf(index) {
+  const row = Math.floor(index / COLS)
+  const col = index % COLS
+  return {row, col, x: col * CELL, y: row * CELL, w: CELL, h: CELL}
+}
+
+function locate(arg) {
+  const icons = parseIcons()
+  let index
+  if (/^\d+$/.test(arg)) {
+    index = Number(arg)
+  } else {
+    index = icons.indexOf(arg.toUpperCase())
+    if (index < 0) {
+      console.error(`Unknown icon "${arg}". Run "node tools/iconsheet.mjs list".`)
+      process.exit(1)
+    }
+  }
+  const name = icons[index] ?? '(unused)'
+  const c = cellOf(index)
+  console.log(`${name}  index=${index}`)
+  console.log(`  row=${c.row} col=${c.col}`)
+  console.log(`  SVG box: x=${c.x} y=${c.y} w=${c.w} h=${c.h}  (units, top-left origin)`)
+  console.log(`  In Inkscape: place artwork inside [${c.x}..${c.x + c.w}] x [${c.y}..${c.y + c.h}].`)
+}
+
+function list() {
+  const icons = parseIcons()
+  for (let i = 0; i < icons.length; i++) {
+    const c = cellOf(i)
+    console.log(
+      `${String(i).padStart(3)}  r${c.row} c${String(c.col).padStart(2)}  ` +
+        `x=${String(c.x).padStart(3)} y=${String(c.y).padStart(3)}  ${icons[i] ?? '(gap)'}`
+    )
+  }
+}
+
+function add(name) {
+  name = name.toUpperCase()
+  if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+    console.error(`Invalid icon name "${name}" (use UPPER_SNAKE_CASE).`)
+    process.exit(1)
+  }
+  const icons = parseIcons()
+  if (icons.includes(name)) {
+    console.error(`Icon "${name}" already exists at index ${icons.indexOf(name)}.`)
+    process.exit(1)
+  }
+  const index = icons.length
+  const src = readFileSync(ENUM_PATH, 'utf8')
+
+  // find the last "NAME : N," entry and insert after it, matching its indentation/alignment
+  const re = /^([ \t]*)([A-Z0-9_]+)(\s*):(\s*)(\d+),?[^\n]*$/gm
+  let last = null
+  for (let m; (m = re.exec(src)); ) last = m
+  if (!last) {
+    console.error('Could not find any icon entries to anchor the insert.')
+    process.exit(1)
+  }
+  const indent = last[1]
+  // pad the new name to the same colon column as the anchor entry
+  const colonCol = last[2].length + last[3].length
+  const pad = ' '.repeat(Math.max(1, colonCol - name.length))
+  const newLine = `${indent}${name}${pad}: ${index},`
+  const insertAt = last.index + last[0].length
+  const updated = src.slice(0, insertAt) + '\n' + newLine + src.slice(insertAt)
+  writeFileSync(ENUM_PATH, updated)
+  const c = cellOf(index)
+  console.log(`Added ${name} = ${index}.`)
+  console.log(`  Draw it at SVG box x=${c.x} y=${c.y} w=${c.w} h=${c.h} (row ${c.row}, col ${c.col}).`)
+  console.log(`  Regenerate the locator overlay: node tools/iconsheet.mjs grid`)
+}
+
+function grid() {
+  const icons = parseIcons()
+  const rows = Math.ceil(Math.max(icons.length, COLS) / COLS)
+  const W = 512
+  const H = rows * CELL
+  let cells = ''
+  for (let i = 0; i < rows * COLS; i++) {
+    const c = cellOf(i)
+    const label = icons[i] ?? ''
+    cells +=
+      `<rect x="${c.x}" y="${c.y}" width="${CELL}" height="${CELL}" ` +
+      `fill="none" stroke="#ff00ff" stroke-width="0.5" opacity="0.6"/>` +
+      `<text x="${c.x + 1}" y="${c.y + 5}" font-size="4" fill="#ff00ff">${i}</text>` +
+      (label
+        ? `<text x="${c.x + CELL / 2}" y="${c.y + CELL - 2}" font-size="3" ` +
+          `text-anchor="middle" fill="#0066ff">${label}</text>`
+        : '')
+  }
+  const svg =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<!-- AUTOGENERATED by tools/iconsheet.mjs grid. Visual locator only; not used by the app. -->\n` +
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+    `width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n` +
+    `<image xlink:href="iconsheet.svg" x="0" y="0" width="512" height="512"/>\n` +
+    `${cells}\n</svg>\n`
+  writeFileSync(GRID_OUT, svg)
+  console.log(`Wrote ${GRID_OUT} (open in a browser to see indices/names over each cell).`)
+}
+
+const [cmd, arg] = process.argv.slice(2)
+switch (cmd) {
+  case 'locate':
+    if (!arg) usage()
+    locate(arg)
+    break
+  case 'list':
+    list()
+    break
+  case 'add':
+    if (!arg) usage()
+    add(arg)
+    break
+  case 'grid':
+    grid()
+    break
+  default:
+    usage()
+}
+
+function usage() {
+  console.log(`Usage:
+  node tools/iconsheet.mjs locate <NAME|index>   grid row/col + SVG pixel box for an icon
+  node tools/iconsheet.mjs list                  every icon with its cell
+  node tools/iconsheet.mjs add <NAME>            append NAME to the Icons map (next index)
+  node tools/iconsheet.mjs grid                  write assets/iconsheet-grid.svg locator overlay`)
+  process.exit(1)
+}
