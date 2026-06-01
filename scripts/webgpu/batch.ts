@@ -98,8 +98,11 @@ export interface WebGPUBatchExecutorOptions {
   wasm: IWasmInterface
   pipelineCache?: PipelineCache
   wgslForShader: (sdef: ShaderDef) => string
-  // Returns a `GPUBindGroup` matching `@group(0)` of the WGSL source.
-  bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup
+  // Returns a `GPUBindGroup` matching `@group(0)` of the WGSL source, or `null`
+  // to skip this draw command (the dispatch loop continues with the rest of the
+  // batch rather than aborting the whole pass — see the "never throw on the
+  // render seam" note: a throw here is swallowed as a drawObjects warning).
+  bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup | null
   colorTargets: GPUColorTargetState[]
   depthStencil?: GPUDepthStencilState
 }
@@ -112,6 +115,9 @@ export class WebGPUBatchExecutor {
   private readonly bufferCache = new Map<number, CachedGpuBuffer>()
   private readonly pipelinesByShader = new Map<string, Pipeline>()
   private readonly opts: WebGPUBatchExecutorOptions
+  // Shaders we've already logged a build/dispatch failure for, so a persistently
+  // broken command warns once instead of every frame.
+  private readonly warnedShaders = new Set<string>()
 
 
   constructor(opts: WebGPUBatchExecutorOptions) {
@@ -265,24 +271,39 @@ export class WebGPUBatchExecutor {
       const cmd = commands[i]
       if (!cmd.shader) continue
 
-      // `cmd.attrs` arrives from the WASM/Embind (or native N-API) boundary as a
-      // Vector-like, not a JS Array — `.find()` isn't on the prototype, and the
-      // native member wrapper isn't even array-like. Normalize once per command
-      // (vecMember handles the native case) so the lookups below work.
-      const cmdAttrs = Array.from(this.vecMember<Buffer>(cmd.attrs))
+      // Skip a single bad draw command rather than letting a throw abort the
+      // whole pass: on the native backend a render-path throw is swallowed as a
+      // drawObjects warning, blanking every object in the frame. Build/upload
+      // failures (e.g. an unported WGSL shader, a not-yet-filled buffer) are
+      // logged once per shader and skipped.
+      try {
+        // `cmd.attrs` arrives from the WASM/Embind (or native N-API) boundary as
+        // a Vector-like, not a JS Array — `.find()` isn't on the prototype, and
+        // the native member wrapper isn't even array-like. Normalize once per
+        // command (vecMember handles the native case) so the lookups below work.
+        const cmdAttrs = Array.from(this.vecMember<Buffer>(cmd.attrs))
 
-      const pipeline = this.getPipeline(cmd.shader, cmd, cmdAttrs)
-      const sdefAttrs = Array.from(this.vecMember<{name: string}>(cmd.shader.attrs))
-      const count = cmd.end - cmd.start
+        const pipeline = this.getPipeline(cmd.shader, cmd, cmdAttrs)
+        const bindGroup = this.opts.bindGroupForCommand(cmd, pipeline)
+        if (!bindGroup) continue // callback declined this command; skip, don't abort
+        const sdefAttrs = Array.from(this.vecMember<{name: string}>(cmd.shader.attrs))
+        const count = cmd.end - cmd.start
 
-      pass.setPipeline(pipeline.handle)
-      pass.setBindGroup(0, this.opts.bindGroupForCommand(cmd, pipeline))
-      for (let slot = 0; slot < sdefAttrs.length; slot++) {
-        const found = cmdAttrs.find((a) => a.name === sdefAttrs[slot].name)
-        if (!found) continue
-        pass.setVertexBuffer(slot, this.uploadBuffer(found).handle)
+        pass.setPipeline(pipeline.handle)
+        pass.setBindGroup(0, bindGroup)
+        for (let slot = 0; slot < sdefAttrs.length; slot++) {
+          const found = cmdAttrs.find((a) => a.name === sdefAttrs[slot].name)
+          if (!found) continue
+          pass.setVertexBuffer(slot, this.uploadBuffer(found).handle)
+        }
+        pass.draw(count, 1, cmd.start, 0)
+      } catch (e) {
+        const key = (cmd.shader as {name?: string}).name ?? String(i)
+        if (!this.warnedShaders.has(key)) {
+          this.warnedShaders.add(key)
+          console.error(`WebGPUBatchExecutor: skipping draw command for shader "${key}" after error`, e)
+        }
       }
-      pass.draw(count, 1, cmd.start, 0)
     }
   }
 

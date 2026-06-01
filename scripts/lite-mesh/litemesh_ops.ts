@@ -71,6 +71,12 @@ class LiteMeshAttrOp<
  * AttrType / AttrUseFlags). Undo removes the freshly-created layer by name (it
  * has no data worth preserving — any paint into it is a later, separately-undone
  * op). `_name` is captured at exec for the by-name remove on undo / redo.
+ *
+ * Note: unlike RemoveAttrOp / GenerateUVOp (which detach/reattach the *same*
+ * layer via the C++ stash), redo here re-runs exec and mints a *fresh* layer —
+ * `_name` is re-captured each time. That's fine because a just-added layer has
+ * no data to preserve, but it does mean a redo can pick a different unique name
+ * (`.NNN`) than the original add if the namespace changed in between.
  */
 export class AddAttrOp extends LiteMeshAttrOp<{
   domain: IntProperty
@@ -172,15 +178,19 @@ ToolOp.register(RemoveAttrOp)
  * Wave 5: mark the shortest edge-path between two vertices as a seam
  * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`
  * runs Dijkstra + flags the path edges + recomputes derived boundary state, and
- * `edgePathCoords` gives the path for a viewport overlay. Undo re-runs the same
- * path with state=0 to clear it. (The interactive click-to-pick modal layer —
- * resolving clicks to vertices + live preview — is the remaining UX increment;
- * this op is the verified engine entry, invocable with explicit endpoints.)
+ * `edgePathCoords` gives the path for a viewport overlay. Undo restores each
+ * path edge's *prior* seam bit (snapshotted at exec), so it doesn't clear seams
+ * that pre-existed on edges this path happens to overlap.
  */
 export class MarkSeamOp extends LiteMeshAttrOp<{
   vStart: IntProperty
   vEnd: IntProperty
 }> {
+  /** Path edges + their seam bit before this op, captured at exec for a
+   * true-inverse undo (parallel arrays). */
+  _priorEdges: number[] = []
+  _priorStates: number[] = []
+
   static tooldef() {
     return {
       toolpath: 'litemesh.mark_seam',
@@ -206,6 +216,10 @@ export class MarkSeamOp extends LiteMeshAttrOp<{
     if (vStart < 0 || vEnd < 0) {
       return
     }
+    // Snapshot the path edges' prior seam state before marking (so undo/redo are
+    // exact inverses; the path is deterministic so re-capture on redo matches).
+    this._priorEdges = mesh.edgePathEdges(vStart, vEnd)
+    this._priorStates = this._priorEdges.map((e) => mesh.edgeSeam(e))
     const n = mesh.markSeamPath(vStart, vEnd, 1)
     if (n > 0) {
       this._drawPath(ctx, mesh, vStart, vEnd)
@@ -218,10 +232,7 @@ export class MarkSeamOp extends LiteMeshAttrOp<{
     if (!mesh) {
       return
     }
-    const {vStart, vEnd} = this.getInputs()
-    if (vStart >= 0 && vEnd >= 0) {
-      mesh.markSeamPath(vStart, vEnd, 0)
-    }
+    mesh.restoreSeamEdges(this._priorEdges, this._priorStates)
     const v3d = (ctx as unknown as {view3d?: {resetDrawLines?: () => void}}).view3d
     v3d?.resetDrawLines?.()
     window.redraw_all?.()
@@ -279,6 +290,10 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   _committed: [Vector3, Vector3][] = []
   _hoverVert = -1
   _hoverLines: [Vector3, Vector3][] = []
+  /** Prior seam bit of every edge the chain touched, recorded the first time
+   * each edge is seen (before it's live-marked), so undo restores the exact
+   * pre-chain state instead of clearing pre-existing overlapping seams. */
+  _priorByEdge: Map<number, number> = new Map()
 
   static tooldef() {
     return {
@@ -299,6 +314,7 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     this._committed = []
     this._hoverLines = []
     this._hoverVert = -1
+    this._priorByEdge = new Map()
     return super.modalStart(ctx as never)
   }
 
@@ -401,6 +417,11 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
     if (anchor >= 0 && ctx && ctx.object && mesh) {
+      // Snapshot each path edge's prior seam bit (first sighting only) before
+      // marking live, so undo can restore the exact pre-chain state.
+      for (const e of mesh.edgePathEdges(anchor, v)) {
+        if (!this._priorByEdge.has(e)) this._priorByEdge.set(e, mesh.edgeSeam(e))
+      }
       // mark live for immediate feedback; exec() re-marks the whole chain on redo
       mesh.markSeamPath(anchor, v, 1)
       this._committed.push(...this._segmentLines(mesh, ctx.object.outputs.matrix.getValue(), anchor, v))
@@ -420,9 +441,11 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   }
 
   modalEnd(wasCancelled: boolean) {
-    if (wasCancelled) {
-      this._mctx()?.view3d?.resetDrawLines()
-    }
+    // Clear the transient preview lines on *both* paths: on finish the
+    // persistent seamBatch (rebuilt by exec's markSeamPath) carries the committed
+    // seams, so the temp _committed/_hover lines would otherwise double-draw on
+    // top until the next resetDrawLines.
+    this._mctx()?.view3d?.resetDrawLines()
     return super.modalEnd(wasCancelled)
   }
 
@@ -440,9 +463,12 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   undo(ctx: ToolContext) {
     const mesh = this._getMesh(ctx)
     if (mesh) {
-      for (let i = 0; i + 1 < this._chain.length; i++) {
-        mesh.markSeamPath(this._chain[i], this._chain[i + 1], 0)
-      }
+      // Restore the snapshotted pre-chain seam bits (true inverse) rather than
+      // blanket-clearing the chain, which would unset pre-existing seams the
+      // chain overlapped.
+      const edges = [...this._priorByEdge.keys()]
+      const states = edges.map((e) => this._priorByEdge.get(e) ?? 0)
+      mesh.restoreSeamEdges(edges, states)
     }
     ;(ctx as unknown as {view3d?: {resetDrawLines?: () => void}}).view3d?.resetDrawLines?.()
     window.redraw_all?.()
@@ -488,9 +514,8 @@ export class GenerateUVOp extends LiteMeshAttrOp<{
       mesh.reattachAttrLayer(this._stashId)
       this._stashId = -1
     } else {
-      const {charts, name} = mesh.generateUVFromSeams(this.getInputs().margin)
+      const {name} = mesh.generateUVFromSeams(this.getInputs().margin)
       this._name = name
-      console.log(`generate_uv: ${charts} chart(s) -> ${name || '(no layer created)'}`)
     }
     window.redraw_all?.()
   }

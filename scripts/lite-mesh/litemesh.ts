@@ -1,4 +1,5 @@
 import {Container, Matrix4, nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
+import type {ListBoxChangeEvent} from '../path.ux/pathux'
 import type {ScreenPickResult} from '../editors/view3d/findnearest'
 import type {ViewContext} from '../core/context'
 import {AttrSet} from './litemesh_attrSet'
@@ -15,9 +16,9 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
-import {DrawBatch, SpatialNode, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
-import {IUniformsBlock, ShaderProgram, WebGLBatchExecutor} from '../webgl/index'
+import {IUniformsBlock, WebGLBatchExecutor} from '../webgl/index'
 import type {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject/index'
 import {Shaders} from '../shaders/shaders'
@@ -77,6 +78,14 @@ export function validCategories(type: number, domain: number): number[] {
   if (type === AttrType.Float2) out.push(AttrUseFlags.UV) // vertex now, corner later
   if (domain === AttrDomain.FACE && type === AttrType.Int) out.push(AttrUseFlags.POLYGROUP)
   return out
+}
+
+/** A LiteMesh area-pick hit (`ScreenPickResult.elements` entry): a mesh element
+ * index tagged with the domain it indexes, so consumers can tell faces from
+ * verts. */
+export interface LiteMeshPickElem {
+  type: 'vert' | 'face'
+  index: number
 }
 
 export class LiteMeshAttrItem {
@@ -278,15 +287,20 @@ export class LiteMesh extends SceneObjectData {
     listbox.setAttribute('datapath', 'object.data.attrs')
     // Clicking a categorized row makes that attr the active layer for its
     // category (color/poly-group/UV) — the sculptcore bridge then points the
-    // matching brush at it. The ListBox dispatches `change` with
-    // detail = {id, item}; `item` is the LiteMeshAttrItem row.
+    // matching brush at it. The ListBox fires a `ListBoxChangeEvent` whose
+    // `selection.id` is the data-list key (here `attrItems.indexOf(row)`, see
+    // the `attrs` list in api_define.js) and whose `selection.item` is the
+    // ListItem *widget*, not our row — so resolve the id against attrItems.
     listbox.addEventListener('change', (e: Event) => {
-      const item = (e as CustomEvent).detail?.item as LiteMeshAttrItem | undefined
+      const id = (e as ListBoxChangeEvent).selection?.id
       const mesh = container.ctx?.object?.data
-      if (item && mesh instanceof LiteMesh) {
-        mesh.setSelectedAttrFromItem(item)
-        mesh.setActiveAttrFromItem(item)
-        window.redraw_all?.()
+      if (typeof id === 'number' && mesh instanceof LiteMesh) {
+        const item = mesh.attrItems[id]
+        if (item) {
+          mesh.setSelectedAttrFromItem(item)
+          mesh.setActiveAttrFromItem(item)
+          window.redraw_all?.()
+        }
       }
     })
     attrs.add(listbox as unknown as Container<ViewContext>)
@@ -484,6 +498,37 @@ export class LiteMesh extends SceneObjectData {
     return out
   }
 
+  /** Edge indices along the shortest vStart→vEnd path (the edges markSeamPath
+   * would flag), so a ToolOp can snapshot their prior seam state for undo. */
+  edgePathEdges(vStart: number, vEnd: number): number[] {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {edgePathEdges(a: number, b: number, o: never): void}).edgePathEdges(
+      vStart, vEnd, out.vec as never
+    )
+    const arr = out.read()
+    const res: number[] = []
+    for (let i = 0; i < arr.length; i++) res.push(arr[i])
+    return res
+  }
+
+  /** Read a single edge's EDGE_SEAM bit (0/1). */
+  edgeSeam(e: number): number {
+    return (this.mesh as unknown as {edgeSeam(e: number): number}).edgeSeam(e)
+  }
+
+  /** Restore a batch of edge seam bits (parallel arrays) then recompute derived
+   * boundary state once — the true inverse used by seam-marking undo, instead of
+   * blanket-clearing the path (which would unset pre-existing overlapping seams). */
+  restoreSeamEdges(edges: number[], states: number[]): void {
+    const m = this.mesh as unknown as {
+      setEdgeSeam(e: number, s: number): void
+      recomputeBoundary(): void
+    }
+    for (let i = 0; i < edges.length; i++) m.setEdgeSeam(edges[i], states[i])
+    m.recomputeBoundary()
+    this._seamsDirty = true
+  }
+
   /* ----- Wave 7: UV generation from seams ----- */
 
   /** Corner-domain layer names (to diff what generateUVFromSeams just created). */
@@ -533,7 +578,7 @@ export class LiteMesh extends SceneObjectData {
   }
 
   castScreenCircle(
-    ctx: ViewContext,
+    _ctx: ViewContext,
     view3d: View3D,
     object: SceneObject,
     selmask: number,
@@ -595,11 +640,11 @@ export class LiteMesh extends SceneObjectData {
       verts.vec as never
     )
 
-    return this._buildPickResult(object, faces.read(), verts.read())
+    return this._buildPickResult(object, faces.read(), verts.read(), selmask)
   }
 
   castScreenRect(
-    ctx: ViewContext,
+    _ctx: ViewContext,
     view3d: View3D,
     object: SceneObject,
     selmask: number,
@@ -651,28 +696,43 @@ export class LiteMesh extends SceneObjectData {
       verts.vec as never
     )
 
-    return this._buildPickResult(object, faces.read(), verts.read())
+    return this._buildPickResult(object, faces.read(), verts.read(), selmask)
   }
 
-  /** Pack face + vert index arrays into a ScreenPickResult (elements = indices). */
+  /**
+   * Pack face + vert index arrays into a ScreenPickResult. `selmask` selects
+   * which domain(s) are returned (VERTEX and/or FACE; defaulting to vertices
+   * when neither bit is set, since brush/box select is vertex-centric). Each
+   * element is a `LiteMeshPickElem` tagging its domain, so a consumer narrowing
+   * the `unknown[]` can tell a face index from a vert index (the C++ query
+   * always fills both vectors; the mask just filters what we surface).
+   */
   private _buildPickResult(
     object: SceneObject,
     faces: ArrayLike<number>,
-    verts: ArrayLike<number>
+    verts: ArrayLike<number>,
+    selmask: number
   ): ScreenPickResult {
-    const elements: number[] = []
+    const elements: LiteMeshPickElem[] = []
     const elementObjects: SceneObject[] = []
     const elementDists: number[] = []
 
-    for (let i = 0; i < faces.length; i++) {
-      elements.push(faces[i])
-      elementObjects.push(object)
-      elementDists.push(0)
+    const wantFaces = !!(selmask & SelMask.FACE)
+    const wantVerts = !!(selmask & SelMask.VERTEX) || !wantFaces
+
+    if (wantFaces) {
+      for (let i = 0; i < faces.length; i++) {
+        elements.push({type: 'face', index: faces[i]})
+        elementObjects.push(object)
+        elementDists.push(0)
+      }
     }
-    for (let i = 0; i < verts.length; i++) {
-      elements.push(verts[i])
-      elementObjects.push(object)
-      elementDists.push(0)
+    if (wantVerts) {
+      for (let i = 0; i < verts.length; i++) {
+        elements.push({type: 'vert', index: verts[i]})
+        elementObjects.push(object)
+        elementDists.push(0)
+      }
     }
 
     return {elements, elementObjects, elementDists}
@@ -686,16 +746,16 @@ export class LiteMesh extends SceneObjectData {
     return this
   }
 
-  /** Surface color source; see LiteMeshDisplayMode. Setting it flags every
-   * GPU node (via the C++ setColorDisplayMode) and drops the cached draw
-   * batch so the next draw re-fills the color stream from the new source. */
+  /** Surface color source; see LiteMeshDisplayMode. Setting it flags every GPU
+   * node (via the C++ setColorDisplayMode) so the next update re-fills the color
+   * stream from the new source. The draw batch isn't cached on the TS side
+   * (getDrawBatch is re-fetched each frame), so nothing to drop here. */
   get displayColorMode(): number {
     return this._displayColorMode
   }
   set displayColorMode(mode: number) {
     this._displayColorMode = mode
     this.spatial?.setColorDisplayMode(mode)
-    this.regenTreeBatch()
   }
 
   /** ObData attribute list: when false (default) builtin attributes (geometry
@@ -1008,7 +1068,7 @@ export class LiteMesh extends SceneObjectData {
     super.destroy()
   }
 
-  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, object: SceneObject) {
+  drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, _object: SceneObject) {
     const drawBVH = (view3d.ctx?.scene?.toolmode as SculptCorePaintMode)?.drawBVH
     if (this.spatial.update(this.wasm.gpu)) {
       if (this.treeBatch) {
@@ -1120,7 +1180,11 @@ export class LiteMesh extends SceneObjectData {
           bindings.write(self.gpuUniforms!)
           const bg = bindings.getBindGroup(pipeline.handle, 0)
           if (!bg) {
-            throw new Error('litemesh: spatial pipeline declares no @group(0) uniform bindings')
+            // Skip rather than throw: a throw on the render seam is swallowed as
+            // a drawObjects warning on the native backend and silently aborts
+            // the whole pass.
+            console.error('litemesh: spatial pipeline declares no @group(0) uniform bindings')
+            return null
           }
           return bg
         },

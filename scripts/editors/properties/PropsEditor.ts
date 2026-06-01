@@ -1093,8 +1093,6 @@ PropsEditor {
       const type = this.ctx?.object?.data?.lib_type ?? undefined
 
       if (type !== obDataType) {
-        console.log('rebuild obdata tab', type)
-
         if (obDataType !== undefined) {
           obDataUIDatas.set(obDataType, saveUIData(obDataTab, 'obDataTab'))
         }
