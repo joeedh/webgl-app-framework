@@ -6,6 +6,7 @@ import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from '../../core/gr
 import {IntProperty, Vec2Property, StringProperty, ToolOp, DataPathError} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import {ModalFlags} from '../../core/modalflags.js'
+import { NodeEditor } from './NodeEditor.js';
 
 export class SavedGraph {
   constructor(graph) {
@@ -80,9 +81,10 @@ export class NodeGraphOp extends ToolOp {
 
   updateAllEditors(ctx) {
     for (let sarea of ctx.screen.sareas) {
-      if (sarea.area.constructor.define().areaname === 'NodeEditor') {
+      if (sarea.area instanceof NodeEditor) {
         sarea.area.flushUpdate()
         sarea.area._recalcLines()
+        sarea.area._recalcUI()
       }
     }
   }
@@ -183,14 +185,12 @@ export class NodeTranslateOp extends NodeGraphOp {
 
   modalStart(ctx) {
     super.modalStart(ctx)
-
     ctx.setModalFlag(ModalFlags.TRANSFORMING)
   }
 
   modalEnd(cancelled) {
     let ctx = this.modal_ctx
     super.modalEnd(cancelled)
-
     ctx.clearModalFlag(ModalFlags.TRANSFORMING)
 
     this.first = true
@@ -203,7 +203,7 @@ export class NodeTranslateOp extends NodeGraphOp {
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx
 
     let mpos = this.mpos
@@ -260,7 +260,7 @@ export class NodeTranslateOp extends NodeGraphOp {
     this._apply(ctx, this.inputs.offset.getValue())
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     this.modalEnd(e.button !== 0)
   }
 }
@@ -390,7 +390,7 @@ export class ConnectNodeOp extends NodeGraphOp {
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx
 
     let graph = this.fetchGraph(ctx)
@@ -400,8 +400,8 @@ export class ConnectNodeOp extends NodeGraphOp {
     mpos[0] = e.x
     mpos[1] = e.y
 
-    let node1 = graph.node_idmap[this.inputs.node1_id.getValue()]
-    let sock1 = graph.sock_idmap[this.inputs.sock1_id.getValue()]
+    let node1 = graph.node_idmap.get(this.inputs.node1_id.getValue())
+    let sock1 = graph.sock_idmap.get(this.inputs.sock1_id.getValue())
 
     let uisock1 = ned.getUISocket(sock1)
 
@@ -467,7 +467,7 @@ export class ConnectNodeOp extends NodeGraphOp {
     }
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     this.modalEnd(e.button != 0)
   }
 
@@ -475,7 +475,7 @@ export class ConnectNodeOp extends NodeGraphOp {
     super.execPre(ctx)
 
     let graph = this.fetchGraph(ctx)
-    let remsock = graph.sock_idmap[this.inputs.disconnectSockID.getValue()]
+    let remsock = graph.sock_idmap.get(this.inputs.disconnectSockID.getValue())
 
     if (remsock !== undefined) {
       remsock.disconnect()
@@ -486,10 +486,10 @@ export class ConnectNodeOp extends NodeGraphOp {
   exec(ctx) {
     let graph = this.fetchGraph(ctx)
 
-    let node1 = graph.node_idmap[this.inputs.node1_id.getValue()]
-    let sock1 = graph.sock_idmap[this.inputs.sock1_id.getValue()]
-    let node2 = graph.node_idmap[this.inputs.node2_id.getValue()]
-    let sock2 = graph.sock_idmap[this.inputs.sock2_id.getValue()]
+    let node1 = graph.node_idmap.get(this.inputs.node1_id.getValue())
+    let sock1 = graph.sock_idmap.get(this.inputs.sock1_id.getValue())
+    let node2 = graph.node_idmap.get(this.inputs.node2_id.getValue())
+    let sock2 = graph.sock_idmap.get(this.inputs.sock2_id.getValue())
 
     if (!node1 || !sock1 || !node2 || !sock2) {
       console.log(this)

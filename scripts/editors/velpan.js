@@ -179,12 +179,11 @@ export class VelPanPanOp extends ToolOp {
 
       inputs: {
         velpanPath: new StringProperty(),
-        pan       : new Vec2Property(),
       },
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx
     let path = this.inputs.velpanPath.getValue()
     let velpan = ctx.api.getValue(ctx, path)
@@ -216,52 +215,29 @@ export class VelPanPanOp extends ToolOp {
     dx /= velpan.scale[0]
     dy /= velpan.scale[1]
 
-    let pan = this.inputs.pan.getValue()
-    pan[0] += dx
-    pan[1] += dy
+    const dt = util.time_ms() - this.last_time
+    const vel = new Vector2().loadXY(dx, dy)
 
-    velpan.pos.load(this.start_pan)
+    velpan.pos.add(vel)
+    velpan.oldpos.load(velpan.pos)
 
-    this.exec(this.modal_ctx)
+    vel.mulScalar(dt !== 0.0 ? 1.0 / dt : 0.0)
+    velpan.vel.load(vel)
+
+    this.last_time = util.time_ms()
+
+    velpan.update(undefined, false)
 
     this.last_mpos.load(mpos)
   }
 
-  exec(ctx) {
-    let path = this.inputs.velpanPath.getValue()
-
-    let velpan = ctx.api.getValue(ctx, path)
-    if (velpan === undefined) {
-      throw new Error('bad velpan path ' + path + '.')
-    }
-
-    velpan.pos.add(this.inputs.pan.getValue())
-    velpan.update(undefined, false)
-
-    //velpan.vel.load()
-    let vel = new Vector2(velpan.pos).sub(velpan.oldpos)
-    vel.mulScalar(1.0 / (util.time_ms() - this.last_time))
-
-    let l = vel.vectorLength()
-    l = Math.min(l, 3.0)
-
-    vel.normalize().mulScalar(l)
-
-    //velpan.vel.interp(vel, 0.25);
-    velpan.vel.load(vel)
-    //console.log(vel);
-    velpan.oldpos.load(velpan.pos)
-
-    //velpan.scale.mul(this.inputs.scale.getValue());
-    this.last_time = util.time_ms()
-
-    if (velpan.onchange) {
-      velpan.onchange()
-    }
-  }
-
-  on_mouseup(e) {
+  on_pointerup(e) {
+    let ctx = this.modal_ctx
     this.modalEnd()
+
+    let path = this.inputs.velpanPath.getValue()
+    let velpan = ctx.api.getValue(ctx, path)
+    velpan.startVelocity()
   }
 }
 

@@ -70,7 +70,7 @@ export class NodeSelectOpBase extends NodeGraphOp {
 
     for (let k in sel) {
       let state = sel[k]
-      let node = graph.node_idmap[k]
+      let node = graph.node_idmap.get(k)
 
       if (node === undefined) {
         console.warn('Warning: missing node ' + k + ' in graph ' + this.inputs.graphPath.getValue())
@@ -91,7 +91,7 @@ export class NodeSelectOpBase extends NodeGraphOp {
     }
 
     for (let k in order) {
-      let node = graph.node_idmap[k]
+      let node = graph.node_idmap.get(k)
       let i = order[k]
 
       if (node === undefined) {
@@ -155,7 +155,7 @@ export class NodeSelectOneOp extends NodeSelectOpBase {
 
     console.log('mode', mode)
 
-    let node = graph.node_idmap[this.inputs.nodeId.getValue()]
+    let node = graph.node_idmap.get(this.inputs.nodeId.getValue())
 
     if (mode == SelOneToolModes.UNIQUE) {
       for (let node2 of graph.nodes) {

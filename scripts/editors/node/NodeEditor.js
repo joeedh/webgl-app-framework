@@ -19,11 +19,9 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import * as util from '../../util/util.js'
 import {DataRef} from '../../core/lib_api.js'
 import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js'
-import {AddNodeOp, ConnectNodeOp} from './node_ops.js'
 
 let projcos = util.cachering.fromConstructor(Vector2, 64)
 import {VelPanPanOp} from '../velpan.js'
-import {NodeSelectOneOp, NodeSelectOpBase} from './node_selectops.js'
 import {SelOneToolModes} from '../view3d/selectmode.js'
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
@@ -56,13 +54,13 @@ export class NodeSocketElem extends RowFrame {
     this.needDraw = true
 
     //XXX hackish event stuff
-    this.addEventListener('mousedown', (e) => {
+    this.addEventListener('pointerdown', (e) => {
       if (!haveModal()) {
         this.click(e)
       }
     })
 
-    this.addEventListener('mousemove', (e) => {
+    this.addEventListener('pointermove', (e) => {
       this.ned.push_ctx_active()
       this.ned.on_mousemove(e)
       this.ned.pop_ctx_active()
@@ -358,9 +356,7 @@ export class NodeSocketElem extends RowFrame {
     this.canvas.style['width'] = this.size + 'px'
     this.canvas.style['height'] = this.size + 'px'
 
-    //this.style["width"] = (this.size) + "px";
     this.style['height'] = this.size + 'px'
-    //XXX this.style['z-index'] = this.uinode.zindex + 1
     this._redraw()
     this.background = 'rgba(0,0,0,0)'
   }
@@ -375,8 +371,6 @@ export class NodeUI extends Container {
     this.pos = new Vector2()
     this.size = new Vector2()
     this.rawpos = new Vector2()
-
-    //XXX this.zindex = 100
 
     this.inputs = []
     this.outputs = []
@@ -682,6 +676,8 @@ NodeEditor {
   `
   )
 
+  #velPanDecay = 0.0
+
   constructor() {
     super()
 
@@ -693,8 +689,9 @@ NodeEditor {
 
     this._last_dpi = undefined
     this._last_update_gen = undefined
-
+    
     this.velpan = new VelPan()
+    this.velpan.decay = this.#velPanDecay
     this.velpan.scale[0] = this.velpan.scale[1] = 0.8
     this.velpan.onchange = this._on_velpan_change.bind(this)
 
@@ -878,9 +875,9 @@ NodeEditor {
 
   init() {
     super.init()
-    this.addEventListener('mousewheel', (e) => {
-      let y = e.deltaY
 
+    this.nodeContainer.addEventListener('mousewheel', (e) => {
+      let y = e.deltaY
       let fac = y / 500.0
 
       if (fac < 0.0) {
@@ -895,6 +892,7 @@ NodeEditor {
       }
 
       this.velpan.scale.mulScalar(fac)
+      this.velpan.update()
       this.flushUpdate()
     })
 
@@ -902,7 +900,7 @@ NodeEditor {
       throw new Error('no header')
     }
     this.shadow.prepend(this.nodeContainer)
-    this.nodeContainer.style.zIndex = -1
+    //this.nodeContainer.style.zIndex = '-1'
     this.nodeContainer.parentWidget = this
 
     //create svg overdraw element
@@ -931,8 +929,8 @@ NodeEditor {
 
     this.on_mousedown = makehandler(this.on_mousedown.bind(this))
 
-    this.addEventListener('mousemove', mmove)
-    this.addEventListener('mousedown', this.on_mousedown)
+    this.nodeContainer.addEventListener('pointermove', mmove)
+    this.nodeContainer.addEventListener('pointerdown', this.on_mousedown)
 
     this.setCSS()
 
@@ -1039,7 +1037,7 @@ NodeEditor {
     }
 
     //let graph = this.get
-    if (elem === this || elem === this.container || elem === this.nodeContainer || elem === this.container.dom) {
+    if (elem === this.nodeContainer) {
       //console.log("node editor mouse down", elem);
 
       let tool = new VelPanPanOp()
@@ -1282,8 +1280,6 @@ NodeEditor {
     this.checkCompile()
     this.updateZoom()
     this.updateDPI()
-
-    this.velpan.update()
 
     if (this.ctx === undefined) return
 
@@ -1542,6 +1538,7 @@ NodeEditor {
   }
 
   _recalcUI() {
+    console.log(this.velpan.pos, this.velpan.scale)
     let totsock = 0
     this.recalc &= ~NedRecalcFlags.UI
 
@@ -1574,6 +1571,7 @@ NodeEditor {
     reader(this)
 
     this.velpan.onchange = this._on_velpan_change.bind(this)
+    this.velpan.decay = this.#velPanDecay
   }
 }
 Editor.register(NodeEditor)
