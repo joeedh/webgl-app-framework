@@ -31,19 +31,21 @@ import {LiteMesh} from './litemesh'
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
  *
  * Scene args:
- *   subdiv=<n>   cube subdivision count (default = LiteMesh's built-in 120)
+ *   subdiv=<n>   cube subdivision count (default 120)
+ *   size=<f>     cube half-extent / size passed to Mesh_createCube (default 4 —
+ *                large enough that the mesh fills the viewport under the default
+ *                camera; the built-in LiteMesh() cube is size 1, which renders
+ *                tiny in the test harness)
+ *   sphere=<f>   cube->sphere morph factor 0..1 (default 1 = fully spherified)
  *   light=0      omit the light
  */
 function buildLiteMeshCube(_ctx: ToolContext, lib: Library, scene: Scene, args: TestSceneArgs): void {
-  const subdiv = args.subdiv ? parseInt(args.subdiv, 10) : undefined
+  const subdiv = args.subdiv && Number.isFinite(parseInt(args.subdiv, 10)) ? parseInt(args.subdiv, 10) : 120
+  const size = args.size && Number.isFinite(parseFloat(args.size)) ? parseFloat(args.size) : 6.0
+  const sphere = args.sphere !== undefined && Number.isFinite(parseFloat(args.sphere)) ? parseFloat(args.sphere) : 1.0
 
-  let lm: LiteMesh
-  if (subdiv && Number.isFinite(subdiv)) {
-    const wasm = getWasmImmediate()!
-    lm = new LiteMesh(wasm.Mesh_createCube(subdiv, 1.0, 1.0))
-  } else {
-    lm = new LiteMesh()
-  }
+  const wasm = getWasmImmediate()!
+  const lm = new LiteMesh(wasm.Mesh_createCube(subdiv, size, sphere))
   lib.add(lm)
 
   const sob = new SceneObject()
