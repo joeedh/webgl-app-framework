@@ -235,3 +235,59 @@ walker can't enumerate them — those are expected and harmless.
 `TODO.md` (repo root) tracks non-addon consumers of addon files and
 cross-addon `scripts/...` path imports that survive the addon-API
 migration. Add to it when you discover another one.
+
+## Secondary-agent worktree
+
+A persistent git worktree for secondary/parallel agentic work lives at
+`C:/dev/webgl-app-framework-agent` (a sibling of this repo; it is not nested
+inside it). Use it to run a second agent without disturbing the primary
+checkout. Conventions:
+
+- **Idle state = detached at `master`.** `master` is checked out in the main
+  worktree, and git forbids the same branch in two worktrees, so the agent
+  worktree cannot hold a normal `master` checkout. When not in use it sits in
+  **detached HEAD at `master`'s commit**; its submodules sit at their pinned
+  (recorded) commits. Leave it this way when you finish.
+- **When starting work, switch to a new branch** in the worktree:
+  `git -C C:/dev/webgl-app-framework-agent switch -c <branch>`.
+- **Only commit submodules you actually modified onto a new branch** — leave
+  untouched submodules detached at their pinned commits. Inside a modified
+  submodule: `git switch -c <branch>` before committing there, then bump the
+  gitlink in the superproject branch.
+- **When done, return to idle:** commit/stash or discard your work, then
+  `git -C C:/dev/webgl-app-framework-agent checkout --detach master` and
+  re-sync submodules (below). (`checkout master` will fail — it's held by the
+  main worktree; always use `--detach master`.)
+
+### Syncing the worktree + submodules
+
+Linked worktrees do **not** auto-populate submodules, and this repo pins
+several submodules to **local-only commits that were never pushed** (currently
+`sculptcore` and `sculptcore/source/litestl`; historically others). Plain
+`git submodule update --init --recursive` therefore fails with
+`upload-pack: not our ref <sha>` on those. Recover by fetching the missing
+commit from the **main worktree's** copy of that submodule, then re-running the
+recursive update:
+
+```sh
+cd C:/dev/webgl-app-framework-agent
+
+# 1. Sync the superproject to master, then submodules to their pinned commits.
+git checkout --detach master
+git submodule update --init --recursive
+
+# 2. If step 1 aborts with "not our ref <sha>" for a submodule <path>,
+#    fetch that exact commit from the main worktree's matching submodule,
+#    check it out, then resume the recursive update. Repeat per failing path:
+cd <path>                                                  # e.g. sculptcore
+git fetch C:/dev/webgl-app-framework/<path> <sha>
+git checkout <sha>
+cd C:/dev/webgl-app-framework-agent
+git submodule update --init --recursive                    # continue / finish
+```
+
+A clean result has every line of `git submodule status --recursive` prefixed
+with a space (no `+`/`-`), matching the main worktree's pinned commits. To
+instead advance a submodule to the tip of its own `master` (e.g. before new
+work in it), `cd` into it and `git switch master && git pull`, then bump the
+gitlink in the superproject branch.

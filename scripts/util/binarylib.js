@@ -114,7 +114,7 @@ export class BinaryReader {
     if (buffer instanceof DataView) {
       this.view = buffer
     } else {
-      this.view = new DataView(buffer)
+      this.view = new DataView(buffer.buffer instanceof ArrayBuffer ? buffer.buffer : buffer)
     }
     this.endian = endian
     this.i = 0

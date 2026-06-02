@@ -7,6 +7,7 @@ import * as util from '../../util/util.js'
 import {MakeMaterialOp} from '../../core/material.js'
 import {Icons} from '../icon_enum.js'
 import {nstructjs} from '../../path.ux/scripts/pathux.js'
+import {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
 
 export class MaterialEditor extends NodeEditor {
   constructor() {
@@ -75,12 +76,22 @@ export class MaterialEditor extends NodeEditor {
     }
   }
 
+  onSidebarBuild(sidebar) {
+    super.onSidebarBuild(sidebar)
+
+    const materialTab = sidebar.tabpanel.tab('Materials')
+
+    // is a MeshMaterialPanel
+    const panel = UIBase.createElement('material-panel-x')
+    panel.setAttribute('datapath', 'mesh')
+    materialTab.add(panel)
+  }
+
   buildHeader() {
     if (!this.ctx) {
       if (!this.isDead()) {
         this.doOnce(this.buildHeader)
       }
-
       return
     }
 
@@ -126,9 +137,6 @@ export class MaterialEditor extends NodeEditor {
         this.rebuild()
       })
     }
-
-    let listbox = row2.listbox()
-    listbox.overrideDefault('height', 75 * UIBase.getDPI())
   }
 
   headerNonMesh(dblock, row1, row2) {}

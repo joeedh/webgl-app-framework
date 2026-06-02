@@ -153,7 +153,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
       }
     }
 
-    const list: any[] = this.inputs.samples.getValue()
+    const list = this.inputs.samples.getValue()
     let lastps: PaintSample | undefined
 
     if (list.length > 0) {
@@ -354,30 +354,28 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
   }
 
   execDot(ctx: any, ps: PaintSample, lastps: PaintSample | undefined): void {
-    const ob: any = ctx.object
-    const mesh: any = ctx.mesh
+    const ob = ctx.object
+    const mesh = ctx.mesh
 
     if (!mesh) {
       console.warn('No mesh!')
       return
     }
 
-    const ud: any = this._undo
+    const ud = this._undo
 
     const fac: number = 0.1
 
-    const bvh: any = this.getBVH(mesh)
+    const bvh = this.getBVH(mesh)
 
     const radius: number = ps.radius
-    const brush: any = this.inputs.brush.getValue()
-    const falloff: any = brush.falloff
+    const brush = this.inputs.brush.getValue()
+    const falloff = brush.falloff
 
     const visit: WeakSet<any> = new WeakSet()
-    const bvs: any[] = []
+    const bvs: (BVHNodeVertex|number)[] = []
 
-    let vset: any = new Set()
-
-    vset = this.bGrabVerts
+    const vset = this.bGrabVerts!
 
     /*
     for (let n of bvh.leaves) {
@@ -398,12 +396,12 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
         bv.origco.load(bv)
       }
 
-      const dis: number = vset.get(bv)
+      const dis = vset.get(bv)!
       if (dis >= radius) {
         //continue;
       }
 
-      let w: number = 1.0 - dis / radius
+      let w = 1.0 - dis / radius
       w = falloff.evaluate(w)
       w = Math.min(Math.max(w, 0.0), 1.0)
 
@@ -419,12 +417,12 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
 
     const tmp: Vector3 = new Vector3()
 
-    const smooth = (bv: any, fac: number = 0.5): void => {
+    const smooth = (bv: BVHNodeVertex, fac: number = 0.5): void => {
       const co: Vector3 = tmp.zero()
       let tot: number = 0.0
 
       for (const e of bv.edges) {
-        const bv2: any = e.otherVertex(bv)
+        const bv2 = e.otherVertex(bv)
 
         if (vset.has(bv2)) {
           co.add(bv2)
@@ -439,8 +437,8 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     }
 
     for (let i: number = 0; i < bvs.length; i += 2) {
-      const bv: any = bvs[i]
-      const w: number = (1.0 - bvs[i + 1]) * ps.autosmooth
+      const bv = bvs[i] as BVHNodeVertex
+      const w: number = (1.0 - (bvs[i + 1] as number)) * ps.autosmooth
 
       smooth(bv, w)
     }
@@ -455,7 +453,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
       bvh.update()
     }
 
-    ;(window as any).redraw_viewport(true)
+    window.redraw_viewport(true)
   }
 }
 

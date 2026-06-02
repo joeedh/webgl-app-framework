@@ -282,7 +282,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     const name = this.toolModeDefine().name
 
     // see SculptCorePaintMode.defineAPI for how these properties are defined
-    
+
     let strip = header.strip()
     strip.prop(`scene.tools.${name}.drawBVH`)
     strip.prop(`scene.tools.${name}.drawFlat`)
@@ -792,10 +792,6 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     const r = this._radius !== undefined ? this._radius : radius
     drawCircle(x, y, r)
-  }
-
-  getSurfaceSampler(mesh: Mesh): ISurfaceSampler {
-    return this.ctx.object!.data! as LiteMesh
   }
 }
 ToolMode.register(SculptCorePaintMode)

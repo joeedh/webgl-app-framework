@@ -834,7 +834,6 @@ export abstract class PaintToolModeBase extends ToolMode {
   }
 
   abstract drawBrush(view3d: View3D): void
-  abstract getSurfaceSampler(mesh: Mesh, useGrids?: boolean): ISurfaceSampler
 
   protected clearBrushLines(): void {
     for (const l of this._brush_lines) {

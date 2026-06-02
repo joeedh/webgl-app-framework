@@ -33,7 +33,7 @@ import {compileTexShaderJS} from './textureGen'
 import './textures.js'
 import {TexPaintShaderLib} from '../shaders/shaders.js'
 import {IUniformsBlock} from '../webgl/webgl'
-import {ICompiledCode} from '../mathl/core/mathl.js'
+import type {CompiledJS} from '../mathl/core/mathl'
 import {HashDigest} from '../util/util.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {ViewContext} from '../core/context.js'
@@ -143,7 +143,7 @@ export class PatternGen {
 
   flag: number = 0
   name: string = ''
-  texShaderJS?: ICompiledCode
+  texShaderJS?: CompiledJS
   texShaderJSHash: number = 0
 
   constructor() {

@@ -824,7 +824,7 @@ export class UnWrapSolver {
 
   solveIntern(slv: Solver, count: number, gk = 1.0) {
     const doneset = new WeakSet()
-    const idxmap = new Map()
+    const idxmap = new Map<any, number>()
 
     const start = util.time_ms()
 
@@ -907,7 +907,7 @@ export class UnWrapSolver {
         throw new Error('NaN')
       }
 
-      const row = matrix[i]
+      const row = matrix[i] as number[]
 
       for (let j = 0; j < con.klst.length; j++) {
         const uv = con.klst[j]

@@ -295,7 +295,7 @@ graph.NodeSocketType {
 
       if (ret) {
         ret.setAttribute('name', this.uiname)
-        ret.onchange = onchange ?? null
+        ret.on_change = onchange ?? null
       } else {
         container.label(this.uiname)
       }

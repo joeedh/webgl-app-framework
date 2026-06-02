@@ -13,6 +13,11 @@ import type {Scene} from '../scene/scene.js'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const BlockTypes = [] as IDataBlockConstructor[]
+const onBlockRegisterCbs = [] as ((cls: IDataBlockConstructor) => void)[]
+
+export function onBlockRegister(cb: (cls: IDataBlockConstructor) => void) {
+  onBlockRegisterCbs.push(cb)
+}
 
 let DATAREFType: number | undefined
 let DATAREFLISTType: number | undefined
@@ -326,6 +331,7 @@ but owner will not be added to this.lib_userlist`.trim()
     }
 
     BlockTypes.push(cls)
+    onBlockRegisterCbs.forEach((cb) => cb(cls))
   }
 
   static unregister(cls: IDataBlockConstructor) {

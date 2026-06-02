@@ -208,11 +208,8 @@ export const MeshTransType: ITransDataType<Vertex, Vector3, MeshTransVert> = {
       const _i = 0
 
       let vi = 0
-      const wmap = new Array(mesh.verts.length)
-      const totmap = new Array(mesh.verts.length)
-      const vmap = new Array(mesh.verts.length)
-
-      const finalvs = new Set()
+      const wmap = new Array<number>(mesh.verts.length)
+      const totmap = new Array<number>(mesh.verts.length)
 
       for (const v of mesh.verts) {
         wmap[vi] = -1

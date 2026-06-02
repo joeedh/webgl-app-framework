@@ -34,6 +34,7 @@ import {
   ModalState,
 } from '../path.ux/scripts/pathux'
 
+export const SIDEBAR_ANIM_TIME = 0
 import * as units from '../path.ux/scripts/core/units'
 
 //set base unit for world space data
@@ -444,6 +445,9 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
   }
 
   update() {
+    // check that init has been called
+    this._init()
+
     const path = this._getDataPath()!
 
     const exists = this.doesOwnerExist()
@@ -593,7 +597,7 @@ export class EditorSideBar extends Container<ViewContext> {
   //expects this.editor to be set by Editor
   editor?: Editor = undefined
 
-  tabpanel?: TabContainer<ViewContext>
+  tabpanel!: TabContainer<ViewContext>
   _icon?: UIBase<ViewContext> & {icon?: number}
   _closed = false
 
@@ -603,9 +607,15 @@ export class EditorSideBar extends Container<ViewContext> {
   _height = 500
   _width = this.openWidth
 
+  // can be 'left' or 'right'
+  position = 'left'
+
+  #lastUpdateKey = ''
+
   constructor() {
     super()
 
+    // sets up tabpanel _icon etc
     this.clear()
   }
 
@@ -645,6 +655,14 @@ export class EditorSideBar extends Container<ViewContext> {
     }
   }
 
+  updateIcon() {
+    if (this._icon === undefined) {
+      return
+    }
+
+    this._icon.icon = !!this._closed !== !!(this.position === 'right') ? Icons.SHIFT_RIGHT : Icons.SHIFT_LEFT
+  }
+
   clear() {
     super.clear()
 
@@ -662,28 +680,47 @@ export class EditorSideBar extends Container<ViewContext> {
       PackFlags.SMALL_ICON
     )
 
+    this.updateIcon()
+
     this.tabpanel = this.tabs('left')
+    this.tabpanel.addEventListener('tabclick', e => {
+      if (this._closed) {
+        e.preventDefault()
+        this.expand()
+      }
+    })
     //make tabs smaller
     this.tabpanel.tabFontScale = 0.75
   }
 
-  collapse() {
+  collapse(doAnim = true) {
     if (this._closed) {
       return
     }
 
-    console.log('collapse')
     this._closed = true
 
-    const anim = this.animate(
-      {width: [this.saneStyle['width'], `${this.closedWidth}px`]},
-      {duration: 500, fill: 'forwards'}
-    )
-    anim.finished.then(() => {
-      anim.cancel()
+    // eslint-disable-next-line prefer-const
+    let anim: ReturnType<typeof this.animate> | undefined
+
+    const finish = () => {
+      anim?.cancel()
       this.saneStyle['width'] = `${this.closedWidth}px`
-      this._icon!.icon = Icons.SHIFT_LEFT
-    })
+      this._width = this.closedWidth
+      this.updateIcon()
+      this.setCSS()
+    }
+
+    if (doAnim) {
+      anim = this.animate(
+        {width: [this.saneStyle['width'], `${this.closedWidth}px`]},
+        {duration: SIDEBAR_ANIM_TIME, fill: 'forwards'}
+      )
+      anim.finished.then(finish)
+    } else {
+      finish()
+    }
+    this.tabpanel.contentsHidden = this.position === 'right'
   }
 
   expand() {
@@ -691,17 +728,17 @@ export class EditorSideBar extends Container<ViewContext> {
       return
     }
 
-    console.log('expand')
     this._closed = false
 
     const anim = this.animate(
       {width: [this.saneStyle['width'], `${this.openWidth}px`]},
-      {duration: 500, fill: 'forwards'}
+      {duration: SIDEBAR_ANIM_TIME, fill: 'forwards'}
     )
+    this.tabpanel.contentsHidden = false
     anim.finished.then(() => {
       anim.cancel()
       this.saneStyle['width'] = `${this.openWidth}px`
-      this._icon!.icon = Icons.SHIFT_RIGHT
+      this.updateIcon()
     })
   }
 
@@ -712,19 +749,30 @@ export class EditorSideBar extends Container<ViewContext> {
       return
     }
 
-    const h = this.editor.size[1]
+    const key = '' + this.position + ':' + this._height
 
-    if (h !== this._height) {
+    if (key !== this.#lastUpdateKey) {
+      this.#lastUpdateKey = key
+
+      this.tabpanel.setAttribute('bar_pos', this.position)
+
+      const h = this.editor.size[1]
       this._height = h
       this.style['height'] = '' + this._height + 'px'
+      this.setCSS()
       this.flushUpdate()
       console.log('Sidebar height update')
+      this.updateIcon()
     }
   }
 
   setCSS() {
+    this.style.overflow = 'hidden'
     this.style['height'] = '' + this._height + 'px'
     this.style['width'] = '' + this._width + 'px'
+    if (this.position === 'right') {
+      this.style.marginLeft = 'auto'
+    }
     this.background = this.getDefault('background-color') as string
   }
 
@@ -821,9 +869,7 @@ Editor {
   makeSideBar() {
     const sidebar = document.createElement('editor-sidebar-x') as unknown as EditorSideBar
     sidebar.editor = this
-
     this.container.add(sidebar)
-
     return sidebar
   }
 
@@ -933,6 +979,7 @@ import messageBus from '../core/bus'
 import {areaclasses, IAreaConstructor} from '../path.ux/scripts/screen/area_base'
 import type {ShaderNode} from '../shadernodes/shader_nodes'
 import type {StructReader} from 'nstructjs'
+import type {SceneObjectData} from '../sceneobject'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   const tools: IToolOpConstructor[] = []
@@ -1277,9 +1324,9 @@ if (0) {
   }, 1000.0/30.0);
 }*/
 
-export class MeshMaterialChooser extends Container<ViewContext> {
+export class MaterialChooser extends Container<ViewContext> {
   addButton?: UIBase<ViewContext> = undefined
-  _last_mesh_key?: string = undefined
+  _last_obdata_key?: string = undefined
   _activeMatCache: number[] = []
   _activeMatCacheSize = 5
 
@@ -1289,30 +1336,38 @@ export class MeshMaterialChooser extends Container<ViewContext> {
 
   static define() {
     return {
-      tagname: 'mesh-material-chooser-x',
+      tagname: 'material-chooser-x',
     }
   }
 
   init() {
-    this.doOnce(this.rebuild)
+    if (this.ctx) {
+      try {
+        this.rebuild()
+      } catch (error) {
+        console.error((error as any).stack)
+        console.error((error as any).message)
+        this.doOnce(this.rebuild)
+      }
+    }
   }
 
-  getActive(mesh: Mesh): number {
-    if (!mesh) return 0
+  getActive(objectData: SceneObjectData): number {
+    if (!objectData) return 0
 
     for (let i = 0; i < this._activeMatCache.length; i += 2) {
-      if (this._activeMatCache[i] === mesh.lib_id) {
+      if (this._activeMatCache[i] === objectData.lib_id) {
         let ret = this._activeMatCache[i + 1]
 
-        if (ret >= mesh.materials.length) {
-          ret = this._activeMatCache[i + 1] = mesh.materials.length - 1
+        if (ret >= objectData.materials.length) {
+          ret = this._activeMatCache[i + 1] = objectData.materials.length - 1
         }
 
         return ret
       }
     }
 
-    this.setActive(mesh, 0)
+    this.setActive(objectData, 0)
     return 0
   }
 
@@ -1333,11 +1388,11 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     return this
   }
 
-  setActive(mesh: Mesh, mati: number) {
+  setActive(objectData: SceneObjectData, mati: number) {
     let idx = -1
 
     for (let i = 0; i < this._activeMatCache.length; i += 2) {
-      if (this._activeMatCache[i] === mesh.lib_id) {
+      if (this._activeMatCache[i] === objectData.lib_id) {
         idx = i
         break
       }
@@ -1347,7 +1402,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       if (this._activeMatCache.length >= this._activeMatCacheSize) {
         this._activeMatCache.pop()
       }
-      this._activeMatCache = [mesh.lib_id, mati].concat(this._activeMatCache)
+      this._activeMatCache = [objectData.lib_id, mati].concat(this._activeMatCache)
     } else {
       this._activeMatCache[idx + 1] = mati
     }
@@ -1357,56 +1412,57 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     const uidata = saveUIData(this, 'material chooser')
 
     this.clear()
-    let mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+    let objectData = this.ctx.api.getValue<SceneObjectData>(this.ctx, this.getAttribute('datapath')!)
 
-    if (!mesh) {
-      return
+    if (!objectData) {
+      this.disabled = true
     }
 
-    this.label(mesh.name)
+    this.disabled = false
+    this.label(objectData?.name ?? 'No Mesh Selected')
 
-    if (this.onchange) {
-      ;(this.onchange as unknown as (change: any) => void)(this.getActive(mesh))
+    if (this.on_change && objectData !== undefined) {
+      this.on_change(this.getActive(objectData))
     }
 
-    if (mesh.materials.length === 0) {
-      this.button('Add Material', () => {
-        const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
-        if (mesh === undefined) {
-          this.ctx.error('Invalid mesh at ' + this.getAttribute('datapath'))
-          return
-        }
-        const op = new MakeMaterialOp()
+    this.button('Add Material', () => {
+      const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+      if (mesh === undefined) {
+        this.ctx.error('Invalid mesh at ' + this.getAttribute('datapath'))
+        return
+      }
+      const op = new MakeMaterialOp()
 
-        this.ctx.toolstack.execTool(this.ctx, op)
-        const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())!
+      this.ctx.toolstack.execTool(this.ctx, op)
+      const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())!
 
-        mesh.materials.push(mat)
-        mat.lib_addUser(mesh)
+      mesh.materials.push(mat)
+      mat.lib_addUser(mesh)
 
-        if (this.onchange) {
-          ;(this.onchange as unknown as (change: any) => void)(mesh.materials.length - 1)
-        }
-      })
+      if (this.on_change) {
+        ;(this.on_change as unknown as (change: any) => void)(mesh.materials.length - 1)
+      }
+    })
 
+    if (objectData === undefined || objectData.materials.length === 0) {
       return
     }
 
     const box = this.listbox<number>()
     let i = 0
-    for (const mat of mesh.materials) {
-      box.addItem(mat.name, i)
+    for (const mat of objectData.materials) {
+      box.addItem(mat?.name ?? '(no material)', i)
       i++
     }
-    box.setActive(box.items[this.getActive(mesh)])
+    box.setActive(box.items[this.getActive(objectData)])
 
-    box.on_change = (id?: number) => {
-      if (this.onchange) {
-        this.onchange(id)
+    box.onitemchange = (id?: number) => {
+      if (this.on_change) {
+        this.on_change(id)
 
-        mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
-        if (mesh !== undefined && id !== undefined) {
-          this.setActive(mesh, id)
+        objectData = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+        if (objectData !== undefined && id !== undefined) {
+          this.setActive(objectData, id)
         }
       }
     }
@@ -1422,29 +1478,29 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+    const mesh = this.ctx.api.getValue<SceneObjectData>(this.ctx, this.getAttribute('datapath')!)
     let key = ''
 
     if (mesh) {
       key += mesh.lib_id + ':' + mesh.name + ':' + mesh.materials.length
 
       for (const mat of mesh.materials) {
-        key += ':' + mat.lib_id
+        key += ':' + (mat?.lib_id ?? -1)
       }
     }
 
-    if (key !== this._last_mesh_key) {
-      this._last_mesh_key = key
+    if (key !== this._last_obdata_key) {
+      this._last_obdata_key = key
       this.doOnce(this.rebuild)
     }
   }
 }
 
-UIBase.register(MeshMaterialChooser)
+UIBase.register(MaterialChooser)
 
-export class MeshMaterialPanel extends Container<ViewContext> {
+export class MaterialPanel extends Container<ViewContext> {
   _lastnode_name?: string = undefined
-  chooser?: MeshMaterialChooser
+  chooser?: MaterialChooser
   subpanel?: Container<ViewContext>
 
   constructor() {
@@ -1453,12 +1509,12 @@ export class MeshMaterialPanel extends Container<ViewContext> {
 
   static define() {
     return {
-      tagname: 'mesh-material-panel-x',
+      tagname: 'material-panel-x',
     }
   }
 
   init() {
-    this.chooser = document.createElement('mesh-material-chooser-x') as unknown as MeshMaterialChooser
+    this.chooser = document.createElement('material-chooser-x') as unknown as MaterialChooser
     if (this.hasAttribute('datapath')) {
       this.chooser.setAttribute('datapath', this.getAttribute('datapath')!)
     }
@@ -1466,42 +1522,44 @@ export class MeshMaterialPanel extends Container<ViewContext> {
 
     this.subpanel = this.col()
 
-    this.chooser.onchange = () => {
+    this.chooser.on_change = () => {
       this.doOnce(this.rebuild)
     }
+    this.rebuild()
+    this.flushUpdate()
   }
 
   rebuild() {
     if (!this.ctx || !this.hasAttribute('datapath') || this.chooser === undefined || this.subpanel === undefined) {
-      console.error('eek!')
+      console.error('material panel error cannot build widget')
       return
     }
 
-    const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+    const objectData = this.ctx.api.getValue<SceneObjectData>(this.ctx, this.getAttribute('datapath')!)
 
     console.log('Material panel rebuild')
 
     const uidata = saveUIData(this.subpanel, 'mesh material panel')
     this.subpanel?.clear()
 
-    if (!mesh) {
+    if (!objectData) {
       loadUIData(this.subpanel, uidata)
+      this.flushUpdate()
       return
     }
 
-    const mati = this.chooser!.getActive(mesh)
+    const mati = this.chooser!.getActive(objectData)
     const datapath = this.getAttribute('datapath')
-    const mat = mesh.materials[mati]
+    const mat = objectData.materials[mati]
 
     if (!mat) {
       loadUIData(this.subpanel, uidata)
+      this.flushUpdate()
       return
     }
 
-    const dataPrefix = (this.subpanel.dataPrefix = `${datapath}.materials[${mati}].`)
-
-    console.warn('PREFIX', this.subpanel.dataPrefix, 'yay', mesh)
-
+    const dataPrefix = `${datapath}.materials[${mati}].`
+    this.subpanel.dataPrefix = dataPrefix
     this.subpanel.prop('has_shader')
 
     if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'has_shader')) {
@@ -1533,28 +1591,29 @@ export class MeshMaterialPanel extends Container<ViewContext> {
     }
 
     loadUIData(this.subpanel, uidata)
+    this.flushUpdate()
   }
 
   getShadingNode() {
     if (!this.hasAttribute('datapath')) {
-      return
+      return undefined
     }
 
-    const mesh = this.getPathValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
-    if (!mesh) {
-      return
+    const objectData = this.getPathValue<SceneObjectData>(this.ctx, this.getAttribute('datapath')!)
+    if (!objectData) {
+      return undefined
     }
 
-    const mat = this.chooser!.getActive(mesh)
+    const mat = this.chooser!.getActive(objectData)
     return this.getPathValue(this.ctx, this.getAttribute('datapath') + `.materials[${mat}].shader`)
   }
 
   update() {
+    super.update()
+
     if (!this.chooser || !this.ctx) {
       return
     }
-
-    super.update()
 
     let rebuild = false
 
@@ -1579,7 +1638,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
   }
 }
 
-UIBase.register(MeshMaterialPanel)
+UIBase.register(MaterialPanel)
 
 export class DirectionChooser extends UIBase<ViewContext, Vector3> {
   _last_dpi?: number
@@ -1772,8 +1831,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
           if (this.hasAttribute('datapath')) {
             this.setPathValue(this.ctx, this.getAttribute('datapath')!, this.value)
           }
-          if (this.onchange) {
-            this.onchange(this.value as unknown as Event)
+          if (this.on_change) {
+            this.on_change(this.value as unknown as Event)
           } //*/
 
           this.last_mpos[0] = e.x
@@ -1984,8 +2043,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
       this.render()
     }
 
-    if (this.onchange) {
-      ;(this.onchange as unknown as (value: Vector3) => void)(this.value)
+    if (this.on_change) {
+      ;(this.on_change as unknown as (value: Vector3) => void)(this.value)
     }
   }
 
@@ -2006,8 +2065,8 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
       console.log('path update')
 
       this.value.load(val)
-      if (this.onchange) {
-        this.onchange(val)
+      if (this.on_change) {
+        this.on_change(val)
       }
 
       this.render()

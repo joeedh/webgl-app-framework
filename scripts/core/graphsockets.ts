@@ -594,7 +594,7 @@ graph.FloatSocket {
     if (this.edges.length === 0) {
       const ret = container.prop('value')
       ret.setAttribute('name', this.uiname)
-      ret.onchange = onchange ?? null
+      ret.on_change = onchange ?? null
     } else {
       container.label(this.uiname)
     }

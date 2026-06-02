@@ -1,7 +1,17 @@
 import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js'
 import {Editor, VelPan} from '../editor_base.ts'
 
-import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal, nstructjs} from '../../path.ux/scripts/pathux.js'
+import {
+  startMenu,
+  DataPath,
+  saveUIData,
+  loadUIData,
+  DataPathError,
+  KeyMap,
+  HotKey,
+  haveModal,
+  nstructjs,
+} from '../../path.ux/scripts/pathux.js'
 
 import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js'
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js'
@@ -329,8 +339,6 @@ export class NodeSocketElem extends RowFrame {
 
     //pos.sub(npos);
 
-    pos[1] -= ned.headerHeight
-
     let r = this.getBoundingClientRect()
     let w = 0
 
@@ -352,7 +360,7 @@ export class NodeSocketElem extends RowFrame {
 
     //this.style["width"] = (this.size) + "px";
     this.style['height'] = this.size + 'px'
-    this.style['z-index'] = this.uinode.zindex + 1
+    //XXX this.style['z-index'] = this.uinode.zindex + 1
     this._redraw()
     this.background = 'rgba(0,0,0,0)'
   }
@@ -368,7 +376,7 @@ export class NodeUI extends Container {
     this.size = new Vector2()
     this.rawpos = new Vector2()
 
-    this.zindex = 100
+    //XXX this.zindex = 100
 
     this.inputs = []
     this.outputs = []
@@ -483,21 +491,13 @@ export class NodeUI extends Container {
           uisock.isOutput = true
         }
 
-        //uisock.pos[0] = x;
-        //uisock.pos[1] = y;
-
         uisock.ned = this.ned
         uisock.ctx = this.ctx
         uisock.socket = sock
         uisock.uinode = this
         uisock.setAttribute('datapath', this.getAttribute('datapath') + '.' + key + "['" + k + "']")
 
-        //row2.add(uisock);
         this.ned.nodeContainer.appendChild(uisock)
-
-        //this.appendChild(uisock);
-        //this.ned.container.shadow.appendChild(uisock);
-        //_appstate.screen.appendChild(uisock);
 
         uisock.update()
         uisock.setCSS()
@@ -594,8 +594,6 @@ export class NodeUI extends Container {
     ned.project(co, false)
     scale.mul(ned.velpan.scale)
 
-    co[1] += ned.headerHeight
-
     this.style['position'] = 'absolute'
     this.style['width'] = ~~scale[0] + 'px'
     this.style['height'] = ~~scale[1] + 'px'
@@ -639,6 +637,35 @@ export class NodeUI extends Container {
 
 UIBase.register(NodeUI)
 
+export class NodeContainer extends Container {
+  static define() {
+    return {
+      ...super.define(),
+      tagname: 'shadergraph-node-container-x',
+    }
+  }
+
+  createOverdraw() {
+    if (this.parentNode === undefined) {
+      return //don't make overdraw
+    }
+
+    if (this.overdraw !== undefined) {
+      this.overdraw.remove()
+    }
+
+    try {
+      this.overdraw = document.createElement('overdraw-x')
+      this.overdraw.start(this)
+    } catch (error) {
+      this.overdraw = undefined
+    }
+
+    this.setCSS()
+  }
+}
+UIBase.register(NodeContainer)
+
 let NedRecalcFlags = {
   UI     : 1,
   REBUILD: 2,
@@ -671,13 +698,12 @@ NodeEditor {
     this.velpan.scale[0] = this.velpan.scale[1] = 0.8
     this.velpan.onchange = this._on_velpan_change.bind(this)
 
-    this.nodeContainer = document.createElement('container-x')
+    // of NodeContainer type
+    this.nodeContainer = document.createElement('shadergraph-node-container-x')
     this.nodeContainer.yoff = 0
     this.nodeContainer.style['overflow'] = 'hidden'
 
     this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX
-
-    this.headerHeight = 150
 
     this.recalc = 0
 
@@ -782,11 +808,6 @@ NodeEditor {
       }
     } //*/
 
-    if (this.overdraw !== undefined) {
-      this.overdraw.remove()
-      this.createOverdraw()
-    }
-
     for (let node of this.nodes) {
       node.remove()
     }
@@ -799,6 +820,10 @@ NodeEditor {
     this.sockets.length = 0
 
     this.nodeContainer.clear()
+
+    if (this.overdraw !== undefined) {
+      this.nodeContainer.createOverdraw()
+    }
   }
 
   switchGraph(graphpath = this.graphPath) {
@@ -844,7 +869,7 @@ NodeEditor {
       node2.setAttribute('datapath', path)
 
       this.nodes.push(node2)
-      this.shadow.appendChild(node2)
+      this.nodeContainer.shadow.appendChild(node2)
     }
 
     this.recalc |= NedRecalcFlags.UI
@@ -853,7 +878,6 @@ NodeEditor {
 
   init() {
     super.init()
-
     this.addEventListener('mousewheel', (e) => {
       let y = e.deltaY
 
@@ -874,11 +898,15 @@ NodeEditor {
       this.flushUpdate()
     })
 
-    this.shadow.appendChild(this.nodeContainer)
+    if (!this.header) {
+      throw new Error('no header')
+    }
+    this.shadow.prepend(this.nodeContainer)
+    this.nodeContainer.style.zIndex = -1
     this.nodeContainer.parentWidget = this
 
     //create svg overdraw element
-    this.createOverdraw()
+    this.nodeContainer.createOverdraw()
 
     this.last_mpos = new Vector2()
 
@@ -906,9 +934,6 @@ NodeEditor {
     this.addEventListener('mousemove', mmove)
     this.addEventListener('mousedown', this.on_mousedown)
 
-    let header = this.header
-    this.header.style.height = '' + this.headerHeight + 'px'
-
     this.setCSS()
 
     let bgcolor = this.getDefault('editorBG')
@@ -917,10 +942,45 @@ NodeEditor {
     //header.prop("NodeEditor.selectmode");
 
     this.recalc |= NedRecalcFlags.REBUILD
+
+    this.buildSidebar()
+  }
+
+  buildSidebar() {
+    if (!this.ctx) {
+      if (!this.isDead()) {
+        this.doOnce(this.buildHeader)
+      }
+      return
+    }
+
+    this.sidebar = this.makeSideBar()
+    this.sidebar._init()
+    this.sidebar.position = 'right'
+    this.sidebar.collapse(false)
+    this.onSidebarBuild(this.sidebar)
+    this.sidebar.flushUpdate()
+  }
+
+  onSidebarBuild(sidebar) {
+    const nodeTab = sidebar.tabpanel.tab('Node')
+  }
+
+  rebuildSidebar() {
+    if (this.sidebar === undefined) {
+      return
+    }
+
+    const uidata = saveUIData(this.sidebar, 'node editor sidebar')
+
+    this.sidebar.clear()
+    this.onSidebarBuild(this.sidebar)
+
+    loadUIData(this.sidebar, uidata)
   }
 
   makeHeader(container) {
-    let header = super.makeHeader(container)
+    let header = super.makeHeader(container).row()
     let menustrip = (this.menuStrip = header.row())
 
     menustrip.style['margin-left'] = '35px' //go past mouse threshold for screen border
@@ -1027,29 +1087,11 @@ NodeEditor {
       return
     }
 
-    //this.overdraw
-
-    //calls this.setCSS()
     this._setNodeContainerRect()
   }
 
-  createOverdraw() {
-    if (this.parentNode === undefined) {
-      return //don't make overdraw
-    }
-
-    if (this.overdraw !== undefined) {
-      this.overdraw.remove()
-    }
-
-    try {
-      this.overdraw = document.createElement('overdraw-x')
-      this.overdraw.start(this)
-    } catch (error) {
-      this.overdraw = undefined
-    }
-
-    this.setCSS()
+  get overdraw() {
+    return this.nodeContainer.overdraw
   }
 
   on_area_inactive() {
@@ -1064,7 +1106,7 @@ NodeEditor {
 
   on_area_active() {
     super.on_area_active()
-    this.createOverdraw()
+    this.nodeContainer.createOverdraw()
 
     this.setCSS()
     this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
@@ -1075,7 +1117,7 @@ NodeEditor {
       return
     }
 
-    this.overdraw.clear()
+    this.overdraw?.clear()
     this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
   }
 
@@ -1214,19 +1256,6 @@ NodeEditor {
   }
 
   _setNodeContainerRect() {
-    let r = this.header.getBoundingClientRect()
-
-    this.headerHeight = r.height
-
-    this.nodeContainer.yoff = r.height
-
-    this.nodeContainer.style['overflow'] = 'hidden'
-    this.nodeContainer.style['position'] = 'absolute'
-    this.nodeContainer.style['height'] = this.size[1] - r.height + 'px'
-    this.nodeContainer.style['width'] = this.size[0] + 'px'
-    this.nodeContainer.style['top'] = r.height + 'px'
-    //this.nodeContainer.style["left"] = this.pos[0] + "px";
-
     this.nodeContainer.style['background-color'] = this.getDefault('background-color')
 
     this.setCSS()
@@ -1249,14 +1278,6 @@ NodeEditor {
     }
 
     super.update()
-
-    let r = this.header.getBoundingClientRect()
-    //console.log("R", r);
-    if (r) {
-      if (r.height !== this.nodeContainer.yoff) {
-        this._setNodeContainerRect()
-      }
-    }
 
     this.checkCompile()
     this.updateZoom()
@@ -1346,9 +1367,12 @@ NodeEditor {
       this.overdraw.style['height'] = this.size[1] + 'px'
     }
 
-    this.container.style['width'] = ~~this.size[0] + 'px'
-    this.container.style['height'] = ~~this.size[1] + 'px'
-    this.container.style['overflow'] = 'hidden'
+    this.nodeContainer.style['position'] = 'absolute'
+    this.nodeContainer.style['left'] = '0px'
+    this.nodeContainer.style['top'] = '0px'
+    this.nodeContainer.style['width'] = this.size[0] + 'px'
+    this.nodeContainer.style['height'] = this.size[1] + 'px'
+    this.nodeContainer.style['overflow'] = 'hidden'
   }
 
   startAddNodeMenu() {

@@ -447,7 +447,7 @@ export function subdivide(mesh: Mesh, faces: Iterable<Face> = mesh.faces, linear
     vset3.add(v)
   }
 
-  const vcos = new Array(vset3.size)
+  const vcos = new Array<Vector3>(vset3.size)
 
   let i = 0
   for (const v of vset3) {

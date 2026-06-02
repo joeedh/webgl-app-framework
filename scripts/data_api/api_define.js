@@ -46,7 +46,7 @@ import {WidgetFlags} from '../editors/view3d/widgets/widgets.js'
 import {AddLightOp} from '../light/light_ops.js'
 import {Light} from '../light/light.js'
 import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js'
-import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
+import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags, onBlockRegister} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
 import {Editor, App, buildEditorsAPI} from '../editors/editor_base.ts'
@@ -277,10 +277,16 @@ export function api_define_litemesh(api) {
   let mstruct = api_define_sceneobject_data(api, LiteMesh)
 
   let def = mstruct
-    .flags('displayColorMode', 'displayColorMode', LiteMeshDisplayMode, 'Display', 'Attributes shown on the LiteMesh surface (combinable)')
+    .flags(
+      'displayColorMode',
+      'displayColorMode',
+      LiteMeshDisplayMode,
+      'Display',
+      'Attributes shown on the LiteMesh surface (combinable)'
+    )
     .uiNames({
       VERTEX_COLOR: 'Vertex Color',
-      POLY_GROUP: 'Poly Groups',
+      POLY_GROUP  : 'Poly Groups',
     })
   def.on('change', function () {
     window.redraw_viewport()
@@ -514,25 +520,25 @@ function api_define_graph(api, cls = Graph) {
 
   gstruct.list('', 'nodes', [
     function getIter(api, list) {
-      return list.nodes
+      return list.nodes.values()
     },
     function getLength(api, list) {
       return list.nodes.length
     },
     function get(api, list, key) {
-      return list.node_idmap[key]
+      return list.node_idmap.get(key)
     },
     function getKey(api, list, obj) {
-      return obj.graph_id
+      return '' + obj.graph_id
     },
     function getActive(api, list) {
       return list.nodes.active
     },
     function setActive(api, list, key) {
-      list.nodes.active = list.node_idmap[key]
+      list.nodes.active = list.node_idmap.get(key)
     },
     function getStruct(api, list, key) {
-      let obj = list.node_idmap[key]
+      let obj = list.node_idmap.get(key)
 
       if (obj === undefined) return api.getStruct(Node)
 
@@ -683,8 +689,17 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
   ])
 }
 
+let libraryStruct
+onBlockRegister(function onDataBlockRegister(blockCls) {
+  if (libraryStruct !== undefined) {
+    let def = blockCls.blockDefine()
+    api_define_libraryset(api, def.typeName, def.typeName, def.uiName, libraryStruct, blockCls)
+  }
+})
+
 function api_define_library(api, parent) {
   let lstruct = api.mapStruct(Library)
+  libraryStruct = lstruct
 
   parent.struct('datalib', 'library', 'Library', lstruct)
 
@@ -967,7 +982,12 @@ export function api_define_dyntopo_sc(api) {
   st.float('edgeSize', 'edgeSize', 'Detail Size', 'Target edge length (units depend on Detail Mode)')
     .range(0.01, 200.0)
     .noUnits()
-  st.float('collapseRatio', 'collapseRatio', 'Collapse Ratio', 'Collapse edges shorter than this fraction of the target')
+  st.float(
+    'collapseRatio',
+    'collapseRatio',
+    'Collapse Ratio',
+    'Collapse edges shorter than this fraction of the target'
+  )
     .range(0.05, 0.95)
     .noUnits()
   st.float('grade', 'grade', 'Grade', 'Relax the target outward from the brush center (0 = uniform)')

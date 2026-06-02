@@ -64,7 +64,7 @@ import {
   VMapFields,
 } from '../../../../addons/builtin/mesh/src/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../../addons/builtin/mesh/src/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint} from './pbvh_base'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint, PaintOpMesh} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/src/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../../addons/builtin/mesh/src/mesh_tess.js'
 import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
@@ -136,7 +136,8 @@ WARNING: this means there could conceivably be reference leaks here with the und
 */
 
 const cfrets = util.cachering.fromConstructor(Vector4, 128)
-export const colorfilterfuncs: any[] = [0, 0]
+type ColorFilterFunc = (v: any, cd_color: number, fac?: number) => Vector4 | undefined
+export const colorfilterfuncs: (ColorFilterFunc | number)[] = [0, 0]
 const midtmp = new Vector3()
 
 colorfilterfuncs[1] = function (v: any, cd_color: number, fac: number = 0.5): Vector4 | undefined {
@@ -194,7 +195,7 @@ colorfilterfuncs[0] = function (v: any, cd_color: number, fac: number = 0.5): Ve
   return ret
 }
 
-export class PaintOp extends PaintOpBase<
+export class PaintOp extends PaintOpMesh<
   {
     grabData: FloatArrayProperty
     grabCo: Vec3Property
@@ -293,6 +294,10 @@ export class PaintOp extends PaintOpBase<
         drawFaceSet: new IntProperty(2),
       }),
     }
+  }
+
+  getBVH(mesh: Mesh) {
+    return mesh.getBVH({autoUpdate: true})
   }
 
   ensureSmoother(mesh: Mesh): void {
@@ -5241,13 +5246,13 @@ export class PaintOp extends PaintOpBase<
       for (const e of es) {
         if (!(e.v1.flag & flag)) {
           e.v1.flag |= flag
-          const cv = e.v1.customData[cd_curv] as CurvVert
+          const cv = e.v1.customData.get(cd_curv) as CurvVert
           cv.check(e.v1, cd_cotan, undefined, cd_fset)
         }
 
         if (!(e.v2.flag & flag)) {
           e.v2.flag |= flag
-          const cv = e.v2.customData[cd_curv] as CurvVert
+          const cv = e.v2.customData.get(cd_curv) as CurvVert
           cv.check(e.v2, cd_cotan, undefined, cd_fset)
         }
       }
@@ -6553,7 +6558,7 @@ export class PaintOp extends PaintOpBase<
     }
 
     const MAXCHILD = haveKdTree ? 2 : 4
-    const data = [] as any[]
+    const data = [] as (QuadTreeGrid | KdTreeGrid | number | Loop)[]
     const DGRID = 0
     const DNODE = 1
     const DLOOP = 2
@@ -6910,7 +6915,7 @@ export class PaintOp extends PaintOpBase<
       const grid = data[di] as QuadTreeGrid | KdTreeGrid
       const ni = data[di + 1] as number
       const l = data[di + 2] as Loop
-      const mode = data[di + 3]
+      const mode = data[di + 3] as number
       const key = l.eid * idmul + ni
 
       if (visit.has(key) || grid.nodes[ni + QFLAG] & DEAD) {
@@ -7116,7 +7121,7 @@ export class PaintOp extends PaintOpBase<
             const tri2 = bvh.addTri(f.eid, bvh._nextTriIdx(), l.v, l.next.v, l.prev.v, undefined, l, l.next, l.prev)
             tri2.flag |= BVHTriFlags.LOOPTRI_INVALID
           } else {
-            const ltris = triangulateFace(f)
+            const ltris = triangulateFace(f) as Loop[]
             for (let i = 0; i < ltris.length; i += 3) {
               const l1 = ltris[i]
               const l2 = ltris[i + 1]

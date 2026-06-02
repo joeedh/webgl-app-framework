@@ -2,7 +2,7 @@ import {Icons} from '../icon_enum'
 import {MeshFlags} from '../../../addons/builtin/mesh/src/mesh_base'
 import type {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 
-import {DataBlockBrowser, Editor, MeshMaterialPanel} from '../editor_base'
+import {DataBlockBrowser, Editor, MaterialPanel} from '../editor_base'
 import {
   Check,
   DataAPI,
@@ -393,7 +393,7 @@ export class CDLayerPanel extends ColumnFrame<ViewContext> {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const this2 = this
 
-        check.onchange = function () {
+        check.on_change = function () {
           if (this.checked) {
             const tool = new ChangeActCDLayerOp()
 
@@ -413,9 +413,9 @@ export class CDLayerPanel extends ColumnFrame<ViewContext> {
             }
           } else {
             if (elist.customData.getActiveLayer(layertype!)!.index === checkLayerMap.get(this)!) {
-              const chg = this.onchange
+              const chg = this.on_change
               this.checked = true
-              this.onchange = chg
+              this.on_change = chg
             }
           }
 
@@ -434,7 +434,7 @@ export class CDLayerPanel extends ColumnFrame<ViewContext> {
 
           check.checked = !!(layer.flag & CDFlags.DISABLED)
 
-          check.onchange = function () {
+          check.on_change = function () {
             const layerIndex = checkLayerMap.get(this)!
             const layer = elist.customData.flatlist[layerIndex]
 
@@ -632,9 +632,7 @@ export class ObjectPanel extends ColumnFrame<ViewContext> {
       panel.prop('mesh.bvhSettings.depthLimit')
     } else if (data instanceof ProceduralMesh) {
       panel = this.panel('Procedural')
-      let strip: ReturnType<typeof this.strip>
-
-      strip = panel.col().strip()
+      let strip = panel.col().strip()
 
       strip.prop('toolDefaults.mesh.procedural_to_mesh.triangulate')
       strip.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`)
@@ -1167,7 +1165,7 @@ PropsEditor {
   }
 
   materialPanel(tab: TabItemContainer<ViewContext>) {
-    const panel = UIBase.createElement('mesh-material-panel-x') as MeshMaterialPanel
+    const panel = UIBase.createElement('material-panel-x') as MaterialPanel
     panel.setAttribute('datapath', 'mesh')
     tab.add(panel)
   }

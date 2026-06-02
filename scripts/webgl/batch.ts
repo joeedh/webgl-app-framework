@@ -133,20 +133,7 @@ export class WebGLBatchExecutor {
   }
 
   getShader(sdef: ShaderDef): ShaderProgram {
-    let shader = this.shaderCache.get((sdef as any).ptr)
-    if (shader === undefined) {
-      const sdef2 = {
-        vertex    : sdef.vertexSource,
-        fragment  : sdef.fragmentSource,
-        attributes: Array.from(sdef.attrs).map((a) => a.name),
-        uniforms  : {},
-        defines   : {},
-      }
-
-      shader = loadShader(this.gl, sdef2)
-      this.shaderCache.set((sdef as any).ptr, shader)
-    }
-    return shader
+    throw new Error('old webgl code invoked')
   }
 
   dispatch(batch: DrawBatch, uniforms: IUniformsBlock) {

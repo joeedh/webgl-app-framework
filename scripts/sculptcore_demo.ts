@@ -44,7 +44,7 @@ export function initSculptcoreDemo(
   const mesh = wasm.Mesh_createCube(dimen, size, sphereFac)
   mesh.recalc_normals()
   const tree = wasm.Mesh_buildSpatialTree(mesh, leafLimit, depthLimit)
-  const batch = tree.buildLeafBoundsBatch(wasm.gpu)
+  const batch = tree.buildLeafBoundsBatch(wasm.gpu)!
   const executor = new WebGLBatchExecutor(gl, wasm, Shaders.BasicLineShader2)
 
   const st = wasm.manager.get('sculptcore::mesh::gpu::MeshBatchManager') as StructType
@@ -57,7 +57,7 @@ export function initSculptcoreDemo(
   console.log('meshBatch', meshBatch, meshExecutor)
 
   demo = {wasm, mesh, tree, batch, executor, meshBatch, meshExecutor}
-  return demo
+  return demo!
 }
 
 export function drawSculptcoreDemo(
@@ -93,6 +93,7 @@ export function getSculptcoreDemo(): SculptcoreDemo | undefined {
 
 const g = globalThis as unknown as {
   initSculptcoreDemo: typeof initSculptcoreDemo
+  reinitSculptcoreDemo: (leafLimit?: number, depthLimit?: number) => void
   drawSculptcoreDemo: typeof drawSculptcoreDemo
   getSculptcoreDemo: typeof getSculptcoreDemo
 }
@@ -103,7 +104,7 @@ g.getSculptcoreDemo = getSculptcoreDemo
 g.reinitSculptcoreDemo = (leafLimit?: number, depthLimit?: number) => {
   demo = undefined
   demoPromise = undefined
-  initSculptcoreDemo(_gl, {leafLimit, depthLimit})
+  initSculptcoreDemo(_gl!, {leafLimit, depthLimit})
 
   window.redraw_viewport()
 }
