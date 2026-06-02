@@ -1,4 +1,4 @@
-import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram} from '@sculptcore/api'
+import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
 import type {ToolContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {AttrRef, Vector3LayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
@@ -7,7 +7,13 @@ import {ISampleViewRet, PaintOpBase} from './pbvh_base'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import type {SculptBrush} from '../../../brush/index'
-import {builSculptcoreBrush, toolToSculptBrush, buildBrushProgram, pushBrushDeviceInputs} from './sculptcore_bindings'
+import {
+  builSculptcoreBrush,
+  toolToSculptBrush,
+  buildBrushProgram,
+  pushBrushDeviceInputs,
+  configureDynTopoParams,
+} from './sculptcore_bindings'
 import {SculptTools} from '../../../brush/brush_base'
 
 export interface IGetBrushRet {
@@ -42,6 +48,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   wasmBrush?: WasmBrush
   executor?: CommandExecutor
   brushProgram?: BrushProgram
+  /** Reused per-stroke dyntopo params handle (rebuilt fields each dab). */
+  dynTopoParams?: DynTopoParams
+  /** Deterministic per-dab seed for dyntopo's independent-set selection. */
+  dabSeed = 1
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
@@ -68,6 +78,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
   undoPre(ctx: ToolContext) {
     this.strokeGroupId = undefined
+    this.dabSeed = 1
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
       this.inStep = true
@@ -139,6 +150,14 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       this.brushProgram = getWasmImmediate()!.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
     }
     return this.brushProgram
+  }
+
+  /** Lazily-constructed, reused-per-dab dyntopo params handle. */
+  getDynTopoParams(): DynTopoParams {
+    if (!this.dynTopoParams) {
+      this.dynTopoParams = getWasmImmediate()!.manager.construct('sculptcore::dyntopo::DynTopoParams') as DynTopoParams
+    }
+    return this.dynTopoParams
   }
 
   /** note: this runs in a special async loop */
@@ -241,6 +260,19 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
         wasmBrush.writeProps()
         wasmExec.meshLog = SculptPaintOp.meshLog
 
+        // Dynamic topology: remesh under the dab BEFORE the brush deform so the
+        // brush moves the freshly-refined geometry. Runs over the same world
+        // center/radius; the executor reuses the existing meshLog step + spatial
+        // callbacks and grows the already-filtered `nodes` in place (incremental
+        // ownership). `dist` is world-units-per-pixel at the dab (computed above).
+        const dt = brush.dynTopoSC
+        if (dt.enabled) {
+          const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
+          const params = this.getDynTopoParams()
+          configureDynTopoParams(params, dt, l_max, l_min)
+          wasmExec.applyDynTopoDab(wasm.float3(p), radius, params, this.dabSeed++)
+        }
+
         // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
         // stack that loadProps applies inside execProgram.
         pushBrushDeviceInputs(wasmBrush, e)
@@ -263,6 +295,9 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
   modalEnd(was_cancelled: boolean): void {
     const result = super.modalEnd(was_cancelled)
+    // Release the stroke-long topology thaw the dyntopo path held (no-op if the
+    // executor never ran a dyntopo dab).
+    this.executor?.endDynTopoStroke()
     if (SculptPaintOp.meshLog) {
       this.inStep = false
       SculptPaintOp.meshLog.endStep()
@@ -270,6 +305,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     if (this.brushProgram) {
       this.brushProgram[Symbol.dispose]()
       this.brushProgram = undefined
+    }
+    if (this.dynTopoParams) {
+      this.dynTopoParams[Symbol.dispose]()
+      this.dynTopoParams = undefined
     }
     return result
   }
@@ -294,10 +333,13 @@ export function runSculptcoreStroke(opts: {
   brush: SculptBrush
   dabs: {p: number[]; normal: number[]}[]
   radius?: number
+  /** world-units-per-pixel at the dab; only needed for PIXELS edge mode. */
+  dist?: number
 }): {dabs: number; skipped: boolean} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
   const radius = opts.radius ?? brush.radius
+  const dist = opts.dist ?? 0
 
   const brushType = toolToSculptBrush(brush.tool)
   if (brushType === undefined) {
@@ -320,9 +362,11 @@ export function runSculptcoreStroke(opts: {
 
   let wasmBrush: WasmBrush | undefined = undefined
   let wasmExec: CommandExecutor | undefined = undefined
+  let dynParams: DynTopoParams | undefined = undefined
   // Mouse-equivalent device sample (full pressure).
   const ev = {pointerType: 'mouse', pressure: 1.0, tiltX: 0, tiltY: 0} as unknown as PointerEvent
 
+  let dabIdx = 0
   for (const dab of opts.dabs) {
     const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec})
     wasmBrush = r.wasmBrush
@@ -342,10 +386,27 @@ export function runSculptcoreStroke(opts: {
     wasmExec.meshLog = meshLog
     pushBrushDeviceInputs(wasmBrush, ev)
 
+    // Dyntopo remesh before the deform (mirrors SculptPaintOp).
+    const dt = brush.dynTopoSC
+    if (dt.enabled) {
+      const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
+      if (!dynParams) {
+        dynParams = wasm.manager.construct('sculptcore::dyntopo::DynTopoParams') as DynTopoParams
+      }
+      configureDynTopoParams(dynParams, dt, l_max, l_min)
+      wasmExec.applyDynTopoDab(wasm.float3(new Vector3(dab.p)), radius, dynParams, dabIdx + 1)
+    }
+
     const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
     buildBrushProgram(prog, brushType, brush, radius, mesh)
     wasmExec.execProgram(prog, nodes, wasm.float3(new Vector3(dab.p)), wasm.float3(new Vector3(dab.normal)))
     prog[Symbol.dispose]()
+    dabIdx++
+  }
+
+  wasmExec?.endDynTopoStroke()
+  if (dynParams) {
+    dynParams[Symbol.dispose]()
   }
 
   meshLog.endStep()

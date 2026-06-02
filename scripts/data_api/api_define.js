@@ -94,6 +94,11 @@ import {
   DynTopoModes,
   DynTopoOverrides,
   DynTopoSettings,
+  DynTopoSettingsSC,
+  DynTopoEdgeModeSC,
+  DynTopoSCMode,
+  DynTopoFlagsSC,
+  DynTopoOverridesSC,
   SculptBrush,
   SculptIcons,
   SculptTools,
@@ -924,10 +929,62 @@ export function api_define_dyntopo(api) {
     .description('Number of edges to split/collapse per run')
 }
 
+export function api_define_dyntopo_sc(api) {
+  let st = api.mapStruct(DynTopoSettingsSC)
+
+  let tooltips = {}
+  for (let k in DynTopoOverridesSC) {
+    if (k === 'NONE') {
+      tooltips[k] = 'Use Defaults For Everything'
+    } else {
+      tooltips[k] = 'Use Local Brush Settings'
+    }
+  }
+
+  st.flags('overrideMask', 'overrides', DynTopoOverridesSC, 'Overrides').descriptions(tooltips).uiNames({
+    NONE: 'Inherit Everything',
+  })
+
+  st.flags('flag', 'flag', DynTopoFlagsSC, 'Flag').descriptions({
+    ENABLED          : 'Enable dynamic topology while sculpting',
+    DO_FLIPS         : 'Edge flips (keeps triangles well-shaped; recommended)',
+    DO_SMOOTH        : 'Tangential smoothing (evens triangle sizes)',
+    PRESERVE_FEATURES: 'Keep seams / sharp edges / face-set & UV-chart boundaries intact',
+  })
+
+  st.enum('edgeMode', 'edgeMode', DynTopoEdgeModeSC, 'Detail Mode').descriptions({
+    WORLD  : 'Target edge length in world units',
+    PERCENT: 'Target edge length as a percentage of the brush radius',
+    PIXELS : 'Target edge length as a multiple of the projected pixel size',
+  })
+
+  st.enum('mode', 'mode', DynTopoSCMode, 'Refine Mode').descriptions({
+    SUBDIVIDE: 'Only subdivide (split long edges)',
+    COLLAPSE : 'Only collapse (remove short edges)',
+    BOTH     : 'Subdivide and collapse',
+  })
+
+  st.float('edgeSize', 'edgeSize', 'Detail Size', 'Target edge length (units depend on Detail Mode)')
+    .range(0.01, 200.0)
+    .noUnits()
+  st.float('collapseRatio', 'collapseRatio', 'Collapse Ratio', 'Collapse edges shorter than this fraction of the target')
+    .range(0.05, 0.95)
+    .noUnits()
+  st.float('grade', 'grade', 'Grade', 'Relax the target outward from the brush center (0 = uniform)')
+    .range(0.0, 8.0)
+    .noUnits()
+  st.float('smoothLambda', 'smoothLambda', 'Smooth Amount', 'Tangential smoothing step (0..1)')
+    .range(0.0, 1.0)
+    .noUnits()
+  st.int('maxSplits', 'maxSplits', 'Split Budget', 'Max splits per dab (0 = unlimited)').range(0, 200000).noUnits()
+  st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
+}
+
 export function api_define_brush(api, cstruct) {
   let bst = api_define_datablock(api, SculptBrush)
 
   api_define_dyntopo(api)
+  api_define_dyntopo_sc(api)
 
   bst.flags('flag', 'flag', BrushFlags, 'Flag').icons({
     SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
@@ -971,6 +1028,7 @@ export function api_define_brush(api, cstruct) {
 
   bst.struct('texUser', 'texUser', 'Texture', api.mapStruct(ProceduralTexUser))
   bst.struct('dynTopo', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettings))
+  bst.struct('dynTopoSC', 'dynTopoSC', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
 
   bst.curve1d('falloff', 'falloff', 'Falloff')
   bst.curve1d('falloff2', 'falloff2', 'Falloff', 'Inbetween Falloff')

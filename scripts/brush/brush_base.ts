@@ -129,6 +129,56 @@ export enum SubdivModes {
   SMART = 1,
 }
 
+// --- Sculptcore dynamic-topology settings (DynTopoSettingsSC) -----------------
+// These back the sculptcore-native dyntopo path (brush_dyntopo_sc.ts), distinct
+// from the legacy pbvh DynTopo* enums above. The mode enum mirrors the C++
+// `sculptcore::dyntopo::DynTopoMode` int values so it maps 1:1 onto
+// DynTopoParams.mode.
+
+// How the per-dab target edge length (l_max) is resolved in TS. l_min is then
+// l_max * collapseRatio. See DynTopoSettingsSC.resolveEdgeGoal.
+export enum DynTopoEdgeModeSC {
+  WORLD = 0,   // edgeSize is a world-space (object-local) length
+  PERCENT = 1, // edgeSize is a percentage of the brush radius
+  PIXELS = 2,  // edgeSize is a multiple of the projected pixel size at the dab
+}
+
+// Mirrors sculptcore::dyntopo::DynTopoMode (Subdivide=0, Collapse=1, Both=2).
+export enum DynTopoSCMode {
+  SUBDIVIDE = 0,
+  COLLAPSE = 1,
+  BOTH = 2,
+}
+
+export enum DynTopoFlagsSC {
+  ENABLED = 1,
+  DO_FLIPS = 2,
+  DO_SMOOTH = 4,
+  PRESERVE_FEATURES = 8,
+}
+
+export enum DynTopoOverridesSC {
+  // Mirrored with DynTopoFlagsSC.
+  ENABLED = 1,
+  DO_FLIPS = 2,
+  DO_SMOOTH = 4,
+  PRESERVE_FEATURES = 8,
+  // end DynTopoFlagsSC mirror
+
+  // These mirror scalar/enum properties instead of flags.
+  EDGE_MODE = 1 << 16,
+  EDGE_SIZE = 1 << 17,
+  COLLAPSE_RATIO = 1 << 18,
+  GRADE = 1 << 19,
+  MODE = 1 << 20,
+  SMOOTH_LAMBDA = 1 << 21,
+  MAX_SPLITS = 1 << 22,
+  MAX_ROUNDS = 1 << 23,
+
+  NONE = 1 << 24, // set => inherit everything from the tool-mode defaults
+  EVERYTHING = ((1 << 24) - 1), // all override bits except NONE
+}
+
 export const SculptIcons = {} as {[k: string]: number}
 for (const k in SculptTools) {
   SculptIcons[k] = (Icons as any)['SCULPT_' + k]

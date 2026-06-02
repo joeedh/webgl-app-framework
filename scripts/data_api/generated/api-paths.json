@@ -2424,6 +2424,177 @@
       "decimalPlaces": 4,
       "step": 5
     },
+    "scene.tools.sculpt.brush.dynTopoSC": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.overrides": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Overrides",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "65536",
+        "131072",
+        "262144",
+        "524288",
+        "1048576",
+        "2097152",
+        "4194304",
+        "8388608",
+        "16777215",
+        "16777216",
+        "ENABLED",
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES",
+        "EDGE_MODE",
+        "EDGE_SIZE",
+        "COLLAPSE_RATIO",
+        "GRADE",
+        "MODE",
+        "SMOOTH_LAMBDA",
+        "MAX_SPLITS",
+        "MAX_ROUNDS",
+        "NONE",
+        "EVERYTHING"
+      ]
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.flag": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Flag",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "ENABLED",
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES"
+      ]
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.edgeMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Detail Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "2",
+        "WORLD",
+        "PERCENT",
+        "PIXELS"
+      ]
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Refine Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "2",
+        "SUBDIVIDE",
+        "COLLAPSE",
+        "BOTH"
+      ]
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.edgeSize": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Detail Size",
+      "description": "Target edge length (units depend on Detail Mode)",
+      "range": [
+        0.01,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.collapseRatio": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Collapse Ratio",
+      "description": "Collapse edges shorter than this fraction of the target",
+      "range": [
+        0.05,
+        0.95
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.grade": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grade",
+      "description": "Relax the target outward from the brush center (0 = uniform)",
+      "range": [
+        0,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.smoothLambda": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Smooth Amount",
+      "description": "Tangential smoothing step (0..1)",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.maxSplits": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Split Budget",
+      "description": "Max splits per dab (0 = unlimited)",
+      "range": [
+        0,
+        200000
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculpt.brush.dynTopoSC.maxRounds": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Max Rounds",
+      "description": "Max independent-set rounds per dab",
+      "range": [
+        1,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculpt.brush.falloff": {
       "kind": "prop",
       "indexed": false,
@@ -3868,6 +4039,177 @@
       "decimalPlaces": 4,
       "step": 5
     },
+    "scene.tools.sculptcore.brush.dynTopoSC": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.overrides": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Overrides",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "65536",
+        "131072",
+        "262144",
+        "524288",
+        "1048576",
+        "2097152",
+        "4194304",
+        "8388608",
+        "16777215",
+        "16777216",
+        "ENABLED",
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES",
+        "EDGE_MODE",
+        "EDGE_SIZE",
+        "COLLAPSE_RATIO",
+        "GRADE",
+        "MODE",
+        "SMOOTH_LAMBDA",
+        "MAX_SPLITS",
+        "MAX_ROUNDS",
+        "NONE",
+        "EVERYTHING"
+      ]
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.flag": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Flag",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "ENABLED",
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES"
+      ]
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Detail Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "2",
+        "WORLD",
+        "PERCENT",
+        "PIXELS"
+      ]
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Refine Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "2",
+        "SUBDIVIDE",
+        "COLLAPSE",
+        "BOTH"
+      ]
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.edgeSize": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Detail Size",
+      "description": "Target edge length (units depend on Detail Mode)",
+      "range": [
+        0.01,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Collapse Ratio",
+      "description": "Collapse edges shorter than this fraction of the target",
+      "range": [
+        0.05,
+        0.95
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.grade": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grade",
+      "description": "Relax the target outward from the brush center (0 = uniform)",
+      "range": [
+        0,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.smoothLambda": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Smooth Amount",
+      "description": "Tangential smoothing step (0..1)",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.maxSplits": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Split Budget",
+      "description": "Max splits per dab (0 = unlimited)",
+      "range": [
+        0,
+        200000
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Max Rounds",
+      "description": "Max independent-set rounds per dab",
+      "range": [
+        1,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.brush.falloff": {
       "kind": "prop",
       "indexed": false,
@@ -4084,33 +4426,6 @@
       "indexed": false,
       "dynamic": false
     },
-    "scene.tools.sculptcore.dynTopo.valenceGoal": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Valence Goal",
-      "description": "Number of edges around vertices to aim for",
-      "range": [
-        0,
-        12
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.subdivMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Subdiv Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "0",
-        "1",
-        "SIMPLE",
-        "SMART"
-      ]
-    },
     "scene.tools.sculptcore.dynTopo.overrides": {
       "kind": "prop",
       "indexed": false,
@@ -4121,12 +4436,8 @@
       "enumItems": [
         "1",
         "2",
+        "4",
         "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
         "65536",
         "131072",
         "262144",
@@ -4135,70 +4446,23 @@
         "2097152",
         "4194304",
         "8388608",
+        "16777215",
         "16777216",
-        "33554432",
-        "67108864",
-        "130023423",
-        "134217728",
-        "SUBDIVIDE",
-        "COLLAPSE",
         "ENABLED",
-        "FANCY_EDGE_WEIGHTS",
-        "QUAD_COLLAPSE",
-        "ALLOW_VALENCE4",
-        "DRAW_TRIS_AS_QUADS",
-        "ADAPTIVE",
-        "VALENCE_GOAL",
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES",
+        "EDGE_MODE",
         "EDGE_SIZE",
-        "DECIMATE_FACTOR",
-        "SUBDIVIDE_FACTOR",
-        "MAX_DEPTH",
-        "EDGE_COUNT",
+        "COLLAPSE_RATIO",
+        "GRADE",
+        "MODE",
+        "SMOOTH_LAMBDA",
+        "MAX_SPLITS",
+        "MAX_ROUNDS",
         "NONE",
-        "REPEAT",
-        "SPACING_MODE",
-        "SPACING",
-        "EDGEMODE",
-        "SUBDIV_MODE",
         "EVERYTHING"
       ]
-    },
-    "scene.tools.sculptcore.dynTopo.subdivideFactor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Subdivision Factor",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.decimateFactor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Decimate Factor",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.edgeSize": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Edge Length",
-      "description": "Edge length (in pixels)",
-      "range": [
-        0.25,
-        40
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
     },
     "scene.tools.sculptcore.dynTopo.flag": {
       "kind": "prop",
@@ -4210,98 +4474,123 @@
       "enumItems": [
         "1",
         "2",
+        "4",
         "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "SUBDIVIDE",
-        "COLLAPSE",
         "ENABLED",
-        "FANCY_EDGE_WEIGHTS",
-        "QUAD_COLLAPSE",
-        "ALLOW_VALENCE4",
-        "DRAW_TRIS_AS_QUADS",
-        "ADAPTIVE"
-      ]
-    },
-    "scene.tools.sculptcore.dynTopo.maxDepth": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Max Depth",
-      "description": "Maximum quad tree grid subdivision level",
-      "range": [
-        0,
-        15
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.repeat": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Repeat",
-      "description": "Number of times to run topology engine",
-      "range": [
-        1,
-        25
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.spacing": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Spacing",
-      "range": [
-        0.01,
-        12
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.spacingMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Spacing Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE",
-        "EVEN"
+        "DO_FLIPS",
+        "DO_SMOOTH",
+        "PRESERVE_FEATURES"
       ]
     },
     "scene.tools.sculptcore.dynTopo.edgeMode": {
       "kind": "prop",
       "indexed": false,
       "propType": "EnumProperty",
-      "uiname": "Mode",
+      "uiname": "Detail Mode",
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
         "0",
         "1",
-        "SCREEN",
-        "WORLD"
+        "2",
+        "WORLD",
+        "PERCENT",
+        "PIXELS"
       ]
     },
-    "scene.tools.sculptcore.dynTopo.edgeCount": {
+    "scene.tools.sculptcore.dynTopo.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Refine Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "2",
+        "SUBDIVIDE",
+        "COLLAPSE",
+        "BOTH"
+      ]
+    },
+    "scene.tools.sculptcore.dynTopo.edgeSize": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Detail Size",
+      "description": "Target edge length (units depend on Detail Mode)",
+      "range": [
+        0.01,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.collapseRatio": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Collapse Ratio",
+      "description": "Collapse edges shorter than this fraction of the target",
+      "range": [
+        0.05,
+        0.95
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.grade": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grade",
+      "description": "Relax the target outward from the brush center (0 = uniform)",
+      "range": [
+        0,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.smoothLambda": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Smooth Amount",
+      "description": "Tangential smoothing step (0..1)",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.maxSplits": {
       "kind": "prop",
       "indexed": false,
       "propType": "IntProperty",
-      "uiname": "Edge Count",
-      "description": "Number of edges to split/collapse per run",
+      "uiname": "Split Budget",
+      "description": "Max splits per dab (0 = unlimited)",
       "range": [
-        1,
-        2048
+        0,
+        200000
       ],
       "decimalPlaces": 4,
-      "step": 5
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.maxRounds": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Max Rounds",
+      "description": "Max independent-set rounds per dab",
+      "range": [
+        1,
+        200
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "scene.tools.sculptcore.inheritDynTopo": {
       "kind": "prop",
@@ -7693,6 +7982,79 @@
       "propType": "FloatProperty",
       "uiname": "Size",
       "description": "Size",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_attr": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.add_attr.domain": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Domain",
+      "description": "Domain",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_attr.type": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Type",
+      "description": "Type",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_attr.use": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Use",
+      "description": "Use",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.mark_seam": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.mark_seam.vStart": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "V Start",
+      "description": "V Start",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.mark_seam.vEnd": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "V End",
+      "description": "V End",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.generate_uv": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.generate_uv.margin": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Margin",
+      "description": "Margin",
+      "range": [
+        0,
+        0.25
+      ],
       "decimalPlaces": 4,
       "step": 0.1
     },

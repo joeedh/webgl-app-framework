@@ -17,13 +17,21 @@ import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {PaintToolModeBase} from './pbvh_base'
 import {Icons} from '../../icon_enum.js'
 import type {View3D} from '../view3d'
-import {BrushFlags, DynTopoFlags, DynTopoOverrides, SculptIcons, SculptTools} from '../../../brush/brush_base.js'
+import {
+  BrushFlags,
+  DynTopoFlags,
+  DynTopoOverrides,
+  DynTopoFlagsSC,
+  DynTopoOverridesSC,
+  SculptIcons,
+  SculptTools,
+} from '../../../brush/brush_base.js'
 import {SelMask} from '../selectmode.js'
 import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh'
 import {BVHFlags} from '../../../../addons/builtin/mesh/src/bvh'
 import type {ISurfaceSampler} from '../../../util/spatial'
 import type {LiteMesh} from '../../../lite-mesh/index'
-import {DynTopoSettings, SculptBrush} from '../../../brush/index'
+import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../../../brush/index'
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
@@ -31,11 +39,16 @@ import {builSculptcoreBrush} from './sculptcore_bindings'
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
+  _apiDynTopoSC: any
+  /** Tool-mode dyntopo defaults for the sculptcore path (per-brush overrides
+   * merge over this via DynTopoSettingsSC.loadDefaults). */
+  dynTopoSC = new DynTopoSettingsSC()
 
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
         SculptCorePaintMode {
+          dynTopoSC : DynTopoSettingsSC;
         }
     `
   )
@@ -191,7 +204,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
       const opath = `${path}.dynTopo.overrides[NONE]`
 
-      const okey = DynTopoSettings.apiKeyToOverride(key)
+      const okey = DynTopoSettingsSC.apiKeyToOverride(key)
       //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
       const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`, -1)
       const ret = strip.prop(`${path}.dynTopo.${key}`)
@@ -219,29 +232,20 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     panel.noMarginsOrPadding()
 
     panel.prop(path + '.inheritDynTopo')
-    dfield(panel, 'edgeSize')
     dfield(panel, 'flag[ENABLED]')
-    dfield(panel, 'flag[SUBDIVIDE]')
-    dfield(panel, 'flag[COLLAPSE]')
-    dfield(panel, 'flag[ADAPTIVE]')
-
     dfield(panel, 'edgeMode')
-    dfield(panel, 'spacing')
-    dfield(panel, 'spacingMode')
+    dfield(panel, 'edgeSize')
+    dfield(panel, 'mode')
+    dfield(panel, 'flag[DO_SMOOTH]')
+    dfield(panel, 'flag[PRESERVE_FEATURES]')
 
     panel2 = panel.panel('Advanced')
-    dfield(panel2, 'flag[FANCY_EDGE_WEIGHTS]')
-    dfield(panel2, 'subdivideFactor')
-    dfield(panel2, 'decimateFactor')
-    dfield(panel2, 'edgeCount')
-    dfield(panel2, 'repeat')
-    dfield(panel2, 'valenceGoal')
-    dfield(panel2, 'maxDepth')
-
-    dfield(panel2, 'subdivMode')
-
-    dfield(panel2, 'flag[QUAD_COLLAPSE]')
-    dfield(panel2, 'flag[ALLOW_VALENCE4]')
+    dfield(panel2, 'flag[DO_FLIPS]')
+    dfield(panel2, 'collapseRatio')
+    dfield(panel2, 'grade')
+    dfield(panel2, 'smoothLambda')
+    dfield(panel2, 'maxSplits')
+    dfield(panel2, 'maxRounds')
     dfield(panel2, 'flag[DRAW_TRIS_AS_QUADS]')
 
     //panel
@@ -346,8 +350,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     st.struct('_apiBrushHelper', 'brush', 'Brush', api.mapStruct(SculptBrush))
 
-    st.struct('_apiDynTopo', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettings))
-    st.bool('_apiInheritDynTopo', 'inheritDynTopo', 'Inherit Everything')
+    // Sculptcore dyntopo: the datapath stays `dynTopo` / `inheritDynTopo` (so the
+    // UI paths are unchanged) but is backed by the sculptcore DynTopoSettingsSC.
+    st.struct('_apiDynTopoSC', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
+    st.bool('_apiInheritDynTopoSC', 'inheritDynTopo', 'Inherit Everything')
 
     st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors')
 
@@ -459,6 +465,108 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         return true
       },
     })
+
+    // Sculptcore dyntopo: same mode-default + per-brush-override merge as the
+    // legacy proxy above, over DynTopoSettingsSC / DynTopoOverridesSC.
+    this._apiDynTopoSC = new Proxy(this.dynTopoSC, {
+      get: (target: any, key: string | symbol): any => {
+        const brush = this.getBrush()
+
+        if (brush && key === 'overrideMask') {
+          return brush.dynTopoSC.overrideMask
+        }
+
+        const all = !brush || brush.dynTopoSC.overrideMask & DynTopoOverridesSC.NONE
+
+        if (all) {
+          return (this.dynTopoSC as any)[key]
+        }
+
+        if (key !== 'flag') {
+          const key2 = DynTopoSettingsSC.apiKeyToOverride(key as string)
+
+          if (!key2) {
+            return (brush.dynTopoSC as any)[key]
+          }
+
+          let override = DynTopoOverridesSC[key2 as keyof typeof DynTopoOverridesSC] as unknown as number
+          override = brush.dynTopoSC.overrideMask & override
+
+          if (override) {
+            return (brush.dynTopoSC as any)[key]
+          } else {
+            return (this.dynTopoSC as any)[key]
+          }
+        } else {
+          let flag = 0
+
+          const f1 = this.dynTopoSC.flag
+          const f2 = brush.dynTopoSC.flag
+          const oflag = brush.dynTopoSC.overrideMask
+
+          for (const k in DynTopoFlagsSC) {
+            const f = DynTopoFlagsSC[k as keyof typeof DynTopoFlagsSC] as unknown as number
+            if (typeof f !== 'number') {
+              continue
+            }
+
+            if (oflag & f) {
+              flag |= f2 & f ? f : 0
+            } else {
+              flag |= f1 & f ? f : 0
+            }
+          }
+
+          return flag
+        }
+      },
+      set: (target: any, key: string | symbol, val: any): boolean => {
+        const brush = this.getBrush()
+
+        const all = !brush || brush.dynTopoSC.overrideMask & DynTopoOverridesSC.NONE
+
+        if (brush && key === 'overrideMask') {
+          brush.dynTopoSC.overrideMask = val
+          return true
+        } else if (all) {
+          ;(this.dynTopoSC as any)[key] = val
+          return true
+        }
+
+        if (key !== 'flag') {
+          const key2 = DynTopoSettingsSC.apiKeyToOverride(key as string)
+
+          if (
+            key2 &&
+            brush.dynTopoSC.overrideMask &
+              (DynTopoOverridesSC[key2 as keyof typeof DynTopoOverridesSC] as unknown as number)
+          ) {
+            ;(brush.dynTopoSC as any)[key] = val
+          } else {
+            ;(this.dynTopoSC as any)[key] = val
+          }
+        } else {
+          const oflag = brush.dynTopoSC.overrideMask
+
+          for (const k in DynTopoFlagsSC) {
+            const f = DynTopoFlagsSC[k as keyof typeof DynTopoFlagsSC] as unknown as number
+            if (typeof f !== 'number') {
+              continue
+            }
+
+            const dynTopo = oflag & f ? brush.dynTopoSC : this.dynTopoSC
+
+            if (val & f) {
+              dynTopo.flag |= f
+            } else {
+              dynTopo.flag &= ~f
+            }
+          }
+        }
+
+        return true
+      },
+    })
   }
 
   onInactive() {
@@ -533,6 +641,28 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
   }
 
+  get _apiInheritDynTopoSC(): boolean {
+    const brush = this.getBrush()
+    if (!brush) {
+      return false
+    }
+
+    return !!(brush.dynTopoSC.overrideMask & DynTopoOverridesSC.NONE)
+  }
+
+  set _apiInheritDynTopoSC(v: boolean) {
+    const brush = this.getBrush()
+    if (!brush) {
+      return
+    }
+
+    if (v) {
+      brush.dynTopoSC.overrideMask |= DynTopoOverridesSC.NONE
+    } else {
+      brush.dynTopoSC.overrideMask &= ~DynTopoOverridesSC.NONE
+    }
+  }
+
   on_mousedown(e: PointerEvent, x: number, y: number): boolean {
     this.mpos[0] = e.x
     this.mpos[1] = e.y
@@ -551,6 +681,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
       brush = brush.copy()
       brush.dynTopo.loadDefaults(this.dynTopo)
+      brush.dynTopoSC.loadDefaults(this.dynTopoSC)
 
       if (e.ctrlKey) {
         const t = brush.color

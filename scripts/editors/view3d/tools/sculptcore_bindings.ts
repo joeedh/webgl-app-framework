@@ -1,6 +1,6 @@
-import {CommandExecutor, Brush as WasmBrush, BrushProgram} from '@sculptcore/api'
+import {CommandExecutor, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
 import {IWasmInterface} from '@sculptcore/api/api'
-import {SculptBrush} from '../../../brush/index'
+import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/index'
 import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
@@ -206,6 +206,30 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
   if (brush.flag & BrushFlags.SQUARE) {
     wasmBrush.setFalloffShape(FalloffShape.Box)
   }
+}
+
+/**
+ * Copy a resolved {@link DynTopoSettingsSC} onto a bound C++ `DynTopoParams` for
+ * one dab. `l_max`/`l_min` are pre-resolved in TS (DynTopoSettingsSC.resolveEdgeGoal)
+ * so sculptcore stays camera-free. The enum/flags map 1:1 onto the C++ fields.
+ */
+export function configureDynTopoParams(
+  params: DynTopoParams,
+  dt: DynTopoSettingsSC,
+  l_max: number,
+  l_min: number
+): void {
+  params.l_max = l_max
+  params.l_min = l_min
+  // DynTopoSCMode mirrors sculptcore::dyntopo::DynTopoMode int values.
+  params.mode = dt.mode as unknown as DynTopoParams['mode']
+  params.grade = dt.grade
+  params.max_rounds = dt.maxRounds
+  params.max_splits = dt.maxSplits
+  params.smooth_lambda = dt.smoothLambda
+  params.do_flips = !!(dt.flag & DynTopoFlagsSC.DO_FLIPS)
+  params.do_smooth = !!(dt.flag & DynTopoFlagsSC.DO_SMOOTH)
+  params.preserve_features = !!(dt.flag & DynTopoFlagsSC.PRESERVE_FEATURES)
 }
 
 export function builSculptcoreBrush({

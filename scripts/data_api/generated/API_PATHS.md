@@ -480,6 +480,17 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.dynTopo.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
 | `scene.tools.sculpt.brush.dynTopo.edgeMode` | prop | EnumProperty | Mode | enum {0, 1, SCREEN, WORLD} |
 | `scene.tools.sculpt.brush.dynTopo.edgeCount` | prop | IntProperty | Edge Count | range 1..2048 |
+| `scene.tools.sculpt.brush.dynTopoSC` | struct |  |  |  |
+| `scene.tools.sculpt.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {1, 2, 4, 8, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777215, 16777216, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculpt.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
+| `scene.tools.sculpt.brush.dynTopoSC.edgeMode` | prop | EnumProperty | Detail Mode | enum {0, 1, 2, WORLD, PERCENT, PIXELS} |
+| `scene.tools.sculpt.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {0, 1, 2, SUBDIVIDE, COLLAPSE, BOTH} |
+| `scene.tools.sculpt.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.01..200 |
+| `scene.tools.sculpt.brush.dynTopoSC.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculpt.brush.dynTopoSC.grade` | prop | FloatProperty | Grade | range 0..8 |
+| `scene.tools.sculpt.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
+| `scene.tools.sculpt.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
+| `scene.tools.sculpt.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculpt.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculpt.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculpt.brush.dynamics` | struct |  |  |  |
@@ -601,6 +612,17 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynTopo.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
 | `scene.tools.sculptcore.brush.dynTopo.edgeMode` | prop | EnumProperty | Mode | enum {0, 1, SCREEN, WORLD} |
 | `scene.tools.sculptcore.brush.dynTopo.edgeCount` | prop | IntProperty | Edge Count | range 1..2048 |
+| `scene.tools.sculptcore.brush.dynTopoSC` | struct |  |  |  |
+| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {1, 2, 4, 8, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777215, 16777216, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
+| `scene.tools.sculptcore.brush.dynTopoSC.edgeMode` | prop | EnumProperty | Detail Mode | enum {0, 1, 2, WORLD, PERCENT, PIXELS} |
+| `scene.tools.sculptcore.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {0, 1, 2, SUBDIVIDE, COLLAPSE, BOTH} |
+| `scene.tools.sculptcore.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.01..200 |
+| `scene.tools.sculptcore.brush.dynTopoSC.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculptcore.brush.dynTopoSC.grade` | prop | FloatProperty | Grade | range 0..8 |
+| `scene.tools.sculptcore.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
+| `scene.tools.sculptcore.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
+| `scene.tools.sculptcore.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculptcore.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculptcore.brush.dynamics` | struct |  |  |  |
@@ -632,19 +654,16 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynamics.autosmoothInflate.useDynamics` | prop | BoolProperty | Use Dynamics |  |
 | `scene.tools.sculptcore.brush.dynamics.autosmoothInflate.curve` | prop | Curve1DProperty | Curve |  |
 | `scene.tools.sculptcore.dynTopo` | struct |  |  |  |
-| `scene.tools.sculptcore.dynTopo.valenceGoal` | prop | IntProperty | Valence Goal | range 0..12 |
-| `scene.tools.sculptcore.dynTopo.subdivMode` | prop | EnumProperty | Subdiv Mode | enum {0, 1, SIMPLE, SMART} |
-| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {1, 2, 8, 16, 32, 64, 128, 256, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 130023423, 134217728, SUBDIVIDE, COLLAPSE, ENABLED, FANCY_EDGE_WEIGHTS, QUAD_COLLAPSE, ALLOW_VALENCE4, DRAW_TRIS_AS_QUADS, ADAPTIVE, VALENCE_GOAL, EDGE_SIZE, DECIMATE_FACTOR, SUBDIVIDE_FACTOR, MAX_DEPTH, EDGE_COUNT, NONE, REPEAT, SPACING_MODE, SPACING, EDGEMODE, SUBDIV_MODE, EVERYTHING} |
-| `scene.tools.sculptcore.dynTopo.subdivideFactor` | prop | FloatProperty | Subdivision Factor | range 0..1 |
-| `scene.tools.sculptcore.dynTopo.decimateFactor` | prop | FloatProperty | Decimate Factor | range 0..1 |
-| `scene.tools.sculptcore.dynTopo.edgeSize` | prop | FloatProperty | Edge Length | range 0.25..40 |
-| `scene.tools.sculptcore.dynTopo.flag` | prop | FlagProperty | Flag | enum {1, 2, 8, 16, 32, 64, 128, 256, SUBDIVIDE, COLLAPSE, ENABLED, FANCY_EDGE_WEIGHTS, QUAD_COLLAPSE, ALLOW_VALENCE4, DRAW_TRIS_AS_QUADS, ADAPTIVE} |
-| `scene.tools.sculptcore.dynTopo.maxDepth` | prop | IntProperty | Max Depth | range 0..15 |
-| `scene.tools.sculptcore.dynTopo.repeat` | prop | IntProperty | Repeat | range 1..25 |
-| `scene.tools.sculptcore.dynTopo.spacing` | prop | FloatProperty | Spacing | range 0.01..12 |
-| `scene.tools.sculptcore.dynTopo.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
-| `scene.tools.sculptcore.dynTopo.edgeMode` | prop | EnumProperty | Mode | enum {0, 1, SCREEN, WORLD} |
-| `scene.tools.sculptcore.dynTopo.edgeCount` | prop | IntProperty | Edge Count | range 1..2048 |
+| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {1, 2, 4, 8, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777215, 16777216, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.dynTopo.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
+| `scene.tools.sculptcore.dynTopo.edgeMode` | prop | EnumProperty | Detail Mode | enum {0, 1, 2, WORLD, PERCENT, PIXELS} |
+| `scene.tools.sculptcore.dynTopo.mode` | prop | EnumProperty | Refine Mode | enum {0, 1, 2, SUBDIVIDE, COLLAPSE, BOTH} |
+| `scene.tools.sculptcore.dynTopo.edgeSize` | prop | FloatProperty | Detail Size | range 0.01..200 |
+| `scene.tools.sculptcore.dynTopo.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculptcore.dynTopo.grade` | prop | FloatProperty | Grade | range 0..8 |
+| `scene.tools.sculptcore.dynTopo.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
+| `scene.tools.sculptcore.dynTopo.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
+| `scene.tools.sculptcore.dynTopo.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.selectMaskEnum` | prop | FlagProperty | Selection Mode | enum {VERTEX, EDGE, FACE, HANDLE, GEOM, SGEOM, MESH, LIGHT, CAMERA, NULLOBJECT, PROCMESH, TETMESH, STRANDS, OBJECT} |
@@ -886,6 +905,15 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.add_cube.sphere` | prop | FloatProperty | Sphere | range 0..1 |
 | `toolDefaults.litemesh.add_cube.dimen` | prop | IntProperty | Dimen | range 1..1024 |
 | `toolDefaults.litemesh.add_cube.size` | prop | FloatProperty | Size |  |
+| `toolDefaults.litemesh.add_attr` | struct |  |  |  |
+| `toolDefaults.litemesh.add_attr.domain` | prop | IntProperty | Domain |  |
+| `toolDefaults.litemesh.add_attr.type` | prop | IntProperty | Type |  |
+| `toolDefaults.litemesh.add_attr.use` | prop | IntProperty | Use |  |
+| `toolDefaults.litemesh.mark_seam` | struct |  |  |  |
+| `toolDefaults.litemesh.mark_seam.vStart` | prop | IntProperty | V Start |  |
+| `toolDefaults.litemesh.mark_seam.vEnd` | prop | IntProperty | V End |  |
+| `toolDefaults.litemesh.generate_uv` | struct |  |  |  |
+| `toolDefaults.litemesh.generate_uv.margin` | prop | FloatProperty | Margin | range 0..0.25 |
 | `toolDefaults.sculptcore` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint.brush` | prop | BrushProperty | Brush |  |

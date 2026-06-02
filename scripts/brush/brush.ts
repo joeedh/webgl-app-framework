@@ -19,6 +19,7 @@ export {BrushDynamics} from './brush_dynamics'
 
 import {SculptTools, BrushFlags, DynTopoFlags, DynTopoOverrides, BrushSpacingModes} from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
+import {DynTopoSettingsSC} from './brush_dyntopo_sc'
 
 function feq(a: number, b: number) {
   return Math.abs(a - b) < 0.00001
@@ -51,6 +52,7 @@ SculptBrush {
   texUser    : ProceduralTexUser;
   pinch      : float;
   dynTopo    : DynTopoSettings;
+  dynTopoSC  : DynTopoSettingsSC;
   rakeCurvatureFactor : float;
   spacingMode: int;
   sharp      : float;
@@ -70,6 +72,7 @@ SculptBrush {
   concaveFilter = 0.0
 
   dynTopo = new DynTopoSettings()
+  dynTopoSC = new DynTopoSettingsSC()
 
   rakeCurvatureFactor = 0.0
 
@@ -159,6 +162,7 @@ SculptBrush {
     //r = r && this.dynamics.equals(b.dynamics);
     r = r && this.falloff.equals(b.falloff)
     r = r && this.dynTopo.equals(b.dynTopo)
+    r = r && this.dynTopoSC.equals(b.dynTopoSC)
     r = r && this.falloff2.equals(b.falloff2)
 
     return r
@@ -203,6 +207,7 @@ SculptBrush {
     this.dynamics.calcHashKey(d)
     this.falloff.calcHashKey(d)
     this.dynTopo.calcHashKey(d)
+    this.dynTopoSC.calcHashKey(d)
     this.falloff2.calcHashKey(d)
 
     return d.get()
@@ -247,6 +252,7 @@ SculptBrush {
     b.falloff2.load(this.falloff2)
     this.texUser.copyTo(b.texUser)
     b.dynTopo.load(this.dynTopo)
+    b.dynTopoSC.load(this.dynTopoSC)
     b.falloff = this.falloff.copy()
   }
 

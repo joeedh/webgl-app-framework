@@ -248,6 +248,17 @@ export type GeneratedDataPath =
   | "scene.tools.sculpt.brush.dynTopo.subdivMode"
   | "scene.tools.sculpt.brush.dynTopo.subdivideFactor"
   | "scene.tools.sculpt.brush.dynTopo.valenceGoal"
+  | "scene.tools.sculpt.brush.dynTopoSC"
+  | "scene.tools.sculpt.brush.dynTopoSC.collapseRatio"
+  | "scene.tools.sculpt.brush.dynTopoSC.edgeMode"
+  | "scene.tools.sculpt.brush.dynTopoSC.edgeSize"
+  | "scene.tools.sculpt.brush.dynTopoSC.flag"
+  | "scene.tools.sculpt.brush.dynTopoSC.grade"
+  | "scene.tools.sculpt.brush.dynTopoSC.maxRounds"
+  | "scene.tools.sculpt.brush.dynTopoSC.maxSplits"
+  | "scene.tools.sculpt.brush.dynTopoSC.mode"
+  | "scene.tools.sculpt.brush.dynTopoSC.overrides"
+  | "scene.tools.sculpt.brush.dynTopoSC.smoothLambda"
   | "scene.tools.sculpt.brush.dynamics"
   | "scene.tools.sculpt.brush.dynamics.autosmooth"
   | "scene.tools.sculpt.brush.dynamics.autosmooth.curve"
@@ -373,6 +384,17 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.dynTopo.subdivMode"
   | "scene.tools.sculptcore.brush.dynTopo.subdivideFactor"
   | "scene.tools.sculptcore.brush.dynTopo.valenceGoal"
+  | "scene.tools.sculptcore.brush.dynTopoSC"
+  | "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio"
+  | "scene.tools.sculptcore.brush.dynTopoSC.edgeMode"
+  | "scene.tools.sculptcore.brush.dynTopoSC.edgeSize"
+  | "scene.tools.sculptcore.brush.dynTopoSC.flag"
+  | "scene.tools.sculptcore.brush.dynTopoSC.grade"
+  | "scene.tools.sculptcore.brush.dynTopoSC.maxRounds"
+  | "scene.tools.sculptcore.brush.dynTopoSC.maxSplits"
+  | "scene.tools.sculptcore.brush.dynTopoSC.mode"
+  | "scene.tools.sculptcore.brush.dynTopoSC.overrides"
+  | "scene.tools.sculptcore.brush.dynTopoSC.smoothLambda"
   | "scene.tools.sculptcore.brush.dynamics"
   | "scene.tools.sculptcore.brush.dynamics.autosmooth"
   | "scene.tools.sculptcore.brush.dynamics.autosmooth.curve"
@@ -451,19 +473,16 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.drawNodeIds"
   | "scene.tools.sculptcore.drawWireframe"
   | "scene.tools.sculptcore.dynTopo"
-  | "scene.tools.sculptcore.dynTopo.decimateFactor"
-  | "scene.tools.sculptcore.dynTopo.edgeCount"
+  | "scene.tools.sculptcore.dynTopo.collapseRatio"
   | "scene.tools.sculptcore.dynTopo.edgeMode"
   | "scene.tools.sculptcore.dynTopo.edgeSize"
   | "scene.tools.sculptcore.dynTopo.flag"
-  | "scene.tools.sculptcore.dynTopo.maxDepth"
+  | "scene.tools.sculptcore.dynTopo.grade"
+  | "scene.tools.sculptcore.dynTopo.maxRounds"
+  | "scene.tools.sculptcore.dynTopo.maxSplits"
+  | "scene.tools.sculptcore.dynTopo.mode"
   | "scene.tools.sculptcore.dynTopo.overrides"
-  | "scene.tools.sculptcore.dynTopo.repeat"
-  | "scene.tools.sculptcore.dynTopo.spacing"
-  | "scene.tools.sculptcore.dynTopo.spacingMode"
-  | "scene.tools.sculptcore.dynTopo.subdivMode"
-  | "scene.tools.sculptcore.dynTopo.subdivideFactor"
-  | "scene.tools.sculptcore.dynTopo.valenceGoal"
+  | "scene.tools.sculptcore.dynTopo.smoothLambda"
   | "scene.tools.sculptcore.inheritDynTopo"
   | "scene.tools.sculptcore.reprojectCustomData"
   | "scene.tools.sculptcore.sharedBrushRadius"
@@ -602,10 +621,19 @@ export type GeneratedDataPath =
   | "toolDefaults.listbox.set_active.key"
   | "toolDefaults.listbox.set_active.numericKey"
   | "toolDefaults.litemesh"
+  | "toolDefaults.litemesh.add_attr"
+  | "toolDefaults.litemesh.add_attr.domain"
+  | "toolDefaults.litemesh.add_attr.type"
+  | "toolDefaults.litemesh.add_attr.use"
   | "toolDefaults.litemesh.add_cube"
   | "toolDefaults.litemesh.add_cube.dimen"
   | "toolDefaults.litemesh.add_cube.size"
   | "toolDefaults.litemesh.add_cube.sphere"
+  | "toolDefaults.litemesh.generate_uv"
+  | "toolDefaults.litemesh.generate_uv.margin"
+  | "toolDefaults.litemesh.mark_seam"
+  | "toolDefaults.litemesh.mark_seam.vEnd"
+  | "toolDefaults.litemesh.mark_seam.vStart"
   | "toolDefaults.material"
   | "toolDefaults.material.new"
   | "toolDefaults.material.new.dataPathToSet"
@@ -1038,6 +1066,17 @@ declare module "@framework/pathux" {
     "scene.tools.sculpt.brush.dynTopo.subdivMode": true;
     "scene.tools.sculpt.brush.dynTopo.subdivideFactor": true;
     "scene.tools.sculpt.brush.dynTopo.valenceGoal": true;
+    "scene.tools.sculpt.brush.dynTopoSC": true;
+    "scene.tools.sculpt.brush.dynTopoSC.collapseRatio": true;
+    "scene.tools.sculpt.brush.dynTopoSC.edgeMode": true;
+    "scene.tools.sculpt.brush.dynTopoSC.edgeSize": true;
+    "scene.tools.sculpt.brush.dynTopoSC.flag": true;
+    "scene.tools.sculpt.brush.dynTopoSC.grade": true;
+    "scene.tools.sculpt.brush.dynTopoSC.maxRounds": true;
+    "scene.tools.sculpt.brush.dynTopoSC.maxSplits": true;
+    "scene.tools.sculpt.brush.dynTopoSC.mode": true;
+    "scene.tools.sculpt.brush.dynTopoSC.overrides": true;
+    "scene.tools.sculpt.brush.dynTopoSC.smoothLambda": true;
     "scene.tools.sculpt.brush.dynamics": true;
     "scene.tools.sculpt.brush.dynamics.autosmooth": true;
     "scene.tools.sculpt.brush.dynamics.autosmooth.curve": true;
@@ -1163,6 +1202,17 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.dynTopo.subdivMode": true;
     "scene.tools.sculptcore.brush.dynTopo.subdivideFactor": true;
     "scene.tools.sculptcore.brush.dynTopo.valenceGoal": true;
+    "scene.tools.sculptcore.brush.dynTopoSC": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.edgeSize": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.flag": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.grade": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.maxSplits": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.mode": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.overrides": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.smoothLambda": true;
     "scene.tools.sculptcore.brush.dynamics": true;
     "scene.tools.sculptcore.brush.dynamics.autosmooth": true;
     "scene.tools.sculptcore.brush.dynamics.autosmooth.curve": true;
@@ -1241,19 +1291,16 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.drawNodeIds": true;
     "scene.tools.sculptcore.drawWireframe": true;
     "scene.tools.sculptcore.dynTopo": true;
-    "scene.tools.sculptcore.dynTopo.decimateFactor": true;
-    "scene.tools.sculptcore.dynTopo.edgeCount": true;
+    "scene.tools.sculptcore.dynTopo.collapseRatio": true;
     "scene.tools.sculptcore.dynTopo.edgeMode": true;
     "scene.tools.sculptcore.dynTopo.edgeSize": true;
     "scene.tools.sculptcore.dynTopo.flag": true;
-    "scene.tools.sculptcore.dynTopo.maxDepth": true;
+    "scene.tools.sculptcore.dynTopo.grade": true;
+    "scene.tools.sculptcore.dynTopo.maxRounds": true;
+    "scene.tools.sculptcore.dynTopo.maxSplits": true;
+    "scene.tools.sculptcore.dynTopo.mode": true;
     "scene.tools.sculptcore.dynTopo.overrides": true;
-    "scene.tools.sculptcore.dynTopo.repeat": true;
-    "scene.tools.sculptcore.dynTopo.spacing": true;
-    "scene.tools.sculptcore.dynTopo.spacingMode": true;
-    "scene.tools.sculptcore.dynTopo.subdivMode": true;
-    "scene.tools.sculptcore.dynTopo.subdivideFactor": true;
-    "scene.tools.sculptcore.dynTopo.valenceGoal": true;
+    "scene.tools.sculptcore.dynTopo.smoothLambda": true;
     "scene.tools.sculptcore.inheritDynTopo": true;
     "scene.tools.sculptcore.reprojectCustomData": true;
     "scene.tools.sculptcore.sharedBrushRadius": true;
@@ -1392,10 +1439,19 @@ declare module "@framework/pathux" {
     "toolDefaults.listbox.set_active.key": true;
     "toolDefaults.listbox.set_active.numericKey": true;
     "toolDefaults.litemesh": true;
+    "toolDefaults.litemesh.add_attr": true;
+    "toolDefaults.litemesh.add_attr.domain": true;
+    "toolDefaults.litemesh.add_attr.type": true;
+    "toolDefaults.litemesh.add_attr.use": true;
     "toolDefaults.litemesh.add_cube": true;
     "toolDefaults.litemesh.add_cube.dimen": true;
     "toolDefaults.litemesh.add_cube.size": true;
     "toolDefaults.litemesh.add_cube.sphere": true;
+    "toolDefaults.litemesh.generate_uv": true;
+    "toolDefaults.litemesh.generate_uv.margin": true;
+    "toolDefaults.litemesh.mark_seam": true;
+    "toolDefaults.litemesh.mark_seam.vEnd": true;
+    "toolDefaults.litemesh.mark_seam.vStart": true;
     "toolDefaults.material": true;
     "toolDefaults.material.new": true;
     "toolDefaults.material.new.dataPathToSet": true;
