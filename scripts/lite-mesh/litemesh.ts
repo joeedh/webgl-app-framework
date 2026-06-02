@@ -1069,7 +1069,11 @@ export class LiteMesh extends SceneObjectData {
   }
 
   drawQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, _object: SceneObject) {
-    const drawBVH = (view3d.ctx?.scene?.toolmode as SculptCorePaintMode)?.drawBVH
+    const toolmode = view3d.ctx?.scene?.toolmode as SculptCorePaintMode
+    const drawBVH = toolmode?.drawBVH
+    // Default on: only an explicit `drawFeatureOverlay === false` hides it (other
+    // tool modes have no such field and should still show seams).
+    const drawFeatures = toolmode?.drawFeatureOverlay !== false
     if (this.spatial.update(this.wasm.gpu)) {
       if (this.treeBatch) {
         this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
@@ -1106,7 +1110,7 @@ export class LiteMesh extends SceneObjectData {
     }
 
     if (isWebGPU()) {
-      this.drawQGPU(uniforms2, drawBVH)
+      this.drawQGPU(uniforms2, drawBVH, drawFeatures)
       return
     }
 
@@ -1122,7 +1126,7 @@ export class LiteMesh extends SceneObjectData {
       if (drawBVH && this.treeBatch) {
         exec.dispatch(this.treeBatch, uniforms2)
       }
-      if (this.seamBatch) {
+      if (this.seamBatch && drawFeatures) {
         exec.dispatch(this.seamBatch, uniforms2)
       }
     })
@@ -1136,7 +1140,7 @@ export class LiteMesh extends SceneObjectData {
    * `UniformBindings` and returns the `@group(0)` bind group with
    * `drawMatrix`/`normalMatrix`/`uColor` already written.
    */
-  private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean): void {
+  private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean, drawFeatures = true): void {
     const ctx = getActiveWebGpuContext()
     if (!ctx || !ctx.currentPass) return
     const pass = ctx.currentPass
@@ -1194,7 +1198,7 @@ export class LiteMesh extends SceneObjectData {
 
     if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
     if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
-    if (this.seamBatch) exec.dispatch(this.seamBatch, pass)
+    if (this.seamBatch && drawFeatures) exec.dispatch(this.seamBatch, pass)
   }
 
   regenRender() {

@@ -44,6 +44,27 @@ export class SculptCorePaintMode extends PaintToolModeBase {
    * merge over this via DynTopoSettingsSC.loadDefaults). */
   dynTopoSC = new DynTopoSettingsSC()
 
+  /** Draw the boundary-feature overlay (seam=orange, sharp=cyan, projected=green,
+   * poly-group=magenta, UV-chart=yellow). */
+  drawFeatureOverlay = true
+
+  /** Accumulated dyntopo op counts for the current/last stroke (debug HUD). */
+  dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
+
+  /** Reset the per-stroke dyntopo stats accumulator (call at stroke start). */
+  resetDynTopoStats(): void {
+    this.dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
+  }
+
+  /** One-line HUD summary of the current/last stroke's dyntopo activity. */
+  get dynTopoStatsLabel(): string {
+    const s = this.dynTopoStats
+    if (s.splits === 0 && s.collapses === 0 && s.flips === 0) {
+      return 'DynTopo: —'
+    }
+    return `DynTopo: +${s.splits} −${s.collapses} ⇄${s.flips} r${s.rounds}${s.budgetHit ? ' (capped)' : ''}`
+  }
+
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -264,6 +285,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawFlat`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.drawMask`)
+    strip.prop(`scene.tools.${name}.drawFeatureOverlay`)
+    strip.pathlabel(`scene.tools.${name}.dynTopoStatsLabel`, '')
 
     let row = addHeaderRow()
     const path = `scene.tools.${name}.brush`
@@ -346,6 +369,16 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     st.bool('drawNodeIds', 'drawNodeIds', 'Draw BVH Vertex IDs').on('change', onchange)
     st.bool('drawFlat', 'drawFlat', 'Draw Flat').on('change', onchange).icon(Icons.DRAW_SCULPT_FLAT)
+    st.bool('drawFeatureOverlay', 'drawFeatureOverlay', 'Feature Overlay')
+      .description('Draw seam / sharp / poly-group / UV-chart boundaries')
+      .on('change', function (this: any) {
+        const mesh = this.dataref?.ctx?.mesh
+        if (mesh && 'markSeamsDirty' in mesh) {
+          ;(mesh as LiteMesh).markSeamsDirty()
+        }
+        window.redraw_viewport(true)
+      })
+    st.string('dynTopoStatsLabel', 'dynTopoStatsLabel', 'DynTopo Stats').readOnly()
     st.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     st.struct('_apiBrushHelper', 'brush', 'Brush', api.mapStruct(SculptBrush))

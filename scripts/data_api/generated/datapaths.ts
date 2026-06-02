@@ -468,6 +468,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brushRadius"
   | "scene.tools.sculptcore.drawBVH"
   | "scene.tools.sculptcore.drawColPatches"
+  | "scene.tools.sculptcore.drawFeatureOverlay"
   | "scene.tools.sculptcore.drawFlat"
   | "scene.tools.sculptcore.drawMask"
   | "scene.tools.sculptcore.drawNodeIds"
@@ -483,6 +484,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.dynTopo.mode"
   | "scene.tools.sculptcore.dynTopo.overrides"
   | "scene.tools.sculptcore.dynTopo.smoothLambda"
+  | "scene.tools.sculptcore.dynTopoStatsLabel"
   | "scene.tools.sculptcore.inheritDynTopo"
   | "scene.tools.sculptcore.reprojectCustomData"
   | "scene.tools.sculptcore.sharedBrushRadius"
@@ -1286,6 +1288,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brushRadius": true;
     "scene.tools.sculptcore.drawBVH": true;
     "scene.tools.sculptcore.drawColPatches": true;
+    "scene.tools.sculptcore.drawFeatureOverlay": true;
     "scene.tools.sculptcore.drawFlat": true;
     "scene.tools.sculptcore.drawMask": true;
     "scene.tools.sculptcore.drawNodeIds": true;
@@ -1301,6 +1304,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.dynTopo.mode": true;
     "scene.tools.sculptcore.dynTopo.overrides": true;
     "scene.tools.sculptcore.dynTopo.smoothLambda": true;
+    "scene.tools.sculptcore.dynTopoStatsLabel": true;
     "scene.tools.sculptcore.inheritDynTopo": true;
     "scene.tools.sculptcore.reprojectCustomData": true;
     "scene.tools.sculptcore.sharedBrushRadius": true;

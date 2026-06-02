@@ -79,6 +79,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
   undoPre(ctx: ToolContext) {
     this.strokeGroupId = undefined
     this.dabSeed = 1
+    ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
       this.inStep = true
@@ -252,7 +253,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
               this.strokeGroupId = mesh.mesh.maxFaceGroup() + 1
             }
           }
-          wasmBrush.activeGroup = this.strokeGroupId
+          wasmBrush.activeGroup = this.strokeGroupId!
         }
 
         wasmBrush.strength = brush.strength
@@ -271,6 +272,15 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
           const params = this.getDynTopoParams()
           configureDynTopoParams(params, dt, l_max, l_min)
           wasmExec.applyDynTopoDab(wasm.float3(p), radius, params, this.dabSeed++)
+          // Accumulate stats for the debug HUD (wasmExec.lastDynTopoStats holds
+          // this dab's counts).
+          const st = wasmExec.lastDynTopoStats
+          const acc = toolmode.dynTopoStats
+          acc.splits += st.splits
+          acc.collapses += st.collapses
+          acc.flips += st.flips
+          acc.rounds = st.rounds
+          acc.budgetHit = acc.budgetHit || st.budget_hit
         }
 
         // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
@@ -310,6 +320,12 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       this.dynTopoParams[Symbol.dispose]()
       this.dynTopoParams = undefined
     }
+    // Dyntopo changes the seam/feature topology; refresh the overlay batch.
+    const mesh = this.modal_ctx?.object?.data
+    if (mesh instanceof LiteMesh) {
+      mesh.markSeamsDirty()
+    }
+    window.redraw_viewport()
     return result
   }
 

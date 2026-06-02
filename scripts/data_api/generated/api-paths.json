@@ -3172,6 +3172,23 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "scene.tools.sculptcore.drawFeatureOverlay": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Feature Overlay",
+      "description": "Draw seam / sharp / poly-group / UV-chart boundaries",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.sculptcore.dynTopoStatsLabel": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "DynTopo Stats",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "scene.tools.sculptcore.tool": {
       "kind": "prop",
       "indexed": false,
