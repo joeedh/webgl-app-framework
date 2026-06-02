@@ -73,6 +73,12 @@ export class DynTopoSettingsSC {
   constructor() {}
 
   static apiKeyToOverride(k: string): string {
+    // `flag[X]` mirrors override key X directly (don't depend on the enum
+    // for..in above having populated, which is module-eval-order sensitive).
+    const m = /^flag\[(.+)\]$/.exec(k)
+    if (m) {
+      return m[1]
+    }
     return apiKeyMap[k]
   }
 

@@ -226,9 +226,13 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       const opath = `${path}.dynTopo.overrides[NONE]`
 
       const okey = DynTopoSettingsSC.apiKeyToOverride(key)
-      //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
-      const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`, -1)
       const ret = strip.prop(`${path}.dynTopo.${key}`)
+      if (!okey) {
+        // No override mapping for this key — render the value without the
+        // per-field inherit toggle (avoids an `overrides[undefined]` binding).
+        return ret
+      }
+      const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`, -1)
 
       icon.iconsheet = 0 //use small icons
       icon.drawCheck = false
@@ -267,7 +271,6 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     dfield(panel2, 'smoothLambda')
     dfield(panel2, 'maxSplits')
     dfield(panel2, 'maxRounds')
-    dfield(panel2, 'flag[DRAW_TRIS_AS_QUADS]')
 
     //panel
     container.flushUpdate()
