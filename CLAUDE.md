@@ -185,14 +185,18 @@ for status. Key conventions:
   `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
   signatures + leaf counts; self-skips when the bundle or `.node` is absent.
 
-## Dynamic topology (future goal)
+## Dynamic topology
 
-A planned feature: geometry under sculpt dabs is decimated or subdivided on
-the fly to match a target edge length, with custom attributes interpolated as
-appropriate. **Performance target:** usable sculpting (≥25fps on a laptop) on a
-5-million-triangle mesh carrying 2 custom `float4` attributes that must be
-interpolated during retopology. Keep this budget in mind when designing the
-brush/spatial/attribute hot paths.
+Geometry under a sculpt dab is subdivided/collapsed on the fly to track a target
+edge length, attributes interpolated onto new geometry. **Built and shipped
+(sculptcore, milestones M1–M7); the 5-million-triangle / ≥25 fps target is met on
+the CPU with no GPU offload.** The remesh core is `sculptcore/source/dyntopo/`
+(Botsch-Kobbelt split/collapse/flip/smooth over independent-set rounds, with a
+graded target and a per-dab split budget); spatial-tree currency is incremental
+(`sculptcore/source/spatial/`, M7.6). See
+[sculptcore/documentation/dynamic-topology.md](sculptcore/documentation/dynamic-topology.md)
+(design + post-M7 re-evaluation, incl. why the GPU offload is now optional) and
+[sculptcore/documentation/plans/dyntopo-m7-cascade.md](sculptcore/documentation/plans/dyntopo-m7-cascade.md).
 
 ## Typecheck
 
