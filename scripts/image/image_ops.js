@@ -19,7 +19,7 @@ export class ImageOp extends ToolOp {
     return {
       inputs: {
         //resolves to an ImageUser instance
-        dataPath: new StringProperty('imageEditor.uvEditor.imageUser'),
+        dataPath: new StringProperty('imageEditor.imageUser'),
       },
     }
   }

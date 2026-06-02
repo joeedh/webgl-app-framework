@@ -47,7 +47,7 @@ path.ux Area  (scripts/path.ux/scripts/screen/ScreenArea.js)
        ├─ NodeEditor       — shader node graph
        ├─ MaterialEditor   — material shader editor (extends NodeEditor)
        ├─ NodeViewer       — scene graph viewer
-       ├─ ImageEditor      — UV/image editor
+       ├─ ImageEditor      — image loader/viewer (UV editing parked; see pending-port)
        ├─ ConsoleEditor    — JS console
        ├─ SettingsEditor   — application preferences
        ├─ DebugEditor      — GPU debug viewer
@@ -232,7 +232,7 @@ main content area. UI widgets are added to this container.
 | NodeEditor | `node-editor-x` | `NodeEditor` | `editors/node/NodeEditor.js` | Shader node graph editor with pan/zoom and node connections |
 | MaterialEditor | `material-editor-x` | `MaterialEditor` | `editors/node/MaterialEditor.js` | Material-specific node editor with material slot selection |
 | NodeViewer | `nodegraph-viewer-x` | `nodegraph_viewer` | `editors/node/NodeEditor_debug.js` | Read-only scene graph visualization |
-| ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.ts` | UV editor with image display and UV transform tools |
+| ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.ts` | Loads images into `ImageBlock`s and displays the active image (pan/zoom). The legacy UV-editing implementation is parked, unwired, under `editors/image/pending-port/` pending a new UV abstraction — see its `TODO.md`. |
 | ConsoleEditor | `console-editor-x` | `console_editor` | `editors/console/console.js` | JavaScript console with history and autocomplete |
 | SettingsEditor | `settings-editor-x` | `settings-editor` | `editors/settings/SettingsEditor.js` | Application preferences (general, theme, addons) |
 | DebugEditor | `debug-editor-x` | `DebugEditor` | `editors/debug/DebugEditor.js` | GPU debug viewer for inspecting framebuffers and textures |
