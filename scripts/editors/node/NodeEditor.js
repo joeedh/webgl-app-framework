@@ -438,29 +438,15 @@ export class NodeUI extends Container {
     let title = this.label(uiname)
     title.font = 'TitleText'
 
-    //_getFont
-    //title.style[]
-
-    //let row = this.row();
-    //row.style["width"] = node.graph_ui_size[0] + "px";
-
     let y = 35
 
     let layout = layoutNode(node, {
-      socksize: 20 / this.ned.velpan.scale[0],
+      socksize: 20,
     })
 
     this.size.load(layout.size)
 
     for (let i = 0; i < 2; i++) {
-      //let row2 = row.col();
-
-      if (i === 1) {
-        //  row2.style["padding-left"] = "50px";
-      }
-
-      let dpi = this.getDPI()
-
       let socks = i ? node.outputs : node.inputs
       let lsocks = i ? layout.outputs : layout.inputs
       let key = i ? 'outputs' : 'inputs'
@@ -568,7 +554,6 @@ export class NodeUI extends Container {
     }
 
     let ned = this.ned
-    let yoff = ned.nodeContainer.yoff
 
     if (ned === undefined && this.parentNode !== undefined) {
       this.doOnce(this.setCSS)
@@ -611,7 +596,7 @@ export class NodeUI extends Container {
     //this.style["margin"] = this.getDefault("margin") + "px";
     this.noMarginsOrPadding()
 
-    this.float(co[0], co[1] - yoff, undefined, 'absolute')
+    this.float(co[0], co[1], undefined, 'absolute')
   }
 
   update() {
@@ -639,23 +624,27 @@ export class NodeContainer extends Container {
     }
   }
 
-  createOverdraw() {
-    if (this.parentNode === undefined) {
-      return //don't make overdraw
+  killOverdraw() {
+    if (this.overdraw) {
+      this.overdraw.clear()
+      this.overdraw.remove()
+      this.overdraw = undefined
     }
+  }
 
+  createOverdraw(screen) {
     if (this.overdraw !== undefined) {
       this.overdraw.remove()
     }
 
     try {
       this.overdraw = document.createElement('overdraw-x')
-      this.overdraw.start(this)
+      this.overdraw.startNode(this, screen)
     } catch (error) {
+      console.error(error.stack)
+      console.error(error.message)
       this.overdraw = undefined
     }
-
-    this.setCSS()
   }
 }
 UIBase.register(NodeContainer)
@@ -689,7 +678,7 @@ NodeEditor {
 
     this._last_dpi = undefined
     this._last_update_gen = undefined
-    
+
     this.velpan = new VelPan()
     this.velpan.decay = this.#velPanDecay
     this.velpan.scale[0] = this.velpan.scale[1] = 0.8
@@ -697,10 +686,9 @@ NodeEditor {
 
     // of NodeContainer type
     this.nodeContainer = document.createElement('shadergraph-node-container-x')
-    this.nodeContainer.yoff = 0
     this.nodeContainer.style['overflow'] = 'hidden'
-
     this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX
+    this.nodeContainer.overdraw?.setCSS()
 
     this.recalc = 0
 
@@ -817,9 +805,8 @@ NodeEditor {
     this.sockets.length = 0
 
     this.nodeContainer.clear()
-
-    if (this.overdraw !== undefined) {
-      this.nodeContainer.createOverdraw()
+    if (this.ctx?.screen) {
+      this.nodeContainer.createOverdraw(this.ctx.screen)
     }
   }
 
@@ -876,7 +863,7 @@ NodeEditor {
   init() {
     super.init()
 
-    this.nodeContainer.addEventListener('mousewheel', (e) => {
+    const mwheel = (e) => {
       let y = e.deltaY
       let fac = y / 500.0
 
@@ -894,17 +881,20 @@ NodeEditor {
       this.velpan.scale.mulScalar(fac)
       this.velpan.update()
       this.flushUpdate()
-    })
+    }
 
     if (!this.header) {
       throw new Error('no header')
     }
+
     this.shadow.prepend(this.nodeContainer)
     //this.nodeContainer.style.zIndex = '-1'
     this.nodeContainer.parentWidget = this
 
     //create svg overdraw element
-    this.nodeContainer.createOverdraw()
+    if (this.ctx?.screen) {
+      this.nodeContainer.createOverdraw(this.ctx.screen)
+    }
 
     this.last_mpos = new Vector2()
 
@@ -922,15 +912,26 @@ NodeEditor {
           return handler(e)
         } catch (error) {
           util.print_stack(error)
+        } finally {
+          this.pop_ctx_active(this.ctx)
         }
-        this.pop_ctx_active(this.ctx)
       }
     }
 
     this.on_mousedown = makehandler(this.on_mousedown.bind(this))
 
-    this.nodeContainer.addEventListener('pointermove', mmove)
-    this.nodeContainer.addEventListener('pointerdown', this.on_mousedown)
+    this.nodeContainer.addEventListener(
+      'mousewheel',
+      makehandler((e) => mwheel(e))
+    )
+    this.nodeContainer.addEventListener(
+      'pointermove',
+      makehandler((e) => mmove(e))
+    )
+    this.nodeContainer.addEventListener(
+      'pointerdown',
+      makehandler((e) => this.on_mousedown(e))
+    )
 
     this.setCSS()
 
@@ -952,12 +953,15 @@ NodeEditor {
       return
     }
 
-    this.sidebar = this.makeSideBar()
-    this.sidebar._init()
-    this.sidebar.position = 'right'
-    this.sidebar.collapse(false)
+    if (!this.sidebar) {
+      this.sidebar = this.makeSideBar()
+      this.sidebar._init()
+      this.sidebar.position = 'right'
+      this.sidebar.collapse(false)
+    }
     this.onSidebarBuild(this.sidebar)
     this.sidebar.flushUpdate()
+    this.sidebar.style.zIndex = 10
   }
 
   onSidebarBuild(sidebar) {
@@ -981,6 +985,7 @@ NodeEditor {
     let header = super.makeHeader(container).row()
     let menustrip = (this.menuStrip = header.row())
 
+    header.style.zIndex = 10
     menustrip.style['margin-left'] = '35px' //go past mouse threshold for screen border
 
     let button = menustrip.menu('Add', [])
@@ -1094,9 +1099,7 @@ NodeEditor {
 
   on_area_inactive() {
     if (this.overdraw) {
-      this.overdraw.clear()
-      this.overdraw.remove()
-      this.overdraw = undefined
+      this.nodeContainer.killOverdraw()
     }
 
     this.clearGraph()
@@ -1104,7 +1107,7 @@ NodeEditor {
 
   on_area_active() {
     super.on_area_active()
-    this.nodeContainer.createOverdraw()
+    this.nodeContainer.createOverdraw(this.ctx.screen)
 
     this.setCSS()
     this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
@@ -1353,7 +1356,7 @@ NodeEditor {
     this.nodeContainer.style['overflow'] = 'hidden'
 
     if (this.nodeContainer) {
-      this.nodeContainer.style['background-color'] = this.getDefault('background-color')
+      this.nodeContainer.style['background-color'] = 'rgba(0,0,0,0)' //this.getDefault('background-color')
     }
 
     if (!this.size || !this.pos) return
@@ -1363,12 +1366,13 @@ NodeEditor {
       this.overdraw.style['height'] = this.size[1] + 'px'
     }
 
-    this.nodeContainer.style['position'] = 'absolute'
-    this.nodeContainer.style['left'] = '0px'
-    this.nodeContainer.style['top'] = '0px'
-    this.nodeContainer.style['width'] = this.size[0] + 'px'
-    this.nodeContainer.style['height'] = this.size[1] + 'px'
-    this.nodeContainer.style['overflow'] = 'hidden'
+    const dom = this.nodeContainer
+    dom.style['position'] = 'absolute'
+    dom.style['left'] = '0px'
+    dom.style['top'] = '0px'
+    dom.style['width'] = this.size[0] + 'px'
+    dom.style['height'] = this.size[1] + 'px'
+    dom.style['overflow'] = 'hidden'
   }
 
   startAddNodeMenu() {
@@ -1500,18 +1504,11 @@ NodeEditor {
   }
 
   _recalcLines() {
-    //console.warn("_recalcLines", this.nodes);
-
-    if (!this.overdraw) {
-      if (!this.isDead()) {
-        //wait for initialization
-        this.doOnce(this._recalcLines)
-      }
-
+    if (!this.nodeContainer.overdraw) {
       return
     }
 
-    this.overdraw.clear()
+    this.nodeContainer.overdraw.clear()
 
     for (let node of this.nodes) {
       for (let uisock of node.inputs) {
@@ -1538,17 +1535,16 @@ NodeEditor {
   }
 
   _recalcUI() {
-    console.log(this.velpan.pos, this.velpan.scale)
     let totsock = 0
     this.recalc &= ~NedRecalcFlags.UI
 
     for (let node of this.nodes) {
-      node.setCSS()
-
       for (let sock of node.allsockets) {
         sock.updateSocketRef()
         totsock++
       }
+
+      node.setCSS()
     }
 
     if (this.overdraw !== undefined) {
