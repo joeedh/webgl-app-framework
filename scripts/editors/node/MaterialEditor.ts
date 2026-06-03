@@ -1,4 +1,4 @@
-import {NodeEditor} from './NodeEditor.js'
+import {NodeEditorBase} from './NodeEditor.js'
 import {Editor, type EditorSideBar} from '../editor_base'
 import {UIBase} from '../../path.ux/scripts/core/ui_base.js'
 import {MakeMaterialOp} from '../../core/material.js'
@@ -9,14 +9,33 @@ import type {Material} from '../../core/material'
 import type {ViewContext} from '../../core/context'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
-export class MaterialEditor extends NodeEditor {
+/**
+ * NodeEditor specialized for editing the active object's material shader graph.
+ * Tracks which datablock/material is being shown and points the inherited
+ * `graphPath` at that material's graph (see `updatePath`).
+ */
+export class MaterialEditor extends NodeEditorBase {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+  MaterialEditor {
+    velpan       : VelPan;
+    graphPath    : string;
+    activeMatMap : string | JSON.stringify(this.activeMatMap);
+  }`
+  )
+
+  /** change-detection key for the active object/material, drives header rebuilds */
   _last_update_key: string | undefined = undefined
+  /** data path to the datablock owning the material (a mesh or object data) */
   dataBlockPath = ''
+  /** per-mesh (keyed by lib_id) index of the material slot currently shown */
   activeMatMap: {[lib_id: number]: number} = {}
   headerRow?: Container<ViewContext>
 
   static defineAPI(api: DataAPI): DataStruct {
-    return api.inheritStruct(MaterialEditor, NodeEditor)
+    NodeEditorBase.ensureAPI(api)
+    return api.inheritStruct(MaterialEditor, NodeEditorBase)
   }
 
   init(): void {
@@ -31,6 +50,7 @@ export class MaterialEditor extends NodeEditor {
     this.doOnce(this.buildHeader)
   }
 
+  /** Recompute `dataBlockPath`/`graphPath` from the active object's material slot. */
   updatePath(): void {
     const ob = this.ctx.object
 
@@ -180,15 +200,4 @@ export class MaterialEditor extends NodeEditor {
     }
   }
 }
-
-MaterialEditor.STRUCT =
-  nstructjs.inherit(MaterialEditor, NodeEditor) +
-  `
-  velpan       : VelPan;
-  graphPath    : string;
-  activeMatMap : string | JSON.stringify(this.activeMatMap);
-}
-`
-
-nstructjs.register(MaterialEditor)
 Editor.register(MaterialEditor)

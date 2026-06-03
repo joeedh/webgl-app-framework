@@ -38,6 +38,7 @@ const projcos = util.cachering.fromConstructor<Vector2>(Vector2, 64)
 
 type AnyGraph = Graph<unknown>
 type SocketType = NodeSocketType
+/** an array that also carries `.highlight` = the currently hover-highlighted element */
 type HighlightArray<T> = T[] & {highlight?: T}
 
 /* loose view of the object returned by layoutNode() (graph_spatial.js, untyped) */
@@ -52,17 +53,24 @@ interface NodeLayout {
 /* some node subclasses (e.g. ShaderNode) add these; the base graph Node does not */
 type UINode = Node & {uiname?: string; buildUI?: (container: Container<ViewContext>) => void}
 
+/**
+ * One input/output socket: the little colored connection dot (drawn on its own
+ * `canvas`) plus, for inputs, the socket's inline value UI. Caches a direct
+ * reference to its graph `socket` (re-fetching from the data API per frame would
+ * be too slow with many sockets) — keep it current via `updateSocketRef`.
+ */
 export class NodeSocketElem extends RowFrame<ViewContext> {
   canvas: HTMLCanvasElement
   g: CanvasRenderingContext2D
-  isOutput = false
   size = 20
-  r = 5
+  /** drawn socket-dot radius, in CSS px (pre-DPI) */
+  radius = 5
+  /** 'input' or 'output' (or undefined before init); see the `isOutput` getter */
   type: 'input' | 'output' | undefined = undefined
   isHighlight = false
 
   _last_update_key: string | undefined = undefined
-  ned: NodeEditor | undefined = undefined //owning node editor
+  ned: NodeEditorBase | undefined = undefined //owning node editor
 
   //okay, it's going to be too slow to always fetch sockets from the data api
   //instead, cache direct references to them here
@@ -86,17 +94,30 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
     //XXX hackish event stuff
     this.addEventListener('pointerdown', (e) => {
       if (!haveModal()) {
-        this.click(e)
+        try {
+          this.ned!.push_ctx_active()
+          this.click(e)
+        } finally {
+          this.ned!.pop_ctx_active()
+        }
       }
     })
 
     this.addEventListener('pointermove', (e) => {
-      this.ned!.push_ctx_active()
-      this.ned!.on_mousemove(e)
-      this.ned!.pop_ctx_active()
+      try {
+        this.ned!.push_ctx_active()
+        this.ned!.on_mousemove(e)
+      } finally {
+        this.ned!.pop_ctx_active()
+      }
     })
 
     this._last_dpi = this.getDPI()
+  }
+
+  /** true for output sockets; derived from `type` so the two can't disagree */
+  get isOutput(): boolean {
+    return this.type === 'output'
   }
 
   static define() {
@@ -160,7 +181,7 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
     p[1] += this.size
 
     if (center_in_circle) {
-      const r = this.r
+      const r = this.radius
 
       p[0] += this.type === 'output' ? r : -r
       p[1] -= r
@@ -254,7 +275,7 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
     g.fillStyle = color
     g.beginPath()
 
-    const r = this.r * dpi
+    const r = this.radius * dpi
 
     g.moveTo(size * 0.5, size * 0.5)
     g.arc(size * 0.5, size * 0.5, r, -Math.PI, Math.PI)
@@ -362,9 +383,15 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
 
 UIBase.register(NodeSocketElem)
 
+/**
+ * The widget for one graph node: its title, body UI, and the socket widgets
+ * around it. Positioned absolutely in graph space (see `setCSS`, which projects
+ * the node's `graph_ui_pos` through the editor's VelPan).
+ */
 export class NodeUI extends Container<ViewContext> {
   pos = new Vector2()
   size = new Vector2()
+  /** node position before VelPan projection (used to detect when it moved) */
   rawpos = new Vector2()
 
   inputs: NodeSocketElem[] = []
@@ -375,7 +402,7 @@ export class NodeUI extends Container<ViewContext> {
   _node: Node | undefined = undefined
 
   graph_id: number | undefined = undefined
-  ned: NodeEditor | undefined = undefined
+  ned: NodeEditorBase | undefined = undefined // owning node editor
 
   get isHighlight(): boolean {
     return this._isHighlight
@@ -464,7 +491,6 @@ export class NodeUI extends Container<ViewContext> {
           uisock.pos[0] -= layout.socksize
         } else {
           uisock.pos[0] += layout.socksize
-          uisock.isOutput = true
         }
 
         uisock.ned = this.ned
@@ -610,6 +636,10 @@ export class NodeUI extends Container<ViewContext> {
 
 UIBase.register(NodeUI)
 
+/**
+ * Scroll/clip container that holds the NodeUI widgets and owns the SVG
+ * `overdraw` layer the connection lines are drawn into.
+ */
 export class NodeContainer extends Container<ViewContext> {
   overdraw: Overdraw<ViewContext> | undefined = undefined
 
@@ -620,7 +650,7 @@ export class NodeContainer extends Container<ViewContext> {
     }
   }
 
-  killOverdraw(): void {
+  removeOverdraw(): void {
     if (this.overdraw) {
       this.overdraw.clear()
       this.overdraw.remove()
@@ -645,12 +675,19 @@ export class NodeContainer extends Container<ViewContext> {
 }
 UIBase.register(NodeContainer)
 
-const NedRecalcFlags = {
+const NodeRecalcFlags = {
   UI     : 1,
   REBUILD: 2,
 }
 
-export class NodeEditor extends Editor {
+/**
+ * Pan/zoom 2D graph editor. Mirrors the graph at `graphPath` as a tree of
+ * NodeUI/NodeSocketElem widgets inside `nodeContainer`, draws the connections
+ * into its SVG overdraw, and dispatches edits through the `node.*` ToolOps
+ * (node_ops.ts / node_selectops.ts). Per-frame work is deferred via the
+ * `recalcFlags` bitmask and drained in `update()`.
+ */
+export class NodeEditorBase extends Editor {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -661,8 +698,10 @@ NodeEditor {
   `
   )
 
+  // 0 = no inertial panning in the node editor (velocity is zeroed each tick).
   #velPanDecay = 0.0
 
+  /** >0 while a transform is suppressing reactions to graph update signals */
   ignoreGraphUpdates = 0
   _last_zoom = new Vector2()
   _last_script: string | undefined = undefined
@@ -672,13 +711,16 @@ NodeEditor {
 
   velpan: VelPan
   nodeContainer: NodeContainer
-  recalc = 0
+  /** pending work bitmask (NodeRecalcFlags.UI | REBUILD), drained in update() */
+  recalcFlags = 0
 
   graphPath = 'material.graph'
   graphClass = 'shader'
   _last_graphpath = this.graphPath
 
+  /** the NodeUI widgets, one per graph node (+ `.highlight` = hovered node) */
   nodes: HighlightArray<NodeUI>
+  /** every socket widget across all nodes (+ `.highlight` = hovered socket) */
   sockets: HighlightArray<NodeSocketElem>
   node_idmap: {[graph_id: number]: NodeUI} = {}
 
@@ -701,9 +743,8 @@ NodeEditor {
 
     this.loadThemeOverrides()
 
-    this.nodeContainer.getDPI = () => {
-      return this.getNodeDPI()
-    }
+    // make the container report the editor's DPI, not its own
+    this.nodeContainer.getDPI = () => this.getDPI()
 
     this.defineKeyMap()
 
@@ -726,8 +767,13 @@ NodeEditor {
     return undefined
   }
 
-  //prevent context system from putting different node editor subclasses
-
+  static ensureAPI(api: DataAPI): DataStruct {
+    if (!api.hasStruct(NodeEditorBase)) {
+      NodeEditorBase.defineAPI(api)
+    }
+    return api.getStruct(NodeEditorBase)
+  }
+  
   static defineAPI(api: DataAPI): DataStruct {
     const nedstruct = super.defineAPI(api)
 
@@ -751,9 +797,7 @@ NodeEditor {
   }
 
   loadThemeOverrides(): void {
-    const overrides = this.getDefault('NodeOverrides') as unknown as
-      | Record<string, Record<string, unknown>>
-      | undefined
+    const overrides = this.getDefault('NodeOverrides') as unknown as Record<string, Record<string, unknown>> | undefined
 
     for (const k in overrides) {
       const v = overrides[k]
@@ -765,13 +809,15 @@ NodeEditor {
     }
   }
 
-  //in different "active" bins
+  // Override the base Area push/pop to key the "active editor" bin on NodeEditor
+  // (not this.constructor), so MaterialEditor and the base node editor share one
+  // bin and the context system treats them as the same active-editor slot.
   push_ctx_active(dontSetLastRef = false): void {
-    contextWrangler.push(NodeEditor, this as unknown as Area, !dontSetLastRef)
+    contextWrangler.push(this.constructor, this as unknown as Area, !dontSetLastRef)
   }
 
   pop_ctx_active(_dontSetLastRef = false): void {
-    contextWrangler.pop(NodeEditor, this as unknown as Area)
+    contextWrangler.pop(this.constructor, this as unknown as Area)
   }
 
   _on_velpan_change(): void {
@@ -782,10 +828,7 @@ NodeEditor {
     this._recalcUI()
   }
 
-  getNodeDPI(): number {
-    return this.getDPI()
-  }
-
+  /** Remove all node/socket widgets and reset the overdraw layer. */
   clearGraph(): void {
     for (const c of this.nodeContainer.children) {
       if (c instanceof NodeSocketElem) {
@@ -812,13 +855,14 @@ NodeEditor {
 
   switchGraph(graphpath = this.graphPath): void {
     this.graphPath = graphpath
-    this.recalc |= NedRecalcFlags.REBUILD
+    this.recalcFlags |= NodeRecalcFlags.REBUILD
   }
 
+  /** Tear down and recreate a NodeUI for every node in the current graph. */
   rebuildAll(): void {
     if (this.ctx === undefined) return
 
-    this.recalc &= ~NedRecalcFlags.REBUILD
+    this.recalcFlags &= ~NodeRecalcFlags.REBUILD
 
     this._last_graphpath = this.graphPath
 
@@ -854,7 +898,7 @@ NodeEditor {
       this.nodeContainer.shadow.appendChild(node2 as unknown as HTMLElement)
     }
 
-    this.recalc |= NedRecalcFlags.UI
+    this.recalcFlags |= NodeRecalcFlags.UI
     this.flushUpdate()
   }
 
@@ -917,14 +961,8 @@ NodeEditor {
 
     this.on_mousedown = makehandler(this.on_mousedown.bind(this))
 
-    this.nodeContainer.addEventListener(
-      'mousewheel',
-      makehandler((e: WheelEvent) => mwheel(e)) as EventListener
-    )
-    this.nodeContainer.addEventListener(
-      'pointermove',
-      makehandler((e: PointerEvent) => mmove(e)) as EventListener
-    )
+    this.nodeContainer.addEventListener('mousewheel', makehandler((e: WheelEvent) => mwheel(e)) as EventListener)
+    this.nodeContainer.addEventListener('pointermove', makehandler((e: PointerEvent) => mmove(e)) as EventListener)
     this.nodeContainer.addEventListener(
       'pointerdown',
       makehandler((e: PointerEvent) => this.on_mousedown(e)) as EventListener
@@ -936,7 +974,7 @@ NodeEditor {
     this.background = bgcolor
     this.saneStyle['background-color'] = bgcolor
 
-    this.recalc |= NedRecalcFlags.REBUILD
+    this.recalcFlags |= NodeRecalcFlags.REBUILD
 
     this.buildSidebar()
   }
@@ -1000,6 +1038,7 @@ NodeEditor {
 
   menuStrip?: RowFrame<ViewContext>
 
+  /** Find the socket widget caching a given graph socket (linear scan, by identity). */
   getUISocket(sock: SocketType): NodeSocketElem | undefined {
     for (const node of this.nodes) {
       for (const sock2 of node.allsockets) {
@@ -1084,7 +1123,7 @@ NodeEditor {
     super.on_resize(newsize)
 
     if (!this.header || !this.ctx) {
-      this.recalc |= NedRecalcFlags.REBUILD
+      this.recalcFlags |= NodeRecalcFlags.REBUILD
       return
     }
 
@@ -1097,7 +1136,7 @@ NodeEditor {
 
   on_area_inactive(): void {
     if (this.overdraw) {
-      this.nodeContainer.killOverdraw()
+      this.nodeContainer.removeOverdraw()
     }
 
     this.clearGraph()
@@ -1108,7 +1147,7 @@ NodeEditor {
     this.nodeContainer.createOverdraw(this.ctx.screen)
 
     this.setCSS()
-    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
+    this.recalcFlags |= NodeRecalcFlags.UI | NodeRecalcFlags.REBUILD
   }
 
   onFileLoad(is_active: boolean): void {
@@ -1117,11 +1156,12 @@ NodeEditor {
     }
 
     this.overdraw?.clear()
-    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
+    this.recalcFlags |= NodeRecalcFlags.UI | NodeRecalcFlags.REBUILD
   }
 
+  /** Nearest socket widget to a graph-space point, within `limit` px, or undefined. */
   findSocket(localX: number, localY: number, limit = 25): NodeSocketElem | undefined {
-    limit *= this.getNodeDPI()
+    limit *= this.getDPI()
 
     let pos = new Vector2()
     const mpos = new Vector2([localX, localY])
@@ -1206,7 +1246,7 @@ NodeEditor {
       this._last_dpi = dpi
 
       console.log('dpi update')
-      this.recalc |= NedRecalcFlags.REBUILD
+      this.recalcFlags |= NodeRecalcFlags.REBUILD
     }
   }
 
@@ -1216,6 +1256,7 @@ NodeEditor {
     }
   }
 
+  /** Throttled (500 ms) recompile of the material shader; redraws the viewport when it changed. */
   checkCompile(): void {
     if (util.time_ms() - this._last_compile_test < 500) {
       return
@@ -1293,7 +1334,7 @@ NodeEditor {
     let regen = graph && graph.nodes.length !== this.nodes.length
     regen = regen || this._last_graphpath !== this.graphPath
 
-    regen = regen || !!(this.recalc & NedRecalcFlags.REBUILD)
+    regen = regen || !!(this.recalcFlags & NodeRecalcFlags.REBUILD)
 
     if (regen) {
       this.rebuildAll()
@@ -1305,12 +1346,12 @@ NodeEditor {
 
       if (ok) {
         console.log('node editor got graph update signal')
-        this.recalc |= NedRecalcFlags.UI
+        this.recalcFlags |= NodeRecalcFlags.UI
       }
     }
 
-    if (this.recalc & NedRecalcFlags.UI) {
-      this.recalc &= ~NedRecalcFlags.UI
+    if (this.recalcFlags & NodeRecalcFlags.UI) {
+      this.recalcFlags &= ~NodeRecalcFlags.UI
 
       window.setTimeout(() => {
         this._recalcUI()
@@ -1318,6 +1359,7 @@ NodeEditor {
     }
   }
 
+  /** Suppress reactions to graph update signals (balance with popIgnore). */
   pushIgnore(): void {
     this.ignoreGraphUpdates++
   }
@@ -1326,6 +1368,7 @@ NodeEditor {
     this.ignoreGraphUpdates = Math.max(this.ignoreGraphUpdates - 1, 0)
   }
 
+  /** Resolve the graph at `graphPath`; undefined (not throwing) on a bad/empty path. */
   fetchGraph(): AnyGraph | undefined {
     let graph
 
@@ -1459,6 +1502,7 @@ NodeEditor {
     return new Vector2([x - rect.x, y - rect.y])
   }
 
+  /** Graph space → screen space (in place); `useScreenSpace` also adds the editor offset. */
   project(co: Vector2, useScreenSpace = false): void {
     const p = projcos.next().load(co)
 
@@ -1473,6 +1517,7 @@ NodeEditor {
     co[1] = p[1]
   }
 
+  /** Screen space → graph space (in place); inverse of `project`. */
   unproject(co: Vector2, useScreenSpace = false): void {
     const p = projcos.next().load(co)
 
@@ -1487,8 +1532,8 @@ NodeEditor {
     co[1] = p[1]
   }
 
-  copy(): NodeEditor {
-    const ret = document.createElement('node-editor-x') as unknown as NodeEditor
+  copy(): NodeEditorBase {
+    const ret = document.createElement('node-editor-x') as unknown as NodeEditorBase
 
     ret.velpan.load(this.velpan)
     ret.graphPath = this.graphPath
@@ -1496,6 +1541,7 @@ NodeEditor {
     return ret
   }
 
+  /** Redraw the socket-to-socket connection lines into the overdraw layer. */
   _recalcLines(): void {
     if (!this.nodeContainer.overdraw) {
       return
@@ -1526,9 +1572,10 @@ NodeEditor {
     }
   }
 
+  /** Re-sync every socket's cached ref + node CSS, then redraw lines; rebuilds if sockets drifted. */
   _recalcUI(): void {
     let totsock = 0
-    this.recalc &= ~NedRecalcFlags.UI
+    this.recalcFlags &= ~NodeRecalcFlags.UI
 
     for (const node of this.nodes) {
       for (const sock of node.allsockets) {
@@ -1547,7 +1594,7 @@ NodeEditor {
     //in weird ways
     if (totsock !== this.sockets.length) {
       console.log('Socket length mismatch!')
-      this.recalc |= NedRecalcFlags.REBUILD
+      this.recalcFlags |= NodeRecalcFlags.REBUILD
       return
     }
 
@@ -1562,4 +1609,4 @@ NodeEditor {
     this.velpan.decay = this.#velPanDecay
   }
 }
-Editor.register(NodeEditor)
+//Editor.register(NodeEditor)

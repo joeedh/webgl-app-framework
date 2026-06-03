@@ -15,6 +15,8 @@
  *   --gen-scene <name>      build a registered test scene (see test_scenes.ts),
  *                           replacing the default startup file (non-cached)
  *   --scene-arg k=v         (repeatable) parameters passed to the builder
+ *   --eval "<js expr>"      (repeatable) eval JS in global scope (CTX/_appstate
+ *                           reachable) after scene build, before --run tools
  *   --run "tool.path(...)"  (repeatable) run a ToolOp by data-API path
  *   --save <out.wproj>      write a project file after building
  *   --dump <out.json>       write a structured scene dump (for parity diffs)
@@ -74,6 +76,7 @@ function readFileBuffer(path: string): ArrayBuffer {
 export interface HarnessOptions {
   genScene?: string
   sceneArgs: TestSceneArgs
+  evals: string[]
   runTools: string[]
   load?: string
   save?: string
@@ -95,6 +98,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
   const opts: HarnessOptions = {
     genScene  : getArg('gen-scene', argv) || undefined,
     sceneArgs,
+    evals     : getArgList('eval', argv),
     runTools  : getArgList('run', argv),
     load      : getArg('load', argv) || undefined,
     save      : getArg('save', argv) || undefined,
@@ -108,6 +112,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
 
   opts.active = !!(
     opts.genScene ||
+    opts.evals.length ||
     opts.runTools.length ||
     opts.load ||
     opts.save ||
@@ -382,6 +387,24 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
       appstate().loadFile(buf)
       result.load = opts.load
       console.log(`${TAG} loaded project ${opts.load} (${buf.byteLength} bytes)`)
+    }
+
+    for (const expr of opts.evals) {
+      try {
+        // Indirect eval runs in global scope, where the `CTX` / `_appstate`
+        // window globals are reachable — e.g.
+        // `CTX.debug.showEditor({editorType:'MaterialEditor', minVisibleWidth:400})`.
+        // Runs after the scene is built and before `--run` tools, so it can set
+        // up editor state those tools need (many editor ToolOps gate on the
+        // active editor type — see the CTX.debug guide in CLAUDE.md).
+        // eslint-disable-next-line no-eval
+        ;(0, eval)(expr)
+        console.log(`${TAG} eval ${expr}`)
+      } catch (err) {
+        console.error(`${TAG} eval failed: ${expr}`, err)
+        result.ok = false
+        result.error = String(err)
+      }
     }
 
     for (const tool of opts.runTools) {

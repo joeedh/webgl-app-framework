@@ -8,18 +8,29 @@ export const VelPanFlags = {
   UNIFORM_SCALE: 1,
 }
 
+/**
+ * 2D pan + zoom transform with optional inertial (momentum) panning.
+ *
+ * `mat`/`imat` are the current view matrix and its inverse; `pos`/`scale` are the
+ * pan offset and zoom. After a drag releases, `vel` carries the view on under
+ * exponential `decay` until it falls below a threshold (see `doVelocity`).
+ */
 export class VelPan {
-  /** boundary limits*/
+  /** lower/upper pan limits (pre-scale); `pos` is clamped to these * `scale` */
   bounds: [Vector2, Vector2] = [new Vector2([-2000, -2000]), new Vector2([2000, 2000])]
 
+  /** per-millisecond momentum decay: `vel *= decay**dt`. 0 disables inertia. */
   decay = 0.995
   pos = new Vector2()
   scale = new Vector2([1, 1])
+  /** current pan velocity (units/ms), integrated each `doVelocity` tick */
   vel = new Vector2()
   oldpos = new Vector2()
 
-  maxVelocity = 0.001
+  /** floor on the integration timestep so a long frame can't over-decay `vel` */
+  minTimeStep = 0.001
 
+  /** bitmask of pannable axes (bit0 = x, bit1 = y); 3 = both */
   axes = 3
   flag = VelPanFlags.UNIFORM_SCALE
 
@@ -74,6 +85,7 @@ export class VelPan {
     return this
   }
 
+  /** Begin (or keep) the inertial-pan timer that ticks `doVelocity`. */
   startVelocity(): void {
     if (this.timer === undefined) {
       this.last_update_time = util.time_ms()
@@ -82,6 +94,10 @@ export class VelPan {
     }
   }
 
+  /**
+   * One inertia tick: advance `pos` by `vel`, decay `vel`, and fire `onchange`.
+   * Self-cancels its timer once the velocity drops below a small threshold.
+   */
   doVelocity(): void {
     if (this.vel.dot(this.vel) < 0.001) {
       console.log('removing velpan timer')
@@ -93,7 +109,7 @@ export class VelPan {
     let dt = util.time_ms() - this.last_update_time
     this.pos.addFac(this.vel, dt)
 
-    dt = Math.max(dt, this.maxVelocity)
+    dt = Math.max(dt, this.minTimeStep)
     this.vel.mulScalar(Math.pow(this.decay, dt))
 
     this.updateMatrix()
@@ -122,6 +138,11 @@ export class VelPan {
     return this
   }
 
+  /**
+   * Rebuild `mat`/`imat` from the current `pos`/`scale`. Kicks off inertial
+   * panning when `do_velocity` and there's residual velocity, and fires
+   * `onchange` (when `fire_events`) only if the matrix actually changed.
+   */
   update(fire_events = true, do_velocity = true): this {
     if (do_velocity && this.vel.dot(this.vel) > 0.001) {
       this.startVelocity()
@@ -156,6 +177,11 @@ VelPan {
 }
 nstructjs.register(VelPan)
 
+/**
+ * Modal drag-to-pan tool for any `VelPan`. `velpanPath` is a data-API path to
+ * the target VelPan; the drag updates its `pos` and seeds `vel` so the view
+ * keeps gliding (inertia) after release.
+ */
 export class VelPanPanOp extends ToolOp<{velpanPath: StringProperty}, {}, ToolContext> {
   start_pan = new Vector2()
   first = true

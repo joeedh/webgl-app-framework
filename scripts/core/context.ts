@@ -1,8 +1,7 @@
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe'
 import '../path.ux/scripts/util/struct.js'
-import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
-import {Editor, editorAccessor, getContextArea} from '../editors/editor_base'
+import {Editor, editorAccessor, getContextArea, IEditorConstructor} from '../editors/editor_base'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
 import type {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
@@ -17,7 +16,7 @@ import {PropsEditor} from '../editors/properties/PropsEditor.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
 import {TetMesh} from '../tet/tetgen.js'
 import {StrandSet} from '../hair/strand.js'
-
+import {Icons} from '../editors/icon_enum.js'
 const passthrus = new Set<string | number | symbol>(['datalib', 'gl', 'graph', 'last_tool', 'toolstack', 'api'])
 
 import bus from './bus'
@@ -25,6 +24,7 @@ import type {AppState} from './appstate.js'
 import {Material} from './material'
 import {View3D} from '../editors/all.js'
 import {SceneObject} from '../sceneobject/sceneobject'
+import {areaclasses, AreaFlags} from '../path.ux/scripts/screen/area_base'
 
 type AppLibrary = Library & {material: BlockSet<Material>; scene: BlockSet<Scene>}
 
@@ -394,10 +394,202 @@ export class ToolContext extends ContextExtraAPI {
   }
 }
 
+/**
+ * Debugging / test-automation surface hanging off `ViewContext.debug`. Reach it
+ * from any renderer-JS eval context as `CTX.debug` (the `CTX` window global is
+ * `_appstate.ctx`, defined in entry_point.js) or as `ctx.debug` in app code.
+ *
+ * Its main job is reflecting over the editor registry and forcing a given
+ * editor on-screen (`showEditor`) — handy in integration tests, where many
+ * ToolOps gate on `canRun` finding an open editor of the right type. See the
+ * "Debug context API" guide in CLAUDE.md.
+ */
+class DebugEditorAPI {
+  ctx: ViewContext
+  constructor(ctx: ViewContext) {
+    this.ctx = ctx
+  }
+
+  /**
+   * Decode a numeric bitmask into the matching flag names. Relies on the
+   * TypeScript `enum` reverse mapping (numeric key → name), so `Flags` must be a
+   * real `enum` (e.g. AreaFlags); a plain `{NAME: bit}` object yields nothing.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractTSFlags(Flags: any, flag: number) {
+    const flags = [] as string[]
+    for (const k in Flags) {
+      if (typeof k === 'string' && !isNaN(parseInt(k))) {
+        const bit = parseInt(k)
+        if (flag & bit) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          flags.push((Flags as any)[k])
+        }
+      }
+    }
+    return flags
+  }
+
+  /** Reverse-lookup an icon number to its name in the `Icons` enum (or undefined). */
+  getIconKey(icon: number) {
+    for (const k in Icons) {
+      if (Icons[k as keyof typeof Icons] === icon) {
+        return k
+      }
+    }
+    return undefined
+  }
+
+  /**
+   * List every registered editor type with its `define()` metadata, made
+   * human-readable: `flag` is decoded to its `AreaFlags` names, `icon` to its
+   * `Icons` key, and the keys are sorted into a stable, readable order. Handy
+   * for discovering valid `editorType` values for `showEditor`.
+   */
+  listEditorTypes() {
+    return Object.keys(areaclasses).map((k) => {
+      const def = areaclasses[k as keyof typeof areaclasses].define()
+      const flags = this.extractTSFlags(AreaFlags, def.flag ?? 0)
+      const result = {...def, flags, icon: def.icon ? this.getIconKey(def.icon) : undefined}
+
+      const keyOrder = ['areaname', 'tagname', 'apiname', 'uiname', 'icon', 'flag', 'description', 'borderLock']
+      // sort keys
+      return Object.fromEntries(
+        Object.entries(result).sort((a, b) => {
+          let i1 = keyOrder.indexOf(a[0])
+          let i2 = keyOrder.indexOf(b[0])
+          i1 = i1 === -1 ? 100 : i1
+          i2 = i2 === -1 ? 100 : i2
+          return i1 - i2
+        })
+      )
+    })
+  }
+
+  /** e.g. CTX.debug.showEditor({editorType: "MaterialEditor"}) */
+  showEditor({
+    editorType,
+    minVisibleWidth,
+    minVisibleHeight = minVisibleWidth,
+  }: {
+    editorType: IEditorConstructor | Editor | string
+    minVisibleWidth: number
+    minVisibleHeight?: number
+  }): {
+    editor: Editor
+    action:
+      | 'already exists'
+      | 'swapped out with a PropsEditor'
+      | 'swapped out with another editor'
+      | 'swapped out with the 3d viewport'
+    swappedOutEditor?: Editor
+  } {
+    const isVisible = (editor2: Editor) => {
+      const x1 = Math.max(editor2.pos![0], 0)
+      const y1 = Math.max(editor2.pos![1], 0)
+
+      const x2 = Math.min(x1 + editor2.size![0], this.ctx.screen.size[0])
+      const y2 = Math.min(y1 + editor2.size![1], this.ctx.screen.size[1])
+
+      const width = x2 - x1
+      const height = y2 - y1
+      return width > minVisibleWidth && height > minVisibleHeight
+    }
+
+    if (editorType instanceof Editor && editorType.owning_sarea?.area === editorType && isVisible(editorType)) {
+      return {editor: editorType, action: 'already exists'}
+    }
+    if (editorType instanceof Editor) {
+      console.log('finding another editor, the one you passed in does not meet visibility requirements')
+      editorType = editorType.constructor
+    }
+
+    let areaname = typeof editorType === 'string' ? editorType : editorType.define().areaname
+
+    if (!(areaname in areaclasses)) {
+      // see if we got a cls.define().apiname or tagname instead of .areaname
+      for (const k in areaclasses) {
+        const def = areaclasses[k as keyof typeof areaclasses].define()
+        if (areaname === def.apiname || areaname === def.tagname) {
+          areaname = k
+        }
+      }
+    }
+
+    if (!(areaname in areaclasses)) {
+      throw new Error('could not find editor class with areaname ' + areaname)
+    }
+
+    // see if one is already visible
+    const screen = this.ctx.screen
+    for (const sarea of screen.sareas) {
+      const area = sarea.area as Editor
+      if (area.constructor.define().areaname === areaname && isVisible(area)) {
+        return {editor: area, action: 'already exists'}
+      }
+    }
+
+    // if there's a PropsEditor open of sufficient size, use it
+    // in preference to a viewport
+    for (const sarea of screen.sareas) {
+      const area = sarea.area as Editor
+      if (area instanceof PropsEditor && isVisible(area)) {
+        sarea.switchEditor(areaclasses[areaname])
+        return {
+          editor          : sarea.area as Editor, //
+          action          : 'swapped out with a PropsEditor',
+          swappedOutEditor: area,
+        }
+      }
+    }
+
+    // find any area of sufficient size not a viewport
+    for (const sarea of screen.sareas) {
+      const area = sarea.area as Editor
+      if (area instanceof MenuBarEditor) {
+        // do not consider the main menu
+        continue
+      }
+
+      if (!(area instanceof View3D) && isVisible(area)) {
+        sarea.switchEditor(areaclasses[areaname])
+        return {
+          editor          : sarea.area as Editor,
+          action          : `swapped out with another editor`,
+          swappedOutEditor: area,
+        }
+      }
+    }
+
+    // fall back to replacing the viewport
+    for (const sarea of screen.sareas) {
+      const area = sarea.area as Editor
+      if (area instanceof MenuBarEditor) {
+        // do not consider the main menu
+        continue
+      }
+
+      if (isVisible(area)) {
+        sarea.switchEditor(areaclasses[areaname])
+        return {
+          editor          : sarea.area as Editor,
+          action          : `swapped out with the 3d viewport`,
+          swappedOutEditor: area,
+        }
+      }
+    }
+
+    console.log('offending cls paramater:', editorType)
+    throw new Error('could not resolve editor')
+  }
+}
+
 export class ViewContext extends ToolContext {
   constructor(state: AppState) {
     super(state)
   }
+
+  debug = new DebugEditorAPI(this)
 
   validate() {
     return true
@@ -415,7 +607,7 @@ export class ViewContext extends ToolContext {
     }
 
     const uve = editor.uvEditor
-    if (!uve.imageUser.image || !uve.imageUser.image.ready) {
+    if (!uve.imageUser.image?.ready) {
       if (uve.imageUser.image) {
         uve.imageUser.image.update()
       }
@@ -479,11 +671,6 @@ export class ViewContext extends ToolContext {
 
   get gl() {
     return this.view3d.gl
-  }
-
-  get nodeEditor() {
-    // TODO: remove casting after TS-ification
-    return getContextArea<NodeEditor>(NodeEditor)
   }
 
   get shaderEditor() {

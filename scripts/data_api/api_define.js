@@ -50,7 +50,7 @@ import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags, onBlockRe
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
 import {Editor, App, buildEditorsAPI} from '../editors/editor_base.ts'
-import {NodeEditor} from '../editors/node/NodeEditor.js'
+import {NodeEditorBase} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../core/graphsockets.js'

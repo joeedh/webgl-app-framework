@@ -251,21 +251,6 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `mesh.faces[n].dataLayers` | list |  |  |  |
 | `mesh.faces[n].namedLayers` | list |  |  |  |
 
-## nodeEditor
-
-| Path | Kind | Type | UI name | Notes |
-| --- | --- | --- | --- | --- |
-| `nodeEditor` | struct |  |  |  |
-| `nodeEditor.pos` | prop | Vec2Property | Position |  |
-| `nodeEditor.size` | prop | Vec2Property | Size |  |
-| `nodeEditor.type` | prop | StringProperty | Type |  |
-| `nodeEditor.graphPath` | prop | StringProperty | data path to graph that's being edited |  |
-| `nodeEditor.velpan` | struct |  |  |  |
-| `nodeEditor.velpan.pos` | prop | Vec2Property | Position |  |
-| `nodeEditor.velpan.scale` | prop | Vec2Property | Scale |  |
-| `nodeEditor.velpan.min` | prop | Vec2Property | Boundary Minimum |  |
-| `nodeEditor.velpan.max` | prop | Vec2Property | Boundary Maximum |  |
-
 ## nodeViewer
 
 | Path | Kind | Type | UI name | Notes |
@@ -898,11 +883,13 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.translate.offset` | prop | Vec2Property | Offset |  |
 | `toolDefaults.node.translate.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.translate.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.translate.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.add_node` | struct |  |  |  |
 | `toolDefaults.node.add_node.nodeClass` | prop | StringProperty | Node Class |  |
 | `toolDefaults.node.add_node.pos` | prop | Vec2Property | Pos |  |
 | `toolDefaults.node.add_node.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.add_node.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.add_node.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.connect` | struct |  |  |  |
 | `toolDefaults.node.connect.node1_id` | prop | IntProperty | Node1 Id |  |
 | `toolDefaults.node.connect.sock1_id` | prop | IntProperty | Sock1 Id |  |
@@ -911,18 +898,22 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.connect.disconnectSockID` | prop | IntProperty | Disconnect Sock Id |  |
 | `toolDefaults.node.connect.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.connect.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.connect.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.delete_selected` | struct |  |  |  |
 | `toolDefaults.node.delete_selected.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.delete_selected.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.delete_selected.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.selectone` | struct |  |  |  |
 | `toolDefaults.node.selectone.nodeId` | prop | IntProperty | Node Id |  |
 | `toolDefaults.node.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
 | `toolDefaults.node.selectone.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.selectone.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.selectone.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.toggle_select_all` | struct |  |  |  |
 | `toolDefaults.node.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
 | `toolDefaults.node.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.toggle_select_all.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.object` | struct |  |  |  |
 | `toolDefaults.object.selectone` | struct |  |  |  |
 | `toolDefaults.object.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |

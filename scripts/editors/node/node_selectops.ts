@@ -1,21 +1,32 @@
 import {Node, NodeFlags} from '../../core/graph.js'
-import {IntProperty, EnumProperty, ToolOp, type ToolDef} from '../../path.ux/scripts/pathux.js'
+import {
+  IntProperty,
+  EnumProperty,
+  ToolOp,
+  type ToolDef,
+  PropertySlots,
+  StringProperty,
+} from '../../path.ux/scripts/pathux.js'
 import {NodeGraphOp} from './node_ops.js'
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
 import type {ToolContext, ViewContext} from '../../core/context'
+import {NodeEditorBase} from './NodeEditor.js'
+import {Editor} from '../editor_base.js'
 
+/**
+ * Base for node selection ops. Its undo snapshots both the per-node selection
+ * state *and* the node array order (some select ops reorder nodes — see
+ * NodeSelectOneOp.pushToFront), restoring both on undo.
+ */
 export class NodeSelectOpBase<
-  InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
-  OutputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
-> extends NodeGraphOp<InputSet, OutputSet> {
+  InputSet extends PropertySlots = {},
+  OutputSet extends PropertySlots = {},
+  NODE_EDITOR extends NodeEditorBase = NodeEditorBase,
+> extends NodeGraphOp<InputSet & {nodeEditorPath: StringProperty}, OutputSet, NODE_EDITOR> {
   static tooldef(): ToolDef {
     return {
-      inputs: ToolOp.inherit({}),
+      inputs: {},
     }
-  }
-
-  static canRun(ctx: ViewContext): boolean {
-    return ctx.nodeEditor !== undefined
   }
 
   undoPre(ctx: ToolContext): void {
@@ -98,14 +109,19 @@ export class NodeSelectOpBase<
   }
 }
 
+/**
+ * Select one node by id (UNIQUE/ADD/SUB). Also moves it to the front of the
+ * node list — shader networks treat the first output node as the active one, so
+ * this is how clicking a node previews its sub-network.
+ */
 export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode: EnumProperty}> {
   static tooldef(): ToolDef {
     return {
       toolpath: 'node.selectone',
-      inputs: ToolOp.inherit({
+      inputs: {
         nodeId: new IntProperty(),
         mode  : new EnumProperty('UNIQUE', SelOneToolModes),
-      }),
+      },
     }
   }
 
@@ -160,13 +176,14 @@ export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode
 
 ToolOp.register(NodeSelectOneOp)
 
+/** Select/deselect all nodes; AUTO deselects if anything is selected, else selects all. */
 export class NodeToggleSelectAll extends NodeSelectOpBase<{mode: EnumProperty}> {
   static tooldef(): ToolDef {
     return {
       toolpath: 'node.toggle_select_all',
-      inputs: ToolOp.inherit({
+      inputs: {
         mode: new EnumProperty('AUTO', SelToolModes),
-      }),
+      },
     }
   }
 

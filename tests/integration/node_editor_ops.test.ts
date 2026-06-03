@@ -1,25 +1,26 @@
 /**
  * Integration coverage for the node-editor ToolOps ported to TypeScript
- * (scripts/editors/node/node_ops.ts + node_selectops.ts, driven through the
- * NodeGraphOp.invoke / fetchGraph / AbstractGraphClass paths).
+ * (scripts/editors/node/node_ops.ts + node_selectops.ts), plus the `--eval`
+ * harness bridge to `CTX.debug` (scripts/core/context.ts).
  *
- * The node editor is UI/app-coupled (path.ux widgets, the data API, the active
- * NodeEditor area), so its code can't be loaded in the jsdom unit harness —
- * vectormath/path.ux don't transform there (see tests/unit/isect_frustum.test.ts).
- * Instead we drive the *real* Electron app headlessly, the same mechanism as
- * sculptcore_parity.test.ts.
+ * The node editor is UI/app-coupled (path.ux widgets, the data API), so its code
+ * can't be loaded in the jsdom unit harness — vectormath/path.ux don't transform
+ * there (see tests/unit/isect_frustum.test.ts). Instead we drive the *real*
+ * Electron app headlessly, the same mechanism as sculptcore_parity.test.ts.
  *
  * To stay independent of the GPU (headless WebGPU rendering of a real mesh is
  * flaky on some hosts), this builds the empty scene and creates a standalone
  * material with `material.new` — `makeDefaultMaterial` gives it a 3-node shader
- * graph (DiffuseNode + GeometryNode + OutputNode, see core/material.ts). The
- * node ToolOps then target `library.material[<id>].graph` directly (no mesh, no
- * render), and the resulting node count is read back from the harness `--dump`
+ * graph (DiffuseNode + GeometryNode + OutputNode, see core/material.ts). The node
+ * ToolOps target `library.material[<id>].graph` directly (no mesh, no render),
+ * and the resulting node count is read back from the harness `--dump`
  * (test_harness.ts `dumpScene` → `materials[].nodeCount`).
  *
- * Asserts the ported ops actually mutate the graph in a running app:
- *   - node.add_node           adds one node            (3 → 4)
- *   - node.toggle_select_all  + node.delete_selected   wipes the graph (3 → 0)
+ * Covers:
+ *   - node.add_node                                    grows the graph (3 → 4)
+ *   - node.toggle_select_all + node.delete_selected    empties it    (3 → 0)
+ *   - --eval CTX.debug... + CTX.api.execTool(...)      the `--eval` → `CTX`
+ *     test bridge from CLAUDE.md (reflection + driving a ToolOp from JS).
  *
  * Prerequisites (else self-skips, logged): a resolvable Electron and the app
  * bundle (`build/entry_point.js`, `pnpm build`). The native sculptcore addon is
@@ -57,16 +58,18 @@ function resolveElectronExe(): string | undefined {
 }
 
 /**
- * Boot the app headlessly on the empty scene, create a material, run each extra
- * `--run` tool in order, then dump. Returns the single datalib material.
+ * Boot the app headlessly on the empty scene, run each `--eval` expression (in
+ * order, before tools) then each `--run` tool, and return the parsed dump.
+ * execFileSync passes args as an array (no shell), so the eval/tool strings need
+ * no escaping.
  */
-function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
+function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: string[]; runTools?: string[]}): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'nodeops-')), 'dump.json')
   const env = {...process.env}
   delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
 
-  // material.new always runs first (creates the graph the other ops target).
-  const runArgs = ['material.new()', ...extraTools].flatMap((t) => ['--run', t])
+  const evalArgs = evals.flatMap((e) => ['--eval', e])
+  const runArgs = runTools.flatMap((t) => ['--run', t])
 
   execFileSync(
     electronExe,
@@ -76,6 +79,7 @@ function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
       '--no-devtools',
       '--backend', 'wasm',
       '--gen-scene', 'empty',
+      ...evalArgs,
       ...runArgs,
       '--dump', out,
       '--exit',
@@ -84,8 +88,13 @@ function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
   )
 
   if (!fs.existsSync(out)) throw new Error(`dump not written to ${out}`)
-  const dump = JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
+  return JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
+}
 
+/** A run that creates one material then runs `extraTools`; returns that material. */
+function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
+  // material.new always runs first (creates the graph the other ops target).
+  const dump = runHarness(electronExe, {runTools: ['material.new()', ...extraTools]})
   if (!Array.isArray(dump.materials) || dump.materials.length !== 1) {
     throw new Error(`expected exactly one datalib material, got ${JSON.stringify(dump.materials)}`)
   }
@@ -136,5 +145,30 @@ maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
 
   test('toggle_select_all + delete_selected empties the graph', () => {
     expect(afterDeleteAll.nodeCount).toBe(0)
+  })
+})
+
+maybe('CTX.debug via the --eval harness bridge', () => {
+  let dump: Dump
+
+  beforeAll(() => {
+    // The `--eval` flag runs JS in global scope (CTX reachable) before --run
+    // tools (see CLAUDE.md's "Debug context API" guide). Two evals: the first
+    // exercises CTX.debug reflection (and throws — aborting the second — if it's
+    // broken), the second drives a ToolOp whose effect is observable in --dump.
+    dump = runHarness(electronExe!, {
+      evals: [
+        "if (CTX.debug.listEditorTypes().filter(e => e.areaname === 'MaterialEditor').length !== 1)" +
+          " throw new Error('MaterialEditor missing from CTX.debug.listEditorTypes()')",
+        "CTX.api.execTool(CTX, 'material.new()')",
+      ],
+    })
+  }, 120000)
+
+  test('--eval reaches CTX.debug + CTX.api and drives a ToolOp', () => {
+    // A material with the 3-node default graph proves both evals ran: the
+    // reflection check passed (else it threw before material.new) and the
+    // ToolOp executed via the CTX global.
+    expect(dump.materials.map((m) => m.nodeCount)).toEqual([3])
   })
 })

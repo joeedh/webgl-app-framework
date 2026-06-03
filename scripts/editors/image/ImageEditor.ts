@@ -1170,7 +1170,7 @@ export class UVEditor extends UIBase<ViewContext> {
     }
 
     this.updateMesh()
-    this.velpan.maxVelocity = 0.0003
+    this.velpan.minTimeStep = 0.0003
 
     /*
     let velpan = this.velpan;
