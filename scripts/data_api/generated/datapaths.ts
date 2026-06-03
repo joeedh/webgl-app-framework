@@ -765,7 +765,6 @@ export type GeneratedDataPath =
   | "toolDefaults.uveditor.translate.selectedFacesOnly"
   | "toolDefaults.velpan"
   | "toolDefaults.velpan.pan"
-  | "toolDefaults.velpan.pan.pan"
   | "toolDefaults.velpan.pan.velpanPath"
   | "toolDefaults.view3d"
   | "toolDefaults.view3d.inflate"
@@ -1585,7 +1584,6 @@ declare module "@framework/pathux" {
     "toolDefaults.uveditor.translate.selectedFacesOnly": true;
     "toolDefaults.velpan": true;
     "toolDefaults.velpan.pan": true;
-    "toolDefaults.velpan.pan.pan": true;
     "toolDefaults.velpan.pan.velpanPath": true;
     "toolDefaults.view3d": true;
     "toolDefaults.view3d.inflate": true;

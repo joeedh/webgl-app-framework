@@ -1,31 +1,27 @@
 import {NodeEditor} from './NodeEditor.js'
-import {Editor} from '../editor_base.ts'
-import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js'
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
-import * as util from '../../util/util.js'
+import {Editor, type EditorSideBar} from '../editor_base'
+import {UIBase} from '../../path.ux/scripts/core/ui_base.js'
 import {MakeMaterialOp} from '../../core/material.js'
 import {Icons} from '../icon_enum.js'
-import {nstructjs} from '../../path.ux/scripts/pathux.js'
+import {nstructjs, type DataAPI, type DataStruct, type Container, type IAreaDef} from '../../path.ux/scripts/pathux.js'
 import {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
+import type {Material} from '../../core/material'
+import type {ViewContext} from '../../core/context'
+import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export class MaterialEditor extends NodeEditor {
-  constructor() {
-    super()
+  _last_update_key: string | undefined = undefined
+  dataBlockPath = ''
+  activeMatMap: {[lib_id: number]: number} = {}
+  headerRow?: Container<ViewContext>
 
-    this._last_update_key = undefined
-    this.dataBlockPath = ''
-
-    this.activeMatMap = {}
-  }
-
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI): DataStruct {
     return api.inheritStruct(MaterialEditor, NodeEditor)
   }
 
-  init() {
+  init(): void {
     super.init()
-    this.headerRow = this.header.row()
+    this.headerRow = this.header!.row()
 
     if (this.helppicker) {
       this.helppicker.remove()
@@ -35,8 +31,8 @@ export class MaterialEditor extends NodeEditor {
     this.doOnce(this.buildHeader)
   }
 
-  updatePath() {
-    let ob = this.ctx.object
+  updatePath(): void {
+    const ob = this.ctx.object
 
     if (!ob) {
       this.graphPath = this.dataBlockPath = ''
@@ -45,13 +41,11 @@ export class MaterialEditor extends NodeEditor {
 
     if (ob.data instanceof Mesh) {
       this.dataBlockPath = `library.mesh[${ob.data.lib_id}]`
-
-      let mesh = ob.data
     } else {
       this.dataBlockPath = `library.object[${ob.data.lib_id}].data`
     }
 
-    let block = this.ctx.api.getValue(this.ctx, this.dataBlockPath)
+    const block = this.ctx.api.getValue(this.ctx, this.dataBlockPath)
 
     if (!block) {
       this.graphPath = ''
@@ -66,7 +60,7 @@ export class MaterialEditor extends NodeEditor {
       this.activeMatMap[block.lib_id] = Math.min(this.activeMatMap[block.lib_id], block.materials.length)
 
       if (block.materials.length > 0) {
-        let idx = this.activeMatMap[block.lib_id]
+        const idx = this.activeMatMap[block.lib_id]
         this.graphPath = `${this.dataBlockPath}.materials[${idx}].graph`
       } else {
         this.graphPath = ''
@@ -76,7 +70,7 @@ export class MaterialEditor extends NodeEditor {
     }
   }
 
-  onSidebarBuild(sidebar) {
+  onSidebarBuild(sidebar: EditorSideBar): void {
     super.onSidebarBuild(sidebar)
 
     const materialTab = sidebar.tabpanel.tab('Materials')
@@ -84,10 +78,10 @@ export class MaterialEditor extends NodeEditor {
     // is a MeshMaterialPanel
     const panel = UIBase.createElement('material-panel-x')
     panel.setAttribute('datapath', 'mesh')
-    materialTab.add(panel)
+    materialTab.add(panel as unknown as UIBase<ViewContext>)
   }
 
-  buildHeader() {
+  buildHeader(): void {
     if (!this.ctx) {
       if (!this.isDead()) {
         this.doOnce(this.buildHeader)
@@ -97,18 +91,18 @@ export class MaterialEditor extends NodeEditor {
 
     this.updatePath()
 
-    let row = this.headerRow
+    const row = this.headerRow!
 
     row.clear()
 
-    let col = row.col()
-    let row1 = col.row()
-    let row2 = col.row()
+    const col = row.col()
+    const row1 = col.row()
+    const row2 = col.row()
 
-    let path = this.graphPath
-    let graph = path !== '' ? this.ctx.api.resolvePath(this.ctx, path) : undefined
+    const path = this.graphPath
+    const graph = path !== '' ? this.ctx.api.resolvePath(this.ctx, path) : undefined
 
-    let dblock = this.dataBlockPath === '' ? undefined : this.ctx.api.getValue(this.ctx, this.dataBlockPath)
+    const dblock = this.dataBlockPath === '' ? undefined : this.ctx.api.getValue(this.ctx, this.dataBlockPath)
 
     if (!graph && !dblock) {
       row1.label('Nothing here')
@@ -122,37 +116,38 @@ export class MaterialEditor extends NodeEditor {
     }
   }
 
-  headerMesh(mesh, row1, row2) {
+  headerMesh(mesh: Mesh, row1: Container<ViewContext>, _row2: Container<ViewContext>): void {
     if (mesh.materials.length === 0) {
       row1.button('Add Material', () => {
-        let op = new MakeMaterialOp()
+        const op = new MakeMaterialOp()
 
         this.ctx.toolstack.execTool(this.ctx, op)
-        let mat = op.outputs.materialID.getValue()
-        mat = this.ctx.datalib.get(mat)
+        const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())
 
-        mesh.materials.push(mat)
-        mat.lib_addUser(mesh)
+        if (mat) {
+          mesh.materials.push(mat)
+          mat.lib_addUser(mesh)
+        }
 
         this.rebuild()
       })
     }
   }
 
-  headerNonMesh(dblock, row1, row2) {}
+  headerNonMesh(_dblock: unknown, _row1: Container<ViewContext>, _row2: Container<ViewContext>): void {}
 
-  rebuild() {
+  rebuild(): void {
     this.doOnce(this.buildHeader)
   }
 
-  update() {
-    let ob = this.ctx.object
+  update(): void {
+    const ob = this.ctx.object!
 
     let updateKey = ob.name
 
     if (ob.data instanceof Mesh) {
       updateKey += ':ME:' + ob.data.name
-      for (let mat of ob.data.materials) {
+      for (const mat of ob.data.materials) {
         updateKey += ':' + mat.lib_id
       }
     }
@@ -166,16 +161,17 @@ export class MaterialEditor extends NodeEditor {
     super.update()
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
     super.loadSTRUCT(reader)
 
-    if (typeof this.activeMatMap === 'string') {
-      this.activeMatMap = JSON.parse(this.activeMatMap)
+    const amm = this.activeMatMap as unknown
+    if (typeof amm === 'string') {
+      this.activeMatMap = JSON.parse(amm)
     }
   }
 
-  static define() {
+  static define(): IAreaDef {
     return {
       tagname : 'material-editor-x',
       areaname: 'MaterialEditor',

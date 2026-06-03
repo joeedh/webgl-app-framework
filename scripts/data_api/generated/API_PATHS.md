@@ -762,7 +762,6 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.velpan` | struct |  |  |  |
 | `toolDefaults.velpan.pan` | struct |  |  |  |
 | `toolDefaults.velpan.pan.velpanPath` | prop | StringProperty | Velpan Path |  |
-| `toolDefaults.velpan.pan.pan` | prop | Vec2Property | Pan |  |
 | `toolDefaults.material` | struct |  |  |  |
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
@@ -783,36 +782,6 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.datalib.default_unlink` | struct |  |  |  |
 | `toolDefaults.datalib.default_unlink.block` | prop | DataRefProperty | Block |  |
 | `toolDefaults.datalib.default_unlink.dataPathToUnset` | prop | StringProperty | Data Path To Unset |  |
-| `toolDefaults.node` | struct |  |  |  |
-| `toolDefaults.node.translate` | struct |  |  |  |
-| `toolDefaults.node.translate.offset` | prop | Vec2Property | Offset |  |
-| `toolDefaults.node.translate.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.translate.graphClass` | prop | StringProperty | Graph Class |  |
-| `toolDefaults.node.add_node` | struct |  |  |  |
-| `toolDefaults.node.add_node.nodeClass` | prop | StringProperty | Node Class |  |
-| `toolDefaults.node.add_node.pos` | prop | Vec2Property | Pos |  |
-| `toolDefaults.node.add_node.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.add_node.graphClass` | prop | StringProperty | Graph Class |  |
-| `toolDefaults.node.connect` | struct |  |  |  |
-| `toolDefaults.node.connect.node1_id` | prop | IntProperty | Node1 Id |  |
-| `toolDefaults.node.connect.sock1_id` | prop | IntProperty | Sock1 Id |  |
-| `toolDefaults.node.connect.node2_id` | prop | IntProperty | Node2 Id |  |
-| `toolDefaults.node.connect.sock2_id` | prop | IntProperty | Sock2 Id |  |
-| `toolDefaults.node.connect.disconnectSockID` | prop | IntProperty | Disconnect Sock Id |  |
-| `toolDefaults.node.connect.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.connect.graphClass` | prop | StringProperty | Graph Class |  |
-| `toolDefaults.node.delete_selected` | struct |  |  |  |
-| `toolDefaults.node.delete_selected.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.delete_selected.graphClass` | prop | StringProperty | Graph Class |  |
-| `toolDefaults.node.selectone` | struct |  |  |  |
-| `toolDefaults.node.selectone.nodeId` | prop | IntProperty | Node Id |  |
-| `toolDefaults.node.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
-| `toolDefaults.node.selectone.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.selectone.graphClass` | prop | StringProperty | Graph Class |  |
-| `toolDefaults.node.toggle_select_all` | struct |  |  |  |
-| `toolDefaults.node.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.node.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
-| `toolDefaults.node.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.view3d` | struct |  |  |  |
 | `toolDefaults.view3d.translate` | struct |  |  |  |
 | `toolDefaults.view3d.translate.value` | prop | Vec3Property | Value |  |
@@ -924,6 +893,36 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.sculptcore.paint.falloff` | prop | Curve1DProperty | Falloff |  |
 | `toolDefaults.sculptcore.paint.rendermat` | prop | Mat4Property | Rendermat |  |
 | `toolDefaults.sculptcore.paint.viewportSize` | prop | Vec2Property | Viewport Size |  |
+| `toolDefaults.node` | struct |  |  |  |
+| `toolDefaults.node.translate` | struct |  |  |  |
+| `toolDefaults.node.translate.offset` | prop | Vec2Property | Offset |  |
+| `toolDefaults.node.translate.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.translate.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.add_node` | struct |  |  |  |
+| `toolDefaults.node.add_node.nodeClass` | prop | StringProperty | Node Class |  |
+| `toolDefaults.node.add_node.pos` | prop | Vec2Property | Pos |  |
+| `toolDefaults.node.add_node.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.add_node.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.connect` | struct |  |  |  |
+| `toolDefaults.node.connect.node1_id` | prop | IntProperty | Node1 Id |  |
+| `toolDefaults.node.connect.sock1_id` | prop | IntProperty | Sock1 Id |  |
+| `toolDefaults.node.connect.node2_id` | prop | IntProperty | Node2 Id |  |
+| `toolDefaults.node.connect.sock2_id` | prop | IntProperty | Sock2 Id |  |
+| `toolDefaults.node.connect.disconnectSockID` | prop | IntProperty | Disconnect Sock Id |  |
+| `toolDefaults.node.connect.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.connect.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.delete_selected` | struct |  |  |  |
+| `toolDefaults.node.delete_selected.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.delete_selected.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.selectone` | struct |  |  |  |
+| `toolDefaults.node.selectone.nodeId` | prop | IntProperty | Node Id |  |
+| `toolDefaults.node.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
+| `toolDefaults.node.selectone.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.selectone.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.node.toggle_select_all` | struct |  |  |  |
+| `toolDefaults.node.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
+| `toolDefaults.node.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.node.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.object` | struct |  |  |  |
 | `toolDefaults.object.selectone` | struct |  |  |  |
 | `toolDefaults.object.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
