@@ -5336,83 +5336,6 @@
         "OBJECT"
       ]
     },
-    "nodeEditor": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "nodeEditor.pos": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Position",
-      "description": "Position of editor in window",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "nodeEditor.size": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Size",
-      "description": "Size of editor",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "nodeEditor.type": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Type",
-      "description": "Editor type",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "nodeEditor.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "data path to graph that's being edited",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "nodeEditor.velpan": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "nodeEditor.velpan.pos": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Position",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "nodeEditor.velpan.scale": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Scale",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "nodeEditor.velpan.min": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Boundary Minimum",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "nodeEditor.velpan.max": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Boundary Maximum",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
     "nodeViewer": {
       "kind": "struct",
       "indexed": false,
@@ -7920,6 +7843,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.node.translate.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.add_node": {
       "kind": "struct",
       "indexed": false,
@@ -7958,6 +7890,15 @@
       "propType": "StringProperty",
       "uiname": "Graph Class",
       "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.add_node.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -8029,6 +7970,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.node.connect.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.delete_selected": {
       "kind": "struct",
       "indexed": false,
@@ -8049,6 +7999,15 @@
       "propType": "StringProperty",
       "uiname": "Graph Class",
       "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.delete_selected.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -8098,6 +8057,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.node.selectone.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.toggle_select_all": {
       "kind": "struct",
       "indexed": false,
@@ -8132,6 +8100,15 @@
       "propType": "StringProperty",
       "uiname": "Graph Class",
       "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.toggle_select_all.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
       "decimalPlaces": 4,
       "step": 0.05
     },

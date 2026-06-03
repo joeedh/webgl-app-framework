@@ -152,6 +152,66 @@ for the full flag reference. Key conventions:
   `npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222`). Adding
   an MCP server requires a Claude Code restart to take effect.
 
+## Debug context API (`CTX.debug`)
+
+`ViewContext.debug` (`scripts/core/context.ts`, class `DebugEditorAPI`) is a
+small reflection / test-automation surface on the app context. Reach it from any
+renderer-JS eval context as **`CTX.debug`** (the `CTX` window global is
+`_appstate.ctx`, defined in `entry_point.js`), or as `ctx.debug` in app code.
+
+- `CTX.debug.listEditorTypes()` — every registered editor's `define()` metadata,
+  with `flag` decoded to `AreaFlags` names and `icon` resolved to its `Icons`
+  key. Use it to discover valid `editorType` values.
+- `CTX.debug.getIconKey(icon)` — reverse-lookup an icon number → its `Icons` name.
+- `CTX.debug.showEditor({editorType, minVisibleWidth, minVisibleHeight?})` —
+  ensure an editor of that type is open and at least that big, swapping a
+  suitable on-screen area for it (prefers an already-visible one, then a
+  PropsEditor, then any non-viewport area, then the 3D viewport) and making it
+  the **active** area. `editorType` takes an areaname/apiname/tagname string, an
+  editor class, or an Editor instance; returns `{editor, action, swappedOutEditor?}`.
+
+### Using it in integration tests
+
+Many editor ToolOps only run when the right editor is active. The node-graph ops
+(`node.*`, `editors/node/node_ops.ts`) read the active editor (`ctx.editor`) in
+their static `invoke`: when it's a `NodeEditorBase` subclass they auto-fill the
+op's `nodeEditorPath` input, and `getNodeEditor` / `canRun` resolve the editor
+(and its graph) from there. The only **registered** such editor is
+`MaterialEditor` (areaname `MaterialEditor`, the Shader Editor); `NodeEditorBase`
+is an abstract base and is intentionally not registered. A freshly-booted
+headless app has no such editor active, so the selection/delete ops won't run —
+`showEditor` opens and activates one first.
+
+- **Playwright e2e (browser build, `tests/e2e/`)** — no bridge needed; evaluate
+  in the page realm, exactly like the existing `_appstate` calls there:
+  ```ts
+  await page.evaluate(() =>
+    window.CTX.debug.showEditor({editorType: 'MaterialEditor', minVisibleWidth: 400}),
+  )
+  // MaterialEditor is now ctx.editor → node.* ToolOps auto-fill nodeEditorPath
+  ```
+- **chrome-devtools-mcp (Electron via `--remote-debug`)** — the CDP
+  `evaluate_script` tool calls `CTX.debug.*` the same way over the endpoint.
+- **Headless jest harness (`electron/main.js` + `--run`/`--dump`)** — this path
+  only runs ToolOps (`--run "tool.path(...)"`), so it can't reach `CTX.debug`
+  today. Proposed bridge: add an **`--eval "<expr>"`** flag to
+  `scripts/core/test_harness.ts` that runs each expression (with `CTX` /
+  `_appstate` in scope) before the `--run` tools, recording failures on
+  `__apptestResult`:
+  ```ts
+  // in runTestHarness(), before the runTools loop (getArgList is already imported):
+  for (const expr of getArgList('eval', argv)) {
+    try { (0, eval)(expr) }                      // CTX is a window global
+    catch (err) { result.ok = false; result.error = String(err) }
+  }
+  ```
+  A test could then prepend
+  `--eval "CTX.debug.showEditor({editorType:'MaterialEditor', minVisibleWidth:400})"`
+  to its `--run node.toggle_select_all(...)` / `--run node.delete_selected(...)`
+  sequence to exercise the selection/delete ops headlessly —
+  `tests/integration/node_editor_ops.test.ts` skips them today for exactly this
+  reason.
+
 ## Native sculptcore backend (N-API)
 
 `sculptcore` runs from the TS app through **two interchangeable backends behind

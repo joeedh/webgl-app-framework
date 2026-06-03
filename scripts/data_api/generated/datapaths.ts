@@ -129,16 +129,6 @@ export type GeneratedDataPath =
   | "mesh.verts"
   | "mesh.vertsData"
   | "mesh.vertsData.layers"
-  | "nodeEditor"
-  | "nodeEditor.graphPath"
-  | "nodeEditor.pos"
-  | "nodeEditor.size"
-  | "nodeEditor.type"
-  | "nodeEditor.velpan"
-  | "nodeEditor.velpan.max"
-  | "nodeEditor.velpan.min"
-  | "nodeEditor.velpan.pos"
-  | "nodeEditor.velpan.scale"
   | "nodeViewer"
   | "nodeViewer.graphPath"
   | "nodeViewer.pos"
@@ -647,6 +637,7 @@ export type GeneratedDataPath =
   | "toolDefaults.node.add_node.graphClass"
   | "toolDefaults.node.add_node.graphPath"
   | "toolDefaults.node.add_node.nodeClass"
+  | "toolDefaults.node.add_node.nodeEditorPath"
   | "toolDefaults.node.add_node.pos"
   | "toolDefaults.node.connect"
   | "toolDefaults.node.connect.disconnectSockID"
@@ -654,23 +645,28 @@ export type GeneratedDataPath =
   | "toolDefaults.node.connect.graphPath"
   | "toolDefaults.node.connect.node1_id"
   | "toolDefaults.node.connect.node2_id"
+  | "toolDefaults.node.connect.nodeEditorPath"
   | "toolDefaults.node.connect.sock1_id"
   | "toolDefaults.node.connect.sock2_id"
   | "toolDefaults.node.delete_selected"
   | "toolDefaults.node.delete_selected.graphClass"
   | "toolDefaults.node.delete_selected.graphPath"
+  | "toolDefaults.node.delete_selected.nodeEditorPath"
   | "toolDefaults.node.selectone"
   | "toolDefaults.node.selectone.graphClass"
   | "toolDefaults.node.selectone.graphPath"
   | "toolDefaults.node.selectone.mode"
+  | "toolDefaults.node.selectone.nodeEditorPath"
   | "toolDefaults.node.selectone.nodeId"
   | "toolDefaults.node.toggle_select_all"
   | "toolDefaults.node.toggle_select_all.graphClass"
   | "toolDefaults.node.toggle_select_all.graphPath"
   | "toolDefaults.node.toggle_select_all.mode"
+  | "toolDefaults.node.toggle_select_all.nodeEditorPath"
   | "toolDefaults.node.translate"
   | "toolDefaults.node.translate.graphClass"
   | "toolDefaults.node.translate.graphPath"
+  | "toolDefaults.node.translate.nodeEditorPath"
   | "toolDefaults.node.translate.offset"
   | "toolDefaults.object"
   | "toolDefaults.object.apply_transform"
@@ -948,16 +944,6 @@ declare module "@framework/pathux" {
     "mesh.verts": true;
     "mesh.vertsData": true;
     "mesh.vertsData.layers": true;
-    "nodeEditor": true;
-    "nodeEditor.graphPath": true;
-    "nodeEditor.pos": true;
-    "nodeEditor.size": true;
-    "nodeEditor.type": true;
-    "nodeEditor.velpan": true;
-    "nodeEditor.velpan.max": true;
-    "nodeEditor.velpan.min": true;
-    "nodeEditor.velpan.pos": true;
-    "nodeEditor.velpan.scale": true;
     "nodeViewer": true;
     "nodeViewer.graphPath": true;
     "nodeViewer.pos": true;
@@ -1466,6 +1452,7 @@ declare module "@framework/pathux" {
     "toolDefaults.node.add_node.graphClass": true;
     "toolDefaults.node.add_node.graphPath": true;
     "toolDefaults.node.add_node.nodeClass": true;
+    "toolDefaults.node.add_node.nodeEditorPath": true;
     "toolDefaults.node.add_node.pos": true;
     "toolDefaults.node.connect": true;
     "toolDefaults.node.connect.disconnectSockID": true;
@@ -1473,23 +1460,28 @@ declare module "@framework/pathux" {
     "toolDefaults.node.connect.graphPath": true;
     "toolDefaults.node.connect.node1_id": true;
     "toolDefaults.node.connect.node2_id": true;
+    "toolDefaults.node.connect.nodeEditorPath": true;
     "toolDefaults.node.connect.sock1_id": true;
     "toolDefaults.node.connect.sock2_id": true;
     "toolDefaults.node.delete_selected": true;
     "toolDefaults.node.delete_selected.graphClass": true;
     "toolDefaults.node.delete_selected.graphPath": true;
+    "toolDefaults.node.delete_selected.nodeEditorPath": true;
     "toolDefaults.node.selectone": true;
     "toolDefaults.node.selectone.graphClass": true;
     "toolDefaults.node.selectone.graphPath": true;
     "toolDefaults.node.selectone.mode": true;
+    "toolDefaults.node.selectone.nodeEditorPath": true;
     "toolDefaults.node.selectone.nodeId": true;
     "toolDefaults.node.toggle_select_all": true;
     "toolDefaults.node.toggle_select_all.graphClass": true;
     "toolDefaults.node.toggle_select_all.graphPath": true;
     "toolDefaults.node.toggle_select_all.mode": true;
+    "toolDefaults.node.toggle_select_all.nodeEditorPath": true;
     "toolDefaults.node.translate": true;
     "toolDefaults.node.translate.graphClass": true;
     "toolDefaults.node.translate.graphPath": true;
+    "toolDefaults.node.translate.nodeEditorPath": true;
     "toolDefaults.node.translate.offset": true;
     "toolDefaults.object": true;
     "toolDefaults.object.apply_transform": true;

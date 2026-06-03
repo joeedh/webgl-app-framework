@@ -1,6 +1,5 @@
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe'
 import '../path.ux/scripts/util/struct.js'
-import {NodeEditorBase} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {Editor, editorAccessor, getContextArea, IEditorConstructor} from '../editors/editor_base'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
@@ -395,11 +394,27 @@ export class ToolContext extends ContextExtraAPI {
   }
 }
 
+/**
+ * Debugging / test-automation surface hanging off `ViewContext.debug`. Reach it
+ * from any renderer-JS eval context as `CTX.debug` (the `CTX` window global is
+ * `_appstate.ctx`, defined in entry_point.js) or as `ctx.debug` in app code.
+ *
+ * Its main job is reflecting over the editor registry and forcing a given
+ * editor on-screen (`showEditor`) — handy in integration tests, where many
+ * ToolOps gate on `canRun` finding an open editor of the right type. See the
+ * "Debug context API" guide in CLAUDE.md.
+ */
 class DebugEditorAPI {
   ctx: ViewContext
   constructor(ctx: ViewContext) {
     this.ctx = ctx
   }
+
+  /**
+   * Decode a numeric bitmask into the matching flag names. Relies on the
+   * TypeScript `enum` reverse mapping (numeric key → name), so `Flags` must be a
+   * real `enum` (e.g. AreaFlags); a plain `{NAME: bit}` object yields nothing.
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractTSFlags(Flags: any, flag: number) {
     const flags = [] as string[]
@@ -415,6 +430,7 @@ class DebugEditorAPI {
     return flags
   }
 
+  /** Reverse-lookup an icon number to its name in the `Icons` enum (or undefined). */
   getIconKey(icon: number) {
     for (const k in Icons) {
       if (Icons[k as keyof typeof Icons] === icon) {
@@ -424,6 +440,12 @@ class DebugEditorAPI {
     return undefined
   }
 
+  /**
+   * List every registered editor type with its `define()` metadata, made
+   * human-readable: `flag` is decoded to its `AreaFlags` names, `icon` to its
+   * `Icons` key, and the keys are sorted into a stable, readable order. Handy
+   * for discovering valid `editorType` values for `showEditor`.
+   */
   listEditorTypes() {
     return Object.keys(areaclasses).map((k) => {
       const def = areaclasses[k as keyof typeof areaclasses].define()
@@ -649,11 +671,6 @@ export class ViewContext extends ToolContext {
 
   get gl() {
     return this.view3d.gl
-  }
-
-  get nodeEditor() {
-    // TODO: remove casting after TS-ification
-    return getContextArea<NodeEditorBase>(NodeEditorBase)
   }
 
   get shaderEditor() {
