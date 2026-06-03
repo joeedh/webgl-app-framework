@@ -1,0 +1,45 @@
+{
+  "style_preamble": "Cinematic noir, 24fps, shallow depth of field. Slow, deliberate camera moves. Muted color palette, deep shadows, single warm light source per scene. Narrator: weary, gravelly male voice in a low register, the cadence of a man telling a story late at night, unhurried. Score: sparse low strings with occasional piano. No on-screen text. Period-agnostic — feels timeless, not contemporary.",
+  "chunks": [
+    {
+      "visual": "Wide shot of a dim bedroom at night. A single warm bedside lamp glows on a nightstand. A man's hand drifts in from the right edge of frame and reaches for the lamp switch without his eyes ever looking — a learned, certain motion. Slow dolly in on the lamp.",
+      "narration": "For two years, the GL context was the only deity in the viewport. Every draw call prayed to it. The way a man reaches for a lamp in the dark — without looking, certain.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "Cut to a vast, cold, blue-lit underground hall. Tall steel shelves line the walls, stacked with sealed letters tied in twine. Machinery hums softly in the distance. The camera slowly pushes forward between the shelves. Dust drifting in the cold light.",
+      "narration": "Apple had stopped caring about WebGL years ago. Under the floorboards, the WebGPU pieces had assembled themselves — pipelines, buffers, shaders. They could not, yet, draw a frame.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "A clerk in a brown wool overcoat steps through a heavy door into a long room of humming machines (Pipelines, rendered as art-deco metal cabinets). He carries a clipboard. Single bare bulb hangs from a wire above him. Dust motes drift. Slow tracking shot following him in.",
+      "narration": "Then a new file walked in with a clipboard. Show me your declarations, it said. Every uniform you've got. Group, binding, struct — all of it.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "Close-up of the same bedside lamp from the opening. A pair of hands gently unscrews its bulb. They reach into a satchel and screw in a new bulb that looks identical — but the shadow it casts on the wall is jagged, wrong, slightly malevolent. Slow push in on the new lamp's filament.",
+      "narration": "Two hours later, the GL context itself was evicted. In its place, a throwing Proxy — a doppelgänger dressed in the dead deity's clothes. Every forgotten code path now had a tripwire.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "A lone developer hunched at a CRT monitor at 7:16 PM on a Wednesday. Blue monitor glow on his face. A dark window behind him reflecting the room. A cold coffee cup. Lines of code reflected in his glasses, scrolling fast. Slow push in over his shoulder.",
+      "narration": "Seven sixteen P.M., a Wednesday. Eleven hundred lines added. Twenty-three files. The kind of commit that doesn't get an arc — because it is the arc, compressed.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "A back-room desk under one bare bulb. Behind it sits a stern bureaucrat in a green eyeshade, holding a heavy rubber stamp. A clerk approaches with a stack of forms, padded carefully with brown spacers. The bureaucrat does not look up. Slow zoom on the stamp coming down.",
+      "narration": "Picture a bureaucrat with one rule and infinite patience. Arrays of structs pad every element to sixteen bytes. No exceptions. No flags. It is in the spec.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "Tight close-up of a single line of code glowing faintly red on a dark monitor: the text reads hash i-f-d-e-f. The camera slowly racks focus from the code to a tired engineer's reflection in the monitor glass, then back to the code as the red fades to green.",
+      "narration": "And then, the bug you only catch by running the thing. A hash-ifdef block slipped through, untouched, into the shader compiler. The mesh, finally, was lit.",
+      "duration_hint": 8
+    },
+    {
+      "visual": "Dawn light through the developer's window. The monitor now shows a lit, shaded three-dimensional model rotating slowly, smoothly. The camera pulls back to reveal the developer asleep at his desk, head down. End on the warm glow of the screen filling the dark room.",
+      "narration": "Five commits. Thirty-six hours. The viewport no longer reaches for the GL context. The lamp on the nightstand is a Proxy in the dead deity's clothes. And it bites.",
+      "duration_hint": 8
+    }
+  ]
+}
