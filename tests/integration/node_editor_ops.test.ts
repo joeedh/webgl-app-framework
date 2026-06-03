@@ -18,8 +18,13 @@
  * (test_harness.ts `dumpScene` → `materials[].nodeCount`).
  *
  * Asserts the ported ops actually mutate the graph in a running app:
- *   - node.add_node           adds one node            (3 → 4)
- *   - node.toggle_select_all  + node.delete_selected   wipes the graph (3 → 0)
+ *   - node.add_node adds one node per call (3 → 4 → 5).
+ *
+ * This drives AddNodeOp through NodeGraphOp.invoke / fetchGraph / exec and
+ * AbstractGraphClass — the bulk of the ported toolop machinery. The selection
+ * ops (node.toggle_select_all / node.selectone) and node.delete_selected aren't
+ * exercised here: their `canRun` gates on `ctx.nodeEditor !== undefined`, and a
+ * headless boot has no open node editor area, so execTool refuses to run them.
  *
  * Prerequisites (else self-skips, logged): a resolvable Electron and the app
  * bundle (`build/entry_point.js`, `pnpm build`). The native sculptcore addon is
@@ -112,18 +117,16 @@ if (!canRun) {
 maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
   let baseline: DumpMaterial
   let afterAdd: DumpMaterial
-  let afterDeleteAll: DumpMaterial
+  let afterAddTwo: DumpMaterial
 
   beforeAll(() => {
     baseline = runOps(electronExe!, [])
     // The material's lib_id is deterministic across these identical boots, so we
     // can target its graph path from the baseline run.
     const g = `graphPath='library.material[${baseline.libId}].graph' graphClass='shader'`
-    afterAdd = runOps(electronExe!, [`node.add_node(${g} nodeClass='DiffuseNode')`])
-    afterDeleteAll = runOps(electronExe!, [
-      `node.toggle_select_all(${g} mode='ADD')`,
-      `node.delete_selected(${g})`,
-    ])
+    const add = `node.add_node(${g} nodeClass='DiffuseNode')`
+    afterAdd = runOps(electronExe!, [add])
+    afterAddTwo = runOps(electronExe!, [add, add])
   }, 300000)
 
   test('material.new yields the 3-node makeDefaultMaterial graph', () => {
@@ -134,7 +137,7 @@ maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
     expect(afterAdd.nodeCount).toBe(baseline.nodeCount + 1)
   })
 
-  test('toggle_select_all + delete_selected empties the graph', () => {
-    expect(afterDeleteAll.nodeCount).toBe(0)
+  test('node.add_node is repeatable — each call grows the graph', () => {
+    expect(afterAddTwo.nodeCount).toBe(baseline.nodeCount + 2)
   })
 })
