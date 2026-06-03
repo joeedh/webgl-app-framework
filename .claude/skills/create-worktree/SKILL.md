@@ -1,6 +1,6 @@
 ---
 name: create-worktree
-description: Create a new git worktree wired for fast cached builds. Use when the user wants to "create/spin up/add a worktree", a "new worktree", an "isolated build worktree", or a parallel checkout to build in without recompiling sculptcore from scratch. Runs the submodule-sync recovery and sets the sccache env (SCCACHE_BASEDIRS, SCCACHE_DIR) so compiles hit the shared cache across worktrees.
+description: Create a new git worktree wired for fast cached builds. Use when the user wants to "create/spin up/add a worktree", a "new worktree", an "isolated build worktree", or a parallel checkout to build in without recompiling sculptcore from scratch. Runs the submodule-sync recovery and registers the worktree with the cross-worktree sccache launcher so compiles hit the shared cache across worktrees.
 ---
 
 # Create a build-ready worktree
@@ -30,9 +30,13 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
   local-only commits) fetches that exact commit from the **main** worktree's
   matching submodule and resumes — the recovery dance from CLAUDE.md, automated.
 - Writes `worktree-env.ps1` and `worktree-env.sh` into the new worktree that
-  export `SCCACHE_DIR` (shared cache at `%LOCALAPPDATA%\sccache`) and
-  `SCCACHE_BASEDIRS` (this worktree's own root, forward slashes, no trailing
-  slash — covers both the sources and the nested `sculptcore/build/native`).
+  export `SCCACHE_DIR` (shared cache at `%LOCALAPPDATA%\sccache`). It no longer
+  sets `SCCACHE_BASEDIRS` — the cross-worktree launcher (below) computes that
+  per-compile from the registry.
+- Builds the cross-worktree sccache launcher (if stale) and registers the new
+  worktree into the shared registry via `tools/sccache-wrapper/setup.mjs --root
+  <new-worktree>`, so its first build is a cache hit and the shared server
+  already knows about it.
 - Points WASM builds at the main worktree's emsdk via `SCULPTCORE_EMSDK_DIR`
   (set in `worktree-env`, honored by `configureEnv.mjs`), so they reuse the
   existing ~2.4 GB install instead of re-running `install-emsdk` (pass
@@ -86,11 +90,32 @@ share one cache. Requires an sccache build new enough to support
 `SCCACHE_BASEDIRS` (older sccache silently lacks it → per-worktree caching only).
 
 `SCCACHE_BASEDIRS` is read by the sccache **server** at startup, and there is one
-server per machine. After loading a different worktree's env, run
-`sccache --stop-server` once so the next compile starts a server with that
-worktree's basedir (the on-disk cache in `SCCACHE_DIR` is shared regardless, so
-nothing is lost). Verified end-to-end: a cold `sbrushc` build in one worktree
-makes the same build in a second worktree 100% cache hits.
+server per machine — so a single server can only normalize against the base
+dirs it was born with.
+
+## The cross-worktree launcher
+
+`tools/sccache-wrapper/sccache_launcher.cc` (a tiny C++17 binary) removes the
+"one basedir per server, bounce on switch" limitation by keeping the **union of
+every live worktree's root** in `SCCACHE_BASEDIRS`, so one server caches for all
+worktrees at once — including concurrent builds in different worktrees.
+
+- It's wired as CMake's compiler launcher (`build_files/native-clang.cmake`
+  prefers it over plain sccache; falls back if absent). On each compile it:
+  scans the shared registry, **auto-deletes** any entry whose worktree no longer
+  exists, unions the survivors into `SCCACHE_BASEDIRS`, and restarts the server
+  **only** when the union gains a base dir it lacks (a brand-new worktree's first
+  build) — never for a removal, so it won't disrupt a concurrent build. Then it
+  execs the real sccache. Bookkeeping never fails the build.
+- The binary and the registry (`<name>.<hash>.txt` files, plus `.applied` /
+  `.lock` state) live in the shared sibling dir `C:/dev/sccache-worktrees`.
+  `tools/sccache-wrapper/setup.mjs` builds the binary (with the project's
+  clang++) and registers a worktree; it runs automatically from
+  `make.mjs configure native` and `new-worktree.mjs`.
+- **No manual `sccache --stop-server` when switching worktrees** — the launcher
+  handles server lifecycle. The on-disk cache (`SCCACHE_DIR`) is shared
+  regardless. Verified: a cold `sbrushc` build in one worktree makes the same
+  build in a second worktree 100% cache hits.
 
 ## Teardown
 
