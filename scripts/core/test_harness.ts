@@ -274,10 +274,31 @@ function dumpScene(): unknown {
     objects.push(entry)
   }
 
+  // Datalib material shader-graphs, keyed by lib_id — lets the headless harness
+  // observe the node-editor ToolOps (node.add_node / node.delete_selected /
+  // node.toggle_select_all in editors/node/) mutate `library.material[id].graph`
+  // without needing a rendered mesh object. Duck-typed so core stays free of the
+  // material import.
+  const materials: Array<{libId: number; nodeCount: number}> = []
+  try {
+    const matSet = (app.datalib as {material?: Iterable<{lib_id?: number; graph?: {nodes?: {length?: number}}}>})
+      .material
+    if (matSet) {
+      for (const m of matSet) {
+        if (m.graph?.nodes && typeof m.graph.nodes.length === 'number') {
+          materials.push({libId: m.lib_id ?? -1, nodeCount: m.graph.nodes.length})
+        }
+      }
+    }
+  } catch {
+    /* no materials in datalib */
+  }
+
   return {
     backend     : (globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND ?? 'wasm',
     objectCount : objects.length,
     objects,
+    materials,
   }
 }
 
