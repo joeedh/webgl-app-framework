@@ -737,6 +737,11 @@ ImageUser {
     this.image = image
   }
 
+  load(b: this) {
+    this.image = b.image
+    return this
+  }
+
   dataLink(ownerBlock: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     this.image = getblock_addUser(this.image as unknown as DataRef<ImageBlock>, ownerBlock)
   }

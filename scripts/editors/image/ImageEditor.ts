@@ -83,6 +83,16 @@ export class ImageEditor extends Editor {
     }
   }
 
+  copy(): this {
+    const ret = document.createElement('uv-image-editor-x') as unknown as this
+
+    ret.velpan.load(this.velpan)
+    ret.imageUser.load(this.imageUser)
+    ret.ctx = this.ctx
+
+    return ret
+  }
+
   static defineAPI(api: DataAPI) {
     const st = super.defineAPI(api)
 
