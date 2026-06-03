@@ -1,9 +1,8 @@
-import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js'
-import {Editor, VelPan} from '../editor_base.ts'
+import {Area, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js'
+import {Editor, VelPan, type EditorSideBar} from '../editor_base'
 
 import {
   startMenu,
-  DataPath,
   saveUIData,
   loadUIData,
   DataPathError,
@@ -11,47 +10,78 @@ import {
   HotKey,
   haveModal,
   nstructjs,
+  type DataAPI,
+  type DataStruct,
+  type Menu,
+  type IAreaDef,
 } from '../../path.ux/scripts/pathux.js'
 
-import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js'
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
+import {UIBase, PackFlags, color2css} from '../../path.ux/scripts/core/ui_base.js'
+import {Container, RowFrame} from '../../path.ux/scripts/core/ui.js'
+import {Vector2} from '../../util/vectormath.js'
 import * as util from '../../util/util.js'
-import {DataRef} from '../../core/lib_api.js'
-import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js'
+import {ShaderNodeTypes} from '../../shadernodes/shader_nodes.js'
 
-let projcos = util.cachering.fromConstructor(Vector2, 64)
 import {VelPanPanOp} from '../velpan.js'
 import {SelOneToolModes} from '../view3d/selectmode.js'
-import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js'
+import {Node, NodeFlags, SocketTypes, Graph, type NodeSocketType} from '../../core/graph.js'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
 import {layoutNode} from '../../core/graph_spatial.js'
 import {ModalFlags} from '../../core/modalflags.js'
 import {Icons} from '../icon_enum.js'
+import type {ViewContext} from '../../core/context'
+import type {Material} from '../../core/material'
+import type {Screen} from '../../path.ux/scripts/screen/FrameManager'
+import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
-export class NodeSocketElem extends RowFrame {
+const projcos = util.cachering.fromConstructor<Vector2>(Vector2, 64)
+
+type AnyGraph = Graph<unknown>
+type SocketType = NodeSocketType
+type HighlightArray<T> = T[] & {highlight?: T}
+
+/* loose view of the object returned by layoutNode() (graph_spatial.js, untyped) */
+interface NodeLayout {
+  pos: Vector2
+  size: Vector2
+  socksize: number
+  inputs: {[k: string]: number[]}
+  outputs: {[k: string]: number[]}
+}
+
+/* some node subclasses (e.g. ShaderNode) add these; the base graph Node does not */
+type UINode = Node & {uiname?: string; buildUI?: (container: Container<ViewContext>) => void}
+
+export class NodeSocketElem extends RowFrame<ViewContext> {
+  canvas: HTMLCanvasElement
+  g: CanvasRenderingContext2D
+  isOutput = false
+  size = 20
+  r = 5
+  type: 'input' | 'output' | undefined = undefined
+  isHighlight = false
+
+  _last_update_key: string | undefined = undefined
+  ned: NodeEditor | undefined = undefined //owning node editor
+
+  //okay, it's going to be too slow to always fetch sockets from the data api
+  //instead, cache direct references to them here
+  //but make sure to keep up to date. . .
+  socket: SocketType | undefined = undefined
+  needDraw = true
+
+  uinode: NodeUI | undefined = undefined
+  pos = new Vector2()
+  _abspos = new Vector2()
+  _last_dpi: number
+
   constructor() {
     super()
 
     this.canvas = document.createElement('canvas')
-    this.g = this.canvas.getContext('2d')
+    this.g = this.canvas.getContext('2d')!
 
-    this.isOutput = false
-    this.size = 20
-    this.r = 5
-    this.type = undefined //'input' or 'output'
-    this.isHighlight = false
-
-    this._last_update_key = undefined
     this.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX
-
-    this.ned = undefined //owning node editor
-
-    //okay, it's going to be too slow to always fetch sockets from the data api
-    //instead, cache direct references to them here
-    //but make sure to keep up to date. . .
-    this.socket = undefined
-    this.needDraw = true
 
     //XXX hackish event stuff
     this.addEventListener('pointerdown', (e) => {
@@ -61,14 +91,10 @@ export class NodeSocketElem extends RowFrame {
     })
 
     this.addEventListener('pointermove', (e) => {
-      this.ned.push_ctx_active()
-      this.ned.on_mousemove(e)
-      this.ned.pop_ctx_active()
+      this.ned!.push_ctx_active()
+      this.ned!.on_mousemove(e)
+      this.ned!.pop_ctx_active()
     })
-
-    this.uinode = undefined
-    this.pos = new Vector2()
-    this._abspos = new Vector2()
 
     this._last_dpi = this.getDPI()
   }
@@ -79,7 +105,7 @@ export class NodeSocketElem extends RowFrame {
     }
   }
 
-  click() {
+  click(_e?: PointerEvent): void {
     this.updateSocketRef()
 
     if (haveModal()) {
@@ -93,8 +119,8 @@ export class NodeSocketElem extends RowFrame {
 
     console.log('socket click!')
 
-    let node = this.uinode.getNode()
-    let sock = this.socket
+    const node = this.uinode!.getNode()
+    const sock = this.socket
 
     if (sock === undefined) {
       console.warn('Error in node editor ui socket', this, this.uinode)
@@ -106,8 +132,8 @@ export class NodeSocketElem extends RowFrame {
     console.log(sock, sock.socketType === SocketTypes.INPUT, sock.edges.length)
 
     if (sock.socketType === SocketTypes.INPUT && sock.edges.length === 1) {
-      let srcsock = sock.edges[0]
-      let srcnode = srcsock.node
+      const srcsock = sock.edges[0]
+      const srcnode = srcsock.node
 
       cmd = `node.connect(useNodeEditorGraph=1 node1_id=${srcnode.graph_id}`
       cmd += ` disconnectSockID=${sock.graph_id}`
@@ -120,25 +146,10 @@ export class NodeSocketElem extends RowFrame {
     this.ctx.api.execTool(this.ctx, cmd)
   }
 
-  getAbsPos(center_in_circle = false) {
-    let p = this._abspos
+  getAbsPos(center_in_circle = false): Vector2 {
+    const p = this._abspos
 
-    p.load(this.pos).add(this.uinode.pos)
-
-    /*
-    let r = this.getClientRects()[0];
-    if (r !== undefined) {
-      p[0] = r.x;
-      p[1] = r.y;
-
-      this.ned.unproject(p, true);
-    } else {
-      p.load(this.pos).add(this.uinode.pos);
-    }
-    //*/
-
-    //let velpan = this.ned.velpan;
-    //let dpi = this.getDPI();
+    p.load(this.pos).add(this.uinode!.pos)
 
     if (this.type === 'output') {
       p[0] -= this.size
@@ -149,7 +160,7 @@ export class NodeSocketElem extends RowFrame {
     p[1] += this.size
 
     if (center_in_circle) {
-      let r = this.r
+      const r = this.r
 
       p[0] += this.type === 'output' ? r : -r
       p[1] -= r
@@ -162,9 +173,9 @@ export class NodeSocketElem extends RowFrame {
     return p
   }
 
-  updateSocketRef() {
+  updateSocketRef(): void {
     try {
-      this.socket = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+      this.socket = this.ctx.api.getValue<SocketType>(this.ctx, this.getAttribute('datapath')!)
     } catch (error) {
       if (error instanceof DataPathError) {
         this.socket = undefined
@@ -179,34 +190,27 @@ export class NodeSocketElem extends RowFrame {
     }
   }
 
-  init() {
+  init(): void {
     super.init()
 
     if (this.type === 'input') {
-      this.add(this.canvas)
+      this.add(this.canvas as unknown as UIBase<ViewContext>)
     }
 
     if (this.socket !== undefined) {
       this.dataPrefix = this.getAttribute('datapath') + '.'
 
-      let scale = this.ned.velpan.scale[1]
-
       this.overrideDefault('height', 20)
       this.overrideDefault('width', 70)
-      /*
-      let font = this.getDefault("DefaultText").copy();
-      font.size = Math.ceil(21*scale+0.5);
-      this.overrideDefault("DefaultText", font);
-      //*/
 
-      let onchange = () => {
+      const onchange = () => {
         window.redraw_viewport()
       }
 
       this.socket.buildUI(this, onchange)
     }
     if (this.type === 'output') {
-      this.add(this.canvas)
+      this.add(this.canvas as unknown as UIBase<ViewContext>)
     }
 
     this.setCSS()
@@ -217,10 +221,10 @@ export class NodeSocketElem extends RowFrame {
     this.background = 'rgba(0,0,0,0)'
   }
 
-  _redraw() {
-    let g = this.g
-    let dpi = this.getDPI()
-    let size = Math.ceil(this.size * dpi)
+  _redraw(): void {
+    const g = this.g
+    const dpi = this.getDPI()
+    const size = Math.ceil(this.size * dpi)
 
     this.canvas.width = size
     this.canvas.height = size
@@ -236,17 +240,21 @@ export class NodeSocketElem extends RowFrame {
       console.warn('bad socket', this.getAttribute('datapath'))
       return
     }
-    let color = this.socket.constructor.nodedef().color
+    const rawColor: number[] | string | undefined = this.socket.constructor!.nodedef().color
 
-    color = color === undefined ? 'blue' : color
-    if (color instanceof Array) {
-      color = color2css(color)
+    let color: string
+    if (rawColor === undefined) {
+      color = 'blue'
+    } else if (rawColor instanceof Array) {
+      color = color2css(rawColor)
+    } else {
+      color = rawColor
     }
 
     g.fillStyle = color
     g.beginPath()
 
-    let r = this.r * dpi
+    const r = this.r * dpi
 
     g.moveTo(size * 0.5, size * 0.5)
     g.arc(size * 0.5, size * 0.5, r, -Math.PI, Math.PI)
@@ -258,8 +266,8 @@ export class NodeSocketElem extends RowFrame {
     }
   }
 
-  updateDPI() {
-    let dpi = this.getDPI()
+  updateDPI(): void {
+    const dpi = this.getDPI()
 
     if (dpi !== this._last_dpi) {
       this._last_dpi = dpi
@@ -271,18 +279,17 @@ export class NodeSocketElem extends RowFrame {
     }
   }
 
-  updatePos() {
-    let r = this.getClientRects()
-    let dpi = this.getDPI()
+  updatePos(): void {
+    const r = this.getClientRects()
 
     if (r.length === 0) {
       //console.warn("failed to update socket position");
       return
     }
 
-    r = r[0]
+    const rect = r[0]
 
-    let key = '' + r.width + ':' + this.type
+    const key = '' + rect.width + ':' + this.type
     if (key === this._last_update_key) {
       return
     }
@@ -291,7 +298,7 @@ export class NodeSocketElem extends RowFrame {
     this.setCSS()
   }
 
-  update() {
+  update(): void {
     super.update()
 
     this.updateDPI()
@@ -307,37 +314,30 @@ export class NodeSocketElem extends RowFrame {
     }
   }
 
-  setCSS() {
+  setCSS(): void {
     super.setCSS()
 
     this.style['position'] = 'absolute'
-    //this.style["overflow"] = "hidden";
     this.style['margin'] = this.style['padding'] = '0px'
-    this.style['white-space'] = 'nowrap'
+    this.saneStyle['white-space'] = 'nowrap'
 
     if (this.ned === undefined) {
       console.warn('no node editor in setCSS()')
       return
     }
 
-    let ned = this.ned
+    const ned = this.ned
 
-    let scale = ned.velpan.mat.$matrix.m11
+    const pos = new Vector2(this.pos)
 
-    let pos = new Vector2(this.pos)
-    //pos.zero();
+    pos.add(this.uinode!.pos)
 
-    pos.add(this.uinode.pos)
-    //pos[1] += this.uinode.size[1];
-
-    let npos = new Vector2(this.uinode.pos)
+    const npos = new Vector2(this.uinode!.pos)
 
     ned.project(pos, false)
     ned.project(npos, false)
 
-    //pos.sub(npos);
-
-    let r = this.getBoundingClientRect()
+    const r = this.getBoundingClientRect()
     let w = 0
 
     if (r) {
@@ -351,8 +351,6 @@ export class NodeSocketElem extends RowFrame {
     this.style['left'] = pos[0] + 'px'
     this.style['top'] = pos[1] + 'px'
 
-    let dpi = this.getDPI()
-
     this.canvas.style['width'] = this.size + 'px'
     this.canvas.style['height'] = this.size + 'px'
 
@@ -364,35 +362,31 @@ export class NodeSocketElem extends RowFrame {
 
 UIBase.register(NodeSocketElem)
 
-export class NodeUI extends Container {
-  constructor() {
-    super()
+export class NodeUI extends Container<ViewContext> {
+  pos = new Vector2()
+  size = new Vector2()
+  rawpos = new Vector2()
 
-    this.pos = new Vector2()
-    this.size = new Vector2()
-    this.rawpos = new Vector2()
+  inputs: NodeSocketElem[] = []
+  outputs: NodeSocketElem[] = []
+  allsockets: NodeSocketElem[] = []
 
-    this.inputs = []
-    this.outputs = []
-    this.allsockets = []
+  _isHighlight = false
+  _node: Node | undefined = undefined
 
-    this._isHighlight = false
-    this._node = undefined
+  graph_id: number | undefined = undefined
+  ned: NodeEditor | undefined = undefined
 
-    this.graph_id = undefined
-    this.ned = undefined
-  }
-
-  get isHighlight() {
+  get isHighlight(): boolean {
     return this._isHighlight
   }
 
-  set isHighlight(val) {
+  set isHighlight(val: boolean) {
     this._isHighlight = val
     if (val) {
-      this.background = this.getDefault('BoxHighlight')
+      this.background = this.getDefault('BoxHighlight') as string
     } else {
-      this.background = this.getDefault('background-color')
+      this.background = this.getDefault('background-color') as string
     }
   }
 
@@ -403,63 +397,65 @@ export class NodeUI extends Container {
     }
   }
 
-  remove() {
+  remove(): void {
     super.remove()
 
-    for (let s of this.allsockets) {
+    for (const s of this.allsockets) {
       s.remove()
     }
   }
 
-  init() {
+  init(): void {
     super.init()
 
-    let node = this.getAttribute('datapath')
+    const path = this.getAttribute('datapath')!
 
+    let node: Node
     try {
-      node = this.ctx.api.getValue(this.ctx, node)
+      node = this.ctx.api.getValue<Node>(this.ctx, path)!
     } catch (error) {
       if (error instanceof DataPathError) {
-        console.warn('Invalid node path ' + node)
+        console.warn('Invalid node path ' + path)
         return
       } else {
         throw error
       }
     }
 
-    let uiname = node.uiname
+    const uinode = node as UINode
+    let uiname = uinode.uiname
     if (uiname === undefined) {
-      uiname = node.constructor.nodedef().uiname
+      uiname = node.constructor!.nodedef().uiname
     }
     if (uiname === undefined) {
-      uiname = node.constructor.name
+      uiname = node.constructor!.name
     }
 
-    let title = this.label(uiname)
+    const title = this.label(uiname)
     title.font = 'TitleText'
 
     let y = 35
 
-    let layout = layoutNode(node, {
+    const layout = layoutNode(node, {
       socksize: 20,
-    })
+    }) as NodeLayout
 
     this.size.load(layout.size)
 
     for (let i = 0; i < 2; i++) {
-      let socks = i ? node.outputs : node.inputs
-      let lsocks = i ? layout.outputs : layout.inputs
-      let key = i ? 'outputs' : 'inputs'
+      const socks = (i ? node.outputs : node.inputs) as {[k: string]: SocketType}
+      const lsocks = i ? layout.outputs : layout.inputs
+      const key = i ? 'outputs' : 'inputs'
 
-      for (let k in socks) {
-        let sock = socks[k]
+      for (const k in socks) {
+        const sock = socks[k]
 
-        let uisock = document.createElement('node-socket-elem-x')
+        const uisock = document.createElement('node-socket-elem-x') as unknown as NodeSocketElem
 
         uisock.parentWidget = this
         uisock.type = i ? 'output' : 'input'
 
-        let lsock = lsocks[k]
+        const lsock = lsocks[k]
 
         uisock.pos[0] = lsock[0]
         uisock.pos[1] = lsock[1]
@@ -477,7 +473,7 @@ export class NodeUI extends Container {
         uisock.uinode = this
         uisock.setAttribute('datapath', this.getAttribute('datapath') + '.' + key + "['" + k + "']")
 
-        this.ned.nodeContainer.appendChild(uisock)
+        this.ned!.nodeContainer.appendChild(uisock)
 
         uisock.update()
         uisock.setCSS()
@@ -491,37 +487,37 @@ export class NodeUI extends Container {
         }
 
         this.allsockets.push(uisock)
-        this.ned.sockets.push(uisock)
+        this.ned!.sockets.push(uisock)
 
         y += ~~(uisock.size * 1.45) + 8
       }
     }
 
-    let ui = document.createElement('container-x')
+    const ui = document.createElement('container-x') as unknown as Container<ViewContext>
     ui.ctx = this.ctx
     ui.dataPrefix = this.getAttribute('datapath') + '.'
     this.add(ui)
 
-    if (node.buildUI) {
-      node.buildUI(ui)
+    if (uinode.buildUI) {
+      uinode.buildUI(ui)
     }
 
     ui.style['position'] = 'absolute'
-    ui.style['top'] = ~~((y + 30) * this.ned.velpan.scale[1]) + 'px'
+    ui.style['top'] = ~~((y + 30) * this.ned!.velpan.scale[1]) + 'px'
 
     this.setCSS()
   }
 
-  getNode() {
+  getNode(): Node {
     //let's cache this
     if (!this._node) {
-      this._node = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+      this._node = this.ctx.api.getValue<Node>(this.ctx, this.getAttribute('datapath')!)
     }
 
-    return this._node
+    return this._node!
   }
 
-  setCSS() {
+  setCSS(): void {
     super.setCSS()
 
     let node = this.getNode()
@@ -537,9 +533,9 @@ export class NodeUI extends Container {
     this.rawpos = new Vector2(co)
 
     if (this.hasAttribute('datapath')) {
-      let path = this.getAttribute('datapath')
+      const path = this.getAttribute('datapath')!
       try {
-        node = this.ctx.api.getValue(this.ctx, path)
+        node = this.ctx.api.getValue<Node>(this.ctx, path)!
       } catch (error) {
         if (error instanceof DataPathError) {
           console.warn('error in ui wrapper node; path to real node was:', path)
@@ -553,14 +549,14 @@ export class NodeUI extends Container {
       scale.load(node.graph_ui_size) //.mul(ned.velpan.scale);
     }
 
-    let ned = this.ned
+    const ned = this.ned
 
     if (ned === undefined && this.parentNode !== undefined) {
       this.doOnce(this.setCSS)
       return
     }
 
-    for (let sock of this.allsockets) {
+    for (const sock of this.allsockets) {
       sock.uinode = this
       sock.setCSS()
 
@@ -570,14 +566,14 @@ export class NodeUI extends Container {
     co = new Vector2(co)
     scale = new Vector2(scale)
 
-    ned.project(co, false)
-    scale.mul(ned.velpan.scale)
+    ned!.project(co, false)
+    scale.mul(ned!.velpan.scale)
 
     this.style['position'] = 'absolute'
     this.style['width'] = ~~scale[0] + 'px'
     this.style['height'] = ~~scale[1] + 'px'
 
-    this.style['background-color'] = this.getDefault('background-color')
+    this.saneStyle['background-color'] = this.getDefault('background-color') as string
 
     let color
     if (node.graph_flag & NodeFlags.SELECT) {
@@ -586,23 +582,21 @@ export class NodeUI extends Container {
       color = this.getDefault('border-color')
     }
 
-    let r = this.getDefault('border-width')
-    let s = this.getDefault('border-style')
+    const r = this.getDefault('border-width')
+    const s = this.getDefault('border-style')
 
     this.style['border'] = `${r}px ${s} ${color}`
-    this.style['border-radius'] = this.getDefault('border-radius') + 'px'
+    this.saneStyle['border-radius'] = this.getDefault('border-radius') + 'px'
 
-    //this.style["padding"] = this.getDefault("padding") + "px";
-    //this.style["margin"] = this.getDefault("margin") + "px";
     this.noMarginsOrPadding()
 
     this.float(co[0], co[1], undefined, 'absolute')
   }
 
-  update() {
+  update(): void {
     super.update()
 
-    let node = this.getNode()
+    const node = this.getNode()
     if (!node) {
       //this.remove();
       return
@@ -616,7 +610,9 @@ export class NodeUI extends Container {
 
 UIBase.register(NodeUI)
 
-export class NodeContainer extends Container {
+export class NodeContainer extends Container<ViewContext> {
+  overdraw: Overdraw<ViewContext> | undefined = undefined
+
   static define() {
     return {
       ...super.define(),
@@ -624,7 +620,7 @@ export class NodeContainer extends Container {
     }
   }
 
-  killOverdraw() {
+  killOverdraw(): void {
     if (this.overdraw) {
       this.overdraw.clear()
       this.overdraw.remove()
@@ -632,24 +628,24 @@ export class NodeContainer extends Container {
     }
   }
 
-  createOverdraw(screen) {
+  createOverdraw(screen: Screen<ViewContext>): void {
     if (this.overdraw !== undefined) {
       this.overdraw.remove()
     }
 
     try {
-      this.overdraw = document.createElement('overdraw-x')
+      this.overdraw = document.createElement('overdraw-x') as unknown as Overdraw<ViewContext>
       this.overdraw.startNode(this, screen)
     } catch (error) {
-      console.error(error.stack)
-      console.error(error.message)
+      console.error((error as Error).stack)
+      console.error((error as Error).message)
       this.overdraw = undefined
     }
   }
 }
 UIBase.register(NodeContainer)
 
-let NedRecalcFlags = {
+const NedRecalcFlags = {
   UI     : 1,
   REBUILD: 2,
 }
@@ -667,17 +663,30 @@ NodeEditor {
 
   #velPanDecay = 0.0
 
+  ignoreGraphUpdates = 0
+  _last_zoom = new Vector2()
+  _last_script: string | undefined = undefined
+  _last_compile_test = util.time_ms()
+  _last_dpi: number | undefined = undefined
+  _last_update_gen: number | undefined = undefined
+
+  velpan: VelPan
+  nodeContainer: NodeContainer
+  recalc = 0
+
+  graphPath = 'material.graph'
+  graphClass = 'shader'
+  _last_graphpath = this.graphPath
+
+  nodes: HighlightArray<NodeUI>
+  sockets: HighlightArray<NodeSocketElem>
+  node_idmap: {[graph_id: number]: NodeUI} = {}
+
+  last_mpos = new Vector2()
+  sidebar?: EditorSideBar
+
   constructor() {
     super()
-
-    this.ignoreGraphUpdates = 0
-
-    this._last_zoom = new Vector2()
-    this._last_script = undefined
-    this._last_compile_test = util.time_ms()
-
-    this._last_dpi = undefined
-    this._last_update_gen = undefined
 
     this.velpan = new VelPan()
     this.velpan.decay = this.#velPanDecay
@@ -685,12 +694,10 @@ NodeEditor {
     this.velpan.onchange = this._on_velpan_change.bind(this)
 
     // of NodeContainer type
-    this.nodeContainer = document.createElement('shadergraph-node-container-x')
+    this.nodeContainer = document.createElement('shadergraph-node-container-x') as unknown as NodeContainer
     this.nodeContainer.style['overflow'] = 'hidden'
     this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX
     this.nodeContainer.overdraw?.setCSS()
-
-    this.recalc = 0
 
     this.loadThemeOverrides()
 
@@ -698,36 +705,31 @@ NodeEditor {
       return this.getNodeDPI()
     }
 
-    //this.nodeContainer.getZoom = () => {
-    //return this.velpan.scale[0];
-    //};
-
     this.defineKeyMap()
 
-    this.graphPath = 'material.graph'
-    this.graphClass = 'shader'
     this._last_graphpath = this.graphPath
 
-    this.nodes = []
+    this.nodes = [] as unknown as HighlightArray<NodeUI>
     this.nodes.highlight = undefined
-    this.sockets = []
+    this.sockets = [] as unknown as HighlightArray<NodeSocketElem>
     this.sockets.highlight = undefined
     this.node_idmap = {}
   }
 
-  get graph() {
-    return this.ctx.api.getValue(this.ctx, this.graphPath)
+  get graph(): AnyGraph | undefined {
+    return this.ctx.api.getValue<AnyGraph>(this.ctx, this.graphPath)
     //return this.material.graph;
   }
 
-  get material() {
+  get material(): undefined {
     //return this.ctx.datalib.get(this.matref);
+    return undefined
   }
 
   //prevent context system from putting different node editor subclasses
 
-  static defineAPI(api) {
-    let nedstruct = super.defineAPI(api)
+  static defineAPI(api: DataAPI): DataStruct {
+    const nedstruct = super.defineAPI(api)
 
     nedstruct.string('graphPath', 'graphPath', "data path to graph that's being edited")
     nedstruct.struct('velpan', 'velpan', 'Pan / Zoom', api.getStruct(VelPan))
@@ -735,7 +737,7 @@ NodeEditor {
     return nedstruct
   }
 
-  static define() {
+  static define(): IAreaDef {
     return {
       tagname            : 'node-editor-x',
       areaname           : 'NodeEditor',
@@ -745,58 +747,56 @@ NodeEditor {
       flag               : 0,
       style              : 'NodeEditor',
       subclassChecksTheme: true,
-    }
+    } as IAreaDef
   }
 
-  loadThemeOverrides() {
-    let overrides = this.getDefault('NodeOverrides')
+  loadThemeOverrides(): void {
+    const overrides = this.getDefault('NodeOverrides') as unknown as
+      | Record<string, Record<string, unknown>>
+      | undefined
 
-    for (let k in overrides) {
-      let v = overrides[k]
+    for (const k in overrides) {
+      const v = overrides[k]
 
-      for (let k2 in v) {
-        let v2 = v[k2]
+      for (const k2 in v) {
+        const v2 = v[k2]
         this.overrideClassDefault(k, k2, v2)
       }
     }
   }
 
   //in different "active" bins
-  push_ctx_active(dontSetLastRef = false) {
-    contextWrangler.push(NodeEditor, this, !dontSetLastRef)
+  push_ctx_active(dontSetLastRef = false): void {
+    contextWrangler.push(NodeEditor, this as unknown as Area, !dontSetLastRef)
   }
 
-  pop_ctx_active(dontSetLastRef = false) {
-    contextWrangler.pop(NodeEditor, this, !dontSetLastRef)
+  pop_ctx_active(_dontSetLastRef = false): void {
+    contextWrangler.pop(NodeEditor, this as unknown as Area)
   }
 
-  _on_velpan_change() {
+  _on_velpan_change(): void {
     if (this.ctx === undefined) {
       return
     }
 
-    //console.log("velpan update 2!");
-    //this.recalc |= NedRecalcFlags.UI;
     this._recalcUI()
   }
 
-  getNodeDPI() {
+  getNodeDPI(): number {
     return this.getDPI()
   }
 
-  clearGraph() {
-    //*
-    for (let c of this.nodeContainer.children) {
+  clearGraph(): void {
+    for (const c of this.nodeContainer.children) {
       if (c instanceof NodeSocketElem) {
-        //(c !== this.header && c !== this.nodeContainer) {
         c.remove()
       }
-    } //*/
+    }
 
-    for (let node of this.nodes) {
+    for (const node of this.nodes) {
       node.remove()
     }
-    for (let sock of this.sockets) {
+    for (const sock of this.sockets) {
       sock.remove()
     }
 
@@ -810,14 +810,12 @@ NodeEditor {
     }
   }
 
-  switchGraph(graphpath = this.graphPath) {
+  switchGraph(graphpath = this.graphPath): void {
     this.graphPath = graphpath
     this.recalc |= NedRecalcFlags.REBUILD
   }
 
-  rebuildAll() {
-    let graphpath = this.graphPath
-
+  rebuildAll(): void {
     if (this.ctx === undefined) return
 
     this.recalc &= ~NedRecalcFlags.REBUILD
@@ -826,7 +824,7 @@ NodeEditor {
 
     this.clearGraph()
 
-    let graph = this.fetchGraph()
+    const graph = this.fetchGraph()
 
     if (!graph) {
       return
@@ -834,37 +832,37 @@ NodeEditor {
 
     console.warn('regenerating node editor')
 
-    let api = this.ctx.api
+    const api = this.ctx.api
 
-    for (let node of graph.nodes) {
-      let cls = node.constructor
+    for (const node of graph.nodes) {
+      const cls = node.constructor!
 
       if (!api.hasStruct(cls)) {
         console.warn('Auto-making data api for ' + cls.name)
         api.inheritStruct(cls, Node)
       }
 
-      let path = this.graphPath + '.nodes[' + node.graph_id + ']'
+      const path = this.graphPath + '.nodes[' + node.graph_id + ']'
 
-      let node2 = document.createElement('nodeui-x')
+      const node2 = document.createElement('nodeui-x') as unknown as NodeUI
 
       node2.ned = this
       node2.ctx = this.ctx
       node2.setAttribute('datapath', path)
 
       this.nodes.push(node2)
-      this.nodeContainer.shadow.appendChild(node2)
+      this.nodeContainer.shadow.appendChild(node2 as unknown as HTMLElement)
     }
 
     this.recalc |= NedRecalcFlags.UI
     this.flushUpdate()
   }
 
-  init() {
+  init(): void {
     super.init()
 
-    const mwheel = (e) => {
-      let y = e.deltaY
+    const mwheel = (e: WheelEvent) => {
+      const y = e.deltaY
       let fac = y / 500.0
 
       if (fac < 0.0) {
@@ -887,8 +885,7 @@ NodeEditor {
       throw new Error('no header')
     }
 
-    this.shadow.prepend(this.nodeContainer)
-    //this.nodeContainer.style.zIndex = '-1'
+    this.shadow.prepend(this.nodeContainer as unknown as HTMLElement)
     this.nodeContainer.parentWidget = this
 
     //create svg overdraw element
@@ -898,22 +895,22 @@ NodeEditor {
 
     this.last_mpos = new Vector2()
 
-    let mmove = (e) => {
+    const mmove = (e: PointerEvent) => {
       this.on_mousemove(e)
 
       this.last_mpos[0] = e.x
       this.last_mpos[1] = e.y
     }
 
-    let makehandler = (handler) => {
-      return (e) => {
-        this.push_ctx_active(this.ctx)
+    const makehandler = <E>(handler: (e: E) => void) => {
+      return (e: E) => {
+        this.push_ctx_active()
         try {
           return handler(e)
         } catch (error) {
-          util.print_stack(error)
+          util.print_stack(error as Error)
         } finally {
-          this.pop_ctx_active(this.ctx)
+          this.pop_ctx_active()
         }
       }
     }
@@ -922,30 +919,29 @@ NodeEditor {
 
     this.nodeContainer.addEventListener(
       'mousewheel',
-      makehandler((e) => mwheel(e))
+      makehandler((e: WheelEvent) => mwheel(e)) as EventListener
     )
     this.nodeContainer.addEventListener(
       'pointermove',
-      makehandler((e) => mmove(e))
+      makehandler((e: PointerEvent) => mmove(e)) as EventListener
     )
     this.nodeContainer.addEventListener(
       'pointerdown',
-      makehandler((e) => this.on_mousedown(e))
+      makehandler((e: PointerEvent) => this.on_mousedown(e)) as EventListener
     )
 
     this.setCSS()
 
-    let bgcolor = this.getDefault('editorBG')
+    const bgcolor = this.getDefault('editorBG') as string
     this.background = bgcolor
-    this.style['background-color'] = bgcolor
-    //header.prop("NodeEditor.selectmode");
+    this.saneStyle['background-color'] = bgcolor
 
     this.recalc |= NedRecalcFlags.REBUILD
 
     this.buildSidebar()
   }
 
-  buildSidebar() {
+  buildSidebar(): void {
     if (!this.ctx) {
       if (!this.isDead()) {
         this.doOnce(this.buildHeader)
@@ -961,14 +957,16 @@ NodeEditor {
     }
     this.onSidebarBuild(this.sidebar)
     this.sidebar.flushUpdate()
-    this.sidebar.style.zIndex = 10
+    this.sidebar.style.zIndex = '10'
   }
 
-  onSidebarBuild(sidebar) {
-    const nodeTab = sidebar.tabpanel.tab('Node')
+  buildHeader(): void {}
+
+  onSidebarBuild(sidebar: EditorSideBar): void {
+    sidebar.tabpanel.tab('Node')
   }
 
-  rebuildSidebar() {
+  rebuildSidebar(): void {
     if (this.sidebar === undefined) {
       return
     }
@@ -981,27 +979,30 @@ NodeEditor {
     loadUIData(this.sidebar, uidata)
   }
 
-  makeHeader(container) {
-    let header = super.makeHeader(container).row()
-    let menustrip = (this.menuStrip = header.row())
+  makeHeader(container: Container<ViewContext>, addNoteArea = true, makeDraggable = true): Container<ViewContext> {
+    const header = super.makeHeader(container, addNoteArea, makeDraggable).row()
+    const menustrip = (this.menuStrip = header.row())
 
-    header.style.zIndex = 10
-    menustrip.style['margin-left'] = '35px' //go past mouse threshold for screen border
+    header.style.zIndex = '10'
+    menustrip.saneStyle['margin-left'] = '35px' //go past mouse threshold for screen border
 
-    let button = menustrip.menu('Add', [])
+    const button = menustrip.menu('Add', []) as unknown as {_build_menu: () => void}
 
-    let this2 = this
-    let i = 0
+    const this2 = this
 
-    button._build_menu = function () {
+    button._build_menu = function (this: {_menu: Menu<ViewContext>}) {
       this._menu = this2.makeAddNodeMenu()
       console.warn('Create Menu ' + this._menu._id)
     }
+
+    return header
   }
 
-  getUISocket(sock) {
-    for (let node of this.nodes) {
-      for (let sock2 of node.allsockets) {
+  menuStrip?: RowFrame<ViewContext>
+
+  getUISocket(sock: SocketType): NodeSocketElem | undefined {
+    for (const node of this.nodes) {
+      for (const sock2 of node.allsockets) {
         //remember that we cache direct references to sockets
         //for performance reason
         if (sock2.socket === sock) return sock2
@@ -1011,29 +1012,29 @@ NodeEditor {
     return undefined
   }
 
-  on_mousedown(e) {
+  on_mousedown(e: PointerEvent): void {
     this.last_mpos[0] = e.pageX
     this.last_mpos[1] = e.pageY
 
-    let p = new Vector2(this.last_mpos)
+    const p = new Vector2(this.last_mpos)
     this.unproject(p, true)
 
-    let sock = this.findSocket(p[0], p[1])
+    const sock = this.findSocket(p[0], p[1])
 
     if (sock !== undefined) {
       sock.click()
       return
     }
 
-    let elem = this.ctx.screen.pickElement(e.pageX, e.pageY)
+    let elem = this.ctx.screen.pickElement<UIBase<ViewContext>>(e.pageX, e.pageY)
 
     if (!elem) {
       console.log('elem', elem, e.pageX, e.pageY)
       return
     }
 
-    let n1 = elem
-    while (n1.parentWidget) {
+    let n1: UIBase<ViewContext> | undefined = elem
+    while (n1 && n1.parentWidget) {
       if (n1 instanceof NodeUI) {
         elem = n1
         break
@@ -1041,26 +1042,23 @@ NodeEditor {
       n1 = n1.parentWidget
     }
 
-    //let graph = this.get
-    if (elem === this.nodeContainer) {
-      //console.log("node editor mouse down", elem);
+    if (elem === (this.nodeContainer as unknown as UIBase<ViewContext>)) {
+      const tool = new VelPanPanOp()
 
-      let tool = new VelPanPanOp()
-
-      let id = this.getID()
+      const id = this.getID()
       tool.inputs.velpanPath.setValue(`screen.editors[${id}].velpan`)
 
       this.ctx.toolstack.execTool(this.ctx, tool)
     } else if (elem instanceof NodeUI) {
       let mode = SelOneToolModes.UNIQUE
-      let node = elem.getNode()
+      const node = elem.getNode()
 
       if (e.shiftKey) {
         mode = node.graph_flag & NodeFlags.SELECT ? SelOneToolModes.SUB : SelOneToolModes.ADD
       }
 
-      let gp = this.graphPath
-      let gc = this.graphClass
+      const gp = this.graphPath
+      const gc = this.graphClass
 
       let cmd = `node.selectone(graphPath='${gp}' graphClass='${gc}' mode=${mode}`
       cmd += ` nodeId=${node.graph_id})`
@@ -1070,7 +1068,7 @@ NodeEditor {
       this.ctx.api.execTool(this.ctx, cmd)
 
       if (mode === SelOneToolModes.UNIQUE) {
-        for (let elem2 of this.nodes) {
+        for (const elem2 of this.nodes) {
           elem2.setCSS()
         }
       } else {
@@ -1082,7 +1080,7 @@ NodeEditor {
     }
   }
 
-  on_resize(newsize) {
+  on_resize(newsize: Vector2): void {
     super.on_resize(newsize)
 
     if (!this.header || !this.ctx) {
@@ -1093,11 +1091,11 @@ NodeEditor {
     this._setNodeContainerRect()
   }
 
-  get overdraw() {
+  get overdraw(): Overdraw<ViewContext> | undefined {
     return this.nodeContainer.overdraw
   }
 
-  on_area_inactive() {
+  on_area_inactive(): void {
     if (this.overdraw) {
       this.nodeContainer.killOverdraw()
     }
@@ -1105,7 +1103,7 @@ NodeEditor {
     this.clearGraph()
   }
 
-  on_area_active() {
+  on_area_active(): void {
     super.on_area_active()
     this.nodeContainer.createOverdraw(this.ctx.screen)
 
@@ -1113,7 +1111,7 @@ NodeEditor {
     this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
   }
 
-  onFileLoad(is_active) {
+  onFileLoad(is_active: boolean): void {
     if (!is_active) {
       return
     }
@@ -1122,17 +1120,17 @@ NodeEditor {
     this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD
   }
 
-  findSocket(localX, localY, limit = 25) {
+  findSocket(localX: number, localY: number, limit = 25): NodeSocketElem | undefined {
     limit *= this.getNodeDPI()
 
     let pos = new Vector2()
-    let mpos = new Vector2([localX, localY])
+    const mpos = new Vector2([localX, localY])
     let mindis = 1e17,
-      minsock = undefined
+      minsock: NodeSocketElem | undefined = undefined
 
-    for (let n of this.nodes) {
-      for (let sock of n.allsockets) {
-        let r = sock.getClientRects()[0]
+    for (const n of this.nodes) {
+      for (const sock of n.allsockets) {
+        const r = sock.getClientRects()[0]
 
         if (r === undefined) {
           continue
@@ -1147,7 +1145,7 @@ NodeEditor {
         this.unproject(pos, true)
 
         pos = sock.getAbsPos()
-        let dis = mpos.vectorDistance(pos)
+        const dis = mpos.vectorDistance(pos)
 
         if (dis < mindis && dis < limit) {
           mindis = dis
@@ -1159,20 +1157,19 @@ NodeEditor {
     return minsock
   }
 
-  on_mousemove(e) {
-    let mpos = new Vector2([e.x, e.y])
+  on_mousemove(e: PointerEvent): void {
+    const mpos = new Vector2([e.x, e.y])
 
     this.unproject(mpos, true)
 
-    let actnode = undefined
+    let actnode: NodeUI | undefined = undefined
 
-    let elem = this.pickElement(e.pageX, e.pageY)
+    const elem = this.pickElement(e.pageX, e.pageY)
     if (elem instanceof NodeUI) {
       actnode = elem
     }
 
-    //console.log(this.findSocket(mpos[0], mpos[1]));
-    let sock = this.findSocket(mpos[0], mpos[1])
+    const sock = this.findSocket(mpos[0], mpos[1])
 
     if (sock !== this.sockets.highlight) {
       if (this.sockets.highlight !== undefined) {
@@ -1202,8 +1199,8 @@ NodeEditor {
     }
   }
 
-  updateDPI() {
-    let dpi = this.getDPI()
+  updateDPI(): void {
+    const dpi = this.getDPI()
 
     if (dpi !== this._last_dpi) {
       this._last_dpi = dpi
@@ -1213,18 +1210,18 @@ NodeEditor {
     }
   }
 
-  updateZoom() {
+  updateZoom(): void {
     if (this._last_zoom.vectorDistance(this.velpan.scale) > 0.0001) {
       this._last_zoom.load(this.velpan.scale)
     }
   }
 
-  checkCompile() {
+  checkCompile(): void {
     if (util.time_ms() - this._last_compile_test < 500) {
       return
     }
 
-    let graph = this.fetchGraph()
+    const graph = this.fetchGraph()
     if (graph === undefined) {
       this._last_compile_test = util.time_ms()
       return
@@ -1240,11 +1237,12 @@ NodeEditor {
       return
     }
 
-    let mat = this.ctx.api.getValue(this.ctx, key)
+    const mat = this.ctx.api.getValue<Material>(this.ctx, key)
     if (mat === undefined) return
 
-    let shader = mat.generate(this.ctx.scene)
-    let script = JSON.stringify(shader)
+    // original called generate() with just the scene; rlights is undefined at runtime
+    const shader = mat.generate(this.ctx.scene, undefined as never)
+    const script = JSON.stringify(shader)
 
     if (script !== this._last_script) {
       console.log('Shader compile update!')
@@ -1256,16 +1254,16 @@ NodeEditor {
     this._last_compile_test = util.time_ms()
   }
 
-  _setNodeContainerRect() {
-    this.nodeContainer.style['background-color'] = this.getDefault('background-color')
+  _setNodeContainerRect(): void {
+    this.nodeContainer.saneStyle['background-color'] = this.getDefault('background-color') as string
 
     this.setCSS()
-    for (let node of this.nodes) {
+    for (const node of this.nodes) {
       node.setCSS()
     }
   }
 
-  update() {
+  update(): void {
     if (!this.ctx || window.FILE_LOADING) {
       return
     }
@@ -1286,7 +1284,7 @@ NodeEditor {
 
     if (this.ctx === undefined) return
 
-    let graph = this.fetchGraph()
+    const graph = this.fetchGraph()
     if (graph === undefined) {
       this.clearGraph()
       return
@@ -1295,7 +1293,7 @@ NodeEditor {
     let regen = graph && graph.nodes.length !== this.nodes.length
     regen = regen || this._last_graphpath !== this.graphPath
 
-    regen = regen || this.recalc & NedRecalcFlags.REBUILD
+    regen = regen || !!(this.recalc & NedRecalcFlags.REBUILD)
 
     if (regen) {
       this.rebuildAll()
@@ -1320,15 +1318,15 @@ NodeEditor {
     }
   }
 
-  pushIgnore() {
+  pushIgnore(): void {
     this.ignoreGraphUpdates++
   }
 
-  popIgnore() {
+  popIgnore(): void {
     this.ignoreGraphUpdates = Math.max(this.ignoreGraphUpdates - 1, 0)
   }
 
-  fetchGraph() {
+  fetchGraph(): AnyGraph | undefined {
     let graph
 
     if (this.graphPath.trim() === '') {
@@ -1336,7 +1334,7 @@ NodeEditor {
     }
 
     try {
-      graph = this.ctx.api.getValue(this.ctx, this.graphPath)
+      graph = this.ctx.api.getValue<AnyGraph>(this.ctx, this.graphPath)
     } catch (error) {
       if (error instanceof DataPathError) {
         if (DEBUG.verboseDataPath) console.warn('bad graph path for node editor:' + this.graphPath)
@@ -1349,14 +1347,14 @@ NodeEditor {
     return graph
   }
 
-  setCSS() {
+  setCSS(): void {
     super.setCSS()
 
     this.style['overflow'] = 'hidden'
     this.nodeContainer.style['overflow'] = 'hidden'
 
     if (this.nodeContainer) {
-      this.nodeContainer.style['background-color'] = 'rgba(0,0,0,0)' //this.getDefault('background-color')
+      this.nodeContainer.saneStyle['background-color'] = 'rgba(0,0,0,0)'
     }
 
     if (!this.size || !this.pos) return
@@ -1375,20 +1373,20 @@ NodeEditor {
     dom.style['overflow'] = 'hidden'
   }
 
-  startAddNodeMenu() {
-    let menu = this.makeAddNodeMenu()
+  startAddNodeMenu(): void {
+    const menu = this.makeAddNodeMenu()
     startMenu(menu, this.last_mpos[0] - 10, this.last_mpos[1] - 20, false)
   }
 
-  makeAddNodeMenu() {
-    let menu = document.createElement('menu-x')
+  makeAddNodeMenu(): Menu<ViewContext> {
+    const menu = document.createElement('menu-x') as unknown as Menu<ViewContext>
     menu.ctx = this.ctx
 
-    let cats = {}
-    for (let cls of ShaderNodeTypes) {
-      let def = cls.nodedef()
+    const cats: {[category: string]: (typeof ShaderNodeTypes)[number][]} = {}
+    for (const cls of ShaderNodeTypes) {
+      const def = cls.nodedef() as {category?: string}
 
-      let cat = def.category !== undefined ? def.category : 'Misc'
+      const cat = def.category !== undefined ? def.category : 'Misc'
       if (!(cat in cats)) {
         cats[cat] = []
       }
@@ -1396,39 +1394,38 @@ NodeEditor {
       cats[cat].push(cls)
     }
 
-    for (let k in cats) {
-      let menu2 = document.createElement('menu-x')
+    for (const k in cats) {
+      const menu2 = document.createElement('menu-x') as unknown as Menu<ViewContext>
       menu2.title = k
       menu2.ctx = this.ctx
 
-      for (let cls of cats[k]) {
-        menu2.addItem(cls.nodedef().uiname, cls.name)
+      for (const cls of cats[k]) {
+        menu2.addItem(cls.nodedef().uiname ?? cls.name, cls.name)
       }
 
       menu.addItem(menu2)
     }
 
-    menu.onselect = (id) => {
+    // NOTE: original assigns the menu-select callback to `onselect`; preserved verbatim.
+    ;(menu as unknown as {onselect: (id: string | number) => void}).onselect = (id: string | number) => {
       console.log('node add menu select', id)
 
       let cmd = `node.add_node(useNodeEditorGraph=1 nodeClass='${id}'`
-      let p = new Vector2(this.last_mpos)
+      const p = new Vector2(this.last_mpos)
 
       this.unproject(p, true)
       cmd += ` x=${~~p[0]} y=${~~p[1]})`
 
       console.log(cmd)
       this.ctx.api.execTool(this.ctx, cmd)
-
-      //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     }
 
     return menu
   }
 
-  defineKeyMap() {
+  defineKeyMap(): KeyMap {
     this.keymap = new KeyMap([
-      new HotKey('A', ['SHIFT'], () => {
+      new HotKey('A', ['shift'], () => {
         console.log('Add Node!')
         this.startAddNodeMenu()
       }),
@@ -1444,48 +1441,44 @@ NodeEditor {
         this.rebuildAll()
       }),
       new HotKey('A', [], `node.toggle_select_all(useNodeEditorGraph=1 mode='AUTO')`),
-      //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     ])
+
+    return this.keymap
   }
 
-  getKeyMaps() {
-    return [this.keymap]
+  getKeyMaps(): KeyMap[] {
+    return [this.keymap!]
   }
 
-  getLocalMouse(x, y) {
-    let rect = this.getClientRects()[0]
+  getLocalMouse(x: number, y: number): Vector2 | number[] {
+    const rect = this.getClientRects()[0]
     if (rect === undefined) {
       return [0, 0]
     }
 
-    let dpi = this.getDPI()
     return new Vector2([x - rect.x, y - rect.y])
   }
 
-  project(co, useScreenSpace = false) {
-    let p = projcos.next().load(co)
+  project(co: Vector2, useScreenSpace = false): void {
+    const p = projcos.next().load(co)
 
     p.multVecMatrix(this.velpan.mat)
 
     if (useScreenSpace) {
-      let r = this.getClientRects()[0]
-
-      p[0] += this.pos[0]
-      p[1] += this.pos[1]
+      p[0] += this.pos![0]
+      p[1] += this.pos![1]
     }
 
     co[0] = p[0]
     co[1] = p[1]
   }
 
-  unproject(co, useScreenSpace = false) {
-    let p = projcos.next().load(co)
+  unproject(co: Vector2, useScreenSpace = false): void {
+    const p = projcos.next().load(co)
 
     if (useScreenSpace) {
-      let r = this.getClientRects()[0]
-
-      p[0] -= this.pos[0]
-      p[1] -= this.pos[1]
+      p[0] -= this.pos![0]
+      p[1] -= this.pos![1]
     }
 
     p.multVecMatrix(this.velpan.imat)
@@ -1494,8 +1487,8 @@ NodeEditor {
     co[1] = p[1]
   }
 
-  copy() {
-    let ret = document.createElement('node-editor-x')
+  copy(): NodeEditor {
+    const ret = document.createElement('node-editor-x') as unknown as NodeEditor
 
     ret.velpan.load(this.velpan)
     ret.graphPath = this.graphPath
@@ -1503,43 +1496,42 @@ NodeEditor {
     return ret
   }
 
-  _recalcLines() {
+  _recalcLines(): void {
     if (!this.nodeContainer.overdraw) {
       return
     }
 
     this.nodeContainer.overdraw.clear()
 
-    for (let node of this.nodes) {
-      for (let uisock of node.inputs) {
-        //sock.updateSocketRef();
-        let sock = uisock.socket
-        let p = uisock.getAbsPos(true)
+    for (const node of this.nodes) {
+      for (const uisock of node.inputs) {
+        const sock = uisock.socket!
+        const p = uisock.getAbsPos(true)
         this.project(p)
 
-        for (let sock2 of sock.edges) {
-          let uisock2 = this.getUISocket(sock2)
+        for (const sock2 of sock.edges) {
+          const uisock2 = this.getUISocket(sock2)
 
           if (uisock2 === undefined) {
             console.warn('could not find uisocket for ', sock2)
             continue
           }
 
-          let p2 = new Vector2(uisock2.getAbsPos(true))
+          const p2 = new Vector2(uisock2.getAbsPos(true))
           this.project(p2)
 
-          this.overdraw.line(p, p2, 'orange')
+          this.overdraw!.line(p, p2, 'orange')
         }
       }
     }
   }
 
-  _recalcUI() {
+  _recalcUI(): void {
     let totsock = 0
     this.recalc &= ~NedRecalcFlags.UI
 
-    for (let node of this.nodes) {
-      for (let sock of node.allsockets) {
+    for (const node of this.nodes) {
+      for (const sock of node.allsockets) {
         sock.updateSocketRef()
         totsock++
       }
@@ -1562,7 +1554,7 @@ NodeEditor {
     this._recalcLines()
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     this.clearGraph()
     reader(this)
 

@@ -1,52 +1,52 @@
 import {Matrix4, Vector2} from '../util/vectormath.js'
-import {StringProperty, nstructjs, Vec2Property, ToolOp, UndoFlags} from '../path.ux/scripts/pathux.js'
+import {StringProperty, nstructjs, ToolOp, UndoFlags} from '../path.ux/scripts/pathux.js'
 import * as util from '../util/util.js'
+import type {ToolContext} from '../core/context'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs'
 
-export let VelPanFlags = {
+export const VelPanFlags = {
   UNIFORM_SCALE: 1,
 }
 
 export class VelPan {
-  constructor() {
-    /** boundary limits*/
-    this.bounds = [new Vector2([-2000, -2000]), new Vector2([2000, 2000])]
+  /** boundary limits*/
+  bounds: [Vector2, Vector2] = [new Vector2([-2000, -2000]), new Vector2([2000, 2000])]
 
-    this.decay = 0.995
-    this.pos = new Vector2()
-    this.scale = new Vector2([1, 1])
-    this.vel = new Vector2()
-    this.oldpos = new Vector2()
+  decay = 0.995
+  pos = new Vector2()
+  scale = new Vector2([1, 1])
+  vel = new Vector2()
+  oldpos = new Vector2()
 
-    this.maxVelocity = 0.001
+  maxVelocity = 0.001
 
-    this.axes = 3
-    this.flag = VelPanFlags.UNIFORM_SCALE
+  axes = 3
+  flag = VelPanFlags.UNIFORM_SCALE
 
-    this.mat = new Matrix4()
-    this.imat = new Matrix4()
+  mat = new Matrix4()
+  imat = new Matrix4()
 
-    this._last_mat = new Matrix4(this.mat)
-    this.onchange = null
-    this.last_update_time = util.time_ms()
+  _last_mat = new Matrix4(this.mat)
+  onchange: ((velpan?: VelPan) => void) | null = null
+  last_update_time = util.time_ms()
 
-    this.timer = undefined
-  }
+  timer: number | undefined = undefined
 
-  copy() {
+  copy(): VelPan {
     return new VelPan().load(this)
   }
 
   //for controller api; doesn't support multipart datapaths
-  get min() {
+  get min(): Vector2 {
     return this.bounds[0]
   }
 
   //for controller api; doesn't support multipart datapaths
-  get max() {
+  get max(): Vector2 {
     return this.bounds[1]
   }
 
-  reset(fireOnChange = true) {
+  reset(fireOnChange = true): this {
     this.pos.zero()
     this.scale.zero().addScalar(1.0)
     this.updateMatrix()
@@ -62,7 +62,7 @@ export class VelPan {
    load settings from another velocity pan instance
    does NOT set this.onchange
    * */
-  load(velpan) {
+  load(velpan: VelPan): this {
     this.pos.load(velpan.pos)
     this.scale.load(velpan.scale)
     this.axes = velpan.axes
@@ -74,7 +74,7 @@ export class VelPan {
     return this
   }
 
-  startVelocity() {
+  startVelocity(): void {
     if (this.timer === undefined) {
       this.last_update_time = util.time_ms()
 
@@ -82,7 +82,7 @@ export class VelPan {
     }
   }
 
-  doVelocity() {
+  doVelocity(): void {
     if (this.vel.dot(this.vel) < 0.001) {
       console.log('removing velpan timer')
       window.clearInterval(this.timer)
@@ -105,10 +105,10 @@ export class VelPan {
     this.last_update_time = util.time_ms()
   }
 
-  updateMatrix() {
-    let s = this.scale
-    let min = new Vector2(this.bounds[0]).mul(s)
-    let max = new Vector2(this.bounds[1]).mul(s)
+  updateMatrix(): this {
+    const s = this.scale
+    const min = new Vector2(this.bounds[0]).mul(s)
+    const max = new Vector2(this.bounds[1]).mul(s)
 
     this.pos.max(min)
     this.pos.min(max)
@@ -122,7 +122,7 @@ export class VelPan {
     return this
   }
 
-  update(fire_events = true, do_velocity = true) {
+  update(fire_events = true, do_velocity = true): this {
     if (do_velocity && this.vel.dot(this.vel) > 0.001) {
       this.startVelocity()
     }
@@ -138,14 +138,13 @@ export class VelPan {
     return this
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
   }
-}
 
-VelPan.STRUCT = `
+  static STRUCT = `
 VelPan {
-  bounds : array(vec2); 
+  bounds : array(vec2);
   pos    : vec2;
   scale  : vec2;
   axes   : int;
@@ -154,19 +153,17 @@ VelPan {
   flag   : int;
 }
 `
+}
 nstructjs.register(VelPan)
 
-export class VelPanPanOp extends ToolOp {
-  constructor() {
-    super()
-
-    this.start_pan = new Vector2()
-    this.first = true
-    this.last_mpos = new Vector2()
-    this.start_mpos = new Vector2()
-    this.start_time = this.last_time = 0
-    this._temps = util.cachering.fromConstructor(Vector2, 16)
-  }
+export class VelPanPanOp extends ToolOp<{velpanPath: StringProperty}, {}, ToolContext> {
+  start_pan = new Vector2()
+  first = true
+  last_mpos = new Vector2()
+  start_mpos = new Vector2()
+  start_time = 0
+  last_time = 0
+  _temps = util.cachering.fromConstructor<Vector2>(Vector2, 16)
 
   static tooldef() {
     return {
@@ -183,17 +180,17 @@ export class VelPanPanOp extends ToolOp {
     }
   }
 
-  on_pointermove(e) {
-    let ctx = this.modal_ctx
-    let path = this.inputs.velpanPath.getValue()
-    let velpan = ctx.api.getValue(ctx, path)
+  on_pointermove(e: PointerEvent): void {
+    const ctx = this.modal_ctx!
+    const path = this.inputs.velpanPath.getValue()
+    const velpan = ctx.api.getValue<VelPan>(ctx, path)
 
     if (velpan === undefined) {
-      this.modalEnd()
+      this.modalEnd(false)
       throw new Error('bad velpan path ' + path + '.')
     }
 
-    let mpos = this._temps.next().zero()
+    const mpos = this._temps.next().zero()
     mpos[0] = e.x
     mpos[1] = e.y
 
@@ -231,13 +228,13 @@ export class VelPanPanOp extends ToolOp {
     this.last_mpos.load(mpos)
   }
 
-  on_pointerup(e) {
-    let ctx = this.modal_ctx
-    this.modalEnd()
+  on_pointerup(_e: PointerEvent): void {
+    const ctx = this.modal_ctx!
+    this.modalEnd(false)
 
-    let path = this.inputs.velpanPath.getValue()
-    let velpan = ctx.api.getValue(ctx, path)
-    velpan.startVelocity()
+    const path = this.inputs.velpanPath.getValue()
+    const velpan = ctx.api.getValue<VelPan>(ctx, path)
+    velpan?.startVelocity()
   }
 }
 

@@ -1,76 +1,54 @@
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js'
-import {Editor} from '../editor_base.ts'
-
-import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from '../../core/graph.js'
-import {
-  IntProperty,
-  StringProperty,
-  EnumProperty,
-  FlagProperty,
-  PropSubTypes,
-  PropTypes,
-  PropFlags,
-  ToolOp,
-  UndoFlags,
-  ToolFlags,
-  nstructjs,
-} from '../../path.ux/scripts/pathux.js'
-import {Icons} from '../icon_enum.js'
+import {Node, NodeFlags} from '../../core/graph.js'
+import {IntProperty, EnumProperty, ToolOp, type ToolDef} from '../../path.ux/scripts/pathux.js'
 import {NodeGraphOp} from './node_ops.js'
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
+import type {ToolContext, ViewContext} from '../../core/context'
 
-export class NodeSelectOpBase extends NodeGraphOp {
-  constructor() {
-    super()
-
-    this._undo = undefined
-  }
-
-  static tooldef() {
+export class NodeSelectOpBase<
+  InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
+  OutputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
+> extends NodeGraphOp<InputSet, OutputSet> {
+  static tooldef(): ToolDef {
     return {
-      inputs: ToolOp.inherit(),
+      inputs: ToolOp.inherit({}),
     }
   }
 
-  static canRun(ctx) {
+  static canRun(ctx: ViewContext): boolean {
     return ctx.nodeEditor !== undefined
   }
 
-  //canRun(ctx) {
-  //  return this.fetchGraph(ctx) !== undefined;
-  //}
-
-  undoPre(ctx) {
-    let graph = this.fetchGraph(ctx)
+  undoPre(ctx: ToolContext): void {
+    const graph = this.fetchGraph(ctx)
 
     if (graph === undefined) {
       return
     }
 
-    let ud = (this._undo = {
-      sel  : {},
-      order: {},
+    const ud = (this._undo = {
+      sel  : {} as {[graph_id: number]: number},
+      order: {} as {[graph_id: number]: number},
     })
 
-    let sel = ud.sel,
+    const sel = ud.sel,
       order = ud.order
 
     let i = 0
-    for (let node of graph.nodes) {
+    for (const node of graph.nodes) {
       sel[node.graph_id] = node.graph_flag & NodeFlags.SELECT
       order[node.graph_id] = i++
     }
   }
 
-  undo(ctx) {
-    let ud = this._undo
-    let sel = ud.sel,
-      order = ud.order
-    let graph = this.fetchGraph(ctx)
+  undo(ctx: ToolContext): void {
+    const ud = this._undo!
+    const sel = ud.sel!,
+      order = ud.order!
+    const graph = this.fetchGraph(ctx)!
 
-    for (let k in sel) {
-      let state = sel[k]
-      let node = graph.node_idmap.get(k)
+    for (const k in sel) {
+      const state = sel[k as unknown as number]
+      const node = graph.node_idmap.get(k as unknown as number)
 
       if (node === undefined) {
         console.warn('Warning: missing node ' + k + ' in graph ' + this.inputs.graphPath.getValue())
@@ -83,33 +61,34 @@ export class NodeSelectOpBase extends NodeGraphOp {
     //restore original node order, which can be changed by some selection ops
     //this is distinct from the calculated toplogical sort order
 
-    let nodes = graph.nodes.slice(0, graph.nodes.length)
-    let donemap = {}
+    const nodes = graph.nodes.slice(0, graph.nodes.length)
+    const donemap: {[graph_id: number]: number} = {}
 
+    const nodeList = graph.nodes as unknown as (Node | undefined)[]
     for (let i = 0; i < nodes.length; i++) {
-      graph.nodes[i] = undefined
+      nodeList[i] = undefined
     }
 
-    for (let k in order) {
-      let node = graph.node_idmap.get(k)
-      let i = order[k]
+    for (const k in order) {
+      const node = graph.node_idmap.get(k as unknown as number)
+      const i = order[k as unknown as number]
 
       if (node === undefined) {
         console.warn('Warning: missing node ' + k + ' in graph ' + this.inputs.graphPath.getValue())
         continue
       }
 
-      donemap[k] = 1
-      graph.nodes[i] = node
+      donemap[k as unknown as number] = 1
+      nodeList[i] = node
     }
 
     //do a sanity check that we've re-added all nodes
-    for (let node of nodes) {
+    for (const node of nodes) {
       if (!(node.graph_id in donemap)) {
         console.warn('orphan node found in node_selectops.NodeSelectOpBase.prototype.undo')
         for (let i = 0; i < nodes.length; i++) {
-          if (graph.nodes[i] === undefined) {
-            graph.nodes[i] = node
+          if (nodeList[i] === undefined) {
+            nodeList[i] = node
           }
         }
       }
@@ -119,8 +98,8 @@ export class NodeSelectOpBase extends NodeGraphOp {
   }
 }
 
-export class NodeSelectOneOp extends NodeSelectOpBase {
-  static tooldef() {
+export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode: EnumProperty}> {
+  static tooldef(): ToolDef {
     return {
       toolpath: 'node.selectone',
       inputs: ToolOp.inherit({
@@ -130,23 +109,23 @@ export class NodeSelectOneOp extends NodeSelectOpBase {
     }
   }
 
-  static invoke(ctx, args) {
-    let tool = super.invoke(ctx, args)
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): NodeSelectOneOp {
+    const tool = super.invoke(ctx, args) as NodeSelectOneOp
 
     if ('nodeId' in args) {
-      tool.inputs.nodeId.setValue(args.nodeId)
+      tool.inputs.nodeId.setValue(args.nodeId as number)
     }
 
     if ('mode' in args) {
-      tool.inputs.mode.setValue(args.mode)
+      tool.inputs.mode.setValue(args.mode as number)
     }
 
     return tool
   }
 
-  exec(ctx) {
-    let mode = this.inputs.mode.getValue()
-    let graph = this.fetchGraph(ctx)
+  exec(ctx: ToolContext): void {
+    const mode = this.inputs.mode.getValue()
+    const graph = this.fetchGraph(ctx)
 
     if (graph === undefined) {
       console.warn('error in node_selectops.NodeSelectOneOp')
@@ -155,16 +134,19 @@ export class NodeSelectOneOp extends NodeSelectOpBase {
 
     console.log('mode', mode)
 
-    let node = graph.node_idmap.get(this.inputs.nodeId.getValue())
+    const node = graph.node_idmap.get(this.inputs.nodeId.getValue())
+    if (node === undefined) {
+      return
+    }
 
     if (mode == SelOneToolModes.UNIQUE) {
-      for (let node2 of graph.nodes) {
+      for (const node2 of graph.nodes) {
         graph.nodes.setSelect(node2, false)
       }
 
       graph.nodes.setSelect(node, true)
     } else {
-      let state = this.inputs.mode.getValue() == SelOneToolModes.ADD
+      const state = this.inputs.mode.getValue() == SelOneToolModes.ADD
 
       graph.nodes.setSelect(node, state)
     }
@@ -178,8 +160,8 @@ export class NodeSelectOneOp extends NodeSelectOpBase {
 
 ToolOp.register(NodeSelectOneOp)
 
-export class NodeToggleSelectAll extends NodeSelectOpBase {
-  static tooldef() {
+export class NodeToggleSelectAll extends NodeSelectOpBase<{mode: EnumProperty}> {
+  static tooldef(): ToolDef {
     return {
       toolpath: 'node.toggle_select_all',
       inputs: ToolOp.inherit({
@@ -188,23 +170,23 @@ export class NodeToggleSelectAll extends NodeSelectOpBase {
     }
   }
 
-  static invoke(ctx, args) {
-    let tool = super.invoke(ctx, args)
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): NodeToggleSelectAll {
+    const tool = super.invoke(ctx, args) as NodeToggleSelectAll
 
     if ('nodeId' in args) {
-      tool.inputs.nodeId.setValue(args.nodeId)
+      ;(tool.inputs as {nodeId?: IntProperty}).nodeId?.setValue(args.nodeId as number)
     }
 
     if ('mode' in args) {
-      tool.inputs.mode.setValue(args.mode)
+      tool.inputs.mode.setValue(args.mode as number)
     }
 
     return tool
   }
 
-  exec(ctx) {
+  exec(ctx: ToolContext): void {
     let mode = this.inputs.mode.getValue()
-    let graph = this.fetchGraph(ctx)
+    const graph = this.fetchGraph(ctx)
 
     console.log('toggle select all', graph)
 
@@ -216,7 +198,7 @@ export class NodeToggleSelectAll extends NodeSelectOpBase {
     if (mode == SelToolModes.AUTO) {
       mode = SelToolModes.ADD
 
-      for (let node of graph.nodes) {
+      for (const node of graph.nodes) {
         if (node.graph_flag & NodeFlags.SELECT) {
           mode = SelToolModes.SUB
           break
@@ -226,7 +208,7 @@ export class NodeToggleSelectAll extends NodeSelectOpBase {
 
     console.log('mode', mode)
 
-    for (let node of graph.nodes) {
+    for (const node of graph.nodes) {
       graph.nodes.setSelect(node, mode === SelToolModes.ADD)
     }
 
