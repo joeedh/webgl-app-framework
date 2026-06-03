@@ -51,13 +51,14 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
    (env vars are per-shell):
    - PowerShell: `. .\worktree-env.ps1`
    - bash: `source worktree-env.sh`
-3. Build via the usual dispatcher. A fresh worktree needs two one-time setup
-   steps first (node deps and the native-only prebuilt, neither checked in):
+3. Build via the usual dispatcher. A fresh worktree needs a few one-time setup
+   steps first (node deps and the native-only prebuits, neither checked in):
    ```sh
    cd sculptcore
-   pnpm i                           # make.mjs deps (yargs, cmake-js, ...)
-   node make.mjs fetch-wgpu-native  # native webgpu prebuilt
-   node make.mjs configure native   # look for: "sccache compiler launcher enabled"
+   pnpm i                                         # make.mjs deps (yargs, cmake-js, ...)
+   node extern/wgpu_native/fetch.mjs              # wgpu-native headers/lib (sibling fetch script)
+   node make.mjs fetch-wgpu-native                # native webgpu prebuilt (make.mjs alias)
+   node make.mjs configure native                 # look for: "sccache compiler launcher enabled"
    node make.mjs build native
    ```
    The node-addon build (`node make.mjs node`) uses the same toolchain and is
