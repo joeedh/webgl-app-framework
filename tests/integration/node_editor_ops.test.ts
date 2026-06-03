@@ -1,30 +1,26 @@
 /**
  * Integration coverage for the node-editor ToolOps ported to TypeScript
- * (scripts/editors/node/node_ops.ts + node_selectops.ts, driven through the
- * NodeGraphOp.invoke / fetchGraph / AbstractGraphClass paths).
+ * (scripts/editors/node/node_ops.ts + node_selectops.ts), plus the `--eval`
+ * harness bridge to `CTX.debug` (scripts/core/context.ts).
  *
- * The node editor is UI/app-coupled (path.ux widgets, the data API, the active
- * NodeEditor area), so its code can't be loaded in the jsdom unit harness —
- * vectormath/path.ux don't transform there (see tests/unit/isect_frustum.test.ts).
- * Instead we drive the *real* Electron app headlessly, the same mechanism as
- * sculptcore_parity.test.ts.
+ * The node editor is UI/app-coupled (path.ux widgets, the data API), so its code
+ * can't be loaded in the jsdom unit harness — vectormath/path.ux don't transform
+ * there (see tests/unit/isect_frustum.test.ts). Instead we drive the *real*
+ * Electron app headlessly, the same mechanism as sculptcore_parity.test.ts.
  *
  * To stay independent of the GPU (headless WebGPU rendering of a real mesh is
  * flaky on some hosts), this builds the empty scene and creates a standalone
  * material with `material.new` — `makeDefaultMaterial` gives it a 3-node shader
- * graph (DiffuseNode + GeometryNode + OutputNode, see core/material.ts). The
- * node ToolOps then target `library.material[<id>].graph` directly (no mesh, no
- * render), and the resulting node count is read back from the harness `--dump`
+ * graph (DiffuseNode + GeometryNode + OutputNode, see core/material.ts). The node
+ * ToolOps target `library.material[<id>].graph` directly (no mesh, no render),
+ * and the resulting node count is read back from the harness `--dump`
  * (test_harness.ts `dumpScene` → `materials[].nodeCount`).
  *
- * Asserts the ported ops actually mutate the graph in a running app:
- *   - node.add_node adds one node per call (3 → 4 → 5).
- *
- * This drives AddNodeOp through NodeGraphOp.invoke / fetchGraph / exec and
- * AbstractGraphClass — the bulk of the ported toolop machinery. The selection
- * ops (node.toggle_select_all / node.selectone) and node.delete_selected aren't
- * exercised here: their `canRun` gates on `ctx.nodeEditor !== undefined`, and a
- * headless boot has no open node editor area, so execTool refuses to run them.
+ * Covers:
+ *   - node.add_node                                    grows the graph (3 → 4)
+ *   - node.toggle_select_all + node.delete_selected    empties it    (3 → 0)
+ *   - --eval CTX.debug... + CTX.api.execTool(...)      the `--eval` → `CTX`
+ *     test bridge from CLAUDE.md (reflection + driving a ToolOp from JS).
  *
  * Prerequisites (else self-skips, logged): a resolvable Electron and the app
  * bundle (`build/entry_point.js`, `pnpm build`). The native sculptcore addon is
@@ -62,16 +58,18 @@ function resolveElectronExe(): string | undefined {
 }
 
 /**
- * Boot the app headlessly on the empty scene, create a material, run each extra
- * `--run` tool in order, then dump. Returns the single datalib material.
+ * Boot the app headlessly on the empty scene, run each `--eval` expression (in
+ * order, before tools) then each `--run` tool, and return the parsed dump.
+ * execFileSync passes args as an array (no shell), so the eval/tool strings need
+ * no escaping.
  */
-function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
+function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: string[]; runTools?: string[]}): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'nodeops-')), 'dump.json')
   const env = {...process.env}
   delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
 
-  // material.new always runs first (creates the graph the other ops target).
-  const runArgs = ['material.new()', ...extraTools].flatMap((t) => ['--run', t])
+  const evalArgs = evals.flatMap((e) => ['--eval', e])
+  const runArgs = runTools.flatMap((t) => ['--run', t])
 
   execFileSync(
     electronExe,
@@ -81,6 +79,7 @@ function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
       '--no-devtools',
       '--backend', 'wasm',
       '--gen-scene', 'empty',
+      ...evalArgs,
       ...runArgs,
       '--dump', out,
       '--exit',
@@ -89,8 +88,13 @@ function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
   )
 
   if (!fs.existsSync(out)) throw new Error(`dump not written to ${out}`)
-  const dump = JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
+  return JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
+}
 
+/** A run that creates one material then runs `extraTools`; returns that material. */
+function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
+  // material.new always runs first (creates the graph the other ops target).
+  const dump = runHarness(electronExe, {runTools: ['material.new()', ...extraTools]})
   if (!Array.isArray(dump.materials) || dump.materials.length !== 1) {
     throw new Error(`expected exactly one datalib material, got ${JSON.stringify(dump.materials)}`)
   }
@@ -117,16 +121,18 @@ if (!canRun) {
 maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
   let baseline: DumpMaterial
   let afterAdd: DumpMaterial
-  let afterAddTwo: DumpMaterial
+  let afterDeleteAll: DumpMaterial
 
   beforeAll(() => {
     baseline = runOps(electronExe!, [])
     // The material's lib_id is deterministic across these identical boots, so we
     // can target its graph path from the baseline run.
     const g = `graphPath='library.material[${baseline.libId}].graph' graphClass='shader'`
-    const add = `node.add_node(${g} nodeClass='DiffuseNode')`
-    afterAdd = runOps(electronExe!, [add])
-    afterAddTwo = runOps(electronExe!, [add, add])
+    afterAdd = runOps(electronExe!, [`node.add_node(${g} nodeClass='DiffuseNode')`])
+    afterDeleteAll = runOps(electronExe!, [
+      `node.toggle_select_all(${g} mode='ADD')`,
+      `node.delete_selected(${g})`,
+    ])
   }, 300000)
 
   test('material.new yields the 3-node makeDefaultMaterial graph', () => {
@@ -137,7 +143,32 @@ maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
     expect(afterAdd.nodeCount).toBe(baseline.nodeCount + 1)
   })
 
-  test('node.add_node is repeatable — each call grows the graph', () => {
-    expect(afterAddTwo.nodeCount).toBe(baseline.nodeCount + 2)
+  test('toggle_select_all + delete_selected empties the graph', () => {
+    expect(afterDeleteAll.nodeCount).toBe(0)
+  })
+})
+
+maybe('CTX.debug via the --eval harness bridge', () => {
+  let dump: Dump
+
+  beforeAll(() => {
+    // The `--eval` flag runs JS in global scope (CTX reachable) before --run
+    // tools (see CLAUDE.md's "Debug context API" guide). Two evals: the first
+    // exercises CTX.debug reflection (and throws — aborting the second — if it's
+    // broken), the second drives a ToolOp whose effect is observable in --dump.
+    dump = runHarness(electronExe!, {
+      evals: [
+        "if (CTX.debug.listEditorTypes().filter(e => e.areaname === 'MaterialEditor').length !== 1)" +
+          " throw new Error('MaterialEditor missing from CTX.debug.listEditorTypes()')",
+        "CTX.api.execTool(CTX, 'material.new()')",
+      ],
+    })
+  }, 120000)
+
+  test('--eval reaches CTX.debug + CTX.api and drives a ToolOp', () => {
+    // A material with the 3-node default graph proves both evals ran: the
+    // reflection check passed (else it threw before material.new) and the
+    // ToolOp executed via the CTX global.
+    expect(dump.materials.map((m) => m.nodeCount)).toEqual([3])
   })
 })
