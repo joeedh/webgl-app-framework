@@ -13,7 +13,7 @@ import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
 import * as util from '../../util/util.js'
 import {DataRef} from '../../core/lib_api.js'
-import {NodeEditor} from '../node/NodeEditor.js'
+import {NodeEditorBase} from '../node/NodeEditor.js'
 import * as cconst from '../../core/const.js'
 import {Menu} from '../../path.ux/scripts/widgets/ui_menu.js'
 

@@ -14,7 +14,7 @@ import {
 } from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import {ModalFlags} from '../../core/modalflags.js'
-import {NodeEditor, NodeSocketElem} from './NodeEditor.js'
+import {NodeEditorBase, NodeSocketElem} from './NodeEditor.js'
 import type {ToolContext, ViewContext} from '../../core/context'
 import type {BlockLoader, DataBlock, DataRef} from '../../core/lib_api'
 import {Editor} from '../editor_base.js'
@@ -62,7 +62,7 @@ export interface NodeGraphUndo {
 export class NodeGraphOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
-  NODE_EDITOR extends NodeEditor = NodeEditor,
+  NODE_EDITOR extends NodeEditorBase = NodeEditorBase,
 > extends ToolOp<InputSet & NodeGraphInputs, OutputSet, ToolContext, ViewContext> {
   _undo?: NodeGraphUndo
 
@@ -80,7 +80,7 @@ export class NodeGraphOp<
 
     if (!('nodeEditorPath' in args)) {
       const area = ctx.editor
-      if (area instanceof NodeEditor) {
+      if (area instanceof NodeEditorBase) {
         tool.inputs.nodeEditorPath.setValue(Editor.getDataPath(area.constructor))
       }
     }
@@ -148,7 +148,7 @@ export class NodeGraphOp<
   /** Flush every open NodeEditor so the change is reflected live (used by modal ops). */
   updateAllEditors(ctx: ToolContext): void {
     for (const sarea of ctx.screen.sareas) {
-      if (sarea.area instanceof NodeEditor) {
+      if (sarea.area instanceof NodeEditorBase) {
         sarea.area.flushUpdate()
         sarea.area._recalcLines()
         sarea.area._recalcUI()

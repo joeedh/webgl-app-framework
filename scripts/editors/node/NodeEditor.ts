@@ -70,7 +70,7 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
   isHighlight = false
 
   _last_update_key: string | undefined = undefined
-  ned: NodeEditor | undefined = undefined //owning node editor
+  ned: NodeEditorBase | undefined = undefined //owning node editor
 
   //okay, it's going to be too slow to always fetch sockets from the data api
   //instead, cache direct references to them here
@@ -94,14 +94,22 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
     //XXX hackish event stuff
     this.addEventListener('pointerdown', (e) => {
       if (!haveModal()) {
-        this.click(e)
+        try {
+          this.ned!.push_ctx_active()
+          this.click(e)
+        } finally {
+          this.ned!.pop_ctx_active()
+        }
       }
     })
 
     this.addEventListener('pointermove', (e) => {
-      this.ned!.push_ctx_active()
-      this.ned!.on_mousemove(e)
-      this.ned!.pop_ctx_active()
+      try {
+        this.ned!.push_ctx_active()
+        this.ned!.on_mousemove(e)
+      } finally {
+        this.ned!.pop_ctx_active()
+      }
     })
 
     this._last_dpi = this.getDPI()
@@ -394,7 +402,7 @@ export class NodeUI extends Container<ViewContext> {
   _node: Node | undefined = undefined
 
   graph_id: number | undefined = undefined
-  ned: NodeEditor | undefined = undefined // owning node editor
+  ned: NodeEditorBase | undefined = undefined // owning node editor
 
   get isHighlight(): boolean {
     return this._isHighlight
@@ -679,7 +687,7 @@ const NodeRecalcFlags = {
  * (node_ops.ts / node_selectops.ts). Per-frame work is deferred via the
  * `recalcFlags` bitmask and drained in `update()`.
  */
-export class NodeEditor extends Editor {
+export class NodeEditorBase extends Editor {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -759,6 +767,13 @@ NodeEditor {
     return undefined
   }
 
+  static ensureAPI(api: DataAPI): DataStruct {
+    if (!api.hasStruct(NodeEditorBase)) {
+      NodeEditorBase.defineAPI(api)
+    }
+    return api.getStruct(NodeEditorBase)
+  }
+  
   static defineAPI(api: DataAPI): DataStruct {
     const nedstruct = super.defineAPI(api)
 
@@ -782,9 +797,7 @@ NodeEditor {
   }
 
   loadThemeOverrides(): void {
-    const overrides = this.getDefault('NodeOverrides') as unknown as
-      | Record<string, Record<string, unknown>>
-      | undefined
+    const overrides = this.getDefault('NodeOverrides') as unknown as Record<string, Record<string, unknown>> | undefined
 
     for (const k in overrides) {
       const v = overrides[k]
@@ -948,14 +961,8 @@ NodeEditor {
 
     this.on_mousedown = makehandler(this.on_mousedown.bind(this))
 
-    this.nodeContainer.addEventListener(
-      'mousewheel',
-      makehandler((e: WheelEvent) => mwheel(e)) as EventListener
-    )
-    this.nodeContainer.addEventListener(
-      'pointermove',
-      makehandler((e: PointerEvent) => mmove(e)) as EventListener
-    )
+    this.nodeContainer.addEventListener('mousewheel', makehandler((e: WheelEvent) => mwheel(e)) as EventListener)
+    this.nodeContainer.addEventListener('pointermove', makehandler((e: PointerEvent) => mmove(e)) as EventListener)
     this.nodeContainer.addEventListener(
       'pointerdown',
       makehandler((e: PointerEvent) => this.on_mousedown(e)) as EventListener
@@ -1525,8 +1532,8 @@ NodeEditor {
     co[1] = p[1]
   }
 
-  copy(): NodeEditor {
-    const ret = document.createElement('node-editor-x') as unknown as NodeEditor
+  copy(): NodeEditorBase {
+    const ret = document.createElement('node-editor-x') as unknown as NodeEditorBase
 
     ret.velpan.load(this.velpan)
     ret.graphPath = this.graphPath
@@ -1602,4 +1609,4 @@ NodeEditor {
     this.velpan.decay = this.#velPanDecay
   }
 }
-Editor.register(NodeEditor)
+//Editor.register(NodeEditor)

@@ -10,7 +10,7 @@ import {
 import {NodeGraphOp} from './node_ops.js'
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
 import type {ToolContext, ViewContext} from '../../core/context'
-import {NodeEditor} from './NodeEditor.js'
+import {NodeEditorBase} from './NodeEditor.js'
 import {Editor} from '../editor_base.js'
 
 /**
@@ -21,7 +21,7 @@ import {Editor} from '../editor_base.js'
 export class NodeSelectOpBase<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
-  NODE_EDITOR extends NodeEditor = NodeEditor,
+  NODE_EDITOR extends NodeEditorBase = NodeEditorBase,
 > extends NodeGraphOp<InputSet & {nodeEditorPath: StringProperty}, OutputSet, NODE_EDITOR> {
   static tooldef(): ToolDef {
     return {
