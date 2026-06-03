@@ -21,6 +21,7 @@ import type {BlockLoader, DataBlock, DataRef} from '../../core/lib_api'
 type AnyGraph = Graph<unknown>
 type AnyNode = Node
 
+/** nstructjs wrapper that serializes a whole graph for undo snapshots. */
 export class SavedGraph {
   graph!: AnyGraph
 
@@ -51,6 +52,11 @@ export interface NodeGraphUndo {
   order?: {[graph_id: number]: number}
 }
 
+/**
+ * Base for every node-graph ToolOp. Holds the `graphPath`/`graphClass` inputs
+ * that locate the target graph (see `fetchGraph`) and a default undo that
+ * snapshots/restores the entire graph via `SavedGraph`.
+ */
 export class NodeGraphOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
@@ -58,19 +64,16 @@ export class NodeGraphOp<
   _undo?: NodeGraphUndo
 
   static invoke(ctx: ViewContext, args: Record<string, unknown>): NodeGraphOp {
-    const useNodeEdtorGraph = args['useNodeEditorGraph']
-
-    if ('useNodeEdtorGraph' in args) {
-      delete args['useNodeEdtorGraph']
-    }
+    // When `useNodeEditorGraph` is set, inherit graphPath/graphClass from the
+    // active node editor instead of requiring them as explicit args.
+    const useNodeEditorGraph = args['useNodeEditorGraph']
+    delete args['useNodeEditorGraph']
 
     const tool = super.invoke(ctx, args) as NodeGraphOp
 
-    if (useNodeEdtorGraph) {
+    if (useNodeEditorGraph) {
       tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath)
       tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass)
-
-      delete args['useNodeEditorGraph']
     }
 
     if ('graphPath' in args) {
@@ -92,6 +95,7 @@ export class NodeGraphOp<
     }
   }
 
+  /** Resolve the target graph from `graphPath`; returns undefined (not throws) on a bad path. */
   fetchGraph(ctx: ToolContext): AnyGraph | undefined {
     if (this.inputs.graphPath.getValue() === '') {
       console.warn('graphPath was empty string')
@@ -110,6 +114,7 @@ export class NodeGraphOp<
     }
   }
 
+  /** Flush every open NodeEditor so the change is reflected live (used by modal ops). */
   updateAllEditors(ctx: ToolContext): void {
     for (const sarea of ctx.screen.sareas) {
       if (sarea.area instanceof NodeEditor) {
@@ -192,6 +197,7 @@ export class NodeGraphOp<
   }
 }
 
+/** Modal drag that moves the selected nodes by `offset` (graph UI space). */
 export class NodeTranslateOp extends NodeGraphOp<{offset: Vec2Property}> {
   first = true
   mpos = new Vector2()
@@ -293,6 +299,7 @@ export class NodeTranslateOp extends NodeGraphOp<{offset: Vec2Property}> {
 
 ToolOp.register(NodeTranslateOp)
 
+/** Create a node of type `nodeClass` at `pos` and add it to the graph. */
 export class AddNodeOp extends NodeGraphOp<
   {nodeClass: StringProperty; pos: Vec2Property},
   {graph_id: IntProperty}
@@ -359,6 +366,11 @@ export class AddNodeOp extends NodeGraphOp<
 
 ToolOp.register(AddNodeOp)
 
+/**
+ * Modal op that wires sockets together: drag from sock1 and drop on a
+ * compatible sock2. `disconnectSockID` lets a drag pull an existing input
+ * connection loose before reconnecting it elsewhere.
+ */
 export class ConnectNodeOp extends NodeGraphOp<{
   node1_id: IntProperty
   sock1_id: IntProperty
@@ -560,6 +572,7 @@ export class ConnectNodeOp extends NodeGraphOp<{
 
 ToolOp.register(ConnectNodeOp)
 
+/** Remove every selected node from the graph. */
 export class DeleteNodeOp extends NodeGraphOp {
   static tooldef() {
     return {

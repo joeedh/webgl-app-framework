@@ -28,6 +28,12 @@ interface ViewerLayout {
   outputs: {[k: string]: Sock}
 }
 
+/**
+ * Read-only, canvas-rendered debug viewer for an arbitrary graph (defaults to
+ * the scene dependency graph). Unlike NodeEditor it doesn't use DOM widgets per
+ * node — each node is rasterized to a cached offscreen canvas (keyed by
+ * `hashNode`) and blitted, so large graphs stay cheap to pan/zoom.
+ */
 export class NodeViewer extends Editor {
   graphPath = 'graph'
   graphClass: string | undefined = ''
@@ -129,6 +135,7 @@ export class NodeViewer extends Editor {
     return this.canvases[id]
   }
 
+  /** Cache key for a node's rendered canvas — changes when its layout/zoom changes. */
   hashNode(node: Node): string {
     const layout = layoutNode(node, {socksize: this.sockSize}) as ViewerLayout
     const mask = (1 << 19) - 1
@@ -177,6 +184,7 @@ export class NodeViewer extends Editor {
     this.node_idmap = {}
   }
 
+  /** Render one node (header, sockets, labels) to an offscreen canvas and cache it. */
   buildNode(node: Node): ViewerLayout {
     const scale = this.velpan.scale
     const layout = layoutNode(node, {socksize: this.sockSize, extraWidth: this.extraNodeWidth}) as ViewerLayout
@@ -261,7 +269,7 @@ export class NodeViewer extends Editor {
     return layout
   }
 
-  updateCanvaSize(): void {
+  updateCanvasSize(): void {
     const canvas = this.canvas
 
     const size = this.size!
@@ -276,11 +284,12 @@ export class NodeViewer extends Editor {
     canvas.style['height'] = size[1] + 'px'
   }
 
+  /** Composite the cached node canvases + connection lines onto the main canvas. */
   draw(): void {
     const canvas = this.canvas
     const g = this.g
 
-    this.updateCanvaSize()
+    this.updateCanvasSize()
 
     g.clearRect(0, 0, canvas.width, canvas.height)
     g.font = (this.getDefault('DefaultText') as {genCSS(): string}).genCSS()
@@ -404,6 +413,7 @@ export class NodeViewer extends Editor {
     g.stroke()
   }
 
+  /** Rebuild the per-node canvas cache for the current graph, dropping stale entries. */
   rebuild(): void {
     if (!this.ctx) {
       return
@@ -412,7 +422,7 @@ export class NodeViewer extends Editor {
     this._last_graph_path = this.graphPath
     console.log('rebuilding node editor')
 
-    this.updateCanvaSize()
+    this.updateCanvasSize()
 
     const graph = this.ctx.api.getValue<AnyGraph>(this.ctx, this.graphPath)
     if (this.graphPath === '' || graph === undefined) {

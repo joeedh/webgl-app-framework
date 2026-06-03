@@ -9,9 +9,17 @@ import type {Material} from '../../core/material'
 import type {ViewContext} from '../../core/context'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
+/**
+ * NodeEditor specialized for editing the active object's material shader graph.
+ * Tracks which datablock/material is being shown and points the inherited
+ * `graphPath` at that material's graph (see `updatePath`).
+ */
 export class MaterialEditor extends NodeEditor {
+  /** change-detection key for the active object/material, drives header rebuilds */
   _last_update_key: string | undefined = undefined
+  /** data path to the datablock owning the material (a mesh or object data) */
   dataBlockPath = ''
+  /** per-mesh (keyed by lib_id) index of the material slot currently shown */
   activeMatMap: {[lib_id: number]: number} = {}
   headerRow?: Container<ViewContext>
 
@@ -31,6 +39,7 @@ export class MaterialEditor extends NodeEditor {
     this.doOnce(this.buildHeader)
   }
 
+  /** Recompute `dataBlockPath`/`graphPath` from the active object's material slot. */
   updatePath(): void {
     const ob = this.ctx.object
 

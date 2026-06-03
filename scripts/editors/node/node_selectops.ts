@@ -4,6 +4,11 @@ import {NodeGraphOp} from './node_ops.js'
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
 import type {ToolContext, ViewContext} from '../../core/context'
 
+/**
+ * Base for node selection ops. Its undo snapshots both the per-node selection
+ * state *and* the node array order (some select ops reorder nodes — see
+ * NodeSelectOneOp.pushToFront), restoring both on undo.
+ */
 export class NodeSelectOpBase<
   InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
   OutputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
@@ -98,6 +103,11 @@ export class NodeSelectOpBase<
   }
 }
 
+/**
+ * Select one node by id (UNIQUE/ADD/SUB). Also moves it to the front of the
+ * node list — shader networks treat the first output node as the active one, so
+ * this is how clicking a node previews its sub-network.
+ */
 export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode: EnumProperty}> {
   static tooldef(): ToolDef {
     return {
@@ -160,6 +170,7 @@ export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode
 
 ToolOp.register(NodeSelectOneOp)
 
+/** Select/deselect all nodes; AUTO deselects if anything is selected, else selects all. */
 export class NodeToggleSelectAll extends NodeSelectOpBase<{mode: EnumProperty}> {
   static tooldef(): ToolDef {
     return {
