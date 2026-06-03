@@ -84,29 +84,28 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `imageEditor.pos` | prop | Vec2Property | Position |  |
 | `imageEditor.size` | prop | Vec2Property | Size |  |
 | `imageEditor.type` | prop | StringProperty | Type |  |
-| `imageEditor.uvEditor` | struct |  |  |  |
-| `imageEditor.uvEditor.velpan` | struct |  |  |  |
-| `imageEditor.uvEditor.velpan.pos` | prop | Vec2Property | Position |  |
-| `imageEditor.uvEditor.velpan.scale` | prop | Vec2Property | Scale |  |
-| `imageEditor.uvEditor.velpan.min` | prop | Vec2Property | Boundary Minimum |  |
-| `imageEditor.uvEditor.velpan.max` | prop | Vec2Property | Boundary Maximum |  |
-| `imageEditor.uvEditor.imageUser` | struct |  |  |  |
-| `imageEditor.uvEditor.imageUser.image` | struct |  |  |  |
-| `imageEditor.uvEditor.imageUser.image.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
-| `imageEditor.uvEditor.imageUser.image.graph_id` | prop | IntProperty | Graph ID |  |
-| `imageEditor.uvEditor.imageUser.image.inputs` | list |  |  |  |
-| `imageEditor.uvEditor.imageUser.image.outputs` | list |  |  |  |
-| `imageEditor.uvEditor.imageUser.image.lib_id` | prop | IntProperty | Lib ID |  |
-| `imageEditor.uvEditor.imageUser.image.lib_flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, SELECT, HIDE, FAKE_USER, NO_SAVE} |
-| `imageEditor.uvEditor.imageUser.image.name` | prop | StringProperty | name |  |
-| `imageEditor.uvEditor.imageUser.image.type` | prop | EnumProperty | Image Type | enum {0, 1, 2, 3, GENERATED, BYTE_BUFFER, FLOAT_BUFFER, URL} |
-| `imageEditor.uvEditor.imageUser.image.genType` | prop | EnumProperty | Generator | enum {0, 1, COLOR, UVGRID} |
-| `imageEditor.uvEditor.imageUser.image.width` | prop | IntProperty | Width | range 1..16384 |
-| `imageEditor.uvEditor.imageUser.image.height` | prop | IntProperty | Height | range 1..16384 |
-| `imageEditor.uvEditor.imageUser.image.url` | prop | StringProperty | URL |  |
-| `imageEditor.uvEditor.imageUser.image.ready` | prop | BoolProperty | Ready |  |
-| `imageEditor.uvEditor.imageUser.image.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, SELECT, HIDE, UPDATE} |
-| `imageEditor.uvEditor.imageUser.image.genColor` | prop | Vec4Property | Color | range 0..1 |
+| `imageEditor.imageUser` | struct |  |  |  |
+| `imageEditor.imageUser.image` | struct |  |  |  |
+| `imageEditor.imageUser.image.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
+| `imageEditor.imageUser.image.graph_id` | prop | IntProperty | Graph ID |  |
+| `imageEditor.imageUser.image.inputs` | list |  |  |  |
+| `imageEditor.imageUser.image.outputs` | list |  |  |  |
+| `imageEditor.imageUser.image.lib_id` | prop | IntProperty | Lib ID |  |
+| `imageEditor.imageUser.image.lib_flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, SELECT, HIDE, FAKE_USER, NO_SAVE} |
+| `imageEditor.imageUser.image.name` | prop | StringProperty | name |  |
+| `imageEditor.imageUser.image.type` | prop | EnumProperty | Image Type | enum {0, 1, 2, 3, GENERATED, BYTE_BUFFER, FLOAT_BUFFER, URL} |
+| `imageEditor.imageUser.image.genType` | prop | EnumProperty | Generator | enum {0, 1, COLOR, UVGRID} |
+| `imageEditor.imageUser.image.width` | prop | IntProperty | Width | range 1..16384 |
+| `imageEditor.imageUser.image.height` | prop | IntProperty | Height | range 1..16384 |
+| `imageEditor.imageUser.image.url` | prop | StringProperty | URL |  |
+| `imageEditor.imageUser.image.ready` | prop | BoolProperty | Ready |  |
+| `imageEditor.imageUser.image.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, SELECT, HIDE, UPDATE} |
+| `imageEditor.imageUser.image.genColor` | prop | Vec4Property | Color | range 0..1 |
+| `imageEditor.velpan` | struct |  |  |  |
+| `imageEditor.velpan.pos` | prop | Vec2Property | Position |  |
+| `imageEditor.velpan.scale` | prop | Vec2Property | Scale |  |
+| `imageEditor.velpan.min` | prop | Vec2Property | Boundary Minimum |  |
+| `imageEditor.velpan.max` | prop | Vec2Property | Boundary Maximum |  |
 
 ## last_tool
 
@@ -933,80 +932,17 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.object.select_box.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
 | `toolDefaults.object.apply_transform` | struct |  |  |  |
 | `toolDefaults.object.apply_transform.mode` | prop | FlagProperty | Mode | enum {LOC, ROT, SCALE, ALL} |
-| `toolDefaults.uveditor` | struct |  |  |  |
-| `toolDefaults.uveditor.toggle_select_all` | struct |  |  |  |
-| `toolDefaults.uveditor.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.uveditor.toggle_select_all.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.toggle_select_all.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.pick_select_linked` | struct |  |  |  |
-| `toolDefaults.uveditor.pick_select_linked.loopEid` | prop | IntProperty | Loop Eid |  |
-| `toolDefaults.uveditor.pick_select_linked.cdUV` | prop | IntProperty | Cd Uv |  |
-| `toolDefaults.uveditor.pick_select_linked.immediateMode` | prop | BoolProperty | Immediate Mode |  |
-| `toolDefaults.uveditor.pick_select_linked.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.uveditor.pick_select_linked.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.pick_select_linked.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.select_one` | struct |  |  |  |
-| `toolDefaults.uveditor.select_one.loopEids` | prop | ListProperty | Loop Eids |  |
-| `toolDefaults.uveditor.select_one.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
-| `toolDefaults.uveditor.select_one.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.select_one.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.translate` | struct |  |  |  |
-| `toolDefaults.uveditor.translate.offset` | prop | Vec2Property | Offset |  |
-| `toolDefaults.uveditor.translate.meshPath` | prop | StringProperty | Mesh Path |  |
-| `toolDefaults.uveditor.translate.propMode` | prop | EnumProperty | Prop Mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
-| `toolDefaults.uveditor.translate.propRadius` | prop | FloatProperty | Prop Radius |  |
-| `toolDefaults.uveditor.translate.propIslandOnly` | prop | BoolProperty | Prop Island Only |  |
-| `toolDefaults.uveditor.translate.propEnabled` | prop | BoolProperty | Prop Enabled |  |
-| `toolDefaults.uveditor.translate.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.scale` | struct |  |  |  |
-| `toolDefaults.uveditor.scale.scale` | prop | Vec2Property | Scale |  |
-| `toolDefaults.uveditor.scale.meshPath` | prop | StringProperty | Mesh Path |  |
-| `toolDefaults.uveditor.scale.propMode` | prop | EnumProperty | Prop Mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
-| `toolDefaults.uveditor.scale.propRadius` | prop | FloatProperty | Prop Radius |  |
-| `toolDefaults.uveditor.scale.propIslandOnly` | prop | BoolProperty | Prop Island Only |  |
-| `toolDefaults.uveditor.scale.propEnabled` | prop | BoolProperty | Prop Enabled |  |
-| `toolDefaults.uveditor.scale.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.rotate` | struct |  |  |  |
-| `toolDefaults.uveditor.rotate.rotation` | prop | FloatProperty | Rotation |  |
-| `toolDefaults.uveditor.rotate.meshPath` | prop | StringProperty | Mesh Path |  |
-| `toolDefaults.uveditor.rotate.propMode` | prop | EnumProperty | Prop Mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
-| `toolDefaults.uveditor.rotate.propRadius` | prop | FloatProperty | Prop Radius |  |
-| `toolDefaults.uveditor.rotate.propIslandOnly` | prop | BoolProperty | Prop Island Only |  |
-| `toolDefaults.uveditor.rotate.propEnabled` | prop | BoolProperty | Prop Enabled |  |
-| `toolDefaults.uveditor.rotate.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.project_uvs` | struct |  |  |  |
-| `toolDefaults.uveditor.project_uvs.matrix` | prop | Mat4Property | Matrix |  |
-| `toolDefaults.uveditor.project_uvs.selectedOnly` | prop | BoolProperty | Selected Only |  |
-| `toolDefaults.uveditor.project_uvs.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.set_flag` | struct |  |  |  |
-| `toolDefaults.uveditor.set_flag.flag` | prop | FlagProperty | Flag | enum {2, PIN} |
-| `toolDefaults.uveditor.set_flag.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.uveditor.set_flag.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.set_flag.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.clear_flag` | struct |  |  |  |
-| `toolDefaults.uveditor.clear_flag.flag` | prop | FlagProperty | Flag | enum {2, PIN} |
-| `toolDefaults.uveditor.clear_flag.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.uveditor.clear_flag.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.clear_flag.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.uveditor.toggle_flag` | struct |  |  |  |
-| `toolDefaults.uveditor.toggle_flag.flag` | prop | FlagProperty | Flag | enum {2, PIN} |
-| `toolDefaults.uveditor.toggle_flag.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
-| `toolDefaults.uveditor.toggle_flag.selectMask` | prop | FlagProperty | Select Mask | enum {VERTEX, EDGE, FACE} |
-| `toolDefaults.uveditor.toggle_flag.selectedFacesOnly` | prop | BoolProperty | Selected Faces Only |  |
-| `toolDefaults.image` | struct |  |  |  |
-| `toolDefaults.image.set_type` | struct |  |  |  |
-| `toolDefaults.image.set_type.image` | prop | DataRefProperty | Image |  |
-| `toolDefaults.image.set_type.type` | prop | EnumProperty | Type | enum {0, 1, 2, 3, GENERATED, BYTE_BUFFER, FLOAT_BUFFER, URL} |
-| `toolDefaults.image.open` | struct |  |  |  |
-| `toolDefaults.image.open.fileName` | prop | StringProperty | File Name |  |
-| `toolDefaults.image.open.dataURL` | prop | StringProperty | Data Url |  |
-| `toolDefaults.image.open.dataPath` | prop | StringProperty | Data Path |  |
 | `toolDefaults.tet` | struct |  |  |  |
 | `toolDefaults.tet.solidify_wireframe` | struct |  |  |  |
 | `toolDefaults.tet.solidify_wireframe.size` | prop | FloatProperty | Size |  |
 | `toolDefaults.tet.solidify_wireframe.maxDepth` | prop | IntProperty | Max Depth |  |
 | `toolDefaults.tet.solidify_wireframe.minDepth` | prop | IntProperty | Min Depth |  |
 | `toolDefaults.tet.solidify_wireframe.project` | prop | BoolProperty | Project |  |
+| `toolDefaults.image` | struct |  |  |  |
+| `toolDefaults.image.open` | struct |  |  |  |
+| `toolDefaults.image.open.fileName` | prop | StringProperty | File Name |  |
+| `toolDefaults.image.open.dataURL` | prop | StringProperty | Data Url |  |
+| `toolDefaults.image.open.dataPath` | prop | StringProperty | Data Path |  |
 | `toolDefaults.strand` | struct |  |  |  |
 | `toolDefaults.strand.create` | struct |  |  |  |
 | `toolDefaults.strand.create.target` | prop | DataRefProperty | Target |  |

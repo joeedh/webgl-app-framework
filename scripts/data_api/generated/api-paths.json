@@ -6126,59 +6126,17 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "imageEditor.uvEditor": {
+    "imageEditor.imageUser": {
       "kind": "struct",
       "indexed": false,
       "dynamic": false
     },
-    "imageEditor.uvEditor.velpan": {
+    "imageEditor.imageUser.image": {
       "kind": "struct",
       "indexed": false,
       "dynamic": false
     },
-    "imageEditor.uvEditor.velpan.pos": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Position",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "imageEditor.uvEditor.velpan.scale": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Scale",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "imageEditor.uvEditor.velpan.min": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Boundary Minimum",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "imageEditor.uvEditor.velpan.max": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Boundary Maximum",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "imageEditor.uvEditor.imageUser": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "imageEditor.uvEditor.imageUser.image": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "imageEditor.uvEditor.imageUser.image.graph_flag": {
+    "imageEditor.imageUser.image.graph_flag": {
       "kind": "prop",
       "indexed": false,
       "propType": "FlagProperty",
@@ -6209,7 +6167,7 @@
         "FORCE_INHERIT"
       ]
     },
-    "imageEditor.uvEditor.imageUser.image.graph_id": {
+    "imageEditor.imageUser.image.graph_id": {
       "kind": "prop",
       "indexed": false,
       "propType": "IntProperty",
@@ -6218,15 +6176,15 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
-    "imageEditor.uvEditor.imageUser.image.inputs": {
+    "imageEditor.imageUser.image.inputs": {
       "kind": "list",
       "indexed": false
     },
-    "imageEditor.uvEditor.imageUser.image.outputs": {
+    "imageEditor.imageUser.image.outputs": {
       "kind": "list",
       "indexed": false
     },
-    "imageEditor.uvEditor.imageUser.image.lib_id": {
+    "imageEditor.imageUser.image.lib_id": {
       "kind": "prop",
       "indexed": false,
       "propType": "IntProperty",
@@ -6234,7 +6192,7 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
-    "imageEditor.uvEditor.imageUser.image.lib_flag": {
+    "imageEditor.imageUser.image.lib_flag": {
       "kind": "prop",
       "indexed": false,
       "propType": "FlagProperty",
@@ -6252,7 +6210,7 @@
         "NO_SAVE"
       ]
     },
-    "imageEditor.uvEditor.imageUser.image.name": {
+    "imageEditor.imageUser.image.name": {
       "kind": "prop",
       "indexed": false,
       "propType": "StringProperty",
@@ -6260,7 +6218,7 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "imageEditor.uvEditor.imageUser.image.type": {
+    "imageEditor.imageUser.image.type": {
       "kind": "prop",
       "indexed": false,
       "propType": "EnumProperty",
@@ -6278,7 +6236,7 @@
         "URL"
       ]
     },
-    "imageEditor.uvEditor.imageUser.image.genType": {
+    "imageEditor.imageUser.image.genType": {
       "kind": "prop",
       "indexed": false,
       "propType": "EnumProperty",
@@ -6292,7 +6250,7 @@
         "UVGRID"
       ]
     },
-    "imageEditor.uvEditor.imageUser.image.width": {
+    "imageEditor.imageUser.image.width": {
       "kind": "prop",
       "indexed": false,
       "propType": "IntProperty",
@@ -6304,7 +6262,7 @@
       "decimalPlaces": 4,
       "step": 5
     },
-    "imageEditor.uvEditor.imageUser.image.height": {
+    "imageEditor.imageUser.image.height": {
       "kind": "prop",
       "indexed": false,
       "propType": "IntProperty",
@@ -6316,7 +6274,7 @@
       "decimalPlaces": 4,
       "step": 5
     },
-    "imageEditor.uvEditor.imageUser.image.url": {
+    "imageEditor.imageUser.image.url": {
       "kind": "prop",
       "indexed": false,
       "propType": "StringProperty",
@@ -6324,7 +6282,7 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "imageEditor.uvEditor.imageUser.image.ready": {
+    "imageEditor.imageUser.image.ready": {
       "kind": "prop",
       "indexed": false,
       "propType": "BoolProperty",
@@ -6333,7 +6291,7 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "imageEditor.uvEditor.imageUser.image.flag": {
+    "imageEditor.imageUser.image.flag": {
       "kind": "prop",
       "indexed": false,
       "propType": "FlagProperty",
@@ -6349,7 +6307,7 @@
         "UPDATE"
       ]
     },
-    "imageEditor.uvEditor.imageUser.image.genColor": {
+    "imageEditor.imageUser.image.genColor": {
       "kind": "prop",
       "indexed": false,
       "propType": "Vec4Property",
@@ -6359,6 +6317,43 @@
         0,
         1
       ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "imageEditor.velpan": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "imageEditor.velpan.pos": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Position",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "imageEditor.velpan.scale": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Scale",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "imageEditor.velpan.min": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Boundary Minimum",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "imageEditor.velpan.max": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Boundary Maximum",
       "decimalPlaces": 4,
       "step": 0.1
     },
@@ -8226,668 +8221,6 @@
         "ALL"
       ]
     },
-    "toolDefaults.uveditor": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.toggle_select_all": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.toggle_select_all.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.uveditor.toggle_select_all.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.toggle_select_all.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.pick_select_linked": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.pick_select_linked.loopEid": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Loop Eid",
-      "description": "Loop Eid",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.pick_select_linked.cdUV": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Cd Uv",
-      "description": "Cd Uv",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.pick_select_linked.immediateMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Immediate Mode",
-      "description": "Immediate Mode",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.pick_select_linked.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.uveditor.pick_select_linked.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.pick_select_linked.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.select_one": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.select_one.loopEids": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "ListProperty",
-      "uiname": "Loop Eids",
-      "description": "Loop Eids",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.select_one.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "UNIQUE"
-      ]
-    },
-    "toolDefaults.uveditor.select_one.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.select_one.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.translate": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.translate.offset": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Offset",
-      "description": "Offset",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.translate.meshPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Mesh Path",
-      "description": "Mesh Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.translate.propMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Prop Mode",
-      "description": "Prop Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SMOOTH",
-        "SHARP",
-        "EXTRA_SHARP",
-        "SPHERE",
-        "LINEAR",
-        "CONSTANT"
-      ]
-    },
-    "toolDefaults.uveditor.translate.propRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Prop Radius",
-      "description": "Prop Radius",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.translate.propIslandOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Island Only",
-      "description": "Prop Island Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.translate.propEnabled": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Enabled",
-      "description": "Prop Enabled",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.translate.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.scale": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.scale.scale": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Scale",
-      "description": "Scale",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.scale.meshPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Mesh Path",
-      "description": "Mesh Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.scale.propMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Prop Mode",
-      "description": "Prop Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SMOOTH",
-        "SHARP",
-        "EXTRA_SHARP",
-        "SPHERE",
-        "LINEAR",
-        "CONSTANT"
-      ]
-    },
-    "toolDefaults.uveditor.scale.propRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Prop Radius",
-      "description": "Prop Radius",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.scale.propIslandOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Island Only",
-      "description": "Prop Island Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.scale.propEnabled": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Enabled",
-      "description": "Prop Enabled",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.scale.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.rotate": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.rotate.rotation": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Rotation",
-      "description": "Rotation",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.rotate.meshPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Mesh Path",
-      "description": "Mesh Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.rotate.propMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Prop Mode",
-      "description": "Prop Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SMOOTH",
-        "SHARP",
-        "EXTRA_SHARP",
-        "SPHERE",
-        "LINEAR",
-        "CONSTANT"
-      ]
-    },
-    "toolDefaults.uveditor.rotate.propRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Prop Radius",
-      "description": "Prop Radius",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.uveditor.rotate.propIslandOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Island Only",
-      "description": "Prop Island Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.rotate.propEnabled": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Prop Enabled",
-      "description": "Prop Enabled",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.rotate.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.project_uvs": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.project_uvs.matrix": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Mat4Property",
-      "uiname": "Matrix",
-      "description": "Matrix",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.project_uvs.selectedOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Only",
-      "description": "Selected Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.project_uvs.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.set_flag": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.set_flag.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "description": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "2",
-        "PIN"
-      ]
-    },
-    "toolDefaults.uveditor.set_flag.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.uveditor.set_flag.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.set_flag.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.clear_flag": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.clear_flag.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "description": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "2",
-        "PIN"
-      ]
-    },
-    "toolDefaults.uveditor.clear_flag.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.uveditor.clear_flag.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.clear_flag.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.uveditor.toggle_flag": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.uveditor.toggle_flag.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "description": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "2",
-        "PIN"
-      ]
-    },
-    "toolDefaults.uveditor.toggle_flag.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.uveditor.toggle_flag.selectMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Select Mask",
-      "description": "Select Mask",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "toolDefaults.uveditor.toggle_flag.selectedFacesOnly": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selected Faces Only",
-      "description": "Selected Faces Only",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.image": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.image.set_type": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.image.set_type.image": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "DataRefProperty",
-      "uiname": "Image",
-      "description": "Image",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.image.set_type.type": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Type",
-      "description": "Type",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "0",
-        "1",
-        "2",
-        "3",
-        "GENERATED",
-        "BYTE_BUFFER",
-        "FLOAT_BUFFER",
-        "URL"
-      ]
-    },
-    "toolDefaults.image.open": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.image.open.fileName": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "File Name",
-      "description": "File Name",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.image.open.dataURL": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Data Url",
-      "description": "Data Url",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.image.open.dataPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Data Path",
-      "description": "Data Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
     "toolDefaults.tet": {
       "kind": "struct",
       "indexed": false,
@@ -8931,6 +8264,43 @@
       "propType": "BoolProperty",
       "uiname": "Project",
       "description": "Project",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.image": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.image.open": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.image.open.fileName": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "File Name",
+      "description": "File Name",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.image.open.dataURL": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Data Url",
+      "description": "Data Url",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.image.open.dataPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Data Path",
+      "description": "Data Path",
       "decimalPlaces": 4,
       "step": 0.05
     },

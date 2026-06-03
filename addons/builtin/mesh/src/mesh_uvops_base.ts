@@ -5,7 +5,6 @@ import {View3DOp} from '@framework/api'
 import {MeshOp} from './mesh_ops_base'
 import {Loop} from './mesh_types'
 import type {ViewContext} from '@framework/api'
-import type {ImageEditor} from '@framework/api'
 
 export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> //
   extends MeshOp<
@@ -36,12 +35,11 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
     const tool = super.invoke(ctx, args) as MeshOpBaseUV
 
     if (!('selectedFacesOnly' in args)) {
-      const editor = ctx.editors.imageEditor as ImageEditor
-      if (editor) {
-        const uve = editor.uvEditor
-
-        tool.inputs.selectedFacesOnly.setValue(uve.selectedFacesOnly)
-      }
+      // The legacy UVEditor's per-editor `selectedFacesOnly` preference is
+      // gone (UV editing is being re-designed; see
+      // scripts/editors/image/pending-port/TODO.md). Default to the historical
+      // value until the new UV abstraction restores a real binding.
+      tool.inputs.selectedFacesOnly.setValue(true)
     }
 
     return tool as ReturnType<typeof ToolOp.invoke>
@@ -135,11 +133,9 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
     const tool = super.invoke(ctx, args) as unknown as UVOpBase
 
     if (!('selectedFacesOnly' in args)) {
-      const imageEditor = ctx.editors.imageEditor
-      if (imageEditor) {
-        const uve = imageEditor.uvEditor
-        tool.inputs.selectedFacesOnly.setValue(uve.selectedFacesOnly)
-      }
+      // See note in MeshOpBaseUV.invoke: the legacy UVEditor preference is gone
+      // until the new UV abstraction is designed.
+      tool.inputs.selectedFacesOnly.setValue(true)
     }
 
     return tool as ReturnType<typeof ToolOp.invoke>
