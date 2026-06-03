@@ -6723,15 +6723,6 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
-    "toolDefaults.velpan.pan.pan": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Pan",
-      "description": "Pan",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
     "toolDefaults.material": {
       "kind": "struct",
       "indexed": false,
@@ -6877,258 +6868,6 @@
       "propType": "StringProperty",
       "uiname": "Data Path To Unset",
       "description": "Data Path To Unset",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.translate": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.translate.offset": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Offset",
-      "description": "Offset",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.translate.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.translate.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.add_node": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.add_node.nodeClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Node Class",
-      "description": "Node Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.add_node.pos": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec2Property",
-      "uiname": "Pos",
-      "description": "Pos",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.add_node.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.add_node.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.connect": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.connect.node1_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Node1 Id",
-      "description": "Node1 Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.connect.sock1_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Sock1 Id",
-      "description": "Sock1 Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.connect.node2_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Node2 Id",
-      "description": "Node2 Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.connect.sock2_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Sock2 Id",
-      "description": "Sock2 Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.connect.disconnectSockID": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Disconnect Sock Id",
-      "description": "Disconnect Sock Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.connect.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.connect.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.delete_selected": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.delete_selected.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.delete_selected.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.selectone": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.selectone.nodeId": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Node Id",
-      "description": "Node Id",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.node.selectone.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "UNIQUE"
-      ]
-    },
-    "toolDefaults.node.selectone.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.selectone.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.toggle_select_all": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "toolDefaults.node.toggle_select_all.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "description": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ADD",
-        "SUB",
-        "AUTO"
-      ]
-    },
-    "toolDefaults.node.toggle_select_all.graphPath": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Path",
-      "description": "Graph Path",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "toolDefaults.node.toggle_select_all.graphClass": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Graph Class",
-      "description": "Graph Class",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -8143,6 +7882,258 @@
       "description": "Viewport Size",
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "toolDefaults.node": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.translate": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.translate.offset": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Offset",
+      "description": "Offset",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.translate.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.translate.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.add_node": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.add_node.nodeClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Class",
+      "description": "Node Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.add_node.pos": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Pos",
+      "description": "Pos",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.add_node.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.add_node.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.connect": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.connect.node1_id": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Node1 Id",
+      "description": "Node1 Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.connect.sock1_id": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Sock1 Id",
+      "description": "Sock1 Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.connect.node2_id": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Node2 Id",
+      "description": "Node2 Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.connect.sock2_id": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Sock2 Id",
+      "description": "Sock2 Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.connect.disconnectSockID": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Disconnect Sock Id",
+      "description": "Disconnect Sock Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.connect.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.connect.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.delete_selected": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.delete_selected.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.delete_selected.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.selectone": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.selectone.nodeId": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Node Id",
+      "description": "Node Id",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.selectone.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ADD",
+        "SUB",
+        "UNIQUE"
+      ]
+    },
+    "toolDefaults.node.selectone.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.selectone.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.toggle_select_all": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.node.toggle_select_all.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ADD",
+        "SUB",
+        "AUTO"
+      ]
+    },
+    "toolDefaults.node.toggle_select_all.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.toggle_select_all.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.object": {
       "kind": "struct",
