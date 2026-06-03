@@ -30,6 +30,14 @@
 //      concurrent build in another worktree;
 //   4. execs the real sccache with the original (compiler + args) tail.
 //
+// The launcher inherits the build shell's environment unchanged (it only ADDS
+// SCCACHE_BASEDIRS), so SCCACHE_SERVER_PIPE — the global var that selects the
+// Windows named-pipe server (set e.g. to "sccache-<user>") — flows through to
+// both `--stop-server` and the autostarted server. That's load-bearing: the
+// restart in step 3 KILLS the server, and the named pipe is freed cleanly on
+// kill where a TCP port can stick. Do not strip the inherited env when spawning
+// sccache below.
+//
 // It NEVER fails the build for bookkeeping reasons: any error in steps 1-3 is
 // swallowed and it proceeds straight to step 4 (and if sccache itself can't be
 // found on PATH, it runs the bare compiler).

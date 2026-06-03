@@ -37,6 +37,12 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
   worktree into the shared registry via `tools/sccache-wrapper/setup.mjs --root
   <new-worktree>`, so its first build is a cache hit and the shared server
   already knows about it.
+- `worktree-env` surfaces `SCCACHE_SERVER_PIPE` (warns if unset). This global
+  var selects sccache's Windows **named-pipe** server (set it once, e.g.
+  `setx SCCACHE_SERVER_PIPE sccache-<user>`); the launcher inherits it and
+  forwards it to every server it (re)starts. Without it sccache falls back to
+  the TCP-port server, whose port can stay bound after the launcher kills the
+  server on a new-worktree join — the stall the named-pipe mode exists to fix.
 - Points WASM builds at the main worktree's emsdk via `SCULPTCORE_EMSDK_DIR`
   (set in `worktree-env`, honored by `configureEnv.mjs`), so they reuse the
   existing ~2.4 GB install instead of re-running `install-emsdk` (pass
@@ -62,9 +68,16 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
    pnpm i                                         # make.mjs deps (yargs, cmake-js, ...)
    node extern/wgpu_native/fetch.mjs              # wgpu-native headers/lib (sibling fetch script)
    node make.mjs fetch-wgpu-native                # native webgpu prebuilt (make.mjs alias)
+   node make.mjs codegen                          # brush kernel headers (git-ignored; see below)
    node make.mjs configure native                 # look for: "sccache compiler launcher enabled"
    node make.mjs build native
    ```
+   The `codegen` step is easy to miss: the compiled brush kernels
+   (`source/brush/kernels/generated/*.brush.gen.h`) are **git-ignored generated
+   files**, so they exist in the main worktree but are *not* carried into a fresh
+   one. Without it the native build fails with
+   `'../kernels/generated/draw.brush.gen.h' file not found`.
+
    The node-addon build (`node make.mjs node`) uses the same toolchain and is
    cached too. WASM builds are not cached (emcc runs through a python wrapper).
 
@@ -120,7 +133,23 @@ worktrees at once — including concurrent builds in different worktrees.
 ## Teardown
 
 ```sh
-git -C <main-worktree> worktree remove <new-worktree>
+git -C <main-worktree> worktree remove --force <new-worktree>
 ```
 Commit, stash, or discard work in the worktree first. To also drop the branch:
 `git -C <main-worktree> branch -D <branch>`.
+
+`worktree remove` often fails with **`Directory not empty`** once you've built —
+git deregisters the worktree but won't delete the leftover build artifacts
+(`build/`, `node_modules/`, ...). Finish the teardown by deleting the directory
+and pruning the registration:
+
+```sh
+# PowerShell
+Remove-Item -Recurse -Force <new-worktree>
+git -C <main-worktree> worktree prune
+```
+
+The shared sccache registry entry (`C:/dev/sccache-worktrees/<name>.<hash>.txt`)
+is harmless to leave — the cross-worktree launcher auto-deletes any entry whose
+worktree no longer exists on its next compile. Delete it by hand only if you want
+the cleanup to be immediate.
