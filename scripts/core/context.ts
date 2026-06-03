@@ -606,16 +606,16 @@ export class ViewContext extends ToolContext {
       return undefined
     }
 
-    const uve = editor.uvEditor
-    if (!uve.imageUser.image?.ready) {
-      if (uve.imageUser.image) {
-        uve.imageUser.image.update()
+    const image = editor.imageUser.image
+    if (!image || !image.ready) {
+      if (image) {
+        image.update()
       }
 
       return undefined
     }
 
-    return uve.imageUser.image
+    return image
   }
 
   activeTexture_save() {

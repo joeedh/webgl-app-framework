@@ -554,7 +554,7 @@ export class EditorAccessor {
       const cls = areaclasses[k]
       const def = cls.define()
 
-      let name = def.areaname
+      let name = def.apiname ?? def.areaname
       name = name.replace(/[\- \t]/g, '_')
 
       this._namemap[name] = k

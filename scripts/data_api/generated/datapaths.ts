@@ -36,32 +36,31 @@ export type GeneratedDataPath =
   | "graph"
   | "graph.nodes"
   | "imageEditor"
+  | "imageEditor.imageUser"
+  | "imageEditor.imageUser.image"
+  | "imageEditor.imageUser.image.flag"
+  | "imageEditor.imageUser.image.genColor"
+  | "imageEditor.imageUser.image.genType"
+  | "imageEditor.imageUser.image.graph_flag"
+  | "imageEditor.imageUser.image.graph_id"
+  | "imageEditor.imageUser.image.height"
+  | "imageEditor.imageUser.image.inputs"
+  | "imageEditor.imageUser.image.lib_flag"
+  | "imageEditor.imageUser.image.lib_id"
+  | "imageEditor.imageUser.image.name"
+  | "imageEditor.imageUser.image.outputs"
+  | "imageEditor.imageUser.image.ready"
+  | "imageEditor.imageUser.image.type"
+  | "imageEditor.imageUser.image.url"
+  | "imageEditor.imageUser.image.width"
   | "imageEditor.pos"
   | "imageEditor.size"
   | "imageEditor.type"
-  | "imageEditor.uvEditor"
-  | "imageEditor.uvEditor.imageUser"
-  | "imageEditor.uvEditor.imageUser.image"
-  | "imageEditor.uvEditor.imageUser.image.flag"
-  | "imageEditor.uvEditor.imageUser.image.genColor"
-  | "imageEditor.uvEditor.imageUser.image.genType"
-  | "imageEditor.uvEditor.imageUser.image.graph_flag"
-  | "imageEditor.uvEditor.imageUser.image.graph_id"
-  | "imageEditor.uvEditor.imageUser.image.height"
-  | "imageEditor.uvEditor.imageUser.image.inputs"
-  | "imageEditor.uvEditor.imageUser.image.lib_flag"
-  | "imageEditor.uvEditor.imageUser.image.lib_id"
-  | "imageEditor.uvEditor.imageUser.image.name"
-  | "imageEditor.uvEditor.imageUser.image.outputs"
-  | "imageEditor.uvEditor.imageUser.image.ready"
-  | "imageEditor.uvEditor.imageUser.image.type"
-  | "imageEditor.uvEditor.imageUser.image.url"
-  | "imageEditor.uvEditor.imageUser.image.width"
-  | "imageEditor.uvEditor.velpan"
-  | "imageEditor.uvEditor.velpan.max"
-  | "imageEditor.uvEditor.velpan.min"
-  | "imageEditor.uvEditor.velpan.pos"
-  | "imageEditor.uvEditor.velpan.scale"
+  | "imageEditor.velpan"
+  | "imageEditor.velpan.max"
+  | "imageEditor.velpan.min"
+  | "imageEditor.velpan.pos"
+  | "imageEditor.velpan.scale"
   | "last_tool"
   | "library"
   | "library.MissingDataBlock"
@@ -599,9 +598,6 @@ export type GeneratedDataPath =
   | "toolDefaults.image.open.dataPath"
   | "toolDefaults.image.open.dataURL"
   | "toolDefaults.image.open.fileName"
-  | "toolDefaults.image.set_type"
-  | "toolDefaults.image.set_type.image"
-  | "toolDefaults.image.set_type.type"
   | "toolDefaults.light"
   | "toolDefaults.light.new"
   | "toolDefaults.light.new.position"
@@ -699,66 +695,6 @@ export type GeneratedDataPath =
   | "toolDefaults.tet.solidify_wireframe.minDepth"
   | "toolDefaults.tet.solidify_wireframe.project"
   | "toolDefaults.tet.solidify_wireframe.size"
-  | "toolDefaults.uveditor"
-  | "toolDefaults.uveditor.clear_flag"
-  | "toolDefaults.uveditor.clear_flag.flag"
-  | "toolDefaults.uveditor.clear_flag.mode"
-  | "toolDefaults.uveditor.clear_flag.selectMask"
-  | "toolDefaults.uveditor.clear_flag.selectedFacesOnly"
-  | "toolDefaults.uveditor.pick_select_linked"
-  | "toolDefaults.uveditor.pick_select_linked.cdUV"
-  | "toolDefaults.uveditor.pick_select_linked.immediateMode"
-  | "toolDefaults.uveditor.pick_select_linked.loopEid"
-  | "toolDefaults.uveditor.pick_select_linked.mode"
-  | "toolDefaults.uveditor.pick_select_linked.selectMask"
-  | "toolDefaults.uveditor.pick_select_linked.selectedFacesOnly"
-  | "toolDefaults.uveditor.project_uvs"
-  | "toolDefaults.uveditor.project_uvs.matrix"
-  | "toolDefaults.uveditor.project_uvs.selectedFacesOnly"
-  | "toolDefaults.uveditor.project_uvs.selectedOnly"
-  | "toolDefaults.uveditor.rotate"
-  | "toolDefaults.uveditor.rotate.meshPath"
-  | "toolDefaults.uveditor.rotate.propEnabled"
-  | "toolDefaults.uveditor.rotate.propIslandOnly"
-  | "toolDefaults.uveditor.rotate.propMode"
-  | "toolDefaults.uveditor.rotate.propRadius"
-  | "toolDefaults.uveditor.rotate.rotation"
-  | "toolDefaults.uveditor.rotate.selectedFacesOnly"
-  | "toolDefaults.uveditor.scale"
-  | "toolDefaults.uveditor.scale.meshPath"
-  | "toolDefaults.uveditor.scale.propEnabled"
-  | "toolDefaults.uveditor.scale.propIslandOnly"
-  | "toolDefaults.uveditor.scale.propMode"
-  | "toolDefaults.uveditor.scale.propRadius"
-  | "toolDefaults.uveditor.scale.scale"
-  | "toolDefaults.uveditor.scale.selectedFacesOnly"
-  | "toolDefaults.uveditor.select_one"
-  | "toolDefaults.uveditor.select_one.loopEids"
-  | "toolDefaults.uveditor.select_one.mode"
-  | "toolDefaults.uveditor.select_one.selectMask"
-  | "toolDefaults.uveditor.select_one.selectedFacesOnly"
-  | "toolDefaults.uveditor.set_flag"
-  | "toolDefaults.uveditor.set_flag.flag"
-  | "toolDefaults.uveditor.set_flag.mode"
-  | "toolDefaults.uveditor.set_flag.selectMask"
-  | "toolDefaults.uveditor.set_flag.selectedFacesOnly"
-  | "toolDefaults.uveditor.toggle_flag"
-  | "toolDefaults.uveditor.toggle_flag.flag"
-  | "toolDefaults.uveditor.toggle_flag.mode"
-  | "toolDefaults.uveditor.toggle_flag.selectMask"
-  | "toolDefaults.uveditor.toggle_flag.selectedFacesOnly"
-  | "toolDefaults.uveditor.toggle_select_all"
-  | "toolDefaults.uveditor.toggle_select_all.mode"
-  | "toolDefaults.uveditor.toggle_select_all.selectMask"
-  | "toolDefaults.uveditor.toggle_select_all.selectedFacesOnly"
-  | "toolDefaults.uveditor.translate"
-  | "toolDefaults.uveditor.translate.meshPath"
-  | "toolDefaults.uveditor.translate.offset"
-  | "toolDefaults.uveditor.translate.propEnabled"
-  | "toolDefaults.uveditor.translate.propIslandOnly"
-  | "toolDefaults.uveditor.translate.propMode"
-  | "toolDefaults.uveditor.translate.propRadius"
-  | "toolDefaults.uveditor.translate.selectedFacesOnly"
   | "toolDefaults.velpan"
   | "toolDefaults.velpan.pan"
   | "toolDefaults.velpan.pan.velpanPath"
@@ -851,32 +787,31 @@ declare module "@framework/pathux" {
     "graph": true;
     "graph.nodes": true;
     "imageEditor": true;
+    "imageEditor.imageUser": true;
+    "imageEditor.imageUser.image": true;
+    "imageEditor.imageUser.image.flag": true;
+    "imageEditor.imageUser.image.genColor": true;
+    "imageEditor.imageUser.image.genType": true;
+    "imageEditor.imageUser.image.graph_flag": true;
+    "imageEditor.imageUser.image.graph_id": true;
+    "imageEditor.imageUser.image.height": true;
+    "imageEditor.imageUser.image.inputs": true;
+    "imageEditor.imageUser.image.lib_flag": true;
+    "imageEditor.imageUser.image.lib_id": true;
+    "imageEditor.imageUser.image.name": true;
+    "imageEditor.imageUser.image.outputs": true;
+    "imageEditor.imageUser.image.ready": true;
+    "imageEditor.imageUser.image.type": true;
+    "imageEditor.imageUser.image.url": true;
+    "imageEditor.imageUser.image.width": true;
     "imageEditor.pos": true;
     "imageEditor.size": true;
     "imageEditor.type": true;
-    "imageEditor.uvEditor": true;
-    "imageEditor.uvEditor.imageUser": true;
-    "imageEditor.uvEditor.imageUser.image": true;
-    "imageEditor.uvEditor.imageUser.image.flag": true;
-    "imageEditor.uvEditor.imageUser.image.genColor": true;
-    "imageEditor.uvEditor.imageUser.image.genType": true;
-    "imageEditor.uvEditor.imageUser.image.graph_flag": true;
-    "imageEditor.uvEditor.imageUser.image.graph_id": true;
-    "imageEditor.uvEditor.imageUser.image.height": true;
-    "imageEditor.uvEditor.imageUser.image.inputs": true;
-    "imageEditor.uvEditor.imageUser.image.lib_flag": true;
-    "imageEditor.uvEditor.imageUser.image.lib_id": true;
-    "imageEditor.uvEditor.imageUser.image.name": true;
-    "imageEditor.uvEditor.imageUser.image.outputs": true;
-    "imageEditor.uvEditor.imageUser.image.ready": true;
-    "imageEditor.uvEditor.imageUser.image.type": true;
-    "imageEditor.uvEditor.imageUser.image.url": true;
-    "imageEditor.uvEditor.imageUser.image.width": true;
-    "imageEditor.uvEditor.velpan": true;
-    "imageEditor.uvEditor.velpan.max": true;
-    "imageEditor.uvEditor.velpan.min": true;
-    "imageEditor.uvEditor.velpan.pos": true;
-    "imageEditor.uvEditor.velpan.scale": true;
+    "imageEditor.velpan": true;
+    "imageEditor.velpan.max": true;
+    "imageEditor.velpan.min": true;
+    "imageEditor.velpan.pos": true;
+    "imageEditor.velpan.scale": true;
     "last_tool": true;
     "library": true;
     "library.MissingDataBlock": true;
@@ -1414,9 +1349,6 @@ declare module "@framework/pathux" {
     "toolDefaults.image.open.dataPath": true;
     "toolDefaults.image.open.dataURL": true;
     "toolDefaults.image.open.fileName": true;
-    "toolDefaults.image.set_type": true;
-    "toolDefaults.image.set_type.image": true;
-    "toolDefaults.image.set_type.type": true;
     "toolDefaults.light": true;
     "toolDefaults.light.new": true;
     "toolDefaults.light.new.position": true;
@@ -1514,66 +1446,6 @@ declare module "@framework/pathux" {
     "toolDefaults.tet.solidify_wireframe.minDepth": true;
     "toolDefaults.tet.solidify_wireframe.project": true;
     "toolDefaults.tet.solidify_wireframe.size": true;
-    "toolDefaults.uveditor": true;
-    "toolDefaults.uveditor.clear_flag": true;
-    "toolDefaults.uveditor.clear_flag.flag": true;
-    "toolDefaults.uveditor.clear_flag.mode": true;
-    "toolDefaults.uveditor.clear_flag.selectMask": true;
-    "toolDefaults.uveditor.clear_flag.selectedFacesOnly": true;
-    "toolDefaults.uveditor.pick_select_linked": true;
-    "toolDefaults.uveditor.pick_select_linked.cdUV": true;
-    "toolDefaults.uveditor.pick_select_linked.immediateMode": true;
-    "toolDefaults.uveditor.pick_select_linked.loopEid": true;
-    "toolDefaults.uveditor.pick_select_linked.mode": true;
-    "toolDefaults.uveditor.pick_select_linked.selectMask": true;
-    "toolDefaults.uveditor.pick_select_linked.selectedFacesOnly": true;
-    "toolDefaults.uveditor.project_uvs": true;
-    "toolDefaults.uveditor.project_uvs.matrix": true;
-    "toolDefaults.uveditor.project_uvs.selectedFacesOnly": true;
-    "toolDefaults.uveditor.project_uvs.selectedOnly": true;
-    "toolDefaults.uveditor.rotate": true;
-    "toolDefaults.uveditor.rotate.meshPath": true;
-    "toolDefaults.uveditor.rotate.propEnabled": true;
-    "toolDefaults.uveditor.rotate.propIslandOnly": true;
-    "toolDefaults.uveditor.rotate.propMode": true;
-    "toolDefaults.uveditor.rotate.propRadius": true;
-    "toolDefaults.uveditor.rotate.rotation": true;
-    "toolDefaults.uveditor.rotate.selectedFacesOnly": true;
-    "toolDefaults.uveditor.scale": true;
-    "toolDefaults.uveditor.scale.meshPath": true;
-    "toolDefaults.uveditor.scale.propEnabled": true;
-    "toolDefaults.uveditor.scale.propIslandOnly": true;
-    "toolDefaults.uveditor.scale.propMode": true;
-    "toolDefaults.uveditor.scale.propRadius": true;
-    "toolDefaults.uveditor.scale.scale": true;
-    "toolDefaults.uveditor.scale.selectedFacesOnly": true;
-    "toolDefaults.uveditor.select_one": true;
-    "toolDefaults.uveditor.select_one.loopEids": true;
-    "toolDefaults.uveditor.select_one.mode": true;
-    "toolDefaults.uveditor.select_one.selectMask": true;
-    "toolDefaults.uveditor.select_one.selectedFacesOnly": true;
-    "toolDefaults.uveditor.set_flag": true;
-    "toolDefaults.uveditor.set_flag.flag": true;
-    "toolDefaults.uveditor.set_flag.mode": true;
-    "toolDefaults.uveditor.set_flag.selectMask": true;
-    "toolDefaults.uveditor.set_flag.selectedFacesOnly": true;
-    "toolDefaults.uveditor.toggle_flag": true;
-    "toolDefaults.uveditor.toggle_flag.flag": true;
-    "toolDefaults.uveditor.toggle_flag.mode": true;
-    "toolDefaults.uveditor.toggle_flag.selectMask": true;
-    "toolDefaults.uveditor.toggle_flag.selectedFacesOnly": true;
-    "toolDefaults.uveditor.toggle_select_all": true;
-    "toolDefaults.uveditor.toggle_select_all.mode": true;
-    "toolDefaults.uveditor.toggle_select_all.selectMask": true;
-    "toolDefaults.uveditor.toggle_select_all.selectedFacesOnly": true;
-    "toolDefaults.uveditor.translate": true;
-    "toolDefaults.uveditor.translate.meshPath": true;
-    "toolDefaults.uveditor.translate.offset": true;
-    "toolDefaults.uveditor.translate.propEnabled": true;
-    "toolDefaults.uveditor.translate.propIslandOnly": true;
-    "toolDefaults.uveditor.translate.propMode": true;
-    "toolDefaults.uveditor.translate.propRadius": true;
-    "toolDefaults.uveditor.translate.selectedFacesOnly": true;
     "toolDefaults.velpan": true;
     "toolDefaults.velpan.pan": true;
     "toolDefaults.velpan.pan.velpanPath": true;
