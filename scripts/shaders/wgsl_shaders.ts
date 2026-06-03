@@ -670,6 +670,53 @@ export const LIT_MESH_VERTEX_LAYOUT: Array<GPUVertexBufferLayout | null> = [
 ]
 
 /**
+ * FlatMeshTexture — port of `FlatMeshTexture` (shaders.ts:453-497). Flat
+ * textured quad: samples a single `texture_2d<f32>` and multiplies by the
+ * interpolated vertex color, no lighting. Used by the image editor to draw
+ * an `ImageBlock`'s texture. The GLSL version applies only
+ * `projectionMatrix` (no `objectMatrix`) and does not fold `alpha` into the
+ * result, so the WGSL port matches.
+ *
+ * Vertex attributes: position (vec3), uv (vec2), color (vec4) —
+ * `NO_ID_VERTEX_LAYOUT` (slots LOC/UV/COLOR at WGSL @location 0/1/2). The
+ * texture + sampler live at the per-material group; the caller seeds them
+ * into the `uniforms` map under `imageTex` / `imageSmp` (see
+ * `UniformBindings` resource reflection).
+ */
+export const FLAT_MESH_TEXTURE_WGSL = `
+${FRAME_UNIFORMS_WGSL}
+
+@group(1) @binding(0) var imageTex : texture_2d<f32>;
+@group(1) @binding(1) var imageSmp : sampler;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) uv       : vec2f,
+  @location(2) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vUv    : vec2f,
+  @location(1) vColor : vec4f,
+};
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  out.clipPos = frame.projectionMatrix * vec4f(in.position, 1.0);
+  out.vUv = in.uv;
+  out.vColor = in.color;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  return textureSample(imageTex, imageSmp, in.vUv) * in.vColor;
+}
+`
+
+/**
  * Strip-line layout for `LineTriStripShader`. Position + _strip_dir +
  * _strip_uv (normal/uv/color/id from the source `attributes` list are
  * declared on the GLSL side but not read by the vertex stage — they're
@@ -1391,6 +1438,14 @@ registerWgslShader({
   key          : 'MeshEditPointShader',
   source       : MESH_EDIT_POINT_WGSL,
   vertexBuffers: POS_COLOR_ID_INSTANCE_LAYOUT,
+  colorTargets : [DEFAULT_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+})
+
+registerWgslShader({
+  key          : 'FlatMeshTexture',
+  source       : FLAT_MESH_TEXTURE_WGSL,
+  vertexBuffers: NO_ID_VERTEX_LAYOUT,
   colorTargets : [DEFAULT_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},
 })

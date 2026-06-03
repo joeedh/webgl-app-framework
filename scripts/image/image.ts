@@ -5,6 +5,7 @@ import {DependSocket} from '../core/graphsockets.js'
 import {NodeFlags} from '../core/graph.js'
 import {Texture} from '../webgl/webgl.js'
 import {FBO} from '../webgl/fbo'
+import {GpuTexture} from '../webgpu/texture.js'
 import type {OptionalIf} from '../util/optionalIf.js'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
@@ -61,6 +62,8 @@ ImageBlock {
   gl: OptionalIf<WebGL2RenderingContext, OPT['dead']> = undefined as unknown as WebGL2RenderingContext
   glType: number
   glTex?: Texture
+  gpuTex?: GpuTexture
+  _gpuKey: string = ''
   glRegen: boolean
   _drawFBO: FBO | undefined
   _tex2: any
@@ -401,10 +404,13 @@ ImageBlock {
       this._drawFBO.destroy()
     }
 
+    this.gpuTex?.destroy()
+
     const deadThis = this as ImageBlock<OPT & {dead: true}>
 
     deadThis._drawFBO = undefined
     deadThis.glTex = undefined
+    deadThis.gpuTex = undefined
     deadThis.gl = undefined
   }
 
@@ -443,6 +449,47 @@ ImageBlock {
     //console.warn("Uploading image to gpu...", img instanceof Float32Array ? img : "(img tag)");
 
     return (this.glTex = Texture.load(gl, this.width, this.height, img))
+  }
+
+  /**
+   * WebGPU sibling of `getGlTex`. Lazily uploads the decoded RGBA8 pixels
+   * (`this._image.image`, set by `_regen`) into a `GpuTexture` and returns
+   * it, recreating only when the image content changes. Unlike `getGlTex`
+   * there is no float-buffer path — the editor display sampler reads
+   * `rgba8unorm`. Returns `undefined` until the image is ready.
+   */
+  getGpuTex(device: GPUDevice): GpuTexture | undefined {
+    if (!this._image?.image || !this.ready) {
+      return undefined
+    }
+
+    const data = this._image.image
+    const key = `${this.width}x${this.height}:${this.updateGen}`
+
+    if (this.gpuTex && this._gpuKey === key) {
+      return this.gpuTex
+    }
+
+    this.gpuTex?.destroy()
+
+    const tex = new GpuTexture(device, {
+      label : `image.${this.lib_id}`,
+      width : this.width,
+      height: this.height,
+      format: 'rgba8unorm',
+    })
+
+    device.queue.writeTexture(
+      {texture: tex.handle},
+      data.data,
+      {bytesPerRow: this.width * 4, rowsPerImage: this.height},
+      {width: this.width, height: this.height}
+    )
+
+    this.gpuTex = tex
+    this._gpuKey = key
+
+    return tex
   }
 
   calcUpdateKey(digest = new util.HashDigest()): void {

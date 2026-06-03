@@ -20,8 +20,16 @@ import {ImageBlock, ImageUser} from '../../image/image.js'
 import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../webgl/simplemesh'
 import {Shaders} from '../../shaders/shaders.js'
 import {type BlockLoader, BlockLoaderAddUser, DataBlock} from '../../core/lib_api'
-import type {Texture} from '../../webgl/webgl'
+import type {IUniformsBlock} from '../../webgl/webgl'
 import {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import {isWebGPU} from '../../core/renderer_flag.js'
+import {getWebGL} from '../view3d/view3d.js'
+import {getActiveWebGpuViewport, primeWebGpuViewport, ensureCanvasDepth} from '../view3d/view3d_draw_webgpu.js'
+import {createSampler} from '../../webgpu/texture.js'
+
+function clampInt(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v
+}
 
 export class ImageEditor extends Editor {
   imageUser: ImageUser
@@ -35,8 +43,17 @@ export class ImageEditor extends Editor {
   glPos: Vector2
   glSize: Vector2
 
-  smesh: SimpleMesh | undefined
-  _redraw_req?: number
+  // Background fill (WebGPU letterbox), checker grid, and the textured
+  // image quad each carry their own program so the WebGPU queue adapter
+  // can resolve a distinct pipeline per mesh (SimpleMesh.draw submits one
+  // program for the whole mesh). The geometry is static — only the
+  // projection matrix (a uniform) changes with pan/zoom.
+  bgMesh: SimpleMesh | undefined
+  checkerMesh: SimpleMesh | undefined
+  imageMesh: SimpleMesh | undefined
+  identity: Matrix4
+  _gpuSampler: GPUSampler | undefined
+  _gpuSamplerDevice: GPUDevice | undefined
   _last_image_key: string
 
   constructor() {
@@ -44,12 +61,16 @@ export class ImageEditor extends Editor {
 
     this.matrix = new Matrix4()
     this.imatrix = new Matrix4()
+    this.identity = new Matrix4()
 
     this.glPos = new Vector2()
     this.glSize = new Vector2([256, 256])
 
-    this.smesh = undefined
-    this._redraw_req = 1
+    this.bgMesh = undefined
+    this.checkerMesh = undefined
+    this.imageMesh = undefined
+    this._gpuSampler = undefined
+    this._gpuSamplerDevice = undefined
     this._last_image_key = ''
 
     this.imageUser = new ImageUser()
@@ -68,7 +89,6 @@ export class ImageEditor extends Editor {
 
   flagRedraw() {
     window.redraw_viewport(false)
-    this._redraw_req = 1
   }
 
   static define() {
@@ -197,26 +217,43 @@ export class ImageEditor extends Editor {
     this.imatrix.load(this.matrix).invert()
   }
 
-  genMeshes(gl: WebGL2RenderingContext) {
-    this._redraw_req = undefined
-
-    if (this.smesh) {
-      this.smesh.reset(gl)
-    } else {
-      this.smesh = new SimpleMesh(LayerTypes.UV | LayerTypes.COLOR | LayerTypes.ID | LayerTypes.LOC)
-      this.smesh.add_island()
-      this.smesh.add_island()
+  /**
+   * Build the three static display meshes. The geometry never changes —
+   * pan/zoom and image aspect are folded into the projection matrix, a
+   * uniform — so this runs once (lazily) rather than per frame.
+   *
+   * Each mesh carries its own `program` so the WebGPU queue adapter
+   * resolves a distinct pipeline per mesh: `SimpleMesh.draw` submits a
+   * single program for the whole mesh, so a checker (vertex-colored) and
+   * the image quad (textured) cannot share one mesh on WebGPU.
+   */
+  genMeshes() {
+    // Background letterbox fill. Drawn with an identity projection so the
+    // full-NDC quad covers the editor region — on WebGPU the pass uses
+    // `loadOp: 'load'` (to preserve other editors on the shared canvas),
+    // so the gray fill replaces the scissored clear the WebGL path gets.
+    const bgMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.ID)
+    bgMesh.program = Shaders.MeshEditShader
+    bgMesh.island.primflag = PrimitiveTypes.TRIS
+    {
+      const c = new Vector4([0.3, 0.3, 0.3, 1.0])
+      const quad = bgMesh.island.quad(
+        new Vector3([-1, -1, 0]),
+        new Vector3([-1, 1, 0]),
+        new Vector3([1, 1, 0]),
+        new Vector3([1, -1, 0])
+      )
+      quad.colors(c, c, c, c)
+      quad.ids(1, 1, 1, 1)
     }
+    this.bgMesh = bgMesh
 
-    const checker = this.smesh.islands[0]
-    const quadIsland = this.smesh.islands[1]
+    // Checker backdrop behind (semi-transparent) images, in the unit square.
+    const checkerMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.ID)
+    checkerMesh.program = Shaders.MeshEditShader
+    checkerMesh.island.primflag = PrimitiveTypes.TRIS
 
-    checker.primflag = PrimitiveTypes.TRIS
-    quadIsland.primflag = PrimitiveTypes.TRIS
-
-    checker.program = Shaders.MeshEditShader
-    quadIsland.program = Shaders.FlatMeshTexture
-
+    const checker = checkerMesh.island
     const bg = new Vector4([0.7, 0.7, 0.7, 1.0])
     const bg2 = new Vector4([0.8, 0.8, 0.8, 1.0])
 
@@ -240,18 +277,24 @@ export class ImageEditor extends Editor {
       quad.colors(c, c, c, c)
       quad.ids(1, 1, 1, 1)
     }
+    this.checkerMesh = checkerMesh
+
+    // Textured unit quad for the active image.
+    const imageMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR)
+    imageMesh.program = Shaders.FlatMeshTexture
+    imageMesh.island.primflag = PrimitiveTypes.TRIS
 
     const white = new Vector4([1, 1, 1, 1])
-    const quad = quadIsland.quad(
+    const quad = imageMesh.island.quad(
       new Vector3([0, 0, 0]),
       new Vector3([0, 1, 0]),
       new Vector3([1, 1, 0]),
       new Vector3([1, 0, 0])
     )
 
-    quad.ids(1, 1, 1, 1)
     quad.uvs(new Vector2([0, 0]), new Vector2([0, 1]), new Vector2([1, 1]), new Vector2([1, 0]))
     quad.colors(white, white, white, white)
+    this.imageMesh = imageMesh
   }
 
   update() {
@@ -278,6 +321,34 @@ export class ImageEditor extends Editor {
     this.push_ctx_active(false)
   }
 
+  /**
+   * Per-draw uniforms shared by both backends. The `*_id` slots are all
+   * `-1` and the mesh vertex ids are `1`, so `MeshEditShader` never tints
+   * the checker/background with an active/highlight/last color. Extra keys
+   * not present in a given WGSL struct (`texture`, `imageTex`, …) are
+   * ignored by `UniformBindings`, so one shape feeds every pipeline.
+   */
+  buildUniforms(projectionMatrix: Matrix4, extra?: Record<string, unknown>): IUniformsBlock {
+    const dpi = UIBase.getDPI()
+
+    return {
+      size            : this.glSize,
+      aspect          : this.glSize[0] / this.glSize[1],
+      near            : 0.0001,
+      far             : 1.0,
+      polygonOffset   : 0.0,
+      projectionMatrix,
+      objectMatrix    : this.identity,
+      pointSize       : 5 * dpi,
+      active_id       : -1,
+      highlight_id    : -1,
+      last_id         : -1,
+      opacity         : 1.0,
+      alpha           : 1.0,
+      ...extra,
+    } as unknown as IUniformsBlock
+  }
+
   viewportDraw(gl: WebGL2RenderingContext) {
     if (!gl || !this.ctx?.screen) {
       return
@@ -291,43 +362,31 @@ export class ImageEditor extends Editor {
 
     this.glSize.load(this.size!).mulScalar(dpi).ceil()
 
-    gl.enable(gl.SCISSOR_TEST)
-    gl.scissor(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
-    gl.viewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
-
     this.style['backgroundColor'] = 'rgba(0,0,0,0)'
     this.container.style['backgroundColor'] = 'rgba(0,0,0,0)'
 
     this.updateMatrix()
 
-    if (this._redraw_req || !this.smesh) {
-      this.genMeshes(gl)
+    if (!this.checkerMesh) {
+      this.genMeshes()
     }
 
     const image = this.imageUser.image
-    let gltex: Texture | undefined
-
-    if (image?.ready) {
-      gltex = image.getGlTex(gl)
-    } else if (image) {
+    if (image && !image.ready) {
       image.update()
     }
 
-    const uniforms = {
-      size            : this.glSize,
-      aspect          : this.glSize[0] / this.glSize[1],
-      near            : 0.0001,
-      far             : 1.0,
-      polygonOffset   : 0.0,
-      projectionMatrix: this.matrix,
-      objectMatrix    : new Matrix4(),
-      pointSize       : 5 * dpi,
-      active_id       : -1,
-      highlight_id    : -1,
-      texture         : gltex,
-      opacity         : 1.0,
-      alpha           : 1.0,
+    if (isWebGPU()) {
+      this.drawWebGpu(gl)
+    } else {
+      this.drawWebGl(gl)
     }
+  }
+
+  drawWebGl(gl: WebGL2RenderingContext) {
+    gl.enable(gl.SCISSOR_TEST)
+    gl.scissor(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
+    gl.viewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
 
     gl.clearColor(0.3, 0.3, 0.3, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
@@ -339,10 +398,99 @@ export class ImageEditor extends Editor {
     gl.enable(gl.BLEND)
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-    this.smesh!.islands[0].draw(gl, uniforms)
+    // The scissored clear already paints the gray backdrop; the WebGPU
+    // path draws bgMesh instead because its pass uses `loadOp: 'load'`.
+    this.checkerMesh!.draw(gl, this.buildUniforms(this.matrix))
 
-    if (gltex) {
-      this.smesh!.islands[1].draw(gl, uniforms)
+    const image = this.imageUser.image
+    if (image?.ready) {
+      const gltex = image.getGlTex(gl)
+      if (gltex) {
+        this.imageMesh!.draw(gl, this.buildUniforms(this.matrix, {texture: gltex}))
+      }
+    }
+  }
+
+  getGpuSampler(device: GPUDevice): GPUSampler {
+    if (!this._gpuSampler || this._gpuSamplerDevice !== device) {
+      this._gpuSampler = createSampler(device, {magFilter: 'linear', minFilter: 'linear', mipmapFilter: 'linear'})
+      this._gpuSamplerDevice = device
+    }
+
+    return this._gpuSampler
+  }
+
+  drawWebGpu(gl: WebGL2RenderingContext) {
+    const canvas = getWebGL()?.canvas
+    if (!canvas) {
+      return
+    }
+
+    const viewport = getActiveWebGpuViewport(canvas)
+    if (!viewport) {
+      // Device is still initializing — kick it; the next redraw draws.
+      primeWebGpuViewport(canvas)
+      return
+    }
+
+    const ctx = viewport.ctx
+    const device = viewport.gpu.device
+    const canvasTex = viewport.gpu.canvasContext.getCurrentTexture()
+    const sw = canvasTex.width
+    const sh = canvasTex.height
+
+    ctx.size = [sw, sh]
+    const depth = ensureCanvasDepth(viewport, sw, sh)
+
+    // Editor region in WebGPU's origin-top-left device pixels. `this.pos` /
+    // `this.size` are DOM (top-left) CSS pixels, so no Y-flip is needed —
+    // just scale by DPI and clamp into the full-canvas attachment.
+    const dpi = UIBase.getDPI()
+    const rx = clampInt(Math.floor(this.pos![0] * dpi), 0, sw)
+    const ry = clampInt(Math.floor(this.pos![1] * dpi), 0, sh)
+    const rw = clampInt(Math.ceil(this.size![0] * dpi), 0, sw - rx)
+    const rh = clampInt(Math.ceil(this.size![1] * dpi), 0, sh - ry)
+    if (rw <= 0 || rh <= 0) {
+      return
+    }
+
+    // `loadOp: 'load'` preserves whatever other editors drew into the
+    // shared canvas; bgMesh paints this editor's region (the WebGPU
+    // equivalent of the WebGL scissored clear).
+    const desc: GPURenderPassDescriptor = {
+      label           : 'imageEditor.pass',
+      colorAttachments: [{
+        view   : canvasTex.createView(),
+        loadOp : 'load',
+        storeOp: 'store',
+      }],
+      depthStencilAttachment: {
+        view           : depth.view,
+        depthClearValue: 1.0,
+        depthLoadOp    : 'clear',
+        depthStoreOp   : 'store',
+      },
+    }
+
+    const image = this.imageUser.image
+    const gpuTex = image?.ready ? image.getGpuTex(device) : undefined
+    const sampler = this.getGpuSampler(device)
+
+    ctx.beginFrame()
+    try {
+      ctx.renderStageDesc(desc, (pass) => {
+        pass.setViewport(rx, ry, rw, rh, 0, 1)
+        pass.setScissorRect(rx, ry, rw, rh)
+
+        this.bgMesh!.draw(gl, this.buildUniforms(this.identity))
+        this.checkerMesh!.draw(gl, this.buildUniforms(this.matrix))
+
+        if (gpuTex) {
+          this.imageMesh!.draw(gl, this.buildUniforms(this.matrix, {imageTex: gpuTex.view, imageSmp: sampler}))
+        }
+      })
+    } finally {
+      ctx.endFrame()
     }
   }
 
