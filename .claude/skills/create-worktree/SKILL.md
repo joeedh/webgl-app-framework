@@ -19,7 +19,7 @@ worktree (it's reserved for secondary agent work and is often in use).
 `tools/new-worktree.mjs` (zero-dep Node ESM), run from any worktree of this repo:
 
 ```sh
-node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>]
+node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsdk]
 ```
 
 - Creates the worktree at `<main-worktree>-<name>` (e.g.
@@ -33,6 +33,14 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>]
   export `SCCACHE_DIR` (shared cache at `%LOCALAPPDATA%\sccache`) and
   `SCCACHE_BASEDIRS` (this worktree's own root, forward slashes, no trailing
   slash — covers both the sources and the nested `sculptcore/build/native`).
+- Points WASM builds at the main worktree's emsdk via `SCULPTCORE_EMSDK_DIR`
+  (set in `worktree-env`, honored by `configureEnv.mjs`), so they reuse the
+  existing ~2.4 GB install instead of re-running `install-emsdk` (pass
+  `--no-emsdk` to skip; auto-skips if the main worktree has no install).
+  Nothing is placed inside the new worktree — no junction/symlink — so teardown
+  can never reach the shared install. (An earlier junction approach was dropped
+  precisely because `rm -rf` of a worktree would follow the junction and delete
+  the real emsdk.)
 - It does **not** build anything.
 
 ## Workflow
