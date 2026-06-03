@@ -1,8 +1,17 @@
 import {Node, NodeFlags} from '../../core/graph.js'
-import {IntProperty, EnumProperty, ToolOp, type ToolDef} from '../../path.ux/scripts/pathux.js'
+import {
+  IntProperty,
+  EnumProperty,
+  ToolOp,
+  type ToolDef,
+  PropertySlots,
+  StringProperty,
+} from '../../path.ux/scripts/pathux.js'
 import {NodeGraphOp} from './node_ops.js'
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
 import type {ToolContext, ViewContext} from '../../core/context'
+import {NodeEditor} from './NodeEditor.js'
+import {Editor} from '../editor_base.js'
 
 /**
  * Base for node selection ops. Its undo snapshots both the per-node selection
@@ -10,17 +19,14 @@ import type {ToolContext, ViewContext} from '../../core/context'
  * NodeSelectOneOp.pushToFront), restoring both on undo.
  */
 export class NodeSelectOpBase<
-  InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
-  OutputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},
-> extends NodeGraphOp<InputSet, OutputSet> {
+  InputSet extends PropertySlots = {},
+  OutputSet extends PropertySlots = {},
+  NODE_EDITOR extends NodeEditor = NodeEditor,
+> extends NodeGraphOp<InputSet & {nodeEditorPath: StringProperty}, OutputSet, NODE_EDITOR> {
   static tooldef(): ToolDef {
     return {
-      inputs: ToolOp.inherit({}),
+      inputs: {},
     }
-  }
-
-  static canRun(ctx: ViewContext): boolean {
-    return ctx.nodeEditor !== undefined
   }
 
   undoPre(ctx: ToolContext): void {
@@ -112,10 +118,10 @@ export class NodeSelectOneOp extends NodeSelectOpBase<{nodeId: IntProperty; mode
   static tooldef(): ToolDef {
     return {
       toolpath: 'node.selectone',
-      inputs: ToolOp.inherit({
+      inputs: {
         nodeId: new IntProperty(),
         mode  : new EnumProperty('UNIQUE', SelOneToolModes),
-      }),
+      },
     }
   }
 
@@ -175,9 +181,9 @@ export class NodeToggleSelectAll extends NodeSelectOpBase<{mode: EnumProperty}> 
   static tooldef(): ToolDef {
     return {
       toolpath: 'node.toggle_select_all',
-      inputs: ToolOp.inherit({
+      inputs: {
         mode: new EnumProperty('AUTO', SelToolModes),
-      }),
+      },
     }
   }
 

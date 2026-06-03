@@ -1,5 +1,10 @@
 Read the contents of AGENTS.md.
 
+## Do not do dynamic imports
+
+- Do not do e.g. `InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},`
+  add a proper type import
+
 ## Addons
 
 The builtin editing features (mesh, mesh_edit, curve, subsurf, tetmesh,

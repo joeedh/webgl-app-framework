@@ -800,11 +800,11 @@ NodeEditor {
   // (not this.constructor), so MaterialEditor and the base node editor share one
   // bin and the context system treats them as the same active-editor slot.
   push_ctx_active(dontSetLastRef = false): void {
-    contextWrangler.push(NodeEditor, this as unknown as Area, !dontSetLastRef)
+    contextWrangler.push(this.constructor, this as unknown as Area, !dontSetLastRef)
   }
 
   pop_ctx_active(_dontSetLastRef = false): void {
-    contextWrangler.pop(NodeEditor, this as unknown as Area)
+    contextWrangler.pop(this.constructor, this as unknown as Area)
   }
 
   _on_velpan_change(): void {

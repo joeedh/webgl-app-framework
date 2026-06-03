@@ -683,7 +683,7 @@ export class EditorSideBar extends Container<ViewContext> {
     this.updateIcon()
 
     this.tabpanel = this.tabs('left')
-    this.tabpanel.addEventListener('tabclick', e => {
+    this.tabpanel.addEventListener('tabclick', (e) => {
       if (this._closed) {
         e.preventDefault()
         this.expand()
@@ -801,6 +801,8 @@ export interface IEditorConstructor<T extends Editor = Editor> extends IAreaCons
   defineAPI(api: DataAPI): DataStruct
 }
 
+const dataPathCache = new Map<IEditorConstructor, string>()
+
 export abstract class Editor extends Area<ViewContext> {
   // we can't pass ViewContext to Area above since TS complains
   //about circular type references.  Instead we do this hack to try and forcibly
@@ -813,6 +815,16 @@ export abstract class Editor extends Area<ViewContext> {
 
   //@ts-ignore
   ['constructor']: IEditorConstructor<this> = this['constructor']
+
+  static getDataPath(areaClass: IEditorConstructor) {
+    let path = dataPathCache.get(areaClass)
+    if (path === undefined) {
+      const def = areaClass.define()
+      path = def.apiname ?? def.areaname
+      dataPathCache.set(areaClass, path)
+    }
+    return path
+  }
 
   static define() {
     // abstract static method

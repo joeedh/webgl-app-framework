@@ -14,9 +14,10 @@ import {
 } from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import {ModalFlags} from '../../core/modalflags.js'
-import {NodeEditor} from './NodeEditor.js'
+import {NodeEditor, NodeSocketElem} from './NodeEditor.js'
 import type {ToolContext, ViewContext} from '../../core/context'
 import type {BlockLoader, DataBlock, DataRef} from '../../core/lib_api'
+import {Editor} from '../editor_base.js'
 
 type AnyGraph = Graph<unknown>
 type AnyNode = Node
@@ -42,6 +43,7 @@ nstructjs.register(SavedGraph)
 interface NodeGraphInputs extends PropertySlots {
   graphPath: StringProperty
   graphClass: StringProperty
+  nodeEditorPath: StringProperty
 }
 
 export interface NodeGraphUndo {
@@ -60,8 +62,13 @@ export interface NodeGraphUndo {
 export class NodeGraphOp<
   InputSet extends PropertySlots = {},
   OutputSet extends PropertySlots = {},
+  NODE_EDITOR extends NodeEditor = NodeEditor,
 > extends ToolOp<InputSet & NodeGraphInputs, OutputSet, ToolContext, ViewContext> {
   _undo?: NodeGraphUndo
+
+  canRun(ctx: ViewContext): boolean {
+    return this.getNodeEditor(ctx, false) !== undefined
+  }
 
   static invoke(ctx: ViewContext, args: Record<string, unknown>): NodeGraphOp {
     // When `useNodeEditorGraph` is set, inherit graphPath/graphClass from the
@@ -71,9 +78,17 @@ export class NodeGraphOp<
 
     const tool = super.invoke(ctx, args) as NodeGraphOp
 
-    if (useNodeEditorGraph) {
-      tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath)
-      tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass)
+    if (!('nodeEditorPath' in args)) {
+      const area = ctx.editor
+      if (area instanceof NodeEditor) {
+        tool.inputs.nodeEditorPath.setValue(Editor.getDataPath(area.constructor))
+      }
+    }
+
+    if (useNodeEditorGraph && tool.getNodeEditor(ctx) !== undefined) {
+      const nodeEditor = tool.getNodeEditor(ctx)!
+      tool.inputs.graphPath.setValue(nodeEditor.graphPath)
+      tool.inputs.graphClass.setValue(nodeEditor.graphClass)
     }
 
     if ('graphPath' in args) {
@@ -86,11 +101,27 @@ export class NodeGraphOp<
     return tool
   }
 
+  getNodeEditor(ctx: ViewContext, report = true): NODE_EDITOR | undefined {
+    try {
+      return ctx.api.getValue<NODE_EDITOR>(ctx, this.inputs.nodeEditorPath.getValue())
+    } catch (error) {
+      if (error instanceof DataPathError) {
+        if (report) {
+          ctx.error('Unknown node editor path ' + this.inputs.nodeEditorPath.getValue())
+        }
+        return undefined
+      } else {
+        throw error
+      }
+    }
+  }
+
   static tooldef(): ToolDef {
     return {
       inputs: {
-        graphPath : new StringProperty(),
-        graphClass: new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
+        graphPath     : new StringProperty(),
+        graphClass    : new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
+        nodeEditorPath: new StringProperty(),
       },
     }
   }
@@ -240,7 +271,10 @@ export class NodeTranslateOp extends NodeGraphOp<{offset: Vec2Property}> {
     const ctx = this.modal_ctx!
 
     const mpos = this.mpos
-    const ned = ctx.nodeEditor
+    const ned = this.getNodeEditor(ctx)
+    if (ned === undefined) {
+      return
+    }
     const scale = ned.velpan.scale
 
     mpos[0] = e.pageX / scale[0]
@@ -300,10 +334,7 @@ export class NodeTranslateOp extends NodeGraphOp<{offset: Vec2Property}> {
 ToolOp.register(NodeTranslateOp)
 
 /** Create a node of type `nodeClass` at `pos` and add it to the graph. */
-export class AddNodeOp extends NodeGraphOp<
-  {nodeClass: StringProperty; pos: Vec2Property},
-  {graph_id: IntProperty}
-> {
+export class AddNodeOp extends NodeGraphOp<{nodeClass: StringProperty; pos: Vec2Property}, {graph_id: IntProperty}> {
   static invoke(ctx: ViewContext, args: Record<string, unknown>): AddNodeOp {
     const tool = super.invoke(ctx, args) as AddNodeOp
 
@@ -381,7 +412,7 @@ export class ConnectNodeOp extends NodeGraphOp<{
   first = true
   start_mpos = new Vector2()
   mpos = new Vector2()
-  last_sock2?: import('./NodeEditor.js').NodeSocketElem
+  last_sock2?: NodeSocketElem
 
   static invoke(ctx: ViewContext, args: Record<string, unknown>): ConnectNodeOp {
     const tool = super.invoke(ctx, args) as ConnectNodeOp
@@ -436,7 +467,12 @@ export class ConnectNodeOp extends NodeGraphOp<{
     if (!graph) {
       return
     }
-    const ned = ctx.nodeEditor
+
+    // note: reports an error notification to the user on failure
+    const ned = this.getNodeEditor(ctx)
+    if (ned === undefined) {
+      return
+    }
 
     const mpos = this.mpos
     mpos[0] = e.x
@@ -502,7 +538,7 @@ export class ConnectNodeOp extends NodeGraphOp<{
 
     if (!cancelled) {
       this.exec(ctx)
-      ctx.nodeEditor.rebuildAll()
+      this.getNodeEditor(ctx)?.rebuildAll()
       window.redraw_viewport()
     }
   }
