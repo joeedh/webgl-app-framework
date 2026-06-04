@@ -217,26 +217,34 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   isn't consumed until then; registering now would be dead state and the
   Phase-4 ordering pass is where it belongs).
 
-  **Remaining Phase 3 (the entangled tier — do with the Phase 4 driver):**
-  - *Datablock/node/sceneobject-data helper-dependent* — bodies built via the
-    `api_define_datablock` / `api_define_node` / `api_define_sceneobject_data`
-    free helpers: `image`, `cameradata`, `litemesh`, `mesh`, `brush`. Moving
-    these onto their classes first needs the base helpers re-expressed as
-    `DataBlock.defineAPI` / `Node.defineAPI` / `SceneObjectData.defineAPI` that
-    subclasses chain via `super.defineAPI(api, struct)` (note `CameraData`
-    extends `SceneObjectData`, not `DataBlock`, so the helper layering ≠ the JS
-    inheritance — resolve this when designing the base-class chain).
-  - *Parent-struct assembling* — bodies that take a `parent`/`pstruct` and attach
-    a child under it (`shadernetwork`, `sceneobject`, `library`, `screen`,
-    `light`, `scene`). These mix "define my struct" with getDataAPI's tree
-    assembly; the attach-under-parent half stays in the driver, only the
-    self-struct half moves onto the class.
-  - *Order-sensitive inherits* — `api_define_meshelem` (`Element`) then
-    `api_define_meshvertex` (`api.inheritStruct(Vertex, Element)`, needs
-    `Element` populated first — the one true ordering constraint per §2).
+  **Progress — entangled tier done.** All the remaining bodies are migrated;
+  every `api_define_<x>` listed below is now a one-line shim delegating to a
+  static `X.defineAPI(api, struct?)` on its class. Each was gated identically
+  (gen:paths 818 paths, 0 value diffs vs a freshly regenerated HEAD-source
+  baseline, tsgo clean):
+  - *Datablock/node/sceneobject-data helper-dependent* — `image`, `cameradata`,
+    `litemesh`, `mesh`, `brush`. The base helpers are re-expressed as
+    `DataBlock.defineAPI` / `Node.defineAPI` / `SceneObjectData.defineAPI`, which
+    subclasses chain via the base `super.defineAPI(api, struct)`. `Light` layers
+    its API at the `DataBlock` level (its `defineAPI` chains `DataBlock.defineAPI`,
+    not `SceneObjectData`'s) to preserve the original `api_define_light` shape.
+  - *Parent-struct assembling* — `shadernetwork`, `sceneobject`, `library`,
+    `screen`, `light`, `scene`. The self-struct half moved onto the class; the
+    attach-under-parent half (`parent.struct(...)`/`parent.list(...)`) stays in
+    the driver shim. For `library`, the shared `api_define_libraryset` helper
+    moved into `lib_api.ts` as the exported `defineLibrarySet` (used by both
+    `Library.defineAPI` and the late-registration `onBlockRegister` hook, which
+    stays in the driver with the `libraryStruct` module var).
+  - *Order-sensitive inherits* — `api_define_meshelem` → `ElementBase.defineAPI`,
+    `api_define_meshvertex` → `Vertex.defineAPI` (the `inheritStruct(Vertex,
+    Element)` still runs after `Element.defineAPI` populates the Element struct;
+    the `api_define_mesh` driver enforces that ordering).
   - *Skipped (pathux submodule classes)* — `api_define_velpan` (`VelPan`),
     `api_define_matrix4` (`Matrix4`) stay as free functions; we don't add
     statics to the path.ux submodule in this refactor.
+
+  `registerDataAPI` wiring stays deferred to Phase 4 (the registry isn't
+  consumed until the driver flips).
 
 - **Phase 4 — flip `getDataAPI()` to drive the registry.** Replace the explicit
   call list with iteration over `dataAPIRegistry`, calling each `defineAPI`
