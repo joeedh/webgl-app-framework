@@ -177,9 +177,24 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   shape. Remove the `struct3 === undefined` throw. Pure refactor; catalog
   unchanged.
 
-- **Phase 2 — rename `apiDefine` → `defineAPI`.** Sockets, `GraphNode`,
-  `curve_knot`, and the two call sites. Settle the socket-instance method name.
-  Catalog unchanged.
+- **Phase 2 — rename `apiDefine` → `defineAPI`.** *(done, commits 2a/2b.)*
+  Two independent `apiDefine` families turned out to exist, not one:
+  - **2a — node sockets.** `NodeSocketType` base (`graph.ts:205`) + its socket
+    static overrides (`graphsockets.ts`) + the static dispatch
+    (`api_define.ts:612`). The `EnumSocket` per-instance hook
+    (`graphsockets.ts:677`, `SocketFlags.INSTANCE_API_DEFINE`) became
+    `defineInstanceAPI` (with its dispatch `api_define.ts:227`) — kept distinct
+    because per-instance structs don't fit the static convention.
+  - **2b — CustomDataElem.** A second, larger family the original plan missed:
+    `CustomDataElem` + `LayerSettingsBase` base statics, their constructor
+    interfaces (`ICustomDataElemConstructor`, `ILayerSettingsConstructor`,
+    `IGridConstructor`), ~12 subclass overrides/super-calls across the mesh addon
+    and `curve_knot`, and the three dispatch sites in `customdata.ts`. All
+    members here are static (interface sigs are constructor-side), so no
+    instance split was needed. `curve_knot` is a `CustomDataElem` subclass, so it
+    belongs to 2b, not the socket family.
+
+  Catalog unchanged in both (gen:paths 818 paths, 0 diffs; tsgo clean).
 
 - **Phase 3 — move free-function bodies onto classes.** One subsystem per PR,
   smallest first to derisk the ordering question:
