@@ -876,8 +876,8 @@ NodeEditor {
 
       if (!api.hasStruct(cls)) {
         console.warn('Auto-making data api for ' + cls.name)
-        // Chain Node.defineAPI onto the new node class's struct (re-declares
-        // Node's members rather than copying its struct).
+        // Chain Node.defineAPI onto the new node class's struct, declaring Node's
+        // members directly on it.
         Node.defineAPI(api, api.mapStruct(cls, true))
       }
 

@@ -488,8 +488,8 @@ export function buildProcMeshAPI(api) {
     cls.defineAPI(api)
   }
 
-  // Chain DataBlock.defineAPI onto ProceduralMesh's struct (re-declares DataBlock's
-  // members rather than copying its struct — no dependency on it being built first).
+  // Chain DataBlock.defineAPI onto ProceduralMesh's struct, declaring DataBlock's
+  // members directly on it — no dependency on DataBlock being defined first.
   let st = DataBlock.defineAPI(api, api.mapStruct(ProceduralMesh, true))
   st.dynamicStruct('generator', 'generator', 'Generator')
 

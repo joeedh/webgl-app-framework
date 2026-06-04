@@ -1073,7 +1073,6 @@ App {
       },
 
       function getKey(api: DataAPI, list: any, obj: any) {
-        console.log(arguments)
         for (let i = 0; i < list.length; i++) {
           if (list[i].area === obj) {
             return i

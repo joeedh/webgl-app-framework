@@ -1759,8 +1759,6 @@ Camera {
     cstruct.vec3('up', 'up', 'Up').on('change', function (this: {dataref: any}) {
       const up = this.dataref
 
-      console.log('up changed')
-
       if (up !== undefined) {
         up.normalize()
       }

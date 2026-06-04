@@ -19,14 +19,10 @@ function emptyPickResult(): ScreenPickResult {
 }
 
 /**
- * `SceneObjectData.defineAPI` maps the `Material` struct for its `materials`
- * list, but a runtime `import {Material}` here forms a
- * `sceneobject_base → core/material` cycle whose chain re-enters this module
- * before `SceneObjectData` is initialized — TDZ-crashing
- * `class Light extends SceneObjectData` at bundle load. `Material` is therefore
- * a type-only import; `api_define` (which imports the class safely) injects it
- * via {@link setSceneObjectMaterialClass} at module load, well before the data
- * API is walked.
+ * `Material` is a type-only import: a runtime import here forms a `core/material`
+ * cycle that TDZ-crashes `class Light extends SceneObjectData` at bundle load.
+ * `SceneObjectData.defineAPI` still needs the class to map its `materials` list, so
+ * `api_define` injects it via {@link setSceneObjectMaterialClass} at module load.
  */
 let _MaterialClass: (abstract new (...args: any[]) => Material) | undefined
 export function setSceneObjectMaterialClass(cls: abstract new (...args: any[]) => Material): void {

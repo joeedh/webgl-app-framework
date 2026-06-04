@@ -5,10 +5,14 @@ Read the contents of AGENTS.md.
 - Do not do e.g. `InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},`
   add a proper type import
 
-## Comments
+## Code Comments
+
+Note: roughly preserve comments written by the user however if they ask you to audit
+      or correct comments in a file you may edit the comment to ensure correctness.
 
 - **Permanent non-doc comments**: keep short and concise — no more than 3 lines.
   A comment longer than 3 lines is allowed at most once per ~500 lines of a file.
+  Permanent comments should not reference the prior state of the code.
 - **TODO comments**: may exceed the 3-line limit. Mark especially high-priority
   items with `XXX:`; mark ordinary ones with `TODO:`.
 - **Refactor / implementation / temp comments**: no length limit, but prefix them

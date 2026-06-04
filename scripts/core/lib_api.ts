@@ -239,7 +239,6 @@ DataBlock {
 
     def.on('change', function (this: {dataref: any}, newval: any, oldval: any) {
       let owner = this.dataref
-      console.log('Fake user change', newval, oldval)
 
       if (newval === oldval) {
         return
@@ -737,10 +736,9 @@ BlockSet {
 }
 
 /**
- * Define a per-blocktype datablock list (e.g. `library.mesh`, `library.scene`)
- * on `parent`. Shared by {@link Library.defineAPI} (one list per registered
- * block type) and the late-registration hook in api_define (which adds a list
- * when a new DataBlock subclass registers after the API was first built).
+ * Define a per-blocktype datablock list (e.g. `library.mesh`) on `parent`. Shared
+ * by {@link Library.defineAPI} and api_define's late-registration hook, which adds a
+ * list when a DataBlock subclass registers after the API was first built.
  */
 export function defineLibrarySet(
   api: DataAPI,

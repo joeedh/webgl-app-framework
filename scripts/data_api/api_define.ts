@@ -22,13 +22,15 @@ import '../image/image.js'
 import '../hair/strand.js'
 import '../hair/strand_ops.js'
 import '../hair/strand_selectops.js'
+import '../light/light.js'
+import '../light/light_ops.js'
 
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {resourceManager} from '../core/resource.js'
 import '../core/image.js'
 import {buildCDAPI} from '../../addons/builtin/mesh/src/customdata.js'
-// CameraData self-registers at module scope; api_define is its only importer,
-// so this side-effect import is what brings it into the bundle.
+// CameraData self-registers at module scope; this side-effect import pulls it into
+// the bundle.
 import '../camera/camera.js'
 
 import {buildProcMeshAPI} from '../../addons/builtin/mesh/src/mesh_gen.js'
@@ -78,10 +80,9 @@ import {MaterialEditor} from '../editors/node/MaterialEditor.js'
 import {buildProcTextureAPI} from '../texture/proceduralTex.js'
 import {AppSettings} from '../core/settings.js'
 
-// Registry primitives live in the dependency-free leaf `api_define_registry.ts`
-// so core classes can self-register from their own modules without a
-// `class → api_define → class` import cycle. Imported for local use and
-// re-exported for back-compat.
+// Registry primitives live in the dependency-free leaf `api_define_registry.ts` so
+// core classes can self-register from their own modules without a
+// `class → api_define → class` cycle. Imported here for local use and re-exported.
 import {
   registerDataAPI,
   getDataAPIRegistry,
@@ -91,25 +92,22 @@ import {
 } from './api_define_registry.js'
 export {registerDataAPI, getDataAPIRegistry, type DefineAPIClass}
 
-// Inject the Material class into sceneobject_base so SceneObjectData.defineAPI
-// can map its `materials` list struct without a sceneobject_base → core/material
-// import cycle (see setSceneObjectMaterialClass). This runs at module load, so
-// the class is set before getDataAPI() walks the API.
+// Inject Material into sceneobject_base so SceneObjectData.defineAPI can map its
+// `materials` list without a sceneobject_base → core/material cycle. Runs at module
+// load, before getDataAPI() walks the API. See setSceneObjectMaterialClass.
 setSceneObjectMaterialClass(Material)
 
 /**
- * A class constructor accepted by `api.mapStruct`. The data-API definition
- * helpers are intentionally polymorphic over the concrete DataBlock / Node /
- * element subclass they map, so this is deliberately broad.
+ * A class constructor accepted by `api.mapStruct`. The definition helpers are
+ * polymorphic over the concrete DataBlock / Node / element subclass they map, so
+ * this is deliberately broad.
  */
 type AnyClass = abstract new (...args: any[]) => any
 
 /**
- * `this` inside a DataPath `.on(...)` change callback (and the `customGetSet`
- * getters/setters). path.ux binds the datapath's internal `ToolProperty` as
- * `this`, augmented with the exec scope: `ctx` is the root context object,
- * `dataref` is the runtime-resolved object the datapath addresses, and
- * `datapath` is the path string itself.
+ * `this` inside a DataPath `.on(...)` change callback / `customGetSet` accessor.
+ * path.ux binds the datapath's `ToolProperty` as `this`, augmented with `ctx` (root
+ * context), `dataref` (the resolved object), and `datapath` (the path string).
  */
 interface ApiCallbackThis<Ref = any> {
   ctx: ViewContext
@@ -118,12 +116,9 @@ interface ApiCallbackThis<Ref = any> {
 }
 
 /**
- * Run a class's `defineAPI` once. Returns its (now-populated) struct. Safe to
- * call ahead of the registry loop (e.g. from a class-dependent helper that needs
- * a populated struct); the loop then skips it. The "already defined" guard lives
- * in the registry leaf so the addon dispatcher (`addon_base.ts`) shares it — a
- * class defined by this build pass is never re-defined when its addon later
- * routes it through `register(api)`, and vice-versa.
+ * Run a class's `defineAPI` once, returning its populated struct. The "already
+ * defined" guard lives in the registry leaf so the addon dispatcher shares it — a
+ * class defined by this build pass is never re-defined via `register(api)`, or vice-versa.
  */
 function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
   if (!isDataAPIDefined(cls)) {
@@ -132,22 +127,6 @@ function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
   }
   return api.mapStruct(cls as AnyClass, false)
 }
-
-// Core (non-addon) classes self-register from their own modules via
-// `registerDataAPI(this)` at module scope (the registry primitive lives in the
-// dependency-free leaf `api_define_registry.ts`, so there is no
-// `class → api_define → class` cycle). They land in the registry as a
-// side-effect of being imported — which this module does for every one of them.
-//
-// The builtin-addon classes (`Mesh`, `Vertex`, `Element`, `BVHSettings`,
-// `CurveSpline`) used to be registered here, which forced core's `api_define.ts`
-// to import `addons/builtin/*`. That dependency is now inverted: the
-// builtin-layer bridge `addons/builtin/builtin_data_api.ts` registers them into
-// the same leaf registry, imported for its side effects by `entry_point.js` (so
-// it runs before `getDataAPI`) and by `tools/gen-datapaths.mjs` (so the catalog
-// generator, which never boots addons, sees them too). External addons register
-// their own data-API classes through the `register(api)` hook — see the
-// DataBlock/SceneObjectData branch in `addon_base.ts`'s `register(cls)`.
 
 function api_define_socket(api: DataAPI, cls: AnyClass = NodeSocketType): DataStruct {
   let nstruct = api.mapStruct(cls, true)
@@ -215,8 +194,7 @@ function api_define_nodesockets(api: DataAPI): void {
   api_define_socket(api)
 
   for (let cls of NodeSocketClasses) {
-    // Chain the base socket props onto each subclass's own struct (api_define_socket
-    // re-declares them rather than copying NodeSocketType's struct), then let the
+    // Chain the base socket props onto each subclass's own struct, then let the
     // subclass add its specifics — no dependency on NodeSocketType being built first.
     let st = api_define_socket(api, cls)
     cls.defineAPI(api, st)
@@ -232,18 +210,14 @@ onBlockRegister(function onDataBlockRegister(blockCls: any) {
 })
 
 function api_define_library(api: DataAPI, parent: DataStruct): void {
-  // The per-blocktype lists (library.mesh, library.scene, …) are Library's own
-  // struct members, populated by Library.defineAPI via the registry pass. This
-  // attach-only driver shim fetches that struct, keeps the dynamic-registration
-  // wiring (libraryStruct, used by the onBlockRegister hook above), and wires
-  // the parent-level attaches below.
+  // Library's per-blocktype lists (library.mesh, …) are its own struct members,
+  // populated by Library.defineAPI in the registry pass. This driver fetches that
+  // struct, keeps the dynamic-registration wiring, and wires the parent attaches.
   let lstruct = api.mapStruct(Library, false)
   libraryStruct = lstruct
 
   parent.struct('datalib', 'library', 'Library', lstruct)
 
-  //let lstruct = api.mapStruct(BlockSet, true);
-  //parent.struct(path, apiname, uiname, lstruct);
   parent.list('blocks', 'blocks', [
     function get(api: DataAPI, list: any, key: number | string) {
       return list.get(key)
@@ -325,12 +299,9 @@ export function getDataAPI(): DataAPI {
   let cstruct = api.mapStruct(ToolContext)
 
   // ── Population pass ─────────────────────────────────────────────────────
-  // Non-class struct builders (path.ux submodule types, free structs, the
-  // socket inherit loop, and the customdata / procedural / graph-class helpers)
-  // have no class `defineAPI`, so they stay explicit. Order among them is
-  // irrelevant: struct *creation* is decoupled from *population* (cached empty
-  // structs are shared by reference) and the on-disk catalog is canonically
-  // sorted (tools/gen-datapaths.mjs), so build order never affects output.
+  // Non-class struct builders (path.ux types, free structs, the socket inherit
+  // loop, customdata/procedural/graph-class helpers) have no class `defineAPI`, so
+  // they stay explicit. Order is irrelevant — creation is decoupled from population.
   api_define_matrix4(api)
   api_define_velpan(api)
   api_define_nodesockets(api)
@@ -338,19 +309,12 @@ export function getDataAPI(): DataAPI {
   api_define_graph(api) // Graph free struct (nodes list)
   buildCDAPI(api) // customdata element structs — Mesh.defineAPI attaches CustomData by ref, so it must exist first
 
-  // Every participating class populates its own struct via `defineAPI`. The
-  // registry replaces the old hand-maintained call list; `defineOnce` runs each
-  // exactly once. Iteration order is irrelevant — subclass `defineAPI`s chain
-  // their parent (re-declaring its members onto the child struct) rather than
-  // copying an already-built parent, so no class depends on another's struct
-  // being populated first. The only build-first structs (Graph, VelPan, fetched
-  // by reference via api.getStruct) are created in the pre-pass above.
-  //
-  // Core classes self-register at module scope (they reach the registry as a
-  // side-effect of being imported by this module); the builtin-addon classes are
-  // registered by the `addons/builtin/builtin_data_api.ts` bridge, imported for
-  // its side effects from `entry_point.js` / `gen-datapaths.mjs` before this
-  // runs. By here the registry is fully populated.
+  // Every participating class populates its own struct via `defineAPI`; `defineOnce`
+  // runs each registered class exactly once. Order is irrelevant — subclass `defineAPI`s
+  // chain their parent, declaring its members onto the child struct, so none depends on
+  // another's struct first. Core classes self-register at module scope (reached as an
+  // import side-effect here); builtin-addon classes via the `builtin_data_api.ts` bridge.
+  // By here the registry is fully populated.
   for (let cls of getDataAPIRegistry()) {
     defineOnce(api, cls)
   }
@@ -362,24 +326,14 @@ export function getDataAPI(): DataAPI {
   buildProcMeshAPI(api)
   api_define_graphclasses(api)
 
-  /*
-  api_define_node_editor(api, cstruct);
-  api_define_node_viewer(api, cstruct);
-  api_define_mateditor(api);
-  api_define_debugeditor(api, cstruct);
-  */
-
   // ── Attach pass ─────────────────────────────────────────────────────────
-  // Build the ToolContext tree. This is inherently driver-level: it wires the
-  // now-populated class structs (fetched by reference via mapStruct(_, false))
-  // under named paths, plus the inline root lists. Previously these attaches
-  // were interleaved into the per-subsystem shims.
+  // Build the ToolContext tree: wire the now-populated class structs (fetched by
+  // reference via mapStruct(_, false)) under named paths, plus the inline root lists.
   cstruct.struct('shadernetwork', 'shadernetwork', 'ShaderNetwork', api.mapStruct(ShaderNetwork, false))
   cstruct.struct('graph', 'graph', 'Graph', api.mapStruct(Graph))
-  // Fetch the Mesh struct by its stable nstructjs name rather than by class
-  // reference, so core never imports the addon-owned Mesh. The bridge has
-  // registered Mesh and the registry pass above ran its defineAPI, so the struct
-  // exists by now.
+  // Fetch the Mesh struct by its stable nstructjs name so core never imports the
+  // addon-owned Mesh class. The bridge registered Mesh and the registry pass ran its
+  // defineAPI, so the struct exists by now.
   const meshStruct = api.getStructByName('mesh.Mesh')
   if (meshStruct === undefined) {
     throw new Error(
@@ -397,8 +351,8 @@ export function getDataAPI(): DataAPI {
   cstruct.struct('light', 'light', 'Light', api.mapStruct(Light, false))
 
   let ostruct = api.mapStruct(SceneObject, false)
-  // NOTE: the original passes the SceneObject *class* where struct() types a
-  // string uiname; preserved verbatim (the value is only used for display).
+  // uiname is typed `string` but the SceneObject class is passed here; the value
+  // is only used for display, so the mismatch is harmless.
   cstruct.struct('object', 'object', SceneObject as unknown as string, ostruct)
 
   cstruct.list('', 'objects', [
@@ -442,7 +396,6 @@ export function getDataAPI(): DataAPI {
       return obj.lib_id
     },
     function getStruct(api: DataAPI, list: any, key: number | string) {
-      //console.log(list.datalib.get(key).constructor);
       return api.mapStruct(list.datalib.get(key).constructor, false)
     },
   ])
@@ -471,22 +424,18 @@ export function getDataAPI(): DataAPI {
   def.on('change', function (this: ApiCallbackThis<Scene>, newv: any, oldv: any) {
     let owner = this.dataref
 
-    console.log('OWNER', owner, owner.selectMask)
-    console.log('BLEH', arguments)
-
     let mask = owner.selectMask
     let old = oldv
 
     let newf = mask & ~old
-    console.log('new flag', newf)
 
     owner.selectMask &= ~(SelMask.VERTEX | SelMask.FACE | SelMask.EDGE)
     owner.selectMask |= newf
 
     for (let ob of owner.objects.selected.editable) {
-      // Duck-type instead of `instanceof Mesh` so core doesn't import the
-      // addon-owned Mesh class. Any SceneObjectData exposing regenElementsDraw
-      // (Mesh and its subclasses) gets its draw buffers rebuilt on mode change.
+      // Duck-type on `regenElementsDraw` so core doesn't import the addon-owned
+      // Mesh class. Any SceneObjectData exposing it (Mesh and its subclasses) gets
+      // its draw buffers rebuilt on mode change.
       const data = ob.data as {regenElementsDraw?: () => void} | undefined
       if (data && typeof data.regenElementsDraw === 'function') {
         data.regenElementsDraw()

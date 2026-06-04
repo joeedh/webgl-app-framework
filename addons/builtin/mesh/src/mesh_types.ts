@@ -980,9 +980,9 @@ mesh.Vertex {
   )
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    // Chains ElementBase.defineAPI (super) onto our own struct — Element's
-    // members are re-declared here rather than copied, so there is no ordering
-    // dependency on Element being defined first.
+    // Delegates to super (ElementBase.defineAPI), which declares Element's members
+    // directly against this struct, so there's no ordering dependency on Element
+    // being defined first.
     return super.defineAPI(api, struct)
   }
 

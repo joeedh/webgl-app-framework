@@ -785,8 +785,6 @@ propIslandOnly : bool;
     def.on('change', function (this: {dataref: Scene}, newval: any, oldval: any) {
       let scene = this.dataref
 
-      console.log('toolmode change', oldval, newval)
-
       scene.toolmode_i = oldval
       scene.switchToolMode(newval)
       window.redraw_viewport()

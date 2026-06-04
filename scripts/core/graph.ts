@@ -1708,15 +1708,6 @@ graph.Graph {
 
     this.nodes = new GraphNodes(this, this.nodes)
 
-    /*
-    console.log("NODES", this.nodes);
-    let buf = "NODES\n"
-    for (let n of this.nodes) {
-      buf += "  " + n.graph_name + "|" + n.constructor.name + "\n";
-    }
-    console.log(buf);
-    //*/
-
     const node_idmap = this.node_idmap
     const sock_idmap = this.sock_idmap
 

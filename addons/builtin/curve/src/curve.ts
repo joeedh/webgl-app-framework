@@ -97,9 +97,8 @@ CurveSpline {
   private _evaluate_vs: util.cachering<Vector3>
   private _last_check_key: number = 0
 
-  // Chains Mesh.defineAPI onto our own struct (super = Mesh), so Mesh's members
-  // are re-declared here rather than copied — no dependency on Mesh being
-  // defined first.
+  // Chains super (Mesh.defineAPI) onto our own struct, declaring Mesh's members
+  // directly here, so there's no dependency on Mesh being defined first.
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
     const cstruct = super.defineAPI(api, struct ?? api.mapStruct(this, true))
 

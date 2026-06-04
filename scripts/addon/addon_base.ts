@@ -397,13 +397,9 @@ export class AddonAPI<T> {
       addToOther = false
     }
 
-    // Data-API participants. DataBlock / SceneObjectData subclasses carry a
-    // static `defineAPI` (inherited from their base). Route them through the
-    // data-API registry so a fresh `getDataAPI` build includes them, and — for an
-    // external addon enabled *after* the one-shot `getDataAPI` already ran —
-    // live-define against the running API now. The shared guard in
-    // api_define_registry keeps a class the build pass already defined (e.g. a
-    // builtin also routed here via `api.registerAll`) from being defined twice.
+    // Data-API participants: DataBlock / SceneObjectData subclasses carry a static
+    // `defineAPI`. Register them for the next `getDataAPI` build and live-define an
+    // externally-added one now; the registry guard prevents a double-define.
     if ((subclassOf(cls, DataBlock) || subclassOf(cls, SceneObjectData)) && hasDefineAPI(cls)) {
       registerDataAPI(cls)
       this._defineDataAPIWhenReady(cls)
@@ -415,13 +411,9 @@ export class AddonAPI<T> {
   }
 
   /**
-   * Live-define a data-API class against the running app's `DataAPI`. `getDataAPI`
-   * is one-shot (it runs in the AppState constructor, before addons start), so an
-   * external addon enabled afterward must define its classes against the already
-   * built API itself. Mirrors the ToolMode branch's deferral: if `_appstate`
-   * isn't up yet (a class registered during early boot) the define is retried
-   * until it is. Guarded so it runs at most once per class even if the addon is
-   * re-enabled.
+   * Live-define a data-API class against the running `DataAPI`. `getDataAPI` is
+   * one-shot (it runs before addons start), so an addon enabled afterward defines
+   * its classes itself; retries until `_appstate` exists, and runs at most once.
    */
   private _defineDataAPIWhenReady(cls: DefineAPIClass): void {
     const define = () => {

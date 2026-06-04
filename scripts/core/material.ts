@@ -181,9 +181,9 @@ Material {
     reader(this)
   }
 
-  // Chains ShaderNetwork.defineAPI onto our own struct (super = ShaderNetwork),
-  // re-declaring its members here rather than copying — no dependency on
-  // ShaderNetwork being defined first.
+  // Chains super (ShaderNetwork.defineAPI) onto our own struct, declaring its
+  // members directly here, so there's no dependency on ShaderNetwork being defined
+  // first.
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
     const st = super.defineAPI(api, struct ?? api.mapStruct(this, true))
 
