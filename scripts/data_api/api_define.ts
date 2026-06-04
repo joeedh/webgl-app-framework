@@ -120,7 +120,7 @@ interface ApiCallbackThis<Ref = any> {
  * During the migration the registry below coexists with the legacy explicit
  * call list in `getDataAPI()`; it is not yet the source of truth.
  */
-export interface DefineAPIClass {
+export type DefineAPIClass = (abstract new (...args: any[]) => any) & {
   defineAPI(api: DataAPI, struct?: DataStruct): DataStruct
 }
 
@@ -141,6 +141,74 @@ export function registerDataAPI(cls: DefineAPIClass): void {
 /** The classes registered via {@link registerDataAPI}, in registration order. */
 export function getDataAPIRegistry(): readonly DefineAPIClass[] {
   return dataAPIRegistry
+}
+
+/**
+ * Classes whose `defineAPI` has already run this build. Guards the registry
+ * population pass so a class is populated exactly once even if it is also a
+ * named source of an `inheritStruct`/`mergeStruct` and gets defined-first
+ * explicitly (the only real ordering constraint — see the plan §2).
+ */
+const _definedAPIClasses = new Set<DefineAPIClass>()
+
+/**
+ * Run a class's `defineAPI` once. Returns its (now-populated) struct. Safe to
+ * call ahead of the registry loop to satisfy an inherit/merge ordering
+ * constraint (e.g. `Element` before `Vertex`); the loop then skips it.
+ */
+function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
+  if (!_definedAPIClasses.has(cls)) {
+    _definedAPIClasses.add(cls)
+    cls.defineAPI(api)
+  }
+  return api.mapStruct(cls as AnyClass, false)
+}
+
+/**
+ * Register the core (non-addon) classes that participate in the data API.
+ * Idempotent. Order is mostly irrelevant — struct *creation* is decoupled from
+ * *population* (cached empty structs are shared by reference), so cross-links
+ * resolve regardless of when each `defineAPI` runs. The lone ordering
+ * constraint is `Element` before `Vertex` (`Vertex.defineAPI` does
+ * `inheritStruct(Vertex, Element)`, which copies Element's members at call
+ * time); it is listed in order here and re-guarded by `defineOnce`.
+ *
+ * NOTE: addon classes (`Mesh`, `Vertex`, `Element`, `BVHSettings`,
+ * `CurveSpline`) are still hard-imported and registered here. Routing them
+ * through each addon's `register(api)` hook — so core's `api_define.ts` stops
+ * importing `addons/builtin/*` — is the registry's larger payoff and is left as
+ * a Phase 5 / follow-up (see TODO.md).
+ */
+function registerCoreDataAPIClasses(): void {
+  // Order: inherit/merge SOURCES before their dependents (the only real
+  // constraint — inheritStruct copies the parent's members at call time):
+  //   ShaderNetwork → Material  (Material extends ShaderNetwork)
+  //   Element       → Vertex    (Vertex.defineAPI inheritStructs Element)
+  //   Mesh          → CurveSpline (CurveSpline extends Mesh)
+  // All other cross-links are by reference (cached empty structs), so order is
+  // irrelevant for them.
+  registerDataAPI(DataBlock)
+  registerDataAPI(Node)
+  registerDataAPI(ImageBlock)
+  registerDataAPI(ImageUser)
+  registerDataAPI(ShaderNetwork)
+  registerDataAPI(Material)
+  registerDataAPI(SculptBrush)
+  registerDataAPI(RenderSettings)
+  registerDataAPI(BVHSettings)
+  registerDataAPI(Element)
+  registerDataAPI(Vertex)
+  registerDataAPI(Mesh)
+  registerDataAPI(CurveSpline)
+  registerDataAPI(LiteMesh)
+  registerDataAPI(Library)
+  registerDataAPI(App)
+  registerDataAPI(Camera)
+  registerDataAPI(CameraData)
+  registerDataAPI(Scene)
+  registerDataAPI(Light)
+  registerDataAPI(SceneObject)
+  registerDataAPI(AppSettings)
 }
 
 export function api_define_rendersettings(api: DataAPI): void {
@@ -317,11 +385,12 @@ onBlockRegister(function onDataBlockRegister(blockCls: any) {
 })
 
 function api_define_library(api: DataAPI, parent: DataStruct): void {
-  // The per-blocktype lists (library.mesh, library.scene, …) are Library's
-  // own struct members and move onto Library.defineAPI. The driver keeps the
-  // dynamic-registration wiring (libraryStruct, used by the onBlockRegister
-  // hook above) and the parent-level attaches below.
-  let lstruct = Library.defineAPI(api)
+  // The per-blocktype lists (library.mesh, library.scene, …) are Library's own
+  // struct members, populated by Library.defineAPI via the registry pass. This
+  // attach-only driver shim fetches that struct, keeps the dynamic-registration
+  // wiring (libraryStruct, used by the onBlockRegister hook above), and wires
+  // the parent-level attaches below.
+  let lstruct = api.mapStruct(Library, false)
   libraryStruct = lstruct
 
   parent.struct('datalib', 'library', 'Library', lstruct)
@@ -442,28 +511,35 @@ export function getDataAPI(): DataAPI {
 
   let cstruct = api.mapStruct(ToolContext)
 
+  // ── Population pass ─────────────────────────────────────────────────────
+  // Non-class struct builders (path.ux submodule types, free structs, the
+  // socket inherit loop, and the customdata / procedural / graph-class helpers)
+  // have no class `defineAPI`, so they stay explicit. Order among them is
+  // irrelevant: struct *creation* is decoupled from *population* (cached empty
+  // structs are shared by reference) and the on-disk catalog is canonically
+  // sorted (tools/gen-datapaths.mjs), so build order never affects output.
   api_define_matrix4(api)
-
   api_define_velpan(api)
   api_define_nodesockets(api)
+  api_define_shadernode(api) // Node.defineAPI on ShaderNode's struct (not ShaderNode.defineAPI)
+  api_define_graph(api) // Graph free struct (nodes list)
+  buildCDAPI(api) // customdata element structs — Mesh.defineAPI attaches CustomData by ref, so it must exist first
 
-  api_define_node(api)
-  api_define_image(api)
+  // Every participating class populates its own struct via `defineAPI`. The
+  // registry replaces the old hand-maintained call list; `defineOnce` runs each
+  // exactly once (Element is registered before Vertex, the one inherit-order
+  // constraint — Vertex.defineAPI does inheritStruct(Vertex, Element)).
+  registerCoreDataAPIClasses()
+  for (let cls of getDataAPIRegistry()) {
+    defineOnce(api, cls)
+  }
 
-  api_define_shadernode(api)
-  api_define_graph(api)
-
-  api_define_datablock(api, DataBlock)
-  api_define_shadernetwork(api, cstruct)
-  api_define_material(api)
-
-  cstruct.struct('graph', 'graph', 'Graph', api.mapStruct(Graph))
-
+  // Class-dependent non-class helpers: these inherit/merge from now-populated
+  // class structs (e.g. buildProcMeshAPI inheritStructs from DataBlock), so they
+  // must run after the registry pass.
   buildProcTextureAPI(api, api_define_datablock)
-
-  api_define_brush(api, cstruct)
-
-  api_define_rendersettings(api)
+  buildProcMeshAPI(api)
+  api_define_graphclasses(api)
 
   /*
   api_define_node_editor(api, cstruct);
@@ -472,20 +548,27 @@ export function getDataAPI(): DataAPI {
   api_define_debugeditor(api, cstruct);
   */
 
-  api_define_mesh(api, cstruct)
-  api_define_litemesh(api)
+  // ── Attach pass ─────────────────────────────────────────────────────────
+  // Build the ToolContext tree. This is inherently driver-level: it wires the
+  // now-populated class structs (fetched by reference via mapStruct(_, false))
+  // under named paths, plus the inline root lists. Previously these attaches
+  // were interleaved into the per-subsystem shims.
+  cstruct.struct('shadernetwork', 'shadernetwork', 'ShaderNetwork', api.mapStruct(ShaderNetwork, false))
+  cstruct.struct('graph', 'graph', 'Graph', api.mapStruct(Graph))
+  cstruct.struct('mesh', 'mesh', 'Mesh', api.mapStruct(Mesh, false))
 
+  // Library: keep the dynamic-registration wiring (libraryStruct, read by the
+  // onBlockRegister hook) and the parent-level attaches in the driver shim.
   api_define_library(api, cstruct)
-  api_define_screen(api, cstruct)
-  api_define_curvespline(api)
-  api_define_camera(api)
-  api_define_cameradata(api)
-  api_define_scene(api, cstruct)
-  api_define_light(api, cstruct)
 
-  let ostruct = api_define_sceneobject(api, cstruct)
+  cstruct.struct('screen', 'screen', 'Screen', api.mapStruct(App, false))
+  cstruct.struct('scene', 'scene', 'Scene', api.mapStruct(Scene, false))
+  cstruct.struct('light', 'light', 'Light', api.mapStruct(Light, false))
 
-  api_define_nodes(api)
+  let ostruct = api.mapStruct(SceneObject, false)
+  // NOTE: the original passes the SceneObject *class* where struct() types a
+  // string uiname; preserved verbatim (the value is only used for display).
+  cstruct.struct('object', 'object', SceneObject as unknown as string, ostruct)
 
   cstruct.list('', 'objects', [
     function getIter(api: DataAPI, list: any) {
@@ -533,9 +616,6 @@ export function getDataAPI(): DataAPI {
     },
   ])
 
-  api_define_graphclasses(api)
-  buildProcMeshAPI(api)
-
   cstruct.struct('material', 'material', 'Material', api.mapStruct(Material, false))
 
   cstruct.dynamicStruct('last_tool', 'last_tool', 'Last Tool')
@@ -578,8 +658,6 @@ export function getDataAPI(): DataAPI {
       }
     }
   })
-
-  AppSettings.defineAPI(api)
 
   buildEditorsAPI(api, cstruct)
   buildToolSysAPI(api, true)
