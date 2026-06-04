@@ -202,7 +202,7 @@ graph.NodeSocketType {
     return this.edges.length > 0
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct) {}
+  static defineAPI(api: DataAPI, sockstruct: DataStruct) {}
 
   //used to load data that might change between file versions
 

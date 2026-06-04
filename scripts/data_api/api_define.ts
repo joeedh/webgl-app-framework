@@ -224,7 +224,7 @@ function api_define_node(api: DataAPI, cls: AnyClass = Node): DataStruct {
         if (obj.graph_flag & SocketFlags.INSTANCE_API_DEFINE) {
           if (!api.hasStruct(obj)) {
             ret = api.mapStruct(obj, true)
-            obj.apiDefine(api, ret)
+            obj.defineInstanceAPI(api, ret)
           } else {
             ret = api.getStruct(obj)
           }
@@ -609,7 +609,7 @@ function api_define_nodesockets(api: DataAPI): void {
 
   for (let cls of NodeSocketClasses) {
     let st = api.inheritStruct(cls, NodeSocketType)
-    cls.apiDefine(api, st)
+    cls.defineAPI(api, st)
   }
 }
 
