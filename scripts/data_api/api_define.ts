@@ -68,16 +68,16 @@ import {Graph, Node, SocketFlags, NodeSocketType} from '../core/graph.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js'
-import {Scene, EnvLight} from '../scene/scene.js'
+import {Scene} from '../scene/scene.js'
 import {api_define_graphclasses} from '../core/graph_class.js'
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js'
 import {DebugEditor} from '../editors/debug/DebugEditor.js'
 
 let api = new DataAPI()
 import {Icons} from '../editors/icon_enum.js'
-import {SceneObjectData, setSceneObjectMaterialClass} from '../sceneobject/sceneobject_base.js'
+import {setSceneObjectMaterialClass} from '../sceneobject/sceneobject_base.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
-import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../brush/index'
+import {SculptBrush} from '../brush/index'
 
 import {buildProcTextureAPI} from '../texture/proceduralTex.js'
 import {ImageBlock, ImageUser} from '../image/image.js'
@@ -211,10 +211,6 @@ function registerCoreDataAPIClasses(): void {
   registerDataAPI(AppSettings)
 }
 
-export function api_define_rendersettings(api: DataAPI): void {
-  RenderSettings.defineAPI(api)
-}
-
 function api_define_socket(api: DataAPI, cls: AnyClass = NodeSocketType): DataStruct {
   let nstruct = api.mapStruct(cls, true)
 
@@ -234,77 +230,10 @@ function api_define_datablock(api: DataAPI, cls: AnyClass = DataBlock): DataStru
   return DataBlock.defineAPI(api, api.mapStruct(cls, true))
 }
 
-export function api_define_meshelem(api: DataAPI): void {
-  Element.defineAPI(api)
-}
-
-export function api_define_meshvertex(api: DataAPI): void {
-  Vertex.defineAPI(api)
-}
-
-export function api_define_sceneobject_data(api: DataAPI, cls: AnyClass): DataStruct {
-  return SceneObjectData.defineAPI(api, api.mapStruct(cls, true))
-}
-
-/**
- * LiteMesh ObData properties (surfaced in the properties editor's ObData tab
- * via LiteMesh.buildPropertiesTab). Resolved through the `object.data`
- * dynamicStruct, which looks the struct up by class in the global registry.
- *
- * NOTE: this central, old-style registration is legacy. New data-API
- * definitions should move to a static `defineAPI(api)` method on the class
- * itself (matching ToolMode/SculptBrush); api_define.js would then just
- * invoke it. Keeping the pattern here for now to match api_define_mesh.
- */
-export function api_define_litemesh(api: DataAPI): DataStruct {
-  return LiteMesh.defineAPI(api)
-}
-
-export function api_define_imageuser(api: DataAPI): DataStruct {
-  return ImageUser.defineAPI(api)
-}
-
-export function api_define_image(api: DataAPI): void {
-  ImageBlock.defineAPI(api)
-  api_define_imageuser(api)
-}
-
-export function api_define_bvhsettings(api: DataAPI): void {
-  BVHSettings.defineAPI(api)
-}
-
-export function api_define_mesh(api: DataAPI, pstruct: DataStruct): void {
-  // Sibling structs the Mesh struct's element lists reference. Build them
-  // first so their structs exist when Mesh.defineAPI wires up verts/edges/
-  // loops/faces (the bodies moved onto Mesh.defineAPI in mesh.ts).
-  api_define_bvhsettings(api)
-  buildCDAPI(api)
-  api_define_meshelem(api)
-  api_define_meshvertex(api)
-
-  let mstruct = Mesh.defineAPI(api)
-  pstruct.struct('mesh', 'mesh', 'Mesh', mstruct)
-}
-
-// Phase 3 shim — body moved to CurveSpline.defineAPI
-// (addons/builtin/curve/src/curve.ts).
-export function api_define_curvespline(api: DataAPI): DataStruct {
-  return CurveSpline.defineAPI(api)
-}
-
 function api_define_shadernode(api: DataAPI, cls?: AnyClass): DataStruct {
   let nstruct = api_define_node(api, ShaderNode)
 
   return nstruct
-}
-
-// Phase 3 shim — body moved to Camera.defineAPI (scripts/webgl/webgl.ts).
-export function api_define_camera(api: DataAPI): void {
-  Camera.defineAPI(api)
-}
-
-export function api_define_cameradata(api: DataAPI): void {
-  CameraData.defineAPI(api)
 }
 
 function api_define_graph(api: DataAPI, cls: AnyClass = Graph): DataStruct {
@@ -349,31 +278,6 @@ function api_define_nodesockets(api: DataAPI): void {
     let st = api.inheritStruct(cls, NodeSocketType)
     cls.defineAPI(api, st)
   }
-}
-
-function api_define_nodes(api: DataAPI): void {}
-
-function api_define_shadernetwork(api: DataAPI, parent: DataStruct): DataStruct {
-  let mstruct = ShaderNetwork.defineAPI(api)
-
-  parent.struct('shadernetwork', 'shadernetwork', 'ShaderNetwork', mstruct)
-
-  return mstruct
-}
-
-// Phase 3 shim — body moved to Material.defineAPI (scripts/core/material.ts).
-function api_define_material(api: DataAPI): void {
-  Material.defineAPI(api)
-}
-
-function api_define_sceneobject(api: DataAPI, parent: DataStruct): DataStruct {
-  let ostruct = SceneObject.defineAPI(api)
-
-  // NOTE: the original passes the SceneObject *class* where struct() types a
-  // string uiname; preserved verbatim (the value is only used for display).
-  parent.struct('object', 'object', SceneObject as unknown as string, ostruct)
-
-  return ostruct
 }
 
 let libraryStruct: DataStruct | undefined
@@ -450,40 +354,6 @@ export function api_define_velpan(api: DataAPI, parent?: DataStruct): DataStruct
   vp.vec2('max', 'max', 'Boundary Maximum')
 
   return vp
-}
-
-export function api_define_screen(api: DataAPI, parent: DataStruct): void {
-  let st = App.defineAPI(api)
-
-  parent.struct('screen', 'screen', 'Screen', st)
-}
-
-export function api_define_envlight(api: DataAPI): DataStruct {
-  return EnvLight.defineAPI(api)
-}
-
-export function api_define_light(api: DataAPI, pstruct: DataStruct): void {
-  let lstruct = Light.defineAPI(api)
-
-  pstruct.struct('light', 'light', 'Light', lstruct)
-}
-
-export function api_define_scene(api: DataAPI, pstruct: DataStruct): void {
-  let sstruct = Scene.defineAPI(api)
-
-  pstruct.struct('scene', 'scene', 'Scene', sstruct)
-}
-
-export function api_define_dyntopo(api: DataAPI): void {
-  DynTopoSettings.defineAPI(api)
-}
-
-export function api_define_dyntopo_sc(api: DataAPI): void {
-  DynTopoSettingsSC.defineAPI(api)
-}
-
-export function api_define_brush(api: DataAPI, cstruct: DataStruct): void {
-  SculptBrush.defineAPI(api)
 }
 
 export function api_define_matrix4(api: DataAPI): DataStruct {
