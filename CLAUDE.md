@@ -5,6 +5,20 @@ Read the contents of AGENTS.md.
 - Do not do e.g. `InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},`
   add a proper type import
 
+## Comments
+
+- **Permanent non-doc comments**: keep short and concise — no more than 3 lines.
+  A comment longer than 3 lines is allowed at most once per ~500 lines of a file.
+- **TODO comments**: may exceed the 3-line limit. Mark especially high-priority
+  items with `XXX:`; mark ordinary ones with `TODO:`.
+- **Refactor / implementation / temp comments**: no length limit, but prefix them
+  with `CLAUDENOTE:` so they can be found and stripped later. The final step of
+  any plan is to remove the `CLAUDENOTE:` comments — replacing the ones still
+  worth keeping with permanent (≤ 3-line) non-doc comments.
+- **Doc comments**: short and concise; only add them for non-obvious function
+  signatures. A doc comment may simply explain how a non-obvious parameter
+  behaves when that is shorter than describing the whole function.
+
 ## Addons
 
 The builtin editing features (mesh, mesh_edit, curve, subsurf, tetmesh,
@@ -319,6 +333,14 @@ the registry loop. The on-disk catalog is **canonically sorted**
 `TODO.md` (repo root) tracks non-addon consumers of addon files and
 cross-addon `scripts/...` path imports that survive the addon-API
 migration. Add to it when you discover another one.
+
+## Submodules
+
+- Keep submodules checked out at the HEADs of their current branches, pulling and
+  merging as needed — **except** `sculptcore/emsdk` and `sculptcore/extern/imgui`,
+  which stay pinned at their recorded commits (third-party, version-locked).
+- The `master` branch must always link submodules at their default-branch commits
+  (never pin `master`'s gitlinks to a submodule feature branch).
 
 ## Secondary-agent worktree
 

@@ -1,31 +1,3 @@
-# comments
-Update CLAUDE.md with new instructions on comments:
-
-* *Permanent Non-Doc Comments*: Non-doc comments should be short and concise,
-  no more then 3 lines. Comments longer then 3 lines are allowed every 500 lines in a file.
-* *TODO comments*: Todo comments may exceed the 3 line limit.  TODO items with especially high
-  priority should be marked with `XXX:` otherwise they should be marked with `TODO:`.
-* *Refactor/Implementation/Temp Comments*: Comments added as part of refactoring or implementation
-  of a plan have no limits on their length but should be prefixed with `CLAUDENOTE:` for later
-  revision/stripping later.  The final step of any plans should be removing CLAUDENOTE: 
-  comments and replacing them with permanent non-doc ones.
-* *Doc comments*: Doc comments should be short and concise and only auto-generated for 
-  non-obvious function signatures.  It is fine for a doc comment to simply explain how 
-  non-obvious parameters behave if that is shorter.
-
-# submodules
-Update CLAUDE.md:
-
-Submodules should be kept checked out at the HEADs of their current branches, pulling 
-and merging if necassary, except for the following submodules:
-
-* sculptcore/emsdk
-* sculptcore/extern/imgui
-
-The master branch should always link to submodules in their default branches
-
-Also add this to sculptcore/CLAUDE.md
-
 # TODO — non-addon consumers of addon files
 
 Tracking direct `scripts/**` → `addons/builtin/<id>/src/**` imports discovered
