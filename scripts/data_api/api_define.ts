@@ -45,11 +45,11 @@ import '../editors/view3d/widgets/widget_tools.js' //ensure widget tools are all
 import {WidgetFlags} from '../editors/view3d/widgets/widgets.js'
 import {AddLightOp} from '../light/light_ops.js'
 import {Light} from '../light/light.js'
-import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js'
+import {DataAPI, DataPathError, DataStruct} from '../path.ux/scripts/pathux.js'
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags, onBlockRegister} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
-import {Editor, App, buildEditorsAPI} from '../editors/editor_base.ts'
+import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js'
 import {NodeEditorBase} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
@@ -57,6 +57,7 @@ import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../co
 import {VelPan, VelPanFlags} from '../editors/velpan.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {ToolContext} from '../core/context.js'
+import type {ViewContext} from '../core/context.js'
 import {
   MeshModifierFlags,
   MeshFlags,
@@ -67,7 +68,7 @@ import {
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
 import {LiteMesh, LiteMeshDisplayMode, LiteMeshAttrItem, LiteMeshAttrCategory} from '../lite-mesh/litemesh.js'
-import {Vertex} from '../../addons/builtin/mesh/src/mesh_types.js'
+import {Vertex, Element} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
 import '../shadernodes/allnodes.js'
@@ -76,7 +77,7 @@ import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js'
-import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.ts'
+import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.js'
 import {api_define_graphclasses} from '../core/graph_class.js'
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js'
 import {DebugEditor} from '../editors/debug/DebugEditor.js'
@@ -105,13 +106,33 @@ import {
   SubdivModes,
 } from '../brush/index'
 
-import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.ts'
+import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js'
 import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js'
 import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
-import {AppSettings} from '../core/settings.ts'
+import {AppSettings} from '../core/settings.js'
 
-export function api_define_rendersettings(api) {
+/**
+ * A class constructor accepted by `api.mapStruct` / `inheritStruct`. The
+ * data-API definition helpers are intentionally polymorphic over the concrete
+ * DataBlock / Node / element subclass they map, so this is deliberately broad.
+ */
+type AnyClass = abstract new (...args: any[]) => any
+
+/**
+ * `this` inside a DataPath `.on(...)` change callback (and the `customGetSet`
+ * getters/setters). path.ux binds the datapath's internal `ToolProperty` as
+ * `this`, augmented with the exec scope: `ctx` is the root context object,
+ * `dataref` is the runtime-resolved object the datapath addresses, and
+ * `datapath` is the path string itself.
+ */
+interface ApiCallbackThis<Ref = any> {
+  ctx: ViewContext
+  dataref: Ref
+  datapath: string
+}
+
+export function api_define_rendersettings(api: DataAPI): void {
   let st = api.mapStruct(RenderSettings, true)
 
   st.bool('sharpen', 'sharpen', 'Sharpen')
@@ -123,7 +144,7 @@ export function api_define_rendersettings(api) {
     .range(0, 10)
 }
 
-function api_define_socket(api, cls = NodeSocketType) {
+function api_define_socket(api: DataAPI, cls: AnyClass = NodeSocketType): DataStruct {
   let nstruct = api.mapStruct(cls, true)
 
   nstruct.flags('graph_flag', 'graph_flag', SocketFlags, 'Graph Flags', 'Flags')
@@ -134,33 +155,33 @@ function api_define_socket(api, cls = NodeSocketType) {
   return nstruct
 }
 
-function api_define_node(api, cls = Node) {
+function api_define_node(api: DataAPI, cls: AnyClass = Node): DataStruct {
   let nstruct = api.mapStruct(cls, true)
 
   nstruct.flags('graph_flag', 'graph_flag', NodeFlags, 'Graph Flags', 'Flags')
   nstruct.int('graph_id', 'graph_id', 'Graph ID', 'Unique graph ID').readOnly()
 
-  function defineSockets(inorouts) {
+  function defineSockets(inorouts: 'inputs' | 'outputs'): void {
     nstruct.list('', inorouts, [
-      function getIter(api, list) {
+      function getIter(api: DataAPI, list: any) {
         return (function* () {
           for (let k in list[inorouts]) {
             yield list[inorouts][k]
           }
         })()
       },
-      function getLength(api, list) {
+      function getLength(api: DataAPI, list: any) {
         return Object.keys(list[inorouts]).length
       },
-      function get(api, list, key) {
+      function get(api: DataAPI, list: any, key: string) {
         return list[inorouts][key]
       },
-      function getKey(api, list, obj) {
+      function getKey(api: DataAPI, list: any, obj: any) {
         for (let k in list[inorouts]) {
           if (list[inorouts][k] === obj) return k
         }
       },
-      function getStruct(api, list, key) {
+      function getStruct(api: DataAPI, list: any, key: string) {
         let obj = list[inorouts][key]
 
         if (obj === undefined) return api.getStruct(NodeSocketType)
@@ -189,7 +210,7 @@ function api_define_node(api, cls = Node) {
   return nstruct
 }
 
-function api_define_datablock(api, cls = DataBlock) {
+function api_define_datablock(api: DataAPI, cls: AnyClass = DataBlock): DataStruct {
   let dstruct = api_define_node(api, cls)
 
   dstruct.int('lib_id', 'lib_id', 'Lib ID').readOnly()
@@ -200,7 +221,7 @@ function api_define_datablock(api, cls = DataBlock) {
     FAKE_USER: Icons.FAKE_USER,
   })
 
-  def.on('change', function (newval, oldval) {
+  def.on('change', function (this: ApiCallbackThis, newval: any, oldval: any) {
     let owner = this.dataref
     console.log('Fake user change', newval, oldval)
 
@@ -224,7 +245,7 @@ function api_define_datablock(api, cls = DataBlock) {
   return dstruct
 }
 
-export function api_define_meshelem(api) {
+export function api_define_meshelem(api: DataAPI): void {
   let st = api.mapStruct(Element, true)
 
   st.flags('flag', 'flag', MeshFlags)
@@ -234,27 +255,27 @@ export function api_define_meshelem(api) {
   buildElementAPI(api, st)
 }
 
-export function api_define_meshvertex(api) {
+export function api_define_meshvertex(api: DataAPI): void {
   let st = api.inheritStruct(Vertex, Element)
 }
 
-export function api_define_sceneobject_data(api, cls) {
+export function api_define_sceneobject_data(api: DataAPI, cls: AnyClass): DataStruct {
   let mstruct = api_define_datablock(api, cls)
 
-  mstruct.list('materials', 'materials', [
-    function getIter(api, list) {
+  mstruct.list<Material[], number, Material>('materials', 'materials', [
+    function getIter(api: DataAPI, list: Material[]) {
       return list
     },
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: Material[]) {
       return list.length
     },
-    function get(api, list, key) {
+    function get(api: DataAPI, list: Material[], key: number) {
       return list[key]
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: Material[], obj: Material) {
       return list.indexOf(obj)
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: Material[], key: number) {
       return api.mapStruct(Material)
     },
   ])
@@ -273,7 +294,7 @@ export function api_define_sceneobject_data(api, cls) {
  * itself (matching ToolMode/SculptBrush); api_define.js would then just
  * invoke it. Keeping the pattern here for now to match api_define_mesh.
  */
-export function api_define_litemesh(api) {
+export function api_define_litemesh(api: DataAPI): DataStruct {
   let mstruct = api_define_sceneobject_data(api, LiteMesh)
 
   let def = mstruct
@@ -295,7 +316,7 @@ export function api_define_litemesh(api) {
   // ObData attribute manager (Wave 2b). The attribute ListBox binds to this
   // `attrs` DataList; `showBuiltinAttrs` toggles the builtin filter.
   mstruct.bool('showBuiltinAttrs', 'showBuiltinAttrs', 'Show builtin attributes').on('change', function () {
-    window.redraw_all()
+    window.redraw_all?.()
   })
 
   // Category (AttrUse) of the attr selected in the ListBox. The setter rejects
@@ -305,7 +326,7 @@ export function api_define_litemesh(api) {
     .enum('selectedAttrCategory', 'selectedAttrCategory', LiteMeshAttrCategory, 'Category', 'Attribute category / role')
     .uiNames({NONE: 'None', COLOR: 'Color', UV: 'UV', POLYGROUP: 'Poly Group'})
     .on('change', function () {
-      window.redraw_all()
+      window.redraw_all?.()
     })
 
   let astruct = api.mapStruct(LiteMeshAttrItem, true)
@@ -314,19 +335,19 @@ export function api_define_litemesh(api) {
   // list(valueProp, apiPathSegment, funcs): value read from mesh.attrItems,
   // addressed in the data API as `object.data.attrs`.
   mstruct.list('attrItems', 'attrs', {
-    getIter(api, list) {
+    getIter(api: DataAPI, list: LiteMeshAttrItem[]) {
       return list
     },
-    getLength(api, list) {
+    getLength(api: DataAPI, list: LiteMeshAttrItem[]) {
       return list.length
     },
-    get(api, list, key) {
+    get(api: DataAPI, list: LiteMeshAttrItem[], key: number) {
       return list[key]
     },
-    getKey(api, list, obj) {
+    getKey(api: DataAPI, list: LiteMeshAttrItem[], obj: LiteMeshAttrItem) {
       return list.indexOf(obj)
     },
-    getStruct(api, list, key) {
+    getStruct(api: DataAPI, list: LiteMeshAttrItem[], key: number) {
       return api.mapStruct(LiteMeshAttrItem)
     },
   })
@@ -334,7 +355,7 @@ export function api_define_litemesh(api) {
   return mstruct
 }
 
-export function api_define_imageuser(api) {
+export function api_define_imageuser(api: DataAPI): DataStruct {
   let st = api.mapStruct(ImageUser, true)
 
   st.struct('image', 'image', 'Image', api.mapStruct(ImageBlock))
@@ -342,7 +363,7 @@ export function api_define_imageuser(api) {
   return st
 }
 
-export function api_define_image(api) {
+export function api_define_image(api: DataAPI): void {
   let st = api_define_datablock(api, ImageBlock)
 
   st.enum('type', 'type', ImageTypes, 'Image Type')
@@ -357,7 +378,7 @@ export function api_define_image(api) {
   api_define_imageuser(api)
 }
 
-export function api_define_bvhsettings(api) {
+export function api_define_bvhsettings(api: DataAPI): void {
   let st = api.mapStruct(BVHSettings, true)
 
   st.int('depthLimit', 'depthLimit', 'Depth Limit').range(1, 32).noUnits()
@@ -365,7 +386,7 @@ export function api_define_bvhsettings(api) {
   st.int('leafLimit', 'leafLimit', 'Tri Limit').range(1, 4096).step(5).noUnits()
 }
 
-export function api_define_mesh(api, pstruct) {
+export function api_define_mesh(api: DataAPI, pstruct: DataStruct): void {
   api_define_bvhsettings(api)
 
   let mstruct = api_define_sceneobject_data(api, Mesh)
@@ -381,7 +402,7 @@ export function api_define_mesh(api, pstruct) {
     Y: Icons.SYM_Y,
     Z: Icons.SYM_Z,
   })
-  def.on('change', function (e) {
+  def.on('change', function (this: ApiCallbackThis<Mesh>, e: any) {
     let mesh = this.dataref
 
     mesh.updateMirrorTags()
@@ -397,7 +418,7 @@ export function api_define_mesh(api, pstruct) {
     SUBSURF: Icons.SUBSURF,
   })
 
-  def.on('change', (e) => {
+  def.on('change', (e: any) => {
     window.redraw_viewport()
   })
 
@@ -406,30 +427,30 @@ export function api_define_mesh(api, pstruct) {
   api_define_meshelem(api)
   api_define_meshvertex(api)
 
-  function defineElemList(key, type) {
+  function defineElemList(key: string, type: number): void {
     mstruct.struct(key + '.customData', key + 'Data', 'Custom Datas', api.mapStruct(CustomData, false))
 
     mstruct.list(key, key, [
-      function getIter(api, list) {
+      function getIter(api: DataAPI, list: any) {
         return list
       },
-      function getLength(api, list) {
+      function getLength(api: DataAPI, list: any) {
         return list.length
       },
-      function get(api, list, key) {
+      function get(api: DataAPI, list: any, key: number) {
         return list.local_eidmap[key]
       },
-      function getKey(api, list, obj) {
+      function getKey(api: DataAPI, list: any, obj: any) {
         return obj !== undefined ? obj.eid : -1
       },
-      function getActive(api, list) {
+      function getActive(api: DataAPI, list: any) {
         return list.active
       },
-      function setActive(api, list, key) {
+      function setActive(api: DataAPI, list: any, key: number | undefined) {
         list.active = key !== undefined ? list.local_eidmap[key] : undefined
         window.redraw_viewport()
       },
-      function getStruct(api, list, key) {
+      function getStruct(api: DataAPI, list: any, key: number) {
         return api.mapStruct(Vertex, false)
       },
     ])
@@ -443,10 +464,10 @@ export function api_define_mesh(api, pstruct) {
   //MeshModifierFlags
 }
 
-export function api_define_curvespline(api) {
+export function api_define_curvespline(api: DataAPI): DataStruct {
   let cstruct = api.inheritStruct(CurveSpline, Mesh)
 
-  cstruct.bool('isClosed', 'isClosed', 'Closed Curve').on('change', function () {
+  cstruct.bool('isClosed', 'isClosed', 'Closed Curve').on('change', function (this: ApiCallbackThis) {
     this.dataref.checkUpdate()
     this.dataref.regenRender()
   })
@@ -454,13 +475,13 @@ export function api_define_curvespline(api) {
   return cstruct
 }
 
-function api_define_shadernode(api, cls) {
+function api_define_shadernode(api: DataAPI, cls?: AnyClass): DataStruct {
   let nstruct = api_define_node(api, ShaderNode)
 
   return nstruct
 }
 
-export function api_define_camera(api) {
+export function api_define_camera(api: DataAPI): void {
   let cstruct = api.mapStruct(Camera, true)
 
   let onchange = function () {
@@ -470,7 +491,7 @@ export function api_define_camera(api) {
   cstruct.bool('isPerspective', 'isPerspective', 'Perspective or Orthographic').on('change', onchange)
   cstruct.vec3('pos', 'pos', 'Position').on('change', onchange)
   cstruct.vec3('target', 'target', 'Target').on('change', onchange)
-  cstruct.vec3('up', 'up', 'Up').on('change', function () {
+  cstruct.vec3('up', 'up', 'Up').on('change', function (this: ApiCallbackThis) {
     let up = this.dataref
 
     console.log('up changed')
@@ -488,10 +509,10 @@ export function api_define_camera(api) {
   cstruct.float('fovy', 'fov', 'Field of View').range(0.01, 110.0).baseUnit('degree').on('change', onchange)
 }
 
-export function api_define_cameradata(api) {
+export function api_define_cameradata(api: DataAPI): void {
   let mstruct = api_define_datablock(api, CameraData)
 
-  let onchange = function () {
+  let onchange = function (this: ApiCallbackThis) {
     let camera = this.dataref
 
     camera.update()
@@ -515,29 +536,29 @@ export function api_define_cameradata(api) {
   mstruct.float('rotate', 'rotate', 'Rotation').range(-Math.PI, Math.PI).displayUnit('degree').baseUnit('radian')
 }
 
-function api_define_graph(api, cls = Graph) {
+function api_define_graph(api: DataAPI, cls: AnyClass = Graph): DataStruct {
   let gstruct = api.mapStruct(cls)
 
   gstruct.list('', 'nodes', [
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return list.nodes.values()
     },
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       return list.nodes.length
     },
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: string) {
       return list.node_idmap.get(key)
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       return '' + obj.graph_id
     },
-    function getActive(api, list) {
+    function getActive(api: DataAPI, list: any) {
       return list.nodes.active
     },
-    function setActive(api, list, key) {
+    function setActive(api: DataAPI, list: any, key: string) {
       list.nodes.active = list.node_idmap.get(key)
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: string) {
       let obj = list.node_idmap.get(key)
 
       if (obj === undefined) return api.getStruct(Node)
@@ -550,7 +571,7 @@ function api_define_graph(api, cls = Graph) {
   return gstruct
 }
 
-function api_define_nodesockets(api) {
+function api_define_nodesockets(api: DataAPI): void {
   api_define_socket(api)
 
   for (let cls of NodeSocketClasses) {
@@ -559,9 +580,9 @@ function api_define_nodesockets(api) {
   }
 }
 
-function api_define_nodes(api) {}
+function api_define_nodes(api: DataAPI): void {}
 
-function api_define_shadernetwork(api, parent) {
+function api_define_shadernetwork(api: DataAPI, parent: DataStruct): DataStruct {
   let mstruct = api_define_datablock(api, ShaderNetwork)
 
   parent.struct('shadernetwork', 'shadernetwork', 'ShaderNetwork', mstruct)
@@ -571,10 +592,10 @@ function api_define_shadernetwork(api, parent) {
   return mstruct
 }
 
-function api_define_material(api) {
+function api_define_material(api: DataAPI): void {
   let st = api.inheritStruct(Material, ShaderNetwork)
 
-  function getShaderNode(mat) {
+  function getShaderNode(mat: any) {
     let graph = mat.graph
     let out
 
@@ -597,7 +618,7 @@ function api_define_material(api) {
   let def = st.bool('', 'has_shader', 'Has Shader', 'Has Shader')
 
   def.customGetSet(
-    function () {
+    function (this: {dataref: any}) {
       return getShaderNode(this.dataref) !== undefined
     },
     undefined /*function(val) {
@@ -609,17 +630,19 @@ function api_define_material(api) {
   //dynamicStruct return a struct, not the owning datapath
   def = st.pathmap.shader
 
-  def.customGetSet(function () {
+  def.customGetSet(function (this: {dataref: any}) {
     return getShaderNode(this.dataref)
   }, undefined)
 
   //api.color4("diffuse")
 }
 
-function api_define_sceneobject(api, parent) {
+function api_define_sceneobject(api: DataAPI, parent: DataStruct): DataStruct {
   let ostruct = api_define_datablock(api, SceneObject)
 
-  parent.struct('object', 'object', SceneObject, ostruct)
+  // NOTE: the original passes the SceneObject *class* where struct() types a
+  // string uiname; preserved verbatim (the value is only used for display).
+  parent.struct('object', 'object', SceneObject as unknown as string, ostruct)
 
   ostruct.dynamicStruct('data', 'data', 'data')
   ostruct.struct('material', 'material', 'Material', api.mapStruct(Material, false))
@@ -631,11 +654,18 @@ function api_define_sceneobject(api, parent) {
   return ostruct
 }
 
-function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
+function api_define_libraryset(
+  api: DataAPI,
+  path: string,
+  apiname: string,
+  uiname: string,
+  parent: DataStruct,
+  cls: AnyClass
+): void {
   //let lstruct = api.mapStruct(BlockSet, true);
   //parent.struct(path, apiname, uiname, lstruct);
   parent.list(path, apiname, [
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: number | string) {
       if (typeof key === 'number') {
         return list.idmap[key]
       } else {
@@ -643,19 +673,19 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
       }
     },
 
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return list
     },
 
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       return list.length
     },
 
-    function getActive(api, list) {
+    function getActive(api: DataAPI, list: any) {
       return list.active
     },
 
-    function setActive(api, list, key) {
+    function setActive(api: DataAPI, list: any, key: number | undefined) {
       if (key === undefined || key === -1) {
         list.active = undefined
         return
@@ -668,10 +698,10 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
 
       list.obj = obj
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       return obj.lib_id
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: number | string) {
       let obj = typeof key === 'string' ? list.namemap[key] : list.idmap[key]
 
       if (obj === undefined) {
@@ -689,15 +719,15 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
   ])
 }
 
-let libraryStruct
-onBlockRegister(function onDataBlockRegister(blockCls) {
+let libraryStruct: DataStruct | undefined
+onBlockRegister(function onDataBlockRegister(blockCls: any) {
   if (libraryStruct !== undefined) {
     let def = blockCls.blockDefine()
     api_define_libraryset(api, def.typeName, def.typeName, def.uiName, libraryStruct, blockCls)
   }
 })
 
-function api_define_library(api, parent) {
+function api_define_library(api: DataAPI, parent: DataStruct): void {
   let lstruct = api.mapStruct(Library)
   libraryStruct = lstruct
 
@@ -706,21 +736,21 @@ function api_define_library(api, parent) {
   for (let cls of BlockTypes) {
     let def = cls.blockDefine()
 
-    api_define_libraryset(api, def.typeName, def.typeName, def.uiName, lstruct, cls)
+    api_define_libraryset(api, def.typeName!, def.typeName!, def.uiName!, lstruct, cls)
   }
 
   //let lstruct = api.mapStruct(BlockSet, true);
   //parent.struct(path, apiname, uiname, lstruct);
   parent.list('blocks', 'blocks', [
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: number | string) {
       return list.get(key)
     },
 
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return list
     },
 
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       let len = 0
       for (let list2 of list.libs) {
         len += list2.length
@@ -729,17 +759,17 @@ function api_define_library(api, parent) {
       return len
     },
 
-    function getActive(api, list) {
+    function getActive(api: DataAPI, list: any) {
       return undefined
     },
 
-    function setActive(api, list, key) {
+    function setActive(api: DataAPI, list: any, key: number | string) {
       return undefined
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       return obj.lib_id
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: number | string) {
       let obj = list.get(key)
 
       if (obj === undefined) {
@@ -755,7 +785,7 @@ function api_define_library(api, parent) {
   ])
 }
 
-export function api_define_velpan(api, parent) {
+export function api_define_velpan(api: DataAPI, parent?: DataStruct): DataStruct {
   let vp = api.mapStruct(VelPan)
 
   vp.vec2('pos', 'pos', 'Position')
@@ -766,18 +796,18 @@ export function api_define_velpan(api, parent) {
   return vp
 }
 
-export function api_define_screen(api, parent) {
+export function api_define_screen(api: DataAPI, parent: DataStruct): void {
   let st = api.mapStruct(App)
 
   parent.struct('screen', 'screen', 'Screen', st)
 
   st.list('sareas', 'editors', [
     //list should be main App (Screen) instance
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: number) {
       return list[key].area
     },
 
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       console.log(arguments)
       for (let i = 0; i < list.length; i++) {
         if (list[i].area === obj) {
@@ -786,11 +816,11 @@ export function api_define_screen(api, parent) {
       }
     },
 
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       return list.length
     },
 
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return (function* () {
         for (let sarea of list) {
           yield sarea.area
@@ -798,7 +828,7 @@ export function api_define_screen(api, parent) {
       })()
     },
 
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: number) {
       let obj = list[key]
       if (obj === undefined) return api.getStruct(Editor)
       obj = obj.area
@@ -809,13 +839,13 @@ export function api_define_screen(api, parent) {
       return ret
     },
 
-    function getActive(api, list) {
+    function getActive(api: DataAPI, list: any) {
       return Editor.getActiveArea()
     },
   ])
 }
 
-export function api_define_envlight(api) {
+export function api_define_envlight(api: DataAPI): DataStruct {
   let estruct = api.mapStruct(EnvLight)
 
   let onchange = () => {
@@ -831,7 +861,7 @@ export function api_define_envlight(api) {
   return estruct
 }
 
-export function api_define_light(api, pstruct) {
+export function api_define_light(api: DataAPI, pstruct: DataStruct): void {
   let lstruct = api_define_datablock(api, Light)
 
   let onchange = () => {
@@ -841,7 +871,7 @@ export function api_define_light(api, pstruct) {
   pstruct.struct('light', 'light', 'Light', lstruct)
 }
 
-export function api_define_scene(api, pstruct) {
+export function api_define_scene(api: DataAPI, pstruct: DataStruct): void {
   let sstruct = api_define_datablock(api, Scene)
 
   pstruct.struct('scene', 'scene', 'Scene', sstruct)
@@ -855,7 +885,7 @@ export function api_define_scene(api, pstruct) {
   let prop = makeToolModeEnum()
 
   let def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
-  def.on('change', function (newval, oldval) {
+  def.on('change', function (this: ApiCallbackThis<Scene>, newval: any, oldval: any) {
     let scene = this.dataref
 
     console.log('toolmode change', oldval, newval)
@@ -865,7 +895,7 @@ export function api_define_scene(api, pstruct) {
     window.redraw_viewport()
   })
 
-  let onchange = function (newval, oldval) {
+  let onchange = function (this: ApiCallbackThis<Scene>, newval: number, oldval: number) {
     let scene = this.dataref
 
     scene.updateWidgets()
@@ -898,14 +928,14 @@ export function api_define_scene(api, pstruct) {
   }
 }
 
-export function api_define_dyntopo(api) {
+export function api_define_dyntopo(api: DataAPI): void {
   let st = api.mapStruct(DynTopoSettings)
 
   st.int('valenceGoal', 'valenceGoal', 'Valence Goal', 'Number of edges around vertices to aim for')
     .range(0, 12)
     .noUnits()
 
-  let tooltips = {}
+  let tooltips: Record<string, string> = {}
   for (let k in DynTopoOverrides) {
     if (k === 'NONE') {
       tooltips[k] = 'Use Defaults For Everything'
@@ -944,10 +974,10 @@ export function api_define_dyntopo(api) {
     .description('Number of edges to split/collapse per run')
 }
 
-export function api_define_dyntopo_sc(api) {
+export function api_define_dyntopo_sc(api: DataAPI): void {
   let st = api.mapStruct(DynTopoSettingsSC)
 
-  let tooltips = {}
+  let tooltips: Record<string, string> = {}
   for (let k in DynTopoOverridesSC) {
     if (k === 'NONE') {
       tooltips[k] = 'Use Defaults For Everything'
@@ -1000,7 +1030,7 @@ export function api_define_dyntopo_sc(api) {
   st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
 }
 
-export function api_define_brush(api, cstruct) {
+export function api_define_brush(api: DataAPI, cstruct: DataStruct): void {
   let bst = api_define_datablock(api, SculptBrush)
 
   api_define_dyntopo(api)
@@ -1069,7 +1099,7 @@ export function api_define_brush(api, cstruct) {
   bst.struct('dynamics', 'dynamics', 'Dynamics', dst)
 }
 
-export function api_define_matrix4(api) {
+export function api_define_matrix4(api: DataAPI): DataStruct {
   let st = api.mapStruct(Matrix4, true)
 
   let data = st.struct('$matrix', 'data', 'Matrix Data')
@@ -1087,7 +1117,7 @@ export function api_define_matrix4(api) {
 
 let _done = false
 
-export function getDataAPI() {
+export function getDataAPI(): DataAPI {
   if (_done) {
     return api
   }
@@ -1140,46 +1170,46 @@ export function getDataAPI() {
   api_define_nodes(api)
 
   cstruct.list('', 'objects', [
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return (function* () {
         for (let ob of list.datalib.object) {
           yield ob
         }
       })()
     },
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       return list.datalib.object.length
     },
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: number | string) {
       return list.datalib.get(key)
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       return obj.lib_id
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: number | string) {
       return ostruct
     },
   ])
   api.setRoot(cstruct)
 
   cstruct.list('', 'datablocks', [
-    function getIter(api, list) {
+    function getIter(api: DataAPI, list: any) {
       return list.datalib.allBlocks
     },
-    function getLength(api, list) {
+    function getLength(api: DataAPI, list: any) {
       let len = 0
       for (let block of list.datalib.allBlocks) {
         len++
       }
       return len
     },
-    function get(api, list, key) {
+    function get(api: DataAPI, list: any, key: number | string) {
       return list.datalib.get(key)
     },
-    function getKey(api, list, obj) {
+    function getKey(api: DataAPI, list: any, obj: any) {
       return obj.lib_id
     },
-    function getStruct(api, list, key) {
+    function getStruct(api: DataAPI, list: any, key: number | string) {
       //console.log(list.datalib.get(key).constructor);
       return api.mapStruct(list.datalib.get(key).constructor, false)
     },
@@ -1209,7 +1239,7 @@ export function getDataAPI() {
     FACE  : Icons.FACE_MODE,
     OBJECT: Icons.CIRCLE_SEL,
   })
-  def.on('change', function (newv, oldv) {
+  def.on('change', function (this: ApiCallbackThis<Scene>, newv: any, oldv: any) {
     let owner = this.dataref
 
     console.log('OWNER', owner, owner.selectMask)
