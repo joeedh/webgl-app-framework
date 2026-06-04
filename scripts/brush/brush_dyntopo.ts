@@ -1,4 +1,4 @@
-import {util} from '../path.ux/scripts/pathux.js'
+import {util, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {nstructjs} from '../path.ux/pathux.js'
 
 import {
@@ -225,5 +225,53 @@ export class DynTopoSettings {
 
   copy(): this {
     return new DynTopoSettings().load(this) as unknown as this
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this)
+
+    st.int('valenceGoal', 'valenceGoal', 'Valence Goal', 'Number of edges around vertices to aim for')
+      .range(0, 12)
+      .noUnits()
+
+    let tooltips: Record<string, string> = {}
+    for (let k in DynTopoOverrides) {
+      if (k === 'NONE') {
+        tooltips[k] = 'Use Defaults For Everything'
+      } else {
+        tooltips[k] = 'Use Local Brush Settings'
+      }
+    }
+
+    st.enum('subdivMode', 'subdivMode', SubdivModes)
+
+    st.flags('overrideMask', 'overrides', DynTopoOverrides, 'Overrides').descriptions(tooltips).uiNames({
+      NONE: 'Inherit Everything',
+    })
+
+    st.float('subdivideFactor', 'subdivideFactor', 'Subdivision Factor').range(0.0, 1.0).noUnits()
+    st.float('decimateFactor', 'decimateFactor', 'Decimate Factor').range(0.0, 1.0).noUnits()
+    st.float('edgeSize', 'edgeSize', 'Edge Length', 'Edge length (in pixels)').range(0.25, 40.0).noUnits()
+    st.flags('flag', 'flag', DynTopoFlags, 'Flag').descriptions({
+      ADAPTIVE: 'Subdivide based on curvature (Fancy Edge Weights only)  ',
+    })
+    st.int('maxDepth', 'maxDepth', 'Max Depth', 'Maximum quad tree grid subdivision level').range(0, 15).noUnits()
+    st.int('repeat', 'repeat', 'Repeat', 'Number of times to run topology engine').range(1, 25).noUnits()
+
+    st.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
+    st.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
+      EVEN: 'Fixed distance between brush points',
+      NONE: 'Use raw brush points',
+    })
+
+    st.enum('edgeMode', 'edgeMode', DynTopoModes, 'Mode')
+
+    st.int('edgeCount', 'edgeCount', 'Edge Count')
+      .range(1, 2048)
+      .noUnits()
+      .step(5)
+      .description('Number of edges to split/collapse per run')
+
+    return st
   }
 }

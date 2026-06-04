@@ -91,19 +91,11 @@ import {
   BrushDynChannel,
   BrushFlags,
   BrushSpacingModes,
-  DynTopoFlags,
-  DynTopoModes,
-  DynTopoOverrides,
   DynTopoSettings,
   DynTopoSettingsSC,
-  DynTopoEdgeModeSC,
-  DynTopoSCMode,
-  DynTopoFlagsSC,
-  DynTopoOverridesSC,
   SculptBrush,
   SculptIcons,
   SculptTools,
-  SubdivModes,
 } from '../brush/index'
 
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js'
@@ -890,105 +882,11 @@ export function api_define_scene(api: DataAPI, pstruct: DataStruct): void {
 }
 
 export function api_define_dyntopo(api: DataAPI): void {
-  let st = api.mapStruct(DynTopoSettings)
-
-  st.int('valenceGoal', 'valenceGoal', 'Valence Goal', 'Number of edges around vertices to aim for')
-    .range(0, 12)
-    .noUnits()
-
-  let tooltips: Record<string, string> = {}
-  for (let k in DynTopoOverrides) {
-    if (k === 'NONE') {
-      tooltips[k] = 'Use Defaults For Everything'
-    } else {
-      tooltips[k] = 'Use Local Brush Settings'
-    }
-  }
-
-  st.enum('subdivMode', 'subdivMode', SubdivModes)
-
-  st.flags('overrideMask', 'overrides', DynTopoOverrides, 'Overrides').descriptions(tooltips).uiNames({
-    NONE: 'Inherit Everything',
-  })
-
-  st.float('subdivideFactor', 'subdivideFactor', 'Subdivision Factor').range(0.0, 1.0).noUnits()
-  st.float('decimateFactor', 'decimateFactor', 'Decimate Factor').range(0.0, 1.0).noUnits()
-  st.float('edgeSize', 'edgeSize', 'Edge Length', 'Edge length (in pixels)').range(0.25, 40.0).noUnits()
-  st.flags('flag', 'flag', DynTopoFlags, 'Flag').descriptions({
-    ADAPTIVE: 'Subdivide based on curvature (Fancy Edge Weights only)  ',
-  })
-  st.int('maxDepth', 'maxDepth', 'Max Depth', 'Maximum quad tree grid subdivision level').range(0, 15).noUnits()
-  st.int('repeat', 'repeat', 'Repeat', 'Number of times to run topology engine').range(1, 25).noUnits()
-
-  st.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
-  st.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
-    EVEN: 'Fixed distance between brush points',
-    NONE: 'Use raw brush points',
-  })
-
-  st.enum('edgeMode', 'edgeMode', DynTopoModes, 'Mode')
-
-  st.int('edgeCount', 'edgeCount', 'Edge Count')
-    .range(1, 2048)
-    .noUnits()
-    .step(5)
-    .description('Number of edges to split/collapse per run')
+  DynTopoSettings.defineAPI(api)
 }
 
 export function api_define_dyntopo_sc(api: DataAPI): void {
-  let st = api.mapStruct(DynTopoSettingsSC)
-
-  let tooltips: Record<string, string> = {}
-  for (let k in DynTopoOverridesSC) {
-    if (k === 'NONE') {
-      tooltips[k] = 'Use Defaults For Everything'
-    } else {
-      tooltips[k] = 'Use Local Brush Settings'
-    }
-  }
-
-  st.flags('overrideMask', 'overrides', DynTopoOverridesSC, 'Overrides').descriptions(tooltips).uiNames({
-    NONE: 'Inherit Everything',
-  })
-
-  st.flags('flag', 'flag', DynTopoFlagsSC, 'Flag').descriptions({
-    ENABLED          : 'Enable dynamic topology while sculpting',
-    DO_FLIPS         : 'Edge flips (keeps triangles well-shaped; recommended)',
-    DO_SMOOTH        : 'Tangential smoothing (evens triangle sizes)',
-    PRESERVE_FEATURES: 'Keep seams / sharp edges / face-set & UV-chart boundaries intact',
-  })
-
-  st.enum('edgeMode', 'edgeMode', DynTopoEdgeModeSC, 'Detail Mode').descriptions({
-    WORLD  : 'Target edge length in world units',
-    PERCENT: 'Target edge length as a percentage of the brush radius',
-    PIXELS : 'Target edge length as a multiple of the projected pixel size',
-  })
-
-  st.enum('mode', 'mode', DynTopoSCMode, 'Refine Mode').descriptions({
-    SUBDIVIDE: 'Only subdivide (split long edges)',
-    COLLAPSE : 'Only collapse (remove short edges)',
-    BOTH     : 'Subdivide and collapse',
-  })
-
-  st.float('edgeSize', 'edgeSize', 'Detail Size', 'Target edge length (units depend on Detail Mode)')
-    .range(0.01, 200.0)
-    .noUnits()
-  st.float(
-    'collapseRatio',
-    'collapseRatio',
-    'Collapse Ratio',
-    'Collapse edges shorter than this fraction of the target'
-  )
-    .range(0.05, 0.95)
-    .noUnits()
-  st.float('grade', 'grade', 'Grade', 'Relax the target outward from the brush center (0 = uniform)')
-    .range(0.0, 8.0)
-    .noUnits()
-  st.float('smoothLambda', 'smoothLambda', 'Smooth Amount', 'Tangential smoothing step (0..1)')
-    .range(0.0, 1.0)
-    .noUnits()
-  st.int('maxSplits', 'maxSplits', 'Split Budget', 'Max splits per dab (0 = unlimited)').range(0, 200000).noUnits()
-  st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
+  DynTopoSettingsSC.defineAPI(api)
 }
 
 export function api_define_brush(api: DataAPI, cstruct: DataStruct): void {
