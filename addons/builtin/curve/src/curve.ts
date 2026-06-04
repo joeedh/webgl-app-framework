@@ -1,5 +1,5 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '@framework/api'
-import {nstructjs} from '@framework/pathux'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
 import {Vertex, Edge} from '../../mesh/src/mesh_types'
 import {Mesh} from '../../mesh/src/mesh.js'
@@ -96,6 +96,19 @@ CurveSpline {
 
   private _evaluate_vs: util.cachering<Vector3>
   private _last_check_key: number = 0
+
+  // Chains super (Mesh.defineAPI) onto our own struct, declaring Mesh's members
+  // directly here, so there's no dependency on Mesh being defined first.
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const cstruct = super.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    cstruct.bool('isClosed', 'isClosed', 'Closed Curve').on('change', function (this: {dataref: CurveSpline}) {
+      this.dataref.checkUpdate()
+      this.dataref.regenRender()
+    })
+
+    return cstruct
+  }
 
   constructor() {
     let features = MeshFeatures.MAKE_VERT | MeshFeatures.KILL_VERT

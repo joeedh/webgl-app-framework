@@ -1,4 +1,5 @@
 import {Container, DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 import '../util/polyfill.d.ts'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
@@ -202,7 +203,7 @@ graph.NodeSocketType {
     return this.edges.length > 0
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct) {}
+  static defineAPI(api: DataAPI, sockstruct: DataStruct) {}
 
   //used to load data that might change between file versions
 
@@ -706,8 +707,59 @@ graph.Node {
 
   static graphDefineAPI(api: DataAPI, nodeStruct: DataStruct) {}
 
-  static defineAPI(api: DataAPI, nodeStruct: DataStruct) {
-    console.error('defineAPI called!')
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let nstruct = struct ?? api.mapStruct(this, true)
+
+    nstruct.flags('graph_flag', 'graph_flag', NodeFlags, 'Graph Flags', 'Flags')
+    nstruct.int('graph_id', 'graph_id', 'Graph ID', 'Unique graph ID').readOnly()
+
+    function defineSockets(inorouts: 'inputs' | 'outputs'): void {
+      nstruct.list('', inorouts, [
+        function getIter(api: DataAPI, list: any) {
+          return (function* () {
+            for (let k in list[inorouts]) {
+              yield list[inorouts][k]
+            }
+          })()
+        },
+        function getLength(api: DataAPI, list: any) {
+          return Object.keys(list[inorouts]).length
+        },
+        function get(api: DataAPI, list: any, key: string) {
+          return list[inorouts][key]
+        },
+        function getKey(api: DataAPI, list: any, obj: any) {
+          for (let k in list[inorouts]) {
+            if (list[inorouts][k] === obj) return k
+          }
+        },
+        function getStruct(api: DataAPI, list: any, key: string) {
+          let obj = list[inorouts][key]
+
+          if (obj === undefined) return api.getStruct(NodeSocketType)
+
+          let ret
+
+          if (obj.graph_flag & SocketFlags.INSTANCE_API_DEFINE) {
+            if (!api.hasStruct(obj)) {
+              ret = api.mapStruct(obj, true)
+              obj.defineInstanceAPI(api, ret)
+            } else {
+              ret = api.getStruct(obj)
+            }
+          } else {
+            ret = api.getStruct(obj.constructor)
+          }
+
+          return ret === undefined ? api.getStruct(NodeSocketType) : ret
+        },
+      ])
+    }
+
+    defineSockets('inputs')
+    defineSockets('outputs')
+
+    return nstruct
   }
 
   /** get final node def with inheritance applied to input/output sockets
@@ -1656,15 +1708,6 @@ graph.Graph {
 
     this.nodes = new GraphNodes(this, this.nodes)
 
-    /*
-    console.log("NODES", this.nodes);
-    let buf = "NODES\n"
-    for (let n of this.nodes) {
-      buf += "  " + n.graph_name + "|" + n.constructor.name + "\n";
-    }
-    console.log(buf);
-    //*/
-
     const node_idmap = this.node_idmap
     const sock_idmap = this.sock_idmap
 
@@ -1934,3 +1977,5 @@ graph.Graph {
     return ret
   }
 }
+
+registerDataAPI(Node)

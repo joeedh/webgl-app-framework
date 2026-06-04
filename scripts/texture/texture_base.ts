@@ -122,8 +122,8 @@ export class TextureShader {
     } as ITextureShaderDef
   }
 
-  static defineAPI(api: DataAPI): DataStruct {
-    const st = api.mapStruct(this)
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const st = struct ?? api.mapStruct(this)
 
     st.string('typeName', 'type', 'Type', 'Type Name').readOnly()
     const sdef = this.textureDefine()

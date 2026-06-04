@@ -53,18 +53,18 @@ An icon is more than a glyph — most are bound to model state through the
 
 ```
 iconsheet.svg cell ──(row-major index)──▶ Icons.NAME (scripts/editors/icon_enum.js)
-  ──▶ .icons({ENUM_KEY: Icons.NAME}) in scripts/data_api/api_define.js
+  ──▶ .icons({ENUM_KEY: Icons.NAME}) in scripts/data_api/api_define.ts
   ──▶ enum/flag property iconmap ──▶ checkenum/listenum bound via prop('<path>')
 ```
 
 - Icons attach to **enum / bitflag** data-API properties via
-  `prop.icons({ KEY: Icons.NAME })` in `scripts/data_api/api_define.js` (e.g.
+  `prop.icons({ KEY: Icons.NAME })` in `scripts/data_api/api_define.ts` (e.g.
   `selectMask`, `symFlag`, brush `tool`/`flag`). `checkenum`/`listenum` widgets
   and enum menus read that map to draw the per-value icon; plain icon-buttons
   use `Icons.NAME` directly.
-- After editing `api_define.js`, run `pnpm gen:paths` to refresh the path
+- After editing `api_define.ts`, run `pnpm gen:paths` to refresh the path
   catalog (`pnpm typecheck` does this automatically).
-- **To find every binding that references an icon**, grep `api_define.js` for
+- **To find every binding that references an icon**, grep `api_define.ts` for
   `Icons.NAME`. To resolve which data path drives a given widget, consult the
   index below.
 

@@ -1,7 +1,7 @@
 import {KeyMap} from '../editor_base'
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../webgl/simplemesh'
 import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
-import {Container, DataAPI, EnumProperty, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
+import {Container, DataAPI, DataStruct, EnumProperty, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
 import {INodeConstructor, INodeSocketSet, Node} from '../../core/graph.js'
@@ -245,10 +245,10 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     //return WidgetTool.getToolEnum(classes, FlagProperty, true);
   }
 
-  static defineAPI(api: DataAPI) {
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
     const cls = this
 
-    const tstruct = api.mapStruct(cls, true)
+    const tstruct = struct ?? api.mapStruct(cls, true)
     tstruct.name = this.name !== undefined ? this.name : this.toolModeDefine().name
     tstruct.string('typeName', 'type', 'Type', 'Tool Mode Type')
 

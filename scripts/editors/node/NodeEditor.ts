@@ -767,13 +767,6 @@ NodeEditor {
     return undefined
   }
 
-  static ensureAPI(api: DataAPI): DataStruct {
-    if (!api.hasStruct(NodeEditorBase)) {
-      NodeEditorBase.defineAPI(api)
-    }
-    return api.getStruct(NodeEditorBase)
-  }
-
   static defineAPI(api: DataAPI): DataStruct {
     const nedstruct = super.defineAPI(api)
 
@@ -883,7 +876,9 @@ NodeEditor {
 
       if (!api.hasStruct(cls)) {
         console.warn('Auto-making data api for ' + cls.name)
-        api.inheritStruct(cls, Node)
+        // Chain Node.defineAPI onto the new node class's struct, declaring Node's
+        // members directly on it.
+        Node.defineAPI(api, api.mapStruct(cls, true))
       }
 
       const path = this.graphPath + '.nodes[' + node.graph_id + ']'

@@ -79,7 +79,7 @@ baseline) are green; the affected sculptcore tests pass.
   selection path is not credible.** **(confirmed)**
   Fix: read `e.selection.id` (the list key/index), resolve against
   `mesh.attrItems[id]`, then call the setters — or add `getActive`/`setActive`
-  to the `attrItems` data-list in `api_define.js:305-321` and let the ListBox
+  to the `attrItems` data-list in `api_define.ts` (the `attrItems` builder) and let the ListBox
   route selection. Also fix the now-wrong comment at `litemesh.ts:281-282`.
 
 - [ ] **B2 [sc] Attribute `category` (`attr.use`) is never serialized — lost on

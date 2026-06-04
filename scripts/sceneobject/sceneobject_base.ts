@@ -1,10 +1,10 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, IDataBlockConstructor} from '../core/lib_api'
-import {Vector2, Vector3, Matrix4, nstructjs, Container} from '../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Matrix4, nstructjs, Container, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {StandardTools} from './stdtools.js'
 import {INodeDef, INodeSocketSet, Node, NodeFlags, NodeInheritFlag} from '../core/graph'
 import {DependSocket} from '../core/graphsockets'
-import {Material} from '../core/material'
+import type {Material} from '../core/material'
 import {aabb_ray_isect} from '../util/isect.js'
 import {FindNearestRet} from '../editors/view3d/findnearest.js'
 import type {ScreenPickResult} from '../editors/view3d/findnearest.js'
@@ -16,6 +16,17 @@ import type {DrawQueue, FrameContext} from '../render/queue'
 /** Empty area-pick result (no elements). */
 function emptyPickResult(): ScreenPickResult {
   return {elements: [], elementObjects: [], elementDists: []}
+}
+
+/**
+ * `Material` is a type-only import: a runtime import here forms a `core/material`
+ * cycle that TDZ-crashes `class Light extends SceneObjectData` at bundle load.
+ * `SceneObjectData.defineAPI` still needs the class to map its `materials` list, so
+ * `api_define` injects it via {@link setSceneObjectMaterialClass} at module load.
+ */
+let _MaterialClass: (abstract new (...args: any[]) => Material) | undefined
+export function setSceneObjectMaterialClass(cls: abstract new (...args: any[]) => Material): void {
+  _MaterialClass = cls
 }
 
 export interface IDataDefine {
@@ -86,6 +97,19 @@ SceneObjectData {
   materials : array(e, DataRef) | DataRef.fromBlock(e); 
 }`
   )
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let mstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+    mstruct.list<Array<Material | undefined>, number, Material>('materials', 'materials', [
+      function getIter(api: DataAPI, list: Array<Material | undefined>) { return list },
+      function getLength(api: DataAPI, list: Array<Material | undefined>) { return list.length },
+      function get(api: DataAPI, list: Array<Material | undefined>, key: number) { return list[key] },
+      function getKey(api: DataAPI, list: Array<Material | undefined>, obj: Material) { return list.indexOf(obj) },
+      function getStruct(api: DataAPI, list: Array<Material | undefined>, key: number) { return api.mapStruct(_MaterialClass!) },
+    ])
+    mstruct.bool('usesMaterial', 'usesMaterial', 'Uses Material').readOnly()
+    return mstruct
+  }
 
   exec(ctx: ToolContext) {
     this.outputs.depend.graphUpdate()

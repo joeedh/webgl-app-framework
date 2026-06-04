@@ -10,8 +10,8 @@ export class DFieldSettings extends LayerSettingsBase {
 
   copyTo(b) {}
 
-  static apiDefine(api) {
-    let st = super.apiDefine(api)
+  static defineAPI(api) {
+    let st = super.defineAPI(api)
 
     return st
   }

@@ -1,3 +1,4 @@
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {
   nstructjs,
   Vector2,
@@ -798,7 +799,7 @@ UIBase.register(EditorSideBar)
 
 export interface IEditorConstructor<T extends Editor = Editor> extends IAreaConstructor<ViewContext, T> {
   new (): T
-  defineAPI(api: DataAPI): DataStruct
+  defineAPI(api: DataAPI, struct?: DataStruct): DataStruct
 }
 
 const dataPathCache = new Map<IEditorConstructor, string>()
@@ -851,8 +852,8 @@ Editor {
     this.shadow.appendChild(this.container as unknown as HTMLElement)
   }
 
-  static defineAPI(api: DataAPI): DataStruct {
-    const st = api.mapStruct(this, true)
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const st = struct ?? api.mapStruct(this, true)
 
     st.vec2('pos', 'pos', 'Position', 'Position of editor in window')
     st.vec2('size', 'size', 'Size', 'Size of editor')
@@ -1061,6 +1062,54 @@ App {
 }
   `
   )
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this)
+
+    st.list('sareas', 'editors', [
+      //list should be main App (Screen) instance
+      function get(api: DataAPI, list: any, key: number) {
+        return list[key].area
+      },
+
+      function getKey(api: DataAPI, list: any, obj: any) {
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].area === obj) {
+            return i
+          }
+        }
+      },
+
+      function getLength(api: DataAPI, list: any) {
+        return list.length
+      },
+
+      function getIter(api: DataAPI, list: any) {
+        return (function* () {
+          for (let sarea of list) {
+            yield sarea.area
+          }
+        })()
+      },
+
+      function getStruct(api: DataAPI, list: any, key: number) {
+        let obj = list[key]
+        if (obj === undefined) return api.getStruct(Editor)
+        obj = obj.area
+
+        let ret = api.getStruct(obj.constructor)
+        ret = ret === undefined ? api.getStruct(Editor) : ret
+
+        return ret
+      },
+
+      function getActive(api: DataAPI, list: any) {
+        return Editor.getActiveArea()
+      },
+    ])
+
+    return st
+  }
 
   _last_wutime = 0
   //last dpi update time
@@ -2103,3 +2152,5 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
 }
 
 UIBase.register(DirectionChooser)
+
+registerDataAPI(App)

@@ -1,4 +1,5 @@
-import {util, nstructjs} from '../path.ux/scripts/pathux.js'
+import {util, nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
 
@@ -131,8 +132,8 @@ AppSettings {
     this.brushSet = BrushSets.MEDIUM_RES
   }
 
-  static defineAPI(api: any): any {
-    const st = api.mapStruct(this, true)
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const st = struct ?? api.mapStruct(this, true)
 
     const onchange = function (this: {dataref: AppSettings}) {
       if (this.dataref === _appstate.settings) {
@@ -154,7 +155,7 @@ AppSettings {
       })
 
     const ast = api.mapStruct(AddonSettings, true)
-    ast.bool('enabled', 'enabled', 'Enabled').on('change', function (this: {dataref: AddonSettings}, val: boolean) {
+    ast.bool('enabled', 'enabled', 'Enabled').on('change', function (this: {dataref: AddonSettings}, val: unknown) {
       // AddonSettings.name is the manifest id. Route through the manager so
       // dependencies are auto-enabled and disabling a depended-on addon is
       // blocked with a message.
@@ -190,6 +191,10 @@ AppSettings {
 
       getKey(api: any, list: any, obj: AddonSettings) {
         return obj.name
+      },
+
+      getLength(api: any, list: Record<string, AddonSettings>) {
+        return Object.keys(list).length
       },
 
       getIter(api: any, list: Record<string, AddonSettings>) {
@@ -359,3 +364,5 @@ AppSettings {
     }
   }
 }
+
+registerDataAPI(AppSettings)

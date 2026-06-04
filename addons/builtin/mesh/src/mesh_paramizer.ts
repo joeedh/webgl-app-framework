@@ -135,8 +135,8 @@ export class ParamVertSettings extends LayerSettingsBase {
     this.weightMode = WeightModes.EDGE_LENGTH
   }
 
-  static apiDefine(api: DataAPI, st?: DataStruct) {
-    const ret = super.apiDefine(api, st!)
+  static defineAPI(api: DataAPI, st?: DataStruct) {
+    const ret = super.defineAPI(api, st!)
 
     ret.int('updateGen', 'updateGen', 'Generation').noUnits().readOnly()
     ret.bool('smoothTangents', 'smoothTangents', 'Smooth Tangents') //.noUnits().range(0, 25);

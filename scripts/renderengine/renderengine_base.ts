@@ -1,5 +1,6 @@
 import type {View3D} from '../editors/all.js'
-import {nstructjs, util} from '../path.ux/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
+import {nstructjs, util, DataAPI, DataStruct} from '../path.ux/pathux.js'
 
 const sdigest = new util.HashDigest()
 
@@ -45,6 +46,20 @@ export class RenderSettings {
     sdigest.add(this.sssWidth)
 
     return sdigest.get()
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this, true)
+
+    st.bool('sharpen', 'sharpen', 'Sharpen')
+    st.int('sharpenWidth', 'sharpenWidth', 'Sharpen Width').noUnits()
+    st.float('filterWidth', 'filterWidth', 'AA Width').noUnits()
+    st.float('sharpenFac', 'sharpenFac', 'Sharpen Fac').noUnits()
+    st.int('minSamples', 'minSamples', 'Min Samples', 'Minimum samples to render before drawing to screen')
+      .noUnits()
+      .range(0, 10)
+
+    return st
   }
 }
 RenderSettings.STRUCT = `
@@ -108,3 +123,5 @@ export class RenderEngine {
   }
 }
 RenderEngine.engines = []
+
+registerDataAPI(RenderSettings)

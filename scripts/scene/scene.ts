@@ -1,7 +1,8 @@
 import {DataBlock, DataRef, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {WidgetManager} from '../editors/view3d/widgets/widgets.js'
-import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3} from '../path.ux/scripts/pathux.js'
+import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject'
 import {DependSocket, FloatSocket} from '../core/graphsockets.js'
@@ -9,6 +10,8 @@ import {Light} from '../light/light.js'
 
 //import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from '../editors/view3d/selectmode.js'
+import {Icons} from '../editors/icon_enum.js'
+import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {Collection} from './collection'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {SceneBVH} from '../sceneobject/scenebvh.js'
@@ -73,6 +76,22 @@ export class EnvLight {
     ret.add(this.sunRadius)
 
     return ret.get()
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let estruct = struct ?? api.mapStruct(this)
+
+    let onchange = () => {
+      window.redraw_viewport()
+    }
+
+    estruct.color3('color', 'color', 'Color', 'Ambient light color').on('change', onchange)
+    estruct.float('power', 'power', 'Power', 'Power of ambient light power').on('change', onchange).noUnits()
+    estruct.flags('flag', 'flag', EnvLightFlags, 'flag', 'Ambient light flags').on('change', onchange)
+    estruct.float('ao_dist', 'ao_dist', 'Distance').on('change', onchange).noUnits()
+    estruct.float('ao_fac', 'ao_fac', 'Factor').on('change', onchange).noUnits()
+
+    return estruct
   }
 }
 
@@ -751,6 +770,43 @@ propIslandOnly : bool;
     }
   }
 
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let sstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    sstruct.struct('envlight', 'envlight', 'Ambient Light', EnvLight.defineAPI(api))
+    sstruct.bool('propEnabled', 'propEnabled', 'Magnet Mode').icon(Icons.MAGNET)
+    sstruct.enum('propMode', 'propMode', PropModes, 'Magnet Curve')
+    sstruct.float('propRadius', 'propRadius', 'Magnet Radius').noUnits().range(0.01, 1000000)
+    sstruct.bool('propIslandOnly', 'propIslandOnly', 'Island Only')
+
+    let prop = makeToolModeEnum()
+
+    let def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
+    def.on('change', function (this: {dataref: Scene}, newval: any, oldval: any) {
+      let scene = this.dataref
+
+      scene.toolmode_i = oldval
+      scene.switchToolMode(newval)
+      window.redraw_viewport()
+    })
+
+    let base = ToolMode.defineAPI(api)
+    sstruct.dynamicStruct('toolmode', 'tool', 'Active Tool', base)
+
+    let struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data')
+    struct2.name = 'ToolModes'
+
+    for (let cls of ToolModes) {
+      let tdef = cls.toolModeDefine()
+
+      let struct3 = cls.defineAPI(api)
+
+      struct2.struct(tdef.name, tdef.name, tdef.uiname, struct3)
+    }
+
+    return sstruct
+  }
+
   changeTime(newtime: number): void {
     const oldtime = this.time
 
@@ -881,3 +937,4 @@ propIslandOnly : bool;
 }
 
 DataBlock.register(Scene)
+registerDataAPI(Scene)

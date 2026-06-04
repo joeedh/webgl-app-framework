@@ -40,7 +40,7 @@ graph.Matrix4Socket{
     digest.add(this.value.getAsArray())
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct) {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct) {
     const def = sockstruct.struct('value', 'value', 'Value', api.mapStruct(Matrix4))
     //def.on('change', function() { this.dataref.graphUpdate(true)});
   }
@@ -179,7 +179,7 @@ graph.IntSocket {
     this.value = 0
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.int('value', 'value', 'value').noUnits()
 
     def.on('change', function (this: ToolProperty) {
@@ -256,7 +256,7 @@ graph.Vec2Socket {
     this.value = new Vector2(default_value)
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec2('value', 'value', 'value').noUnits()
 
     def.on('change', function (this: ToolProperty) {
@@ -324,7 +324,7 @@ graph.Vec3Socket {
     this.value = new Vector3(default_value)
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname)
 
     def.on('change', function (this: ToolProperty) {
@@ -402,7 +402,7 @@ graph.Vec4Socket {
     }
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec4('value', 'value', 'value').noUnits()
 
     def.on('change', function (this: ToolProperty) {
@@ -473,7 +473,7 @@ graph.RGBSocket {
     }
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct) {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct) {
     const def = sockstruct.color3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname)
 
     def.on('change', function (this: ToolProperty) {
@@ -523,7 +523,7 @@ graph.RGBASocket {
     }
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.color4('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname).noUnits()
 
     def.on('change', function (this: ToolProperty) {
@@ -572,7 +572,7 @@ graph.FloatSocket {
     digest.add(this.value)
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.float('value', 'value', 'value').noUnits()
 
     def.on('change', function (this: ToolProperty) {
@@ -674,7 +674,7 @@ export class EnumSocket extends IntSocket {
     digest.add(this.value)
   }
 
-  apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  defineInstanceAPI(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.enum('value', 'value', this.items, this.uiname).uiNames(this.uimap)
     def.on('change', function (this: ToolProperty) {
       ;(this.dataref as EnumSocket).graphUpdate(true)
@@ -825,7 +825,7 @@ graph.BoolSocket {
     this.value = false
   }
 
-  static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, sockstruct: DataStruct): void {
     sockstruct.bool('value', 'value', 'value')
   }
 

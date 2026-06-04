@@ -1,5 +1,6 @@
 import {DataBlock, DataRef} from '../core/lib_api.js'
 import {nstructjs} from '../path.ux/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 let STRUCT = nstructjs.STRUCT
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js'
@@ -50,6 +51,11 @@ export class Light extends SceneObjectData {
       flag       : 0,
       icon       : -1,
     }
+  }
+
+  static defineAPI(api, struct) {
+    // Light layers its API at the DataBlock level (not SceneObjectData).
+    return DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
   }
 
   static nodedef() {
@@ -127,3 +133,4 @@ Light {
 
 DataBlock.register(Light)
 SceneObjectData.register(Light)
+registerDataAPI(Light)

@@ -5,6 +5,24 @@ Read the contents of AGENTS.md.
 - Do not do e.g. `InputSet extends import('../../path.ux/scripts/pathux.js').PropertySlots = {},`
   add a proper type import
 
+## Code Comments
+
+Note: roughly preserve comments written by the user however if they ask you to audit
+      or correct comments in a file you may edit the comment to ensure correctness.
+
+- **Permanent non-doc comments**: keep short and concise — no more than 3 lines.
+  A comment longer than 3 lines is allowed at most once per ~500 lines of a file.
+  Permanent comments should not reference the prior state of the code.
+- **TODO comments**: may exceed the 3-line limit. Mark especially high-priority
+  items with `XXX:`; mark ordinary ones with `TODO:`.
+- **Refactor / implementation / temp comments**: no length limit, but prefix them
+  with `CLAUDENOTE:` so they can be found and stripped later. The final step of
+  any plan is to remove the `CLAUDENOTE:` comments — replacing the ones still
+  worth keeping with permanent (≤ 3-line) non-doc comments.
+- **Doc comments**: short and concise; only add them for non-obvious function
+  signatures. A doc comment may simply explain how a non-obvious parameter
+  behaves when that is shorter than describing the whole function.
+
 ## Addons
 
 The builtin editing features (mesh, mesh_edit, curve, subsurf, tetmesh,
@@ -124,7 +142,7 @@ conventions:
   arithmetic and can append to `Icons` / emit a visual locator overlay.
 - Icons are wired into the **data-path binding system**: enum/bitflag
   properties attach a per-value icon via `prop.icons({KEY: Icons.NAME})` in
-  `scripts/data_api/api_define.js`. To resolve which path/binding an icon feeds,
+  `scripts/data_api/api_define.ts`. To resolve which path/binding an icon feeds,
   see [documentation/datapath-bindings.md](documentation/datapath-bindings.md).
 
 ## Electron test harness / CLI
@@ -270,24 +288,20 @@ graded target and a per-dab split budget); spatial-tree currency is incremental
 
 ## Typecheck
 
-Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig
-baseline is 106 pre-existing errors concentrated in
-`scripts/editors/view3d/tools/pbvh_sculptops.ts` (~62),
-`addons/builtin/subsurf/src/subsurf_mesh.ts`,
-`scripts/editors/view3d/transform/transform_types.ts`,
-`sculptcore/typescript/api/wasm.ts`, and `scripts/sculptcore_demo.ts`.
+Run `npx tsgo --noEmit`, **not** `tsc`.
 
 ## Data API paths
 
 See [documentation/datapath-bindings.md](documentation/datapath-bindings.md)
-for the binding-system overview (how `api_define.js` declares props, and how
-enum/flag icons attach via `.icons(...)`).
+for the binding-system overview (how each class's `static defineAPI` declares
+props, and how enum/flag icons attach via `.icons(...)`).
 
 Valid `path` strings for `container.prop("...")` (and `slider`, `check`,
 `checkenum`, `listenum`, `pathlabel`, `textbox`, plus `<prop path="...">`
 xmlpage tags) are catalogued by walking `getDataAPI()`
-(`scripts/data_api/api_define.js`). Run `pnpm gen:paths` after editing
-`api_define.js` to regenerate `scripts/data_api/generated/`:
+(`scripts/data_api/api_define.ts`). Run `pnpm gen:paths` after editing
+`api_define.ts` (or a class's `defineAPI`) to regenerate
+`scripts/data_api/generated/`:
 
 - `API_PATHS.md` — human/LLM reference (path, type, UI name, range, unit, enum)
 - `api-paths.json` — machine-readable catalog
@@ -300,11 +314,49 @@ type-checking (`pnpm build` does not — generation is type/lint-only). The
 catalog; dynamically-indexed paths (e.g. `flag[ENUMNAME]`) warn because the
 walker can't enumerate them — those are expected and harmless.
 
+**How `getDataAPI()` is built.** Each participating class exposes
+`static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct`. Subclasses
+**chain** their parent (`super.defineAPI(api, struct)` re-declares the parent's
+members onto the child's own struct) rather than copying an already-built parent
+struct, so registry-class population is **order-independent** — no class needs
+another to be defined first. `getDataAPI()`
+(`scripts/data_api/api_define.ts`) runs in two passes: a **population pass**
+(non-class pre-steps like sockets/matrix4/customdata → `registerCoreDataAPIClasses()`
+→ a `defineOnce` loop over `dataAPIRegistry` → class-dependent helpers that
+chain `DataBlock.defineAPI`), then an explicit **attach pass** that wires
+the populated structs into the `ToolContext` tree. Register a new class with
+`registerDataAPI(cls)` in any order. The only build-first requirement is for the
+non-class pre-pass structs (`Graph`, `VelPan`) that a few `defineAPI`s fetch by
+reference via `api.getStruct(...)`; the population pre-pass builds them ahead of
+the registry loop. The on-disk catalog is **canonically sorted**
+(lexicographic by normalized path in `tools/gen-datapaths.mjs`), so the committed
+`generated/` files are stable regardless of population/traversal order.
+
 ## Cross-layer follow-ups
 
 `TODO.md` (repo root) tracks non-addon consumers of addon files and
 cross-addon `scripts/...` path imports that survive the addon-API
 migration. Add to it when you discover another one.
+
+## Submodules
+
+- Keep submodules checked out at the HEADs of their current branches, pulling and
+  merging as needed — **except** `sculptcore/emsdk` and `sculptcore/extern/imgui`,
+  which stay pinned at their recorded commits (third-party, version-locked).
+- The `master` branch must always link submodules at their default-branch commits
+  (never pin `master`'s gitlinks to a submodule feature branch).
+- **Commit a parent repo and its submodules together** whenever their branch names
+  match, or both are on their default branches: make the submodule commit, then
+  bump the parent's gitlink, as one logical change. The pinned exceptions
+  (`sculptcore/emsdk`, `sculptcore/extern/imgui`) are excluded — bump those
+  deliberately, never as part of a co-commit.
+- **Parent on a branch, submodule on its default branch:** do not silently commit
+  or advance the submodule's shared default branch. Ask the user whether they want
+  to commit and/or push the submodule's default branch (and bump the gitlink)
+  before doing so.
+- **Worktree teardown:** before removing a worktree, every submodule sitting on its
+  default branch — except the pinned `sculptcore/emsdk` / `sculptcore/extern/imgui`
+  — must be committed and pushed, so no work is lost when the checkout goes away.
 
 ## Secondary-agent worktree
 

@@ -1,5 +1,6 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api.js'
-import {nstructjs, util, color2css, Vector4} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
+import {nstructjs, util, color2css, Vector4, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {Icons} from '../editors/icon_enum.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {NodeFlags} from '../core/graph.js'
@@ -389,6 +390,21 @@ ImageBlock {
       icon       : Icons.IMAGE_EDITOR,
       flag       : 0,
     }
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    st.enum('type', 'type', ImageTypes, 'Image Type')
+    st.enum('genType', 'genType', ImageGenTypes, 'Generator')
+    st.int('width', 'width', 'Width').noUnits().range(1, 16384).step(5)
+    st.int('height', 'height', 'Height').noUnits().range(1, 16384).step(5)
+    st.string('url', 'url', 'URL')
+    st.bool('ready', 'ready', 'Ready', 'Is the image ready for use').readOnly()
+    st.flags('flag', 'flag', ImageFlags, 'Flag')
+    st.color4('genColor', 'genColor', 'Color')
+
+    return st
   }
 
   destroy(): void {
@@ -804,4 +820,15 @@ ImageUser {
 
     return digest.get()
   }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this, true)
+
+    st.struct('image', 'image', 'Image', api.mapStruct(ImageBlock))
+
+    return st
+  }
 }
+
+registerDataAPI(ImageBlock)
+registerDataAPI(ImageUser)

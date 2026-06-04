@@ -29,11 +29,36 @@ After `scripts/curve/*` and `curvetool*.ts` move into `addons/builtin/curve/src/
 - `scripts/hair/strand_types.js:1` — `import {CurveSpline}` — **runtime**, `Strand extends CurveSpline`. Class-extends requires a static reference; can't be moved to runtime lookup without restructuring Strand. Either:
   - hair eventually becomes its own addon depending on curve, or
   - curve's class surface is exposed via a runtime accessor and Strand is recast as composition rather than inheritance.
-- `scripts/data_api/api_define.js:41` — `import {CurveSpline}` — runtime; used to register the CurveSpline data API. Could move to an `api_register` hook on the addon's register() call.
+- `scripts/data_api/api_define.ts:40` — `import {CurveSpline}` — runtime; used to register the CurveSpline data API. Could move to an `api_register` hook on the addon's register() call. (Now also covered by the "Data API `defineAPI` registry" section below.)
 - `addons/builtin/mesh/src/mesh_types.ts:348` — `import {KnotDataLayer}` — runtime, but this is **mesh addon → curve addon**. Currently mesh has no manifest dep on curve. Either:
   - mesh declares `dependencies: ['curve']` and reaches it via `@addon/curve/api` (creates a base-curve-then-mesh ordering), or
   - the `KnotDataLayer` CustomData type is registered via a runtime hook from the curve addon's register() (curve depends on mesh, registers its CustomData class into mesh's registry on load).
   The latter is the more idiomatic dependency-injection direction — mesh shouldn't know what KnotDataLayer is.
+
+## Data API `defineAPI` registry — addon class decoupling ✅ DONE
+
+The `defineAPI` refactor flipped `getDataAPI()` to iterate `dataAPIRegistry`
+(see `documentation/plans/api-define-defineapi-refactor.md`). Core
+`scripts/data_api/api_define.ts` no longer imports `addons/builtin/*`:
+
+- The builtin-addon classes (`Mesh`, `Vertex`, `Element`, `CurveSpline`,
+  `BVHSettings`) are registered by the inversion bridge
+  `addons/builtin/builtin_data_api.ts`, imported for its side effects from
+  `scripts/entry_point.js` (runs before `getDataAPI`) and from
+  `tools/gen-datapaths.mjs`'s entry shim (the catalog generator never boots
+  addons). The bridge reaches *up* into the dependency-free registry leaf
+  (`scripts/data_api/api_define_registry.ts`) rather than core reaching *down*.
+- The `ctx.mesh` struct is fetched by stable name via
+  `api.getStructByName('mesh.Mesh')` (path.ux), and the Scene selectMask
+  `regenElementsDraw` call duck-types instead of `instanceof Mesh`, so core
+  holds no static reference to the Mesh class.
+- **External (non-builtin) addons** register their own data-API classes through
+  the `register(api)` lifecycle hook: `addon_base.ts`'s `register(cls)` now has a
+  DataBlock/SceneObjectData branch that calls `registerDataAPI(cls)` and
+  live-defines the class against the running API (since `getDataAPI` is one-shot
+  and runs before addons start). A shared define-guard in the registry leaf
+  (`isDataAPIDefined`/`markDataAPIDefined`) prevents double-defining a class the
+  build pass already handled.
 
 ## Non-addon side-effect imports (registration triggers)
 

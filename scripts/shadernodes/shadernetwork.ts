@@ -1,7 +1,8 @@
 import {DataBlock} from '../core/lib_api.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import type {BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 import {Graph, INodeSocketSet, type GenericNode} from '../core/graph.js'
-import {nstructjs} from '../path.ux/scripts/pathux.js'
+import {nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 import {DependSocket, Vec3Socket, Vec4Socket, FloatSocket, IntSocket, BoolSocket} from '../core/graphsockets.js'
@@ -262,6 +263,14 @@ ShaderNetwork {
     }
   }
 
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let mstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    mstruct.struct('graph', 'graph', 'Shader Graph', api.getStruct(Graph))
+
+    return mstruct
+  }
+
   loadSTRUCT(reader: StructReader) {
     super.loadSTRUCT(reader)
     reader(this)
@@ -288,3 +297,5 @@ export function makeDefaultShaderNetwork() {
 
   return sn
 }
+
+registerDataAPI(ShaderNetwork)

@@ -22,7 +22,7 @@ mesh.UVLayerElem {
 `
   )
 
-  static apiDefine(api: DataAPI, dstruct: DataStruct) {
+  static defineAPI(api: DataAPI, dstruct: DataStruct) {
     dstruct.vec2('uv', 'uv', 'uv')
   }
 
@@ -120,7 +120,7 @@ mesh.Vector2LayerElem {
     this.value = new Vector2()
   }
 
-  static apiDefine(api: DataAPI, dstruct: DataStruct) {
+  static defineAPI(api: DataAPI, dstruct: DataStruct) {
     dstruct.vec2('value', 'value', 'value')
   }
 
@@ -489,7 +489,7 @@ mesh.ColorLayerElem {
     return this
   }
 
-  static apiDefine(api: DataAPI, dstruct: DataStruct): void {
+  static defineAPI(api: DataAPI, dstruct: DataStruct): void {
     dstruct.color4('color', 'color', 'Color')
   }
 

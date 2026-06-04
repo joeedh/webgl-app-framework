@@ -21,6 +21,12 @@ import * as customdata from '../addons/builtin/mesh/src/customdata'
 import * as mesh_customdata from '../addons/builtin/mesh/src/mesh_customdata.js'
 import * as mesh_base from '../addons/builtin/mesh/src/mesh_base.js'
 
+// Inversion bridge: registers the builtin-addon classes (Mesh, Vertex, Element,
+// BVHSettings, CurveSpline) into the core data-API registry. Must be imported
+// before preinit() (which constructs AppState → getDataAPI), so the registry is
+// populated when getDataAPI walks it. See addons/builtin/builtin_data_api.ts.
+import '../addons/builtin/builtin_data_api.js'
+
 // Registers the default-scene-with-cube builder against core/default_file. Once
 // mesh moves into a builtin addon (plan §6 step 6) this side-effect import goes
 // away and the addon's register() hook performs the registration.

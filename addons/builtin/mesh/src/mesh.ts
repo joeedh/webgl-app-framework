@@ -23,9 +23,10 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '@framework/api'
 import {DataBlock} from '@framework/api'
 import {IDataDefine, SceneObjectData} from '@framework/api'
 import {FindNearestRet} from '@framework/api'
+import {Icons} from '@framework/api'
 import type {ScreenPickResult} from '@framework/api'
 import {math, Matrix4, Number3, util, Vector2, Vector3, Vector3Like, Vector4} from '@framework/api'
-import {nstructjs} from '@framework/pathux'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
 import {
   CDFlags,
@@ -57,6 +58,8 @@ import {
   MeshFeatureError,
   MeshFeatures,
   MeshFlags,
+  MeshModifierFlags,
+  MeshSymFlags,
   MeshTypes,
   reallocArrayTemp,
   RecalcFlags,
@@ -477,6 +480,76 @@ mesh.Mesh {
       tools     : _meshTools,
       dataKind  : 'mesh',
     }
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    mstruct.int('uiTriangleCount', 'triCount', 'Triangles', 'Total number of triangles in the mesh').readOnly()
+    mstruct.struct('bvhSettings', 'bvhSettings', 'BVH Settings', api.mapStruct(BVHSettings))
+
+    let def
+    def = mstruct.flags('symFlag', 'symFlag', MeshSymFlags, 'Symmetry Flags', 'Mesh Symmetry Flags')
+    def.icons({
+      X: Icons.SYM_X,
+      Y: Icons.SYM_Y,
+      Z: Icons.SYM_Z,
+    })
+    def.on('change', function (this: {dataref: Mesh}, e: any) {
+      let mesh = this.dataref
+
+      mesh.updateMirrorTags()
+
+      mesh.recalcNormals()
+      mesh.regenRender()
+      mesh.regenTessellation()
+      mesh.graphUpdate()
+    })
+
+    def = mstruct.flags('flag', 'flag', MeshModifierFlags, 'Modifier Flag', 'Mesh modifier flags')
+    def.icons({
+      SUBSURF: Icons.SUBSURF,
+    })
+
+    def.on('change', (e: any) => {
+      window.redraw_viewport()
+    })
+
+    function defineElemList(key: string, type: number): void {
+      mstruct.struct(key + '.customData', key + 'Data', 'Custom Datas', api.mapStruct(CustomData, false))
+
+      mstruct.list(key, key, [
+        function getIter(api: DataAPI, list: any) {
+          return list
+        },
+        function getLength(api: DataAPI, list: any) {
+          return list.length
+        },
+        function get(api: DataAPI, list: any, key: number) {
+          return list.local_eidmap[key]
+        },
+        function getKey(api: DataAPI, list: any, obj: any) {
+          return obj !== undefined ? obj.eid : -1
+        },
+        function getActive(api: DataAPI, list: any) {
+          return list.active
+        },
+        function setActive(api: DataAPI, list: any, key: number | undefined) {
+          list.active = key !== undefined ? list.local_eidmap[key] : undefined
+          window.redraw_viewport()
+        },
+        function getStruct(api: DataAPI, list: any, key: number) {
+          return api.mapStruct(Vertex, false)
+        },
+      ])
+    }
+
+    defineElemList('verts', MeshTypes.VERTEX)
+    defineElemList('edges', MeshTypes.EDGE)
+    defineElemList('loops', MeshTypes.LOOP)
+    defineElemList('faces', MeshTypes.FACE)
+
+    return mstruct
   }
 
   makeElistAliases() {

@@ -20,31 +20,42 @@ The full, generated catalog of every valid path lives in
   `files`).
 
 These are **auto-generated** by walking `getDataAPI()`. Don't hand-edit them —
-edit [`scripts/data_api/api_define.js`](../scripts/data_api/api_define.js) (the
-definitions) and run `pnpm gen:paths` to regenerate. `pnpm typecheck` runs
-`gen:paths` first so the catalog never goes stale.
+edit [`scripts/data_api/api_define.ts`](../scripts/data_api/api_define.ts) (the
+definitions — or the owning class's `static defineAPI`) and run `pnpm gen:paths`
+to regenerate. `pnpm typecheck` runs `gen:paths` first so the catalog never goes
+stale.
 
 ## How bindings are declared
 
-Bindings are declared in `api_define.js` against a struct's `DataStruct`:
+Bindings are declared per class in a `static defineAPI(api, struct?)` method
+against the class's `DataStruct`:
 
-```js
-let mstruct = api.mapStruct(Mesh, true)
-mstruct.float('radius', 'radius', 'Radius').range(0.1, 350.0)   // float prop
-mstruct.flags('symFlag', 'symFlag', MeshSymFlags, 'Symmetry')    // bitflag enum
-       .icons({ X: Icons.SYM_X, Y: Icons.SYM_Y, Z: Icons.SYM_Z })
+```ts
+static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+  let mstruct = struct ?? api.mapStruct(this, true)
+  mstruct.float('radius', 'radius', 'Radius').range(0.1, 350.0)   // float prop
+  mstruct.flags('symFlag', 'symFlag', MeshSymFlags, 'Symmetry')    // bitflag enum
+         .icons({ X: Icons.SYM_X, Y: Icons.SYM_Y, Z: Icons.SYM_Z })
+  return mstruct
+}
 ```
 
 The chain `struct.float/int/enum/flags/string/vec3/...('apiname', 'propname',
 'uiname')` registers a property; the `apiname` segment is what appears in the
 path. Widgets then resolve `container.prop('mesh.symFlag')` against this tree.
+`getDataAPI()` (`scripts/data_api/api_define.ts`) calls each registered class's
+`defineAPI` by iterating `dataAPIRegistry`; register a new class with
+`registerDataAPI(cls)`. Subclasses chain `super.defineAPI(api, struct)` onto
+their own struct. See the
+[`defineAPI` refactor plan](plans/api-define-defineapi-refactor.md) and
+`CLAUDE.md`'s "Data API paths" for the build/ordering details.
 
 ## How icons attach to bindings
 
 Icons are bound to **enum and bitflag properties**, one icon per enum key:
 
 - `enumProp.icons({ KEY: Icons.NAME, ... })` / `flagsProp.icons({ ... })` in
-  `api_define.js` (see the `.icons(...)` call sites — e.g. `selectMask`,
+  `api_define.ts` (see the `.icons(...)` call sites — e.g. `selectMask`,
   `symFlag`, brush `tool`/`flag`, `lib_flag`).
 - Under the hood this stores an `iconmap` (`{enumKey: numericIndex}`) on the
   property (`addIcons` in
@@ -61,11 +72,11 @@ So the chain for an icon shown in the UI is:
 
 ```
 assets/iconsheet.svg cell  ──(row-major index)──▶  Icons.NAME (icon_enum.js)
-   ──▶  .icons({KEY: Icons.NAME}) in api_define.js  ──▶  enum/flag property iconmap
+   ──▶  .icons({KEY: Icons.NAME}) in api_define.ts  ──▶  enum/flag property iconmap
    ──▶  checkenum/listenum bound via prop('<path>')  ──▶  rendered glyph
 ```
 
-To find which bindings reference an icon, grep `api_define.js` for
+To find which bindings reference an icon, grep `api_define.ts` for
 `Icons.NAME`; to find which path drives a widget, look it up in `API_PATHS.md`.
 
 ## See also

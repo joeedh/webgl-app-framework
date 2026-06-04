@@ -4,7 +4,7 @@
  * This is a thin wrapper around path.ux's generator: it reuses the submodule's
  * API walker (`walkAPI`/`normalizePath`) and renderers (`renderJSON`,
  * `renderMarkdown`, `renderDts`), but supplies its own esbuild bundle step so
- * our `scripts/data_api/api_define.js` (which transitively imports addon source
+ * our `scripts/data_api/api_define.ts` (which transitively imports addon source
  * using `@framework/*` and `@addon/<id>/api`) actually resolves and loads under
  * node. The stock CLI (`scripts/path.ux/buildtools/gen-datapaths.mjs`) bundles
  * with no alias map and so can't load our API.
@@ -38,7 +38,14 @@ const EXPORT_NAME = 'getDataAPI'
 // customdata→barrel→mesh_customdata cycle the other way and hits a
 // "Class extends undefined" TDZ. Co-located with api_define.js so these
 // relative specifiers resolve identically.
+// The builtin_data_api bridge registers the addon-owned data-API classes (Mesh,
+// Vertex, Element, BVHSettings, CurveSpline) into the registry api_define walks.
+// The generator never boots addons, so without this import those classes — and
+// every path under `ctx.mesh` — would be missing from the catalog. Imported
+// after _framework_runtime (keeping the barrel rooted first, which orders
+// CustomDataElem ahead of its subclasses) and before api_define.
 const GEN_ENTRY_SRC = `import '../_framework_runtime.js'
+import '../../addons/builtin/builtin_data_api.js'
 export {${EXPORT_NAME}} from './api_define.js'
 `
 const OUT_DIR = resolve(REPO_ROOT, 'scripts/data_api/generated')
@@ -275,6 +282,19 @@ async function main() {
     seen.add(key)
     unique.push(e)
   }
+
+  // Canonical (lexicographic) ordering. walkAPI yields entries in DataAPI
+  // struct-build / traversal order, and renderJSON / renderMarkdown preserve
+  // that input order (markdown only sorts top-level group keys, not entries
+  // within a group; renderDts already sorts its literals internally). Sorting
+  // by normalized path here decouples the on-disk catalog order from the build
+  // order, so reordering when/how structs are populated (e.g. registry-driven
+  // defineAPI) produces no spurious catalog diffs — only real content changes.
+  unique.sort((a, b) => {
+    const ka = normalizePath(a.path)
+    const kb = normalizePath(b.path)
+    return ka < kb ? -1 : ka > kb ? 1 : 0
+  })
 
   await mkdir(OUT_DIR, {recursive: true})
   const json = renderJSON(unique)

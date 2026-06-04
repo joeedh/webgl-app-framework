@@ -30,8 +30,8 @@ mesh.KnotDataLayer {
     this.tilt = 0.0
   }
 
-  static apiDefine(api: DataAPI, dstruct: DataStruct) {
-    super.apiDefine(api, dstruct)
+  static defineAPI(api: DataAPI, dstruct: DataStruct) {
+    super.defineAPI(api, dstruct)
 
     dstruct
       .float('knot', 'speed', 'Point Speed')

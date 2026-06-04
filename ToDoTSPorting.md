@@ -63,7 +63,6 @@ propagates upward.
 | `scripts/core/toolstack.js` | 1 | 3.2 KB | Undo/ToolOp stack |
 | `scripts/core/app_ops.js` | — | 5.3 KB | App-level ToolOps |
 | `scripts/core/polyfill.js` | — | 7.5 KB | Polyfills |
-| `scripts/data_api/api_define.js` | 1 | 32 KB | Data-path API definitions — large |
 
 ## Tier 3 — Editors & scene subsystems (moderate fan-in)
 
