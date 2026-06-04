@@ -773,7 +773,7 @@ NodeEditor {
     }
     return api.getStruct(NodeEditorBase)
   }
-  
+
   static defineAPI(api: DataAPI): DataStruct {
     const nedstruct = super.defineAPI(api)
 
@@ -1450,17 +1450,22 @@ NodeEditor {
     }
 
     // NOTE: original assigns the menu-select callback to `onselect`; preserved verbatim.
-    ;(menu as unknown as {onselect: (id: string | number) => void}).onselect = (id: string | number) => {
-      console.log('node add menu select', id)
+    menu.on_select = (id: string | number) => {
+      this.push_ctx_active()
+      try {
+        console.log('node add menu select', id)
 
-      let cmd = `node.add_node(useNodeEditorGraph=1 nodeClass='${id}'`
-      const p = new Vector2(this.last_mpos)
+        let cmd = `node.add_node(useNodeEditorGraph=1 nodeClass='${id}'`
+        const p = new Vector2(this.last_mpos)
 
-      this.unproject(p, true)
-      cmd += ` x=${~~p[0]} y=${~~p[1]})`
+        this.unproject(p, true)
+        cmd += ` x=${~~p[0]} y=${~~p[1]})`
 
-      console.log(cmd)
-      this.ctx.api.execTool(this.ctx, cmd)
+        console.log(cmd)
+        this.ctx.api.execTool(this.ctx, cmd)
+      } finally {
+        this.pop_ctx_active()
+      }
     }
 
     return menu
