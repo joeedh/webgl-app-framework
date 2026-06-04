@@ -72,7 +72,7 @@ import {Vertex, Element} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
 import '../shadernodes/allnodes.js'
-import {OutputNode, ShaderNode} from '../shadernodes/shader_nodes.js'
+import {ShaderNode} from '../shadernodes/shader_nodes.js'
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js'
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
@@ -625,49 +625,9 @@ function api_define_shadernetwork(api: DataAPI, parent: DataStruct): DataStruct 
   return mstruct
 }
 
+// Phase 3 shim — body moved to Material.defineAPI (scripts/core/material.ts).
 function api_define_material(api: DataAPI): void {
-  let st = api.inheritStruct(Material, ShaderNetwork)
-
-  function getShaderNode(mat: any) {
-    let graph = mat.graph
-    let out
-
-    for (let node of graph.nodes) {
-      if (node instanceof OutputNode) {
-        out = node
-        break
-      }
-    }
-
-    if (!out) {
-      return undefined
-    }
-
-    for (let e of out.inputs.surface.edges) {
-      return e.node
-    }
-  }
-
-  let def = st.bool('', 'has_shader', 'Has Shader', 'Has Shader')
-
-  def.customGetSet(
-    function (this: {dataref: any}) {
-      return getShaderNode(this.dataref) !== undefined
-    },
-    undefined /*function(val) {
-    //do nothing
-  }*/
-  )
-
-  st.dynamicStruct('', 'shader', 'Shading Node')
-  //dynamicStruct return a struct, not the owning datapath
-  def = st.pathmap.shader
-
-  def.customGetSet(function (this: {dataref: any}) {
-    return getShaderNode(this.dataref)
-  }, undefined)
-
-  //api.color4("diffuse")
+  Material.defineAPI(api)
 }
 
 function api_define_sceneobject(api: DataAPI, parent: DataStruct): DataStruct {

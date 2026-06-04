@@ -1,5 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api'
-import {nstructjs, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js'
+import {nstructjs, ToolOp, IntProperty, StringProperty, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {Icons} from '../editors/icon_enum.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
@@ -178,6 +178,48 @@ Material {
   loadSTRUCT(reader: StructReader<this>) {
     super.loadSTRUCT(reader)
     reader(this)
+  }
+
+  // The default struct inherits ShaderNetwork's members at call time, so
+  // ShaderNetwork must be defined first (see api_define ordering note).
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const st = struct ?? api.inheritStruct(this, ShaderNetwork)
+
+    function getShaderNode(mat: any) {
+      const graph = mat.graph
+      let out
+
+      for (const node of graph.nodes) {
+        if (node instanceof OutputNode) {
+          out = node
+          break
+        }
+      }
+
+      if (!out) {
+        return undefined
+      }
+
+      for (const e of out.inputs.surface.edges) {
+        return e.node
+      }
+    }
+
+    let def = st.bool('', 'has_shader', 'Has Shader', 'Has Shader')
+
+    def.customGetSet(function (this: {dataref: any}) {
+      return getShaderNode(this.dataref) !== undefined
+    }, undefined)
+
+    st.dynamicStruct('', 'shader', 'Shading Node')
+    //dynamicStruct return a struct, not the owning datapath
+    def = st.pathmap.shader
+
+    def.customGetSet(function (this: {dataref: any}) {
+      return getShaderNode(this.dataref)
+    }, undefined)
+
+    return st
   }
 }
 
