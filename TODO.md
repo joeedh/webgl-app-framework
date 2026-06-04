@@ -29,7 +29,7 @@ After `scripts/curve/*` and `curvetool*.ts` move into `addons/builtin/curve/src/
 - `scripts/hair/strand_types.js:1` — `import {CurveSpline}` — **runtime**, `Strand extends CurveSpline`. Class-extends requires a static reference; can't be moved to runtime lookup without restructuring Strand. Either:
   - hair eventually becomes its own addon depending on curve, or
   - curve's class surface is exposed via a runtime accessor and Strand is recast as composition rather than inheritance.
-- `scripts/data_api/api_define.js:41` — `import {CurveSpline}` — runtime; used to register the CurveSpline data API. Could move to an `api_register` hook on the addon's register() call.
+- `scripts/data_api/api_define.ts:40` — `import {CurveSpline}` — runtime; used to register the CurveSpline data API. Could move to an `api_register` hook on the addon's register() call. (Now also covered by the "Data API `defineAPI` registry" section below.)
 - `addons/builtin/mesh/src/mesh_types.ts:348` — `import {KnotDataLayer}` — runtime, but this is **mesh addon → curve addon**. Currently mesh has no manifest dep on curve. Either:
   - mesh declares `dependencies: ['curve']` and reaches it via `@addon/curve/api` (creates a base-curve-then-mesh ordering), or
   - the `KnotDataLayer` CustomData type is registered via a runtime hook from the curve addon's register() (curve depends on mesh, registers its CustomData class into mesh's registry on load).
@@ -44,7 +44,7 @@ it registers, which is the registry's remaining layering debt:
 
 - `Mesh`, `Vertex`, `Element` — from `addons/builtin/mesh/src/*`
 - `CurveSpline` — from `addons/builtin/curve/src/*` (supersedes the older
-  `api_define.js:41` note above)
+  `api_define.ts:40` note above)
 - `BVHSettings` — from the pbvh_sculpt addon
 
 Follow-up: route their registration through each addon's `register(api)` hook

@@ -124,7 +124,7 @@ conventions:
   arithmetic and can append to `Icons` / emit a visual locator overlay.
 - Icons are wired into the **data-path binding system**: enum/bitflag
   properties attach a per-value icon via `prop.icons({KEY: Icons.NAME})` in
-  `scripts/data_api/api_define.js`. To resolve which path/binding an icon feeds,
+  `scripts/data_api/api_define.ts`. To resolve which path/binding an icon feeds,
   see [documentation/datapath-bindings.md](documentation/datapath-bindings.md).
 
 ## Electron test harness / CLI

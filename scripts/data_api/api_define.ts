@@ -111,14 +111,15 @@ interface ApiCallbackThis<Ref = any> {
 }
 
 /**
- * The canonical data-API definition contract (refactor target — see
+ * The canonical data-API definition contract (see
  * documentation/plans/api-define-defineapi-refactor.md). A participating class
  * exposes a static `defineAPI(api, struct?)` that declares its `DataStruct` and
  * returns it. `struct` defaults to `api.mapStruct(this)`; subclasses pass it
  * through `super.defineAPI(api, struct)` to inherit base properties.
  *
- * During the migration the registry below coexists with the legacy explicit
- * call list in `getDataAPI()`; it is not yet the source of truth.
+ * The registry below is the source of truth: `getDataAPI()` builds the class
+ * structs by iterating `dataAPIRegistry` and invoking each class's `defineAPI`
+ * (via {@link defineOnce}).
  */
 export type DefineAPIClass = (abstract new (...args: any[]) => any) & {
   defineAPI(api: DataAPI, struct?: DataStruct): DataStruct
@@ -154,7 +155,8 @@ const _definedAPIClasses = new Set<DefineAPIClass>()
 /**
  * Run a class's `defineAPI` once. Returns its (now-populated) struct. Safe to
  * call ahead of the registry loop to satisfy an inherit/merge ordering
- * constraint (e.g. `Element` before `Vertex`); the loop then skips it.
+ * constraint (e.g. one of the `inheritStruct` edges below); the loop then skips
+ * it.
  */
 function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
   if (!_definedAPIClasses.has(cls)) {
@@ -168,23 +170,25 @@ function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
  * Register the core (non-addon) classes that participate in the data API.
  * Idempotent. Order is mostly irrelevant — struct *creation* is decoupled from
  * *population* (cached empty structs are shared by reference), so cross-links
- * resolve regardless of when each `defineAPI` runs. The lone ordering
- * constraint is `Element` before `Vertex` (`Vertex.defineAPI` does
- * `inheritStruct(Vertex, Element)`, which copies Element's members at call
- * time); it is listed in order here and re-guarded by `defineOnce`.
+ * resolve regardless of when each `defineAPI` runs. The only ordering
+ * constraints are the three `inheritStruct` edges (a `defineAPI` that
+ * `inheritStruct`s a parent copies the parent's members at call time, so the
+ * parent must be populated first): `ShaderNetwork → Material`,
+ * `Element → Vertex`, `Mesh → CurveSpline`. They are listed parent-first below
+ * and re-guarded by `defineOnce`.
  *
  * NOTE: addon classes (`Mesh`, `Vertex`, `Element`, `BVHSettings`,
  * `CurveSpline`) are still hard-imported and registered here. Routing them
  * through each addon's `register(api)` hook — so core's `api_define.ts` stops
  * importing `addons/builtin/*` — is the registry's larger payoff and is left as
- * a Phase 5 / follow-up (see TODO.md).
+ * a follow-up (see TODO.md).
  */
 function registerCoreDataAPIClasses(): void {
-  // Order: inherit/merge SOURCES before their dependents (the only real
+  // Order: inheritStruct SOURCES before their dependents (the only real
   // constraint — inheritStruct copies the parent's members at call time):
-  //   ShaderNetwork → Material  (Material extends ShaderNetwork)
-  //   Element       → Vertex    (Vertex.defineAPI inheritStructs Element)
-  //   Mesh          → CurveSpline (CurveSpline extends Mesh)
+  //   ShaderNetwork → Material    (Material.defineAPI    inheritStructs ShaderNetwork)
+  //   Element       → Vertex      (Vertex.defineAPI      inheritStructs Element)
+  //   Mesh          → CurveSpline (CurveSpline.defineAPI inheritStructs Mesh)
   // All other cross-links are by reference (cached empty structs), so order is
   // irrelevant for them.
   registerDataAPI(DataBlock)
@@ -397,8 +401,9 @@ export function getDataAPI(): DataAPI {
 
   // Every participating class populates its own struct via `defineAPI`. The
   // registry replaces the old hand-maintained call list; `defineOnce` runs each
-  // exactly once (Element is registered before Vertex, the one inherit-order
-  // constraint — Vertex.defineAPI does inheritStruct(Vertex, Element)).
+  // exactly once. The only ordering constraints are the three inheritStruct
+  // edges, registered parent-first in registerCoreDataAPIClasses()
+  // (ShaderNetwork → Material, Element → Vertex, Mesh → CurveSpline).
   registerCoreDataAPIClasses()
   for (let cls of getDataAPIRegistry()) {
     defineOnce(api, cls)

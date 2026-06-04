@@ -4,7 +4,7 @@
  * This is a thin wrapper around path.ux's generator: it reuses the submodule's
  * API walker (`walkAPI`/`normalizePath`) and renderers (`renderJSON`,
  * `renderMarkdown`, `renderDts`), but supplies its own esbuild bundle step so
- * our `scripts/data_api/api_define.js` (which transitively imports addon source
+ * our `scripts/data_api/api_define.ts` (which transitively imports addon source
  * using `@framework/*` and `@addon/<id>/api`) actually resolves and loads under
  * node. The stock CLI (`scripts/path.ux/buildtools/gen-datapaths.mjs`) bundles
  * with no alias map and so can't load our API.
