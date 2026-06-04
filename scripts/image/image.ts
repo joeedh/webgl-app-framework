@@ -391,6 +391,21 @@ ImageBlock {
     }
   }
 
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    st.enum('type', 'type', ImageTypes, 'Image Type')
+    st.enum('genType', 'genType', ImageGenTypes, 'Generator')
+    st.int('width', 'width', 'Width').noUnits().range(1, 16384).step(5)
+    st.int('height', 'height', 'Height').noUnits().range(1, 16384).step(5)
+    st.string('url', 'url', 'URL')
+    st.bool('ready', 'ready', 'Ready', 'Is the image ready for use').readOnly()
+    st.flags('flag', 'flag', ImageFlags, 'Flag')
+    st.color4('genColor', 'genColor', 'Color')
+
+    return st
+  }
+
   destroy(): void {
     if (this.glTex) {
       try {

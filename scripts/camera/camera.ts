@@ -1,7 +1,7 @@
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
 import {Vector3, Vector4, Matrix4} from '../util/vectormath.js'
 import {Shaders} from '../shaders/shaders.js'
-import {nstructjs} from '../path.ux/scripts/pathux.js'
+import {nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api.js'
 import {Camera, IUniformsBlock} from '../webgl/webgl.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
@@ -263,6 +263,39 @@ export class CameraData extends SceneObjectData {
       flag       : 0,
       icon       : -1,
     }
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    // CameraData extends SceneObjectData (helper layering ≠ JS inheritance);
+    // chain the SceneObjectData base, not DataBlock.
+    let mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    let onchange = function (this: {dataref: CameraData}) {
+      let camera = this.dataref
+
+      camera.update()
+    }
+
+    // The Camera struct is mapped non-creating; it must already be built (its
+    // own defineAPI runs earlier in the getDataAPI order).
+    mstruct.struct('camera', 'camera', 'Camera', api.mapStruct(Camera, false))
+    mstruct.struct('finalCamera', 'finalCamera', 'finalCamera', api.mapStruct(Camera, false))
+    mstruct.float('speed', 'speed', 'Anim Speed').range(0.00001, 100.0)
+    mstruct.float('height', 'height', 'Height').range(-100, 100.0).on('change', onchange)
+
+    mstruct.bool('flipped', 'flipped', 'Flipped').on('change', onchange)
+    mstruct.bool('pathFlipped', 'pathFlipped', 'Flip Path').on('change', onchange)
+
+    mstruct
+      .float('azimuth', 'azimuth', 'Azimuth')
+      .on('change', onchange)
+      .range(-Math.PI, Math.PI)
+      .displayUnit('degree')
+      .baseUnit('radian')
+
+    mstruct.float('rotate', 'rotate', 'Rotation').range(-Math.PI, Math.PI).displayUnit('degree').baseUnit('radian')
+
+    return mstruct
   }
 
   static dataDefine() {

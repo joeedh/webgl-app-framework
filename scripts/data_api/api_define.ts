@@ -100,7 +100,7 @@ import {
 
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js'
 import {PropModes} from '../editors/view3d/transform/transform_base.js'
-import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js'
+import {ImageBlock, ImageUser} from '../image/image.js'
 import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
 import {AppSettings} from '../core/settings.js'
 
@@ -280,17 +280,7 @@ export function api_define_imageuser(api: DataAPI): DataStruct {
 }
 
 export function api_define_image(api: DataAPI): void {
-  let st = api_define_datablock(api, ImageBlock)
-
-  st.enum('type', 'type', ImageTypes, 'Image Type')
-  st.enum('genType', 'genType', ImageGenTypes, 'Generator')
-  st.int('width', 'width', 'Width').noUnits().range(1, 16384).step(5)
-  st.int('height', 'height', 'Height').noUnits().range(1, 16384).step(5)
-  st.string('url', 'url', 'URL')
-  st.bool('ready', 'ready', 'Ready', 'Is the image ready for use').readOnly()
-  st.flags('flag', 'flag', ImageFlags, 'Flag')
-  st.color4('genColor', 'genColor', 'Color')
-
+  ImageBlock.defineAPI(api)
   api_define_imageuser(api)
 }
 
@@ -394,30 +384,7 @@ export function api_define_camera(api: DataAPI): void {
 }
 
 export function api_define_cameradata(api: DataAPI): void {
-  let mstruct = api_define_datablock(api, CameraData)
-
-  let onchange = function (this: ApiCallbackThis) {
-    let camera = this.dataref
-
-    camera.update()
-  }
-
-  mstruct.struct('camera', 'camera', 'Camera', api.mapStruct(Camera, false))
-  mstruct.struct('finalCamera', 'finalCamera', 'finalCamera', api.mapStruct(Camera, false))
-  mstruct.float('speed', 'speed', 'Anim Speed').range(0.00001, 100.0)
-  mstruct.float('height', 'height', 'Height').range(-100, 100.0).on('change', onchange)
-
-  mstruct.bool('flipped', 'flipped', 'Flipped').on('change', onchange)
-  mstruct.bool('pathFlipped', 'pathFlipped', 'Flip Path').on('change', onchange)
-
-  mstruct
-    .float('azimuth', 'azimuth', 'Azimuth')
-    .on('change', onchange)
-    .range(-Math.PI, Math.PI)
-    .displayUnit('degree')
-    .baseUnit('radian')
-
-  mstruct.float('rotate', 'rotate', 'Rotation').range(-Math.PI, Math.PI).displayUnit('degree').baseUnit('radian')
+  CameraData.defineAPI(api)
 }
 
 function api_define_graph(api: DataAPI, cls: AnyClass = Graph): DataStruct {
