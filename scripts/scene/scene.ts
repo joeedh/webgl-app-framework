@@ -9,6 +9,8 @@ import {Light} from '../light/light.js'
 
 //import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from '../editors/view3d/selectmode.js'
+import {Icons} from '../editors/icon_enum.js'
+import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {Collection} from './collection'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {SceneBVH} from '../sceneobject/scenebvh.js'
@@ -765,6 +767,45 @@ propIslandOnly : bool;
         onTimeChange    : new FloatSocket('Time Change'),
       },
     }
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let sstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    sstruct.struct('envlight', 'envlight', 'Ambient Light', EnvLight.defineAPI(api))
+    sstruct.bool('propEnabled', 'propEnabled', 'Magnet Mode').icon(Icons.MAGNET)
+    sstruct.enum('propMode', 'propMode', PropModes, 'Magnet Curve')
+    sstruct.float('propRadius', 'propRadius', 'Magnet Radius').noUnits().range(0.01, 1000000)
+    sstruct.bool('propIslandOnly', 'propIslandOnly', 'Island Only')
+
+    let prop = makeToolModeEnum()
+
+    let def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
+    def.on('change', function (this: {dataref: Scene}, newval: any, oldval: any) {
+      let scene = this.dataref
+
+      console.log('toolmode change', oldval, newval)
+
+      scene.toolmode_i = oldval
+      scene.switchToolMode(newval)
+      window.redraw_viewport()
+    })
+
+    let base = ToolMode.defineAPI(api)
+    sstruct.dynamicStruct('toolmode', 'tool', 'Active Tool', base)
+
+    let struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data')
+    struct2.name = 'ToolModes'
+
+    for (let cls of ToolModes) {
+      let tdef = cls.toolModeDefine()
+
+      let struct3 = cls.defineAPI(api)
+
+      struct2.struct(tdef.name, tdef.name, tdef.uiname, struct3)
+    }
+
+    return sstruct
   }
 
   changeTime(newtime: number): void {

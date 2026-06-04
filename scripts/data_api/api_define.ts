@@ -32,7 +32,6 @@ import {Camera} from '../webgl/webgl.js'
 
 import {buildProcMeshAPI} from '../../addons/builtin/mesh/src/mesh_gen.js'
 
-import {makeToolModeEnum, ToolModes, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {NodeSocketClasses} from '../core/graph.js'
 import {RenderSettings} from '../renderengine/renderengine_base'
 
@@ -99,7 +98,6 @@ import {
 } from '../brush/index'
 
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js'
-import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {ImageBlock, ImageUser} from '../image/image.js'
 import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
 import {AppSettings} from '../core/settings.js'
@@ -601,56 +599,9 @@ export function api_define_light(api: DataAPI, pstruct: DataStruct): void {
 }
 
 export function api_define_scene(api: DataAPI, pstruct: DataStruct): void {
-  let sstruct = api_define_datablock(api, Scene)
+  let sstruct = Scene.defineAPI(api)
 
   pstruct.struct('scene', 'scene', 'Scene', sstruct)
-
-  sstruct.struct('envlight', 'envlight', 'Ambient Light', api_define_envlight(api))
-  sstruct.bool('propEnabled', 'propEnabled', 'Magnet Mode').icon(Icons.MAGNET)
-  sstruct.enum('propMode', 'propMode', PropModes, 'Magnet Curve')
-  sstruct.float('propRadius', 'propRadius', 'Magnet Radius').noUnits().range(0.01, 1000000)
-  sstruct.bool('propIslandOnly', 'propIslandOnly', 'Island Only')
-
-  let prop = makeToolModeEnum()
-
-  let def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
-  def.on('change', function (this: ApiCallbackThis<Scene>, newval: any, oldval: any) {
-    let scene = this.dataref
-
-    console.log('toolmode change', oldval, newval)
-
-    scene.toolmode_i = oldval
-    scene.switchToolMode(newval)
-    window.redraw_viewport()
-  })
-
-  let onchange = function (this: ApiCallbackThis<Scene>, newval: number, oldval: number) {
-    let scene = this.dataref
-
-    scene.updateWidgets()
-    window.redraw_viewport()
-  }
-
-  /*
-  def = sstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
-  def.setProp(prop);
-  def.on("change", onchange);
-  */
-
-  let base = ToolMode.defineAPI(api)
-  sstruct.dynamicStruct('toolmode', 'tool', 'Active Tool', base)
-
-  //vstruct.dynamicStruct("toolmode_namemap", "toolmodes", "ToolModes");
-  let struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data')
-  struct2.name = 'ToolModes'
-
-  for (let cls of ToolModes) {
-    let def = cls.toolModeDefine()
-
-    let struct3 = cls.defineAPI(api)
-
-    struct2.struct(def.name, def.name, def.uiname, struct3)
-  }
 }
 
 export function api_define_dyntopo(api: DataAPI): void {
