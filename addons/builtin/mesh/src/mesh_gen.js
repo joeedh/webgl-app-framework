@@ -488,7 +488,9 @@ export function buildProcMeshAPI(api) {
     cls.defineAPI(api)
   }
 
-  let st = api.inheritStruct(ProceduralMesh, DataBlock)
+  // Chain DataBlock.defineAPI onto ProceduralMesh's struct (re-declares DataBlock's
+  // members rather than copying its struct — no dependency on it being built first).
+  let st = DataBlock.defineAPI(api, api.mapStruct(ProceduralMesh, true))
   st.dynamicStruct('generator', 'generator', 'Generator')
 
   return st

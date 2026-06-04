@@ -34,8 +34,10 @@ export class MaterialEditor extends NodeEditorBase {
   headerRow?: Container<ViewContext>
 
   static defineAPI(api: DataAPI): DataStruct {
-    NodeEditorBase.ensureAPI(api)
-    return api.inheritStruct(MaterialEditor, NodeEditorBase)
+    // Chains NodeEditorBase.defineAPI (super) onto our own struct; the editor
+    // defineAPI chain propagates `this`, so the inherited members land on
+    // MaterialEditor's struct directly — no copy, no ordering dependency.
+    return super.defineAPI(api)
   }
 
   init(): void {

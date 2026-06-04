@@ -91,9 +91,9 @@ import {AppSettings} from '../core/settings.js'
 setSceneObjectMaterialClass(Material)
 
 /**
- * A class constructor accepted by `api.mapStruct` / `inheritStruct`. The
- * data-API definition helpers are intentionally polymorphic over the concrete
- * DataBlock / Node / element subclass they map, so this is deliberately broad.
+ * A class constructor accepted by `api.mapStruct`. The data-API definition
+ * helpers are intentionally polymorphic over the concrete DataBlock / Node /
+ * element subclass they map, so this is deliberately broad.
  */
 type AnyClass = abstract new (...args: any[]) => any
 
@@ -146,17 +146,15 @@ export function getDataAPIRegistry(): readonly DefineAPIClass[] {
 
 /**
  * Classes whose `defineAPI` has already run this build. Guards the registry
- * population pass so a class is populated exactly once even if it is also a
- * named source of an `inheritStruct`/`mergeStruct` and gets defined-first
- * explicitly (the only real ordering constraint — see the plan §2).
+ * population pass so a class is populated exactly once even if it is also
+ * defined-first explicitly (e.g. by a class-dependent helper).
  */
 const _definedAPIClasses = new Set<DefineAPIClass>()
 
 /**
  * Run a class's `defineAPI` once. Returns its (now-populated) struct. Safe to
- * call ahead of the registry loop to satisfy an inherit/merge ordering
- * constraint (e.g. one of the `inheritStruct` edges below); the loop then skips
- * it.
+ * call ahead of the registry loop (e.g. from a class-dependent helper that needs
+ * a populated struct); the loop then skips it.
  */
 function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
   if (!_definedAPIClasses.has(cls)) {
@@ -168,14 +166,15 @@ function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
 
 /**
  * Register the core (non-addon) classes that participate in the data API.
- * Idempotent. Order is mostly irrelevant — struct *creation* is decoupled from
- * *population* (cached empty structs are shared by reference), so cross-links
- * resolve regardless of when each `defineAPI` runs. The only ordering
- * constraints are the three `inheritStruct` edges (a `defineAPI` that
- * `inheritStruct`s a parent copies the parent's members at call time, so the
- * parent must be populated first): `ShaderNetwork → Material`,
- * `Element → Vertex`, `Mesh → CurveSpline`. They are listed parent-first below
- * and re-guarded by `defineOnce`.
+ * Idempotent. Registration order is irrelevant — struct *creation* is decoupled
+ * from *population* (cached empty structs are shared by reference), and subclass
+ * `defineAPI`s now *chain* their parent (`super.defineAPI(api, struct)`
+ * re-declares the parent's members onto the child's own struct) rather than
+ * copying an already-built parent struct, so no class needs another to be
+ * populated first. The only build-first requirement left is for the non-class
+ * pre-pass structs (`Graph`, `VelPan`) that a few `defineAPI`s fetch by
+ * reference via `api.getStruct(...)`; those are built in getDataAPI's
+ * population pre-pass, ahead of this loop.
  *
  * NOTE: addon classes (`Mesh`, `Vertex`, `Element`, `BVHSettings`,
  * `CurveSpline`) are still hard-imported and registered here. Routing them
@@ -184,13 +183,6 @@ function defineOnce(api: DataAPI, cls: DefineAPIClass): DataStruct {
  * a follow-up (see TODO.md).
  */
 function registerCoreDataAPIClasses(): void {
-  // Order: inheritStruct SOURCES before their dependents (the only real
-  // constraint — inheritStruct copies the parent's members at call time):
-  //   ShaderNetwork → Material    (Material.defineAPI    inheritStructs ShaderNetwork)
-  //   Element       → Vertex      (Vertex.defineAPI      inheritStructs Element)
-  //   Mesh          → CurveSpline (CurveSpline.defineAPI inheritStructs Mesh)
-  // All other cross-links are by reference (cached empty structs), so order is
-  // irrelevant for them.
   registerDataAPI(DataBlock)
   registerDataAPI(Node)
   registerDataAPI(ImageBlock)
@@ -276,10 +268,15 @@ function api_define_graph(api: DataAPI, cls: AnyClass = Graph): DataStruct {
 }
 
 function api_define_nodesockets(api: DataAPI): void {
+  // NodeSocketType's own struct (used as the fallback target by Node's socket
+  // lists via api.getStruct(NodeSocketType)).
   api_define_socket(api)
 
   for (let cls of NodeSocketClasses) {
-    let st = api.inheritStruct(cls, NodeSocketType)
+    // Chain the base socket props onto each subclass's own struct (api_define_socket
+    // re-declares them rather than copying NodeSocketType's struct), then let the
+    // subclass add its specifics — no dependency on NodeSocketType being built first.
+    let st = api_define_socket(api, cls)
     cls.defineAPI(api, st)
   }
 }
@@ -401,16 +398,18 @@ export function getDataAPI(): DataAPI {
 
   // Every participating class populates its own struct via `defineAPI`. The
   // registry replaces the old hand-maintained call list; `defineOnce` runs each
-  // exactly once. The only ordering constraints are the three inheritStruct
-  // edges, registered parent-first in registerCoreDataAPIClasses()
-  // (ShaderNetwork → Material, Element → Vertex, Mesh → CurveSpline).
+  // exactly once. Iteration order is irrelevant — subclass `defineAPI`s chain
+  // their parent (re-declaring its members onto the child struct) rather than
+  // copying an already-built parent, so no class depends on another's struct
+  // being populated first. The only build-first structs (Graph, VelPan, fetched
+  // by reference via api.getStruct) are created in the pre-pass above.
   registerCoreDataAPIClasses()
   for (let cls of getDataAPIRegistry()) {
     defineOnce(api, cls)
   }
 
-  // Class-dependent non-class helpers: these inherit/merge from now-populated
-  // class structs (e.g. buildProcMeshAPI inheritStructs from DataBlock), so they
+  // Class-dependent non-class helpers: these chain/merge from now-populated
+  // class structs (e.g. buildProcMeshAPI chains DataBlock.defineAPI), so they
   // must run after the registry pass.
   buildProcTextureAPI(api, api_define_datablock)
   buildProcMeshAPI(api)

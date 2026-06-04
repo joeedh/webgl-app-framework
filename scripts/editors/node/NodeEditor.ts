@@ -883,7 +883,9 @@ NodeEditor {
 
       if (!api.hasStruct(cls)) {
         console.warn('Auto-making data api for ' + cls.name)
-        api.inheritStruct(cls, Node)
+        // Chain Node.defineAPI onto the new node class's struct (re-declares
+        // Node's members rather than copying its struct).
+        Node.defineAPI(api, api.mapStruct(cls, true))
       }
 
       const path = this.graphPath + '.nodes[' + node.graph_id + ']'

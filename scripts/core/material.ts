@@ -180,10 +180,11 @@ Material {
     reader(this)
   }
 
-  // The default struct inherits ShaderNetwork's members at call time, so
-  // ShaderNetwork must be defined first (see api_define ordering note).
+  // Chains ShaderNetwork.defineAPI onto our own struct (super = ShaderNetwork),
+  // re-declaring its members here rather than copying — no dependency on
+  // ShaderNetwork being defined first.
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    const st = struct ?? api.inheritStruct(this, ShaderNetwork)
+    const st = super.defineAPI(api, struct ?? api.mapStruct(this, true))
 
     function getShaderNode(mat: any) {
       const graph = mat.graph

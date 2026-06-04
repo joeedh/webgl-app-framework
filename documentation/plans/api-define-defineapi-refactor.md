@@ -4,6 +4,20 @@
 **Prerequisite:** the TypeScript port of `scripts/data_api/api_define.ts` (done; runtime
 parity verified by `pnpm gen:paths` producing a byte-identical 818-path catalog).
 
+> **Post-refactor update (inheritStruct eliminated).** The "three ordering
+> edges" discussed throughout this plan (`ShaderNetwork → Material`,
+> `Element → Vertex`, `Mesh → CurveSpline`) no longer exist. All `inheritStruct`
+> call sites were later converted to **`defineAPI` chaining**: a subclass calls
+> `super.defineAPI(api, struct ?? api.mapStruct(this, true))` (or
+> `Parent.defineAPI(api, api.mapStruct(child, true))` for loop/free-function
+> cases), which **re-declares** the parent's members onto the child's own struct
+> instead of copying an already-built parent struct. Registry-class population is
+> therefore fully order-independent; the only build-first structs left are the
+> non-class pre-pass ones (`Graph`, `VelPan`) fetched by reference via
+> `api.getStruct(...)`. The historical inherit/merge discussion below is retained
+> as the original design record. (`mergeStructs` in `graph_class.js` is a
+> separate API and was out of scope for this conversion.)
+
 ## Goal
 
 Make the datapath binding system comprehensible by giving each class that

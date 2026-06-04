@@ -51,9 +51,10 @@ Follow-up: route their registration through each addon's `register(api)` hook
 (`api.register(cls)` → `registerDataAPI(cls)`) so core `api_define.ts` stops
 importing `addons/builtin/*`. The registry already supports this — the classes
 just need to call `registerDataAPI` from their addon's lifecycle hook instead of
-being imported and registered centrally in `registerCoreDataAPIClasses()`. Mind
-the three `inheritStruct` ordering edges (`ShaderNetwork → Material`,
-`Element → Vertex`, `Mesh → CurveSpline`) when distributing registration.
+being imported and registered centrally in `registerCoreDataAPIClasses()`.
+Registration order is unconstrained: subclass `defineAPI`s chain their parent
+(`super.defineAPI`) onto their own struct rather than copying a built parent, so
+distributing registration across addons needs no parent-first ordering.
 
 ## Non-addon side-effect imports (registration triggers)
 

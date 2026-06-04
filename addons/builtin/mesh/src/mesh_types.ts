@@ -980,9 +980,10 @@ mesh.Vertex {
   )
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    // Vertex inherits the Element struct's members; Element.defineAPI must
-    // have populated it first (the driver enforces that ordering).
-    return api.inheritStruct(Vertex, Element)
+    // Chains ElementBase.defineAPI (super) onto our own struct — Element's
+    // members are re-declared here rather than copied, so there is no ordering
+    // dependency on Element being defined first.
+    return super.defineAPI(api, struct)
   }
 
   constructor(co?: Vector3 | undefined) {

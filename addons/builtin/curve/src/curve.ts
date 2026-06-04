@@ -97,10 +97,11 @@ CurveSpline {
   private _evaluate_vs: util.cachering<Vector3>
   private _last_check_key: number = 0
 
-  // Default struct inherits Mesh's members at call time, so Mesh must be
-  // defined first (preserved by getDataAPI's call order).
+  // Chains Mesh.defineAPI onto our own struct (super = Mesh), so Mesh's members
+  // are re-declared here rather than copied — no dependency on Mesh being
+  // defined first.
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    const cstruct = struct ?? api.inheritStruct(this, Mesh)
+    const cstruct = super.defineAPI(api, struct ?? api.mapStruct(this, true))
 
     cstruct.bool('isClosed', 'isClosed', 'Closed Curve').on('change', function (this: {dataref: CurveSpline}) {
       this.dataref.checkUpdate()

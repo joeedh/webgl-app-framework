@@ -270,12 +270,7 @@ graded target and a per-dab split budget); spatial-tree currency is incremental
 
 ## Typecheck
 
-Run `npx tsgo --noEmit`, **not** `tsc`. The current main-tsconfig
-baseline is 106 pre-existing errors concentrated in
-`scripts/editors/view3d/tools/pbvh_sculptops.ts` (~62),
-`addons/builtin/subsurf/src/subsurf_mesh.ts`,
-`scripts/editors/view3d/transform/transform_types.ts`,
-`sculptcore/typescript/api/wasm.ts`, and `scripts/sculptcore_demo.ts`.
+Run `npx tsgo --noEmit`, **not** `tsc`.
 
 ## Data API paths
 
@@ -302,18 +297,20 @@ catalog; dynamically-indexed paths (e.g. `flag[ENUMNAME]`) warn because the
 walker can't enumerate them — those are expected and harmless.
 
 **How `getDataAPI()` is built.** Each participating class exposes
-`static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct` (subclasses
-chain `super.defineAPI(api, struct)` onto their own struct — no
-`inheritStruct`-style ordering dependency for plain cross-links). `getDataAPI()`
+`static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct`. Subclasses
+**chain** their parent (`super.defineAPI(api, struct)` re-declares the parent's
+members onto the child's own struct) rather than copying an already-built parent
+struct, so registry-class population is **order-independent** — no class needs
+another to be defined first. `getDataAPI()`
 (`scripts/data_api/api_define.ts`) runs in two passes: a **population pass**
 (non-class pre-steps like sockets/matrix4/customdata → `registerCoreDataAPIClasses()`
 → a `defineOnce` loop over `dataAPIRegistry` → class-dependent helpers that
-`inheritStruct` from `DataBlock`), then an explicit **attach pass** that wires
+chain `DataBlock.defineAPI`), then an explicit **attach pass** that wires
 the populated structs into the `ToolContext` tree. Register a new class with
-`registerDataAPI(cls)`; the only call-order constraints are the three
-`inheritStruct`/`mergeStruct` edges (`ShaderNetwork → Material`,
-`Element → Vertex`, `Mesh → CurveSpline`), enforced by the order in
-`registerCoreDataAPIClasses()`. The on-disk catalog is **canonically sorted**
+`registerDataAPI(cls)` in any order. The only build-first requirement is for the
+non-class pre-pass structs (`Graph`, `VelPan`) that a few `defineAPI`s fetch by
+reference via `api.getStruct(...)`; the population pre-pass builds them ahead of
+the registry loop. The on-disk catalog is **canonically sorted**
 (lexicographic by normalized path in `tools/gen-datapaths.mjs`), so the committed
 `generated/` files are stable regardless of population/traversal order.
 
