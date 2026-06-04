@@ -52,6 +52,12 @@ export class Light extends SceneObjectData {
     }
   }
 
+  static defineAPI(api, struct) {
+    // Light layers its API at the DataBlock level (not SceneObjectData),
+    // preserving the original api_define_light behavior.
+    return DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+  }
+
   static nodedef() {
     return {
       name   : 'light',

@@ -1,5 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api.js'
-import {nstructjs, util, Matrix4, EulerOrders, Vector3, Vector4, IVector4} from '../path.ux/pathux.js'
+import {nstructjs, util, Matrix4, EulerOrders, Vector3, Vector4, IVector4, DataAPI, DataStruct} from '../path.ux/pathux.js'
 
 import {SocketFlags} from '../core/graph.js'
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js'
@@ -199,11 +199,24 @@ export class SceneObject<
     }
   }
 
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let ostruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    ostruct.dynamicStruct('data', 'data', 'data')
+    ostruct.struct('material', 'material', 'Material', api.mapStruct(Material, false))
+
+    ostruct.flags('flag', 'flag', ObjectFlags).on('change', function () {
+      window.redraw_viewport(true)
+    })
+
+    return ostruct
+  }
+
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
 SceneObject {
-  flag : int; 
+  flag : int;
   data : DataRef | DataRef.fromBlock(obj.data);
 }
 `

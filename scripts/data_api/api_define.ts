@@ -74,7 +74,7 @@ import {Material} from '../core/material.js'
 import '../shadernodes/allnodes.js'
 import {ShaderNode} from '../shadernodes/shader_nodes.js'
 import {Graph, Node, SocketFlags, NodeSocketType} from '../core/graph.js'
-import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js'
+import {SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js'
 import {Scene, EnvLight} from '../scene/scene.js'
@@ -377,11 +377,9 @@ function api_define_nodesockets(api: DataAPI): void {
 function api_define_nodes(api: DataAPI): void {}
 
 function api_define_shadernetwork(api: DataAPI, parent: DataStruct): DataStruct {
-  let mstruct = api_define_datablock(api, ShaderNetwork)
+  let mstruct = ShaderNetwork.defineAPI(api)
 
   parent.struct('shadernetwork', 'shadernetwork', 'ShaderNetwork', mstruct)
-
-  mstruct.struct('graph', 'graph', 'Shader Graph', api.getStruct(Graph))
 
   return mstruct
 }
@@ -392,18 +390,11 @@ function api_define_material(api: DataAPI): void {
 }
 
 function api_define_sceneobject(api: DataAPI, parent: DataStruct): DataStruct {
-  let ostruct = api_define_datablock(api, SceneObject)
+  let ostruct = SceneObject.defineAPI(api)
 
   // NOTE: the original passes the SceneObject *class* where struct() types a
   // string uiname; preserved verbatim (the value is only used for display).
   parent.struct('object', 'object', SceneObject as unknown as string, ostruct)
-
-  ostruct.dynamicStruct('data', 'data', 'data')
-  ostruct.struct('material', 'material', 'Material', api.mapStruct(Material, false))
-
-  ostruct.flags('flag', 'flag', ObjectFlags).on('change', function () {
-    window.redraw_viewport(true)
-  })
 
   return ostruct
 }
@@ -604,11 +595,7 @@ export function api_define_envlight(api: DataAPI): DataStruct {
 }
 
 export function api_define_light(api: DataAPI, pstruct: DataStruct): void {
-  let lstruct = api_define_datablock(api, Light)
-
-  let onchange = () => {
-    window.redraw_viewport()
-  }
+  let lstruct = Light.defineAPI(api)
 
   pstruct.struct('light', 'light', 'Light', lstruct)
 }
