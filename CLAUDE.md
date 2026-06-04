@@ -346,6 +346,13 @@ migration. Add to it when you discover another one.
   bump the parent's gitlink, as one logical change. The pinned exceptions
   (`sculptcore/emsdk`, `sculptcore/extern/imgui`) are excluded — bump those
   deliberately, never as part of a co-commit.
+- **Parent on a branch, submodule on its default branch:** do not silently commit
+  or advance the submodule's shared default branch. Ask the user whether they want
+  to commit and/or push the submodule's default branch (and bump the gitlink)
+  before doing so.
+- **Worktree teardown:** before removing a worktree, every submodule sitting on its
+  default branch — except the pinned `sculptcore/emsdk` / `sculptcore/extern/imgui`
+  — must be committed and pushed, so no work is lost when the checkout goes away.
 
 ## Secondary-agent worktree
 
