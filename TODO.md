@@ -1,3 +1,31 @@
+# comments
+Update CLAUDE.md with new instructions on comments:
+
+* *Permanent Non-Doc Comments*: Non-doc comments should be short and concise,
+  no more then 3 lines. Comments longer then 3 lines are allowed every 500 lines in a file.
+* *TODO comments*: Todo comments may exceed the 3 line limit.  TODO items with especially high
+  priority should be marked with `XXX:` otherwise they should be marked with `TODO:`.
+* *Refactor/Implementation/Temp Comments*: Comments added as part of refactoring or implementation
+  of a plan have no limits on their length but should be prefixed with `CLAUDENOTE:` for later
+  revision/stripping later.  The final step of any plans should be removing CLAUDENOTE: 
+  comments and replacing them with permanent non-doc ones.
+* *Doc comments*: Doc comments should be short and concise and only auto-generated for 
+  non-obvious function signatures.  It is fine for a doc comment to simply explain how 
+  non-obvious parameters behave if that is shorter.
+
+# submodules
+Update CLAUDE.md:
+
+Submodules should be kept checked out at the HEADs of their current branches, pulling 
+and merging if necassary, except for the following submodules:
+
+* sculptcore/emsdk
+* sculptcore/extern/imgui
+
+The master branch should always link to submodules in their default branches
+
+Also add this to sculptcore/CLAUDE.md
+
 # TODO — non-addon consumers of addon files
 
 Tracking direct `scripts/**` → `addons/builtin/<id>/src/**` imports discovered
@@ -35,26 +63,30 @@ After `scripts/curve/*` and `curvetool*.ts` move into `addons/builtin/curve/src/
   - the `KnotDataLayer` CustomData type is registered via a runtime hook from the curve addon's register() (curve depends on mesh, registers its CustomData class into mesh's registry on load).
   The latter is the more idiomatic dependency-injection direction — mesh shouldn't know what KnotDataLayer is.
 
-## Data API `defineAPI` registry — addon class decoupling (from api-define refactor)
+## Data API `defineAPI` registry — addon class decoupling ✅ DONE
 
 The `defineAPI` refactor flipped `getDataAPI()` to iterate `dataAPIRegistry`
 (see `documentation/plans/api-define-defineapi-refactor.md`). Core
-`scripts/data_api/api_define.ts` still **hard-imports** the addon-owned classes
-it registers, which is the registry's remaining layering debt:
+`scripts/data_api/api_define.ts` no longer imports `addons/builtin/*`:
 
-- `Mesh`, `Vertex`, `Element` — from `addons/builtin/mesh/src/*`
-- `CurveSpline` — from `addons/builtin/curve/src/*` (supersedes the older
-  `api_define.ts:40` note above)
-- `BVHSettings` — from the pbvh_sculpt addon
-
-Follow-up: route their registration through each addon's `register(api)` hook
-(`api.register(cls)` → `registerDataAPI(cls)`) so core `api_define.ts` stops
-importing `addons/builtin/*`. The registry already supports this — the classes
-just need to call `registerDataAPI` from their addon's lifecycle hook instead of
-being imported and registered centrally in `registerCoreDataAPIClasses()`.
-Registration order is unconstrained: subclass `defineAPI`s chain their parent
-(`super.defineAPI`) onto their own struct rather than copying a built parent, so
-distributing registration across addons needs no parent-first ordering.
+- The builtin-addon classes (`Mesh`, `Vertex`, `Element`, `CurveSpline`,
+  `BVHSettings`) are registered by the inversion bridge
+  `addons/builtin/builtin_data_api.ts`, imported for its side effects from
+  `scripts/entry_point.js` (runs before `getDataAPI`) and from
+  `tools/gen-datapaths.mjs`'s entry shim (the catalog generator never boots
+  addons). The bridge reaches *up* into the dependency-free registry leaf
+  (`scripts/data_api/api_define_registry.ts`) rather than core reaching *down*.
+- The `ctx.mesh` struct is fetched by stable name via
+  `api.getStructByName('mesh.Mesh')` (path.ux), and the Scene selectMask
+  `regenElementsDraw` call duck-types instead of `instanceof Mesh`, so core
+  holds no static reference to the Mesh class.
+- **External (non-builtin) addons** register their own data-API classes through
+  the `register(api)` lifecycle hook: `addon_base.ts`'s `register(cls)` now has a
+  DataBlock/SceneObjectData branch that calls `registerDataAPI(cls)` and
+  live-defines the class against the running API (since `getDataAPI` is one-shot
+  and runs before addons start). A shared define-guard in the registry leaf
+  (`isDataAPIDefined`/`markDataAPIDefined`) prevents double-defining a class the
+  build pass already handled.
 
 ## Non-addon side-effect imports (registration triggers)
 

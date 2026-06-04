@@ -34,10 +34,10 @@ const dataAPIRegistry: DefineAPIClass[] = []
 /**
  * Register a class so its `defineAPI` is invoked while the data API is built.
  * Idempotent. Core classes call this at module scope from their own source file
- * (importing only this leaf). Addon classes must NOT — they route through the
- * addon `register(api)` hook (see documentation/addons.md) so they can be torn
- * down cleanly; the few that are still hard-registered live in
- * `registerAddonDataAPIClasses()` in `api_define.ts`.
+ * (importing only this leaf). Builtin-addon classes are registered by the
+ * `addons/builtin/builtin_data_api.ts` bridge (so core `api_define.ts` doesn't
+ * import `addons/builtin/*`). External addons register their data-API classes
+ * through the `register(api)` hook — see `addon_base.ts`'s `register(cls)`.
  */
 export function registerDataAPI(cls: DefineAPIClass): void {
   if (!dataAPIRegistry.includes(cls)) {
@@ -48,4 +48,25 @@ export function registerDataAPI(cls: DefineAPIClass): void {
 /** The classes registered via {@link registerDataAPI}, in registration order. */
 export function getDataAPIRegistry(): readonly DefineAPIClass[] {
   return dataAPIRegistry
+}
+
+/**
+ * Classes whose `defineAPI` has already run against the live API. Shared between
+ * `getDataAPI()`'s build pass (which defines every registered class up front) and
+ * the addon dispatcher (which live-defines an external addon's classes when it is
+ * enabled after `getDataAPI` already ran). Hosting the guard in this leaf lets
+ * `addon_base.ts` cooperate with the build pass without importing the heavy
+ * `api_define.ts` — so a builtin class the build already defined (e.g. `Mesh`,
+ * also routed through `api.registerAll`) is never defined twice.
+ */
+const _definedDataAPI = new WeakSet<DefineAPIClass>()
+
+/** True once {@link markDataAPIDefined} has recorded `cls`. */
+export function isDataAPIDefined(cls: DefineAPIClass): boolean {
+  return _definedDataAPI.has(cls)
+}
+
+/** Record that `cls`'s `defineAPI` has been run against the live API. */
+export function markDataAPIDefined(cls: DefineAPIClass): void {
+  _definedDataAPI.add(cls)
 }
