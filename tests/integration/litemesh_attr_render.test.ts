@@ -133,7 +133,7 @@ interface Dump {
 function runAttrScene(
   electronExe: string,
   backend: 'wasm' | 'native',
-  requests: {name: string; category: number}[],
+  requests: {name: string; category: number}[]
 ): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'attrtest-')), `${backend}.json`)
   const evalExpr = `globalThis.__attrtestApply(${JSON.stringify(requests)})`
@@ -145,19 +145,23 @@ function runAttrScene(
       Path.join(REPO_ROOT, 'electron', 'main.js'),
       '--headless',
       '--no-devtools',
-      '--backend', backend,
-      '--gen-scene', 'litemesh-attrtest',
-      '--scene-arg', 'subdiv=8',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-attrtest',
+      '--scene-arg',
+      'subdiv=8',
       // NB: `--eval=<expr>` (single token), NOT `--eval <expr>`. A bare
       // `<expr>` argv token is parsed by headless Chromium as a positional
       // URL; with a value-taking flag (`--dump <out>`) following it, the
       // headless launch aborts immediately (exit -1, no output). The `=` form
       // makes Chromium see an ignored switch, and getArgList() still reads it.
       `--eval=${evalExpr}`,
-      '--dump', out,
+      '--dump',
+      out,
       '--exit',
     ],
-    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000},
+    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000}
   )
   if (!fs.existsSync(out)) throw new Error(`${backend} dump not written to ${out}`)
   return JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
@@ -181,14 +185,18 @@ function runRoundtripScene(electronExe: string, requests: {name: string; categor
       Path.join(REPO_ROOT, 'electron', 'main.js'),
       '--headless',
       '--no-devtools',
-      '--backend', 'wasm',
-      '--gen-scene', 'litemesh-attrtest',
-      '--scene-arg', 'subdiv=2',
+      '--backend',
+      'wasm',
+      '--gen-scene',
+      'litemesh-attrtest',
+      '--scene-arg',
+      'subdiv=2',
       `--eval=${evalExpr}`,
-      '--dump', out,
+      '--dump',
+      out,
       '--exit',
     ],
-    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000},
+    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000}
   )
   if (!fs.existsSync(out)) throw new Error(`roundtrip dump not written to ${out}`)
   return JSON.parse(fs.readFileSync(out, 'utf-8')) as Dump
@@ -324,23 +332,27 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
   // Native parity is a separate concern from the core path; skip just this test
   // when the native addon isn't built (keeps CI without the clang toolchain green).
   const parityTest = haveNative ? test : test.skip
-  parityTest('native and WASM build identical attribute buffers', () => {
-    const nativeDump = runAttrScene(electronExe!, 'native', [
-      {name: 'color', category: CAT_COLOR},
-      {name: 'uv', category: CAT_UV},
-    ])
-    const wbufs = liteMeshOf(wasmDump).gpuBuffers!
-    const nbufs = liteMeshOf(nativeDump).gpuBuffers!
-    for (const name of ['position', 'normal', 'color', 'uv']) {
-      const mismatches = diffDump(nbufs[name], wbufs[name], `gpuBuffers/${name}`)
-      if (mismatches.length) {
-        // eslint-disable-next-line no-console
-        console.error(`[attr-render] ${name} mismatch:\n` + mismatches.slice(0, 20).join('\n'))
+  parityTest(
+    'native and WASM build identical attribute buffers',
+    () => {
+      const nativeDump = runAttrScene(electronExe!, 'native', [
+        {name: 'color', category: CAT_COLOR},
+        {name: 'uv', category: CAT_UV},
+      ])
+      const wbufs = liteMeshOf(wasmDump).gpuBuffers!
+      const nbufs = liteMeshOf(nativeDump).gpuBuffers!
+      for (const name of ['position', 'normal', 'color', 'uv']) {
+        const mismatches = diffDump(nbufs[name], wbufs[name], `gpuBuffers/${name}`)
+        if (mismatches.length) {
+          // eslint-disable-next-line no-console
+          console.error(`[attr-render] ${name} mismatch:\n` + mismatches.slice(0, 20).join('\n'))
+        }
+        expect(mismatches).toEqual([])
       }
-      expect(mismatches).toEqual([])
-    }
-    // The requested-attr contract itself must be backend-independent.
-    expect(nativeDump.attrtest!.requested).toEqual(wasmDump.attrtest!.requested)
-    expect(nativeDump.attrtest!.missing).toEqual(wasmDump.attrtest!.missing)
-  }, 120000)
+      // The requested-attr contract itself must be backend-independent.
+      expect(nativeDump.attrtest!.requested).toEqual(wasmDump.attrtest!.requested)
+      expect(nativeDump.attrtest!.missing).toEqual(wasmDump.attrtest!.missing)
+    },
+    120000
+  )
 })

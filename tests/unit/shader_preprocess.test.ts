@@ -28,13 +28,7 @@ describe('preprocess identifier substitution', () => {
   })
 
   test('boolean define still gates #ifdef blocks', () => {
-    const src = [
-      '#ifdef AXIS_Y',
-      'YES',
-      '#else',
-      'NO',
-      '#endif',
-    ].join('\n')
+    const src = ['#ifdef AXIS_Y', 'YES', '#else', 'NO', '#endif'].join('\n')
     expect(preprocess(src, {defines: {AXIS_Y: true}})).toBe('YES')
     expect(preprocess(src, {defines: {}})).toBe('NO')
   })
@@ -60,20 +54,13 @@ describe('preprocess identifier substitution', () => {
   })
 
   test('substitution skipped inside disabled #ifdef block', () => {
-    const src = [
-      '#ifdef GATE',
-      'X = N;',
-      '#endif',
-    ].join('\n')
+    const src = ['#ifdef GATE', 'X = N;', '#endif'].join('\n')
     expect(preprocess(src, {defines: {N: '5'}})).toBe('')
     expect(preprocess(src, {defines: {GATE: true, N: '5'}})).toBe('X = 5;')
   })
 
   test('inline #define value is substituted on following lines', () => {
-    const src = [
-      '#define K 7',
-      'let n = K;',
-    ].join('\n')
+    const src = ['#define K 7', 'let n = K;'].join('\n')
     expect(preprocess(src)).toBe('let n = 7;')
   })
 })

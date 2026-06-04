@@ -25,11 +25,7 @@ import {join, resolve, dirname} from 'node:path'
 import {fileURLToPath, pathToFileURL} from 'node:url'
 
 import {walkAPI, normalizePath} from '../scripts/path.ux/buildtools/datapath-walker.mjs'
-import {
-  renderJSON,
-  renderMarkdown,
-  renderDts,
-} from '../scripts/path.ux/buildtools/gen-datapaths.mjs'
+import {renderJSON, renderMarkdown, renderDts} from '../scripts/path.ux/buildtools/gen-datapaths.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
@@ -125,9 +121,7 @@ const DOM_STUB_BANNER = `
 
 /** Tolerant parse of tsconfig.json (jsonc: // comments + trailing commas). */
 function parseJsonc(text) {
-  const noComments = text
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  const noComments = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
   const noTrailingCommas = noComments.replace(/,(\s*[}\]])/g, '$1')
   return JSON.parse(noTrailingCommas)
 }
@@ -164,7 +158,7 @@ function stubModulesPlugin(names) {
       })
       build.onLoad({filter: /.*/, namespace: 'stub-optional'}, () => ({
         contents: 'module.exports = new Proxy({}, {get: () => () => {}})',
-        loader: 'js',
+        loader  : 'js',
       }))
     },
   }
@@ -181,19 +175,19 @@ async function loadApi() {
   try {
     result = await esbuild.build({
       entryPoints: [genEntry],
-      bundle: true,
-      write: false,
-      format: 'esm',
-      platform: 'node',
-      target: 'es2022',
+      bundle     : true,
+      write      : false,
+      format     : 'esm',
+      platform   : 'node',
+      target     : 'es2022',
       alias,
       // Match tools/esbuilder.js: tree-shaking reorders/drops bindings inside
       // the @framework/api barrel cycle and triggers a CustomDataElem TDZ.
       treeShaking: false,
-      keepNames: true,
-      plugins: [stubModulesPlugin(STUBBED_MODULES)],
-      banner: {js: DOM_STUB_BANNER},
-      logLevel: 'silent',
+      keepNames  : true,
+      plugins    : [stubModulesPlugin(STUBBED_MODULES)],
+      banner     : {js: DOM_STUB_BANNER},
+      logLevel   : 'silent',
     })
   } finally {
     await rm(genEntry, {force: true})
@@ -232,7 +226,12 @@ async function loadApi() {
         if (m) {
           const n = +m[1]
           console.error(`--- bundle around line ${n} ---`)
-          console.error(lines.slice(n - 6, n + 2).map((l, i) => `${n - 5 + i}: ${l}`).join('\n'))
+          console.error(
+            lines
+              .slice(n - 6, n + 2)
+              .map((l, i) => `${n - 5 + i}: ${l}`)
+              .join('\n')
+          )
         }
       }
       throw err

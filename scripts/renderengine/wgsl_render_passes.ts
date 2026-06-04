@@ -539,7 +539,7 @@ export function buildPassPipelineDescriptor(
   // directives crash the shader module.
   const wgsl = preprocess(entry.source, {defines: defines ?? {}})
   return {
-    label        : entry.key,
+    label: entry.key,
     wgsl,
     vertexBuffers: entry.vertexBuffers,
     colorTargets : entry.colorTargets,
@@ -553,9 +553,9 @@ const PASS_COLOR_TARGET: GPUColorTargetState = {
 }
 
 const PASS_DEPTH_STENCIL: GPUDepthStencilState = {
-  format            : 'depth24plus',
-  depthWriteEnabled : true,
-  depthCompare      : 'always',
+  format           : 'depth24plus',
+  depthWriteEnabled: true,
+  depthCompare     : 'always',
 }
 
 registerWgslPass({

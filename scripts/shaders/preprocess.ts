@@ -62,12 +62,7 @@ export function preprocess(source: string, opts: PreprocessOptions = {}): string
   return run(source, defines, includes, maxDepth)
 }
 
-function run(
-  source: string,
-  defines: DefinesMap,
-  includes: Record<string, string>,
-  depth: number
-): string {
+function run(source: string, defines: DefinesMap, includes: Record<string, string>, depth: number): string {
   if (depth < 0) throw new Error('preprocess: #include depth limit exceeded')
 
   const lines = source.split('\n')

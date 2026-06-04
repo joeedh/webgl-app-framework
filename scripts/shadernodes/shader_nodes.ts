@@ -555,10 +555,7 @@ interface IAttrItem {
 export class AttributeNode<
   InputSet extends INodeSocketSet = {},
   OutputSet extends INodeSocketSet = {},
-> extends ShaderNode<
-  InputSet,
-  OutputSet & {color: RGBASocket; vector: Vec3Socket; fac: FloatSocket}
-> {
+> extends ShaderNode<InputSet, OutputSet & {color: RGBASocket; vector: Vec3Socket; fac: FloatSocket}> {
   attrName: string
   category: number
 
@@ -657,10 +654,10 @@ export class AttributeNode<
     }
 
     container.listenum(undefined, {
-      name      : 'Attribute',
+      name: 'Attribute',
       enumDef,
       defaultval: this.attrName,
-      callback  : (val: string | number) => {
+      callback: (val: string | number) => {
         this.attrName = String(val)
         this.graphUpdate()
       },

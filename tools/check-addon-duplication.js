@@ -43,14 +43,7 @@ export const EXTERNAL_IDS = ['tetmesh']
  *
  * @type {Set<string>}
  */
-export const IN_BUNDLE_BUILTIN_IDS = new Set([
-  'mesh',
-  'subsurf',
-  'mesh_edit',
-  'curve',
-  'pbvh_sculpt',
-  'sculptcore',
-])
+export const IN_BUNDLE_BUILTIN_IDS = new Set(['mesh', 'subsurf', 'mesh_edit', 'curve', 'pbvh_sculpt', 'sculptcore'])
 
 /** Normalize a metafile input key to forward slashes, repo-relative-ish. */
 function normalize(p) {

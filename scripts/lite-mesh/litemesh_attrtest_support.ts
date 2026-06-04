@@ -48,9 +48,7 @@ function applyAttrTestMaterial(requests: AttrTestRequest[]): AttrTestResult {
   const result: AttrTestResult = {ok: false, requested: [], missing: []}
   try {
     const app = (globalThis as {_appstate?: {ctx: {scene: unknown}}})._appstate
-    const scene = app?.ctx?.scene as
-      | {lights: Iterable<unknown>; objects: {active?: {data?: unknown}}}
-      | undefined
+    const scene = app?.ctx?.scene as {lights: Iterable<unknown>; objects: {active?: {data?: unknown}}} | undefined
     if (!scene) throw new Error('no active scene')
 
     const lite = scene.objects.active?.data
@@ -220,16 +218,12 @@ function roundtripAttrTestGraph(requests: AttrTestRequest[]): AttrTestRoundtripR
   } catch (err) {
     result.error = String(err)
   }
-  ;(globalThis as {__attrtestRoundtripResult?: AttrTestRoundtripResult}).__attrtestRoundtripResult =
-    result
+  ;(globalThis as {__attrtestRoundtripResult?: AttrTestRoundtripResult}).__attrtestRoundtripResult = result
   return result
 }
 
-;(globalThis as {__attrtestApply?: typeof applyAttrTestMaterial}).__attrtestApply =
-  applyAttrTestMaterial
-;(globalThis as {__attrtestBuildWgsl?: typeof buildAttrTestWgsl}).__attrtestBuildWgsl =
-  buildAttrTestWgsl
-;(globalThis as {__attrtestRoundtrip?: typeof roundtripAttrTestGraph}).__attrtestRoundtrip =
-  roundtripAttrTestGraph
+;(globalThis as {__attrtestApply?: typeof applyAttrTestMaterial}).__attrtestApply = applyAttrTestMaterial
+;(globalThis as {__attrtestBuildWgsl?: typeof buildAttrTestWgsl}).__attrtestBuildWgsl = buildAttrTestWgsl
+;(globalThis as {__attrtestRoundtrip?: typeof roundtripAttrTestGraph}).__attrtestRoundtrip = roundtripAttrTestGraph
 
 export {applyAttrTestMaterial, buildAttrTestWgsl, roundtripAttrTestGraph}

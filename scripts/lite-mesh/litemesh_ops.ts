@@ -37,7 +37,7 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
     const litemesh = new LiteMesh(wasmMesh)
     const ob = new SceneObject(litemesh)
     const mat = makeDefaultMaterial()
-    
+
     ctx.datalib.add(mat)
     ctx.datalib.add(litemesh)
     ctx.datalib.add(ob)
@@ -56,10 +56,10 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
 ToolOp.register(AddLiteMeshCubeOp)
 
 /** Shared mesh lookup for the attribute ToolOps. */
-class LiteMeshAttrOp<
-  Inputs extends PropertySlots = {},
-  Outputs extends PropertySlots = {},
-> extends LiteMeshOp<Inputs, Outputs> {
+class LiteMeshAttrOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends LiteMeshOp<
+  Inputs,
+  Outputs
+> {
   _getMesh(ctx: ToolContext): LiteMesh | undefined {
     const data = ctx.scene?.objects?.active?.data
     return data instanceof LiteMesh ? data : undefined
@@ -89,7 +89,7 @@ export class AddAttrOp extends LiteMeshAttrOp<{
     return {
       toolpath: 'litemesh.add_attr',
       uiname  : 'Add Attribute',
-      inputs  : {
+      inputs: {
         domain: new IntProperty(1),
         type  : new IntProperty(8),
         use   : new IntProperty(0),
@@ -195,7 +195,7 @@ export class MarkSeamOp extends LiteMeshAttrOp<{
     return {
       toolpath: 'litemesh.mark_seam',
       uiname  : 'Mark Seam Path',
-      inputs  : {
+      inputs: {
         vStart: new IntProperty(-1),
         vEnd  : new IntProperty(-1),
       },
@@ -240,9 +240,11 @@ export class MarkSeamOp extends LiteMeshAttrOp<{
 
   /** Draw the marked path as orange overlay lines (view3d.makeDrawLine). */
   _drawPath(ctx: ToolContext, mesh: LiteMesh, v0: number, v1: number) {
-    const v3d = (ctx as unknown as {
-      view3d?: {makeDrawLine(a: Vector3, b: Vector3, c: number[]): unknown}
-    }).view3d
+    const v3d = (
+      ctx as unknown as {
+        view3d?: {makeDrawLine(a: Vector3, b: Vector3, c: number[]): unknown}
+      }
+    ).view3d
     if (!v3d) {
       return
     }
@@ -493,7 +495,7 @@ export class GenerateUVOp extends LiteMeshAttrOp<{
     return {
       toolpath: 'litemesh.generate_uv',
       uiname  : 'Generate UVs from Seams',
-      inputs  : {
+      inputs: {
         margin: new FloatProperty(0.01).setRange(0.0, 0.25).noUnits(),
       },
     }

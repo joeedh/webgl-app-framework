@@ -43,16 +43,12 @@ export class GpuTexture {
     this.height = opts.height
     this.depth = opts.depth ?? 1
 
-    const usage =
-      opts.usage ??
-      TextureUsage.TEXTURE_BINDING |
-      TextureUsage.COPY_DST |
-      TextureUsage.RENDER_ATTACHMENT
+    const usage = opts.usage ?? TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST | TextureUsage.RENDER_ATTACHMENT
 
     this.handle = device.createTexture({
-      label: opts.label,
-      size : {width: opts.width, height: opts.height, depthOrArrayLayers: this.depth},
-      format       : opts.format,
+      label : opts.label,
+      size  : {width: opts.width, height: opts.height, depthOrArrayLayers: this.depth},
+      format: opts.format,
       usage,
       sampleCount  : opts.sampleCount ?? 1,
       mipLevelCount: opts.mipLevelCount ?? 1,
@@ -78,13 +74,13 @@ export class GpuTexture {
 
 export function createSampler(device: GPUDevice, opts: GpuSamplerOptions = {}): GPUSampler {
   return device.createSampler({
-    magFilter     : opts.magFilter ?? 'linear',
-    minFilter     : opts.minFilter ?? 'linear',
-    mipmapFilter  : opts.mipmapFilter ?? 'linear',
-    addressModeU  : opts.addressModeU ?? 'clamp-to-edge',
-    addressModeV  : opts.addressModeV ?? 'clamp-to-edge',
-    addressModeW  : opts.addressModeW ?? 'clamp-to-edge',
-    compare       : opts.compare,
-    maxAnisotropy : opts.maxAnisotropy,
+    magFilter    : opts.magFilter ?? 'linear',
+    minFilter    : opts.minFilter ?? 'linear',
+    mipmapFilter : opts.mipmapFilter ?? 'linear',
+    addressModeU : opts.addressModeU ?? 'clamp-to-edge',
+    addressModeV : opts.addressModeV ?? 'clamp-to-edge',
+    addressModeW : opts.addressModeW ?? 'clamp-to-edge',
+    compare      : opts.compare,
+    maxAnisotropy: opts.maxAnisotropy,
   })
 }

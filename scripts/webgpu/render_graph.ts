@@ -106,7 +106,7 @@ export class WebGpuRenderGraph {
           // entries are registered for `rgba16float` and the canvas is
           // typically `bgra8unorm`. The cache keys on colorTargets so
           // this transparently produces a distinct variant.
-          desc.colorTargets = desc.colorTargets.map(t => ({...t, format: node.surface!.format}))
+          desc.colorTargets = desc.colorTargets.map((t) => ({...t, format: node.surface!.format}))
         }
         const pipeline = this.ctx.pipelineCache.get(desc)
         pass.setPipeline(pipeline.handle)
@@ -131,10 +131,10 @@ export class WebGpuRenderGraph {
         }
         if (surface.depthView) {
           desc.depthStencilAttachment = {
-            view             : surface.depthView,
-            depthClearValue  : 1.0,
-            depthLoadOp      : 'clear',
-            depthStoreOp     : 'store',
+            view           : surface.depthView,
+            depthClearValue: 1.0,
+            depthLoadOp    : 'clear',
+            depthStoreOp   : 'store',
           }
         }
         this.ctx.renderStageDesc(desc, (pass) => {
@@ -150,25 +150,29 @@ export class WebGpuRenderGraph {
         continue
       }
 
-      this.ctx.renderStage(node.target, (pass) => {
-        if (node.passKey === 'NormalPass') {
-          if (!hooks.encodeMeshNormalPass) {
-            throw new Error('WebGpuRenderGraph: NormalPass requires hooks.encodeMeshNormalPass')
+      this.ctx.renderStage(
+        node.target,
+        (pass) => {
+          if (node.passKey === 'NormalPass') {
+            if (!hooks.encodeMeshNormalPass) {
+              throw new Error('WebGpuRenderGraph: NormalPass requires hooks.encodeMeshNormalPass')
+            }
+            hooks.encodeMeshNormalPass(node, pass)
+            return
           }
-          hooks.encodeMeshNormalPass(node, pass)
-          return
-        }
 
-        if (node.passKey === 'BasePass') {
-          if (!hooks.encodeMeshBasePass) {
-            throw new Error('WebGpuRenderGraph: BasePass requires hooks.encodeMeshBasePass')
+          if (node.passKey === 'BasePass') {
+            if (!hooks.encodeMeshBasePass) {
+              throw new Error('WebGpuRenderGraph: BasePass requires hooks.encodeMeshBasePass')
+            }
+            hooks.encodeMeshBasePass(node, pass)
+            return
           }
-          hooks.encodeMeshBasePass(node, pass)
-          return
-        }
 
-        drawFsQuad(pass)
-      }, {clearColor: node.clearColor ?? {r: 0, g: 0, b: 0, a: 1}, label: node.label})
+          drawFsQuad(pass)
+        },
+        {clearColor: node.clearColor ?? {r: 0, g: 0, b: 0, a: 1}, label: node.label}
+      )
 
       // Snapshot the pass's color output. Key on label (which the engine
       // disambiguates per-pass, e.g. "SharpenPass.x" vs "SharpenPass.y")

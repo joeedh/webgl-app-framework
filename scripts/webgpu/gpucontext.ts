@@ -46,7 +46,7 @@ export class GpuContext {
 
     const device = await adapter.requestDevice({
       requiredFeatures: opts.requiredFeatures,
-      requiredLimits: opts.requiredLimits,
+      requiredLimits  : opts.requiredLimits,
     })
 
     const canvasContext = opts.canvas.getContext('webgpu') as GPUCanvasContext | null
@@ -56,11 +56,11 @@ export class GpuContext {
 
     canvasContext.configure({
       device,
-      format: surfaceFormat,
+      format   : surfaceFormat,
       alphaMode: 'premultiplied',
       // RENDER_ATTACHMENT is implicit; COPY_SRC lets the FBO debug editor
       // copyTextureToTexture() the canvas surface into a capture target.
-      usage: TextureUsage.RENDER_ATTACHMENT | TextureUsage.COPY_SRC,
+      usage    : TextureUsage.RENDER_ATTACHMENT | TextureUsage.COPY_SRC,
     })
 
     return new GpuContext(device, adapter, opts.canvas, canvasContext, surfaceFormat)

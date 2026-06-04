@@ -138,9 +138,9 @@ export enum SubdivModes {
 // How the per-dab target edge length (l_max) is resolved in TS. l_min is then
 // l_max * collapseRatio. See DynTopoSettingsSC.resolveEdgeGoal.
 export enum DynTopoEdgeModeSC {
-  WORLD = 0,   // edgeSize is a world-space (object-local) length
+  WORLD = 0, // edgeSize is a world-space (object-local) length
   PERCENT = 1, // edgeSize is a percentage of the brush radius
-  PIXELS = 2,  // edgeSize is a multiple of the projected pixel size at the dab
+  PIXELS = 2, // edgeSize is a multiple of the projected pixel size at the dab
 }
 
 // Mirrors sculptcore::dyntopo::DynTopoMode (Subdivide=0, Collapse=1, Both=2).
@@ -176,7 +176,7 @@ export enum DynTopoOverridesSC {
   MAX_ROUNDS = 1 << 23,
 
   NONE = 1 << 24, // set => inherit everything from the tool-mode defaults
-  EVERYTHING = ((1 << 24) - 1), // all override bits except NONE
+  EVERYTHING = (1 << 24) - 1, // all override bits except NONE
 }
 
 export const SculptIcons = {} as {[k: string]: number}

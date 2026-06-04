@@ -332,19 +332,19 @@ export class ImageEditor extends Editor {
     const dpi = UIBase.getDPI()
 
     return {
-      size            : this.glSize,
-      aspect          : this.glSize[0] / this.glSize[1],
-      near            : 0.0001,
-      far             : 1.0,
-      polygonOffset   : 0.0,
+      size         : this.glSize,
+      aspect       : this.glSize[0] / this.glSize[1],
+      near         : 0.0001,
+      far          : 1.0,
+      polygonOffset: 0.0,
       projectionMatrix,
-      objectMatrix    : this.identity,
-      pointSize       : 5 * dpi,
-      active_id       : -1,
-      highlight_id    : -1,
-      last_id         : -1,
-      opacity         : 1.0,
-      alpha           : 1.0,
+      objectMatrix: this.identity,
+      pointSize   : 5 * dpi,
+      active_id   : -1,
+      highlight_id: -1,
+      last_id     : -1,
+      opacity     : 1.0,
+      alpha       : 1.0,
       ...extra,
     } as unknown as IUniformsBlock
   }
@@ -458,12 +458,14 @@ export class ImageEditor extends Editor {
     // shared canvas; bgMesh paints this editor's region (the WebGPU
     // equivalent of the WebGL scissored clear).
     const desc: GPURenderPassDescriptor = {
-      label           : 'imageEditor.pass',
-      colorAttachments: [{
-        view   : canvasTex.createView(),
-        loadOp : 'load',
-        storeOp: 'store',
-      }],
+      label                 : 'imageEditor.pass',
+      colorAttachments: [
+        {
+          view   : canvasTex.createView(),
+          loadOp : 'load',
+          storeOp: 'store',
+        },
+      ],
       depthStencilAttachment: {
         view           : depth.view,
         depthClearValue: 1.0,

@@ -44,23 +44,18 @@ export class TexpaintBridge {
   }
 
   // Must be called once before `syncFromGL` / `attachFBO`.
-  ensurePair(
-    key: unknown,
-    width: number,
-    height: number,
-    format: GPUTextureFormat = 'rgba32float'
-  ): BridgedTexture {
+  ensurePair(key: unknown, width: number, height: number, format: GPUTextureFormat = 'rgba32float'): BridgedTexture {
     let pair = this.pairs.get(key)
     if (pair && pair.width === width && pair.height === height && pair.format === format) {
       return pair
     }
     pair?.gpu.destroy()
     const gpu = new GpuTexture(this.device, {
-      label : 'TexpaintBridge.gpu',
+      label: 'TexpaintBridge.gpu',
       width,
       height,
       format,
-      usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+      usage: TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
     })
     pair = {
       key,

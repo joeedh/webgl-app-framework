@@ -42,7 +42,10 @@ function fromArgumentsTxt(): string[] | undefined {
     if (!req) return undefined
     const fs = req('fs') as {existsSync: (p: string) => boolean; readFileSync: (p: string, e: string) => string}
     if (!fs.existsSync('arguments.txt')) return undefined
-    const buf = fs.readFileSync('arguments.txt', 'utf8').replace(/[ \t]+/g, ' ').trim()
+    const buf = fs
+      .readFileSync('arguments.txt', 'utf8')
+      .replace(/[ \t]+/g, ' ')
+      .trim()
     return buf.length ? buf.split(' ') : []
   } catch {
     return undefined

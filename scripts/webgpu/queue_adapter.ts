@@ -100,11 +100,7 @@ function pointSpriteRemapKeyFor(s: Submission): string | undefined {
 // the underlying `PipelineCache` and not a fresh pipeline build.
 const topologyVariantsByBase = new WeakMap<Pipeline, Map<GPUPrimitiveTopology, Pipeline>>()
 
-function getTopologyVariant(
-  cache: PipelineCache,
-  base: Pipeline,
-  topology: GPUPrimitiveTopology
-): Pipeline {
+function getTopologyVariant(cache: PipelineCache, base: Pipeline, topology: GPUPrimitiveTopology): Pipeline {
   const baseTopology = base.descriptor.primitive?.topology ?? 'triangle-list'
   if (baseTopology === topology) return base
   let variants = topologyVariantsByBase.get(base)
@@ -159,11 +155,11 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
     if (pointSpriteKey) {
       const entry = lookupWgslShader(pointSpriteKey)
       if (!entry) {
-        throw new Error(
-          `WebGPUDrawQueueAdapter: point-sprite remap target "${pointSpriteKey}" not registered.`
-        )
+        throw new Error(`WebGPUDrawQueueAdapter: point-sprite remap target "${pointSpriteKey}" not registered.`)
       }
-      pipeline = this.frame.pipelineCache.get(applySurfaceFormat(buildPipelineDescriptor(entry), this.frame.surfaceFormat))
+      pipeline = this.frame.pipelineCache.get(
+        applySurfaceFormat(buildPipelineDescriptor(entry), this.frame.surfaceFormat)
+      )
       markInstancedPointSprite(pipeline.handle)
     } else {
       pipeline = this.frame.pipelineBindings.get(s.pipeline)
@@ -212,7 +208,7 @@ export class WebGPUDrawQueueAdapter implements DrawQueue {
     const pipelineUniforms = (s.pipeline as unknown as {uniforms?: IUniformsBlock}).uniforms
     const uniforms: IUniformsBlock = pipelineUniforms
       ? {...pipelineUniforms, ...this.frame.uniforms, ...(s.uniforms ?? {})}
-      : (s.uniforms ?? this.frame.uniforms)
+      : s.uniforms ?? this.frame.uniforms
     this.frame.passEncoder.setPipeline(pipeline.handle)
     const bindings = getUniformBindings(this.frame.device, pipeline)
     if (!bindings.isEmpty) {

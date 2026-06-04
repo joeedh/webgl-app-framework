@@ -15,10 +15,18 @@
 export type WgslScalarType = 'f32' | 'i32' | 'u32'
 export type WgslType =
   | WgslScalarType
-  | 'vec2f' | 'vec3f' | 'vec4f'
-  | 'vec2i' | 'vec3i' | 'vec4i'
-  | 'vec2u' | 'vec3u' | 'vec4u'
-  | 'mat2x2f' | 'mat3x3f' | 'mat4x4f'
+  | 'vec2f'
+  | 'vec3f'
+  | 'vec4f'
+  | 'vec2i'
+  | 'vec3i'
+  | 'vec4i'
+  | 'vec2u'
+  | 'vec3u'
+  | 'vec4u'
+  | 'mat2x2f'
+  | 'mat3x3f'
+  | 'mat4x4f'
   | `array<${string}>`
 
 export interface WgslField {
@@ -45,21 +53,21 @@ export interface WgslStruct {
  * actually use this matches the spec.
  */
 const TYPE_TABLE: Record<string, {size: number; align: number}> = {
-  f32     : {size: 4 , align: 4 },
-  i32     : {size: 4 , align: 4 },
-  u32     : {size: 4 , align: 4 },
-  vec2f   : {size: 8 , align: 8 },
-  vec2i   : {size: 8 , align: 8 },
-  vec2u   : {size: 8 , align: 8 },
-  vec3f   : {size: 12, align: 16},
-  vec3i   : {size: 12, align: 16},
-  vec3u   : {size: 12, align: 16},
-  vec4f   : {size: 16, align: 16},
-  vec4i   : {size: 16, align: 16},
-  vec4u   : {size: 16, align: 16},
-  mat2x2f : {size: 16, align: 8 },
-  mat3x3f : {size: 48, align: 16},
-  mat4x4f : {size: 64, align: 16},
+  f32    : {size: 4, align: 4},
+  i32    : {size: 4, align: 4},
+  u32    : {size: 4, align: 4},
+  vec2f  : {size: 8, align: 8},
+  vec2i  : {size: 8, align: 8},
+  vec2u  : {size: 8, align: 8},
+  vec3f  : {size: 12, align: 16},
+  vec3i  : {size: 12, align: 16},
+  vec3u  : {size: 12, align: 16},
+  vec4f  : {size: 16, align: 16},
+  vec4i  : {size: 16, align: 16},
+  vec4u  : {size: 16, align: 16},
+  mat2x2f: {size: 16, align: 8},
+  mat3x3f: {size: 48, align: 16},
+  mat4x4f: {size: 64, align: 16},
 }
 
 const STRUCT_RE = /struct\s+(\w+)\s*\{([^}]*)\}/g
@@ -113,11 +121,11 @@ export function reflectWgslStructs(source: string): Map<string, WgslStruct> {
       const t = lookupType(typeStr)
       offset = alignUp(offset, t.align)
       fields.push({
-        name        : fieldName,
-        type        : typeStr as WgslType,
+        name: fieldName,
+        type: typeStr as WgslType,
         offset,
-        size        : t.size,
-        arrayLength : t.arrayLength,
+        size       : t.size,
+        arrayLength: t.arrayLength,
       })
       offset += t.size
       maxAlign = Math.max(maxAlign, t.align)
@@ -147,7 +155,7 @@ export class UniformWriter {
     this.f32 = new Float32Array(this.buffer)
     this.i32 = new Int32Array(this.buffer)
     this.u32 = new Uint32Array(this.buffer)
-    this.fieldMap = new Map(struct.fields.map(f => [f.name, f]))
+    this.fieldMap = new Map(struct.fields.map((f) => [f.name, f]))
   }
 
   set(name: string, value: number | ArrayLike<number>): void {
@@ -164,10 +172,7 @@ export class UniformWriter {
     }
 
     // Vector / matrix / array: copy element-by-element into the right view.
-    const target =
-      field.type.endsWith('i') ? this.i32 :
-      field.type.endsWith('u') ? this.u32 :
-      this.f32
+    const target = field.type.endsWith('i') ? this.i32 : field.type.endsWith('u') ? this.u32 : this.f32
     // `Matrix4` from `vectormath` stores its data in a non-indexable
     // `$matrix` property and exposes `.getAsArray()` / `.getAsFloat32Array()`.
     // Detect that shape and unwrap to a real ArrayLike before copying.
@@ -179,8 +184,8 @@ export class UniformWriter {
       typeof valueAny.getAsFloat32Array === 'function'
         ? valueAny.getAsFloat32Array()
         : typeof valueAny.getAsArray === 'function'
-        ? valueAny.getAsArray()
-        : value
+          ? valueAny.getAsArray()
+          : value
     for (let i = 0; i < src.length; i++) {
       target[wordOffset + i] = src[i]
     }
@@ -225,7 +230,7 @@ export class ArrayedStructWriter {
     this.f32 = new Float32Array(this.buffer)
     this.i32 = new Int32Array(this.buffer)
     this.u32 = new Uint32Array(this.buffer)
-    this.fieldMap = new Map(struct.fields.map(f => [f.name, f]))
+    this.fieldMap = new Map(struct.fields.map((f) => [f.name, f]))
     const escaped = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     this.keyRe = new RegExp(`^${escaped}\\[(\\d+)\\]\\.(.+)$`)
   }
@@ -244,10 +249,7 @@ export class ArrayedStructWriter {
       return
     }
 
-    const target =
-      field.type.endsWith('i') ? this.i32 :
-      field.type.endsWith('u') ? this.u32 :
-      this.f32
+    const target = field.type.endsWith('i') ? this.i32 : field.type.endsWith('u') ? this.u32 : this.f32
     const valueAny = value as unknown as {
       getAsFloat32Array?: () => Float32Array
       getAsArray?: () => number[]
@@ -256,8 +258,8 @@ export class ArrayedStructWriter {
       typeof valueAny.getAsFloat32Array === 'function'
         ? valueAny.getAsFloat32Array()
         : typeof valueAny.getAsArray === 'function'
-        ? valueAny.getAsArray()
-        : value
+          ? valueAny.getAsArray()
+          : value
     for (let i = 0; i < src.length; i++) {
       target[wordOffset + i] = src[i]
     }

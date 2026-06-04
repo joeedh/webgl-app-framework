@@ -373,7 +373,7 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     const falloff = brush.falloff
 
     const visit: WeakSet<any> = new WeakSet()
-    const bvs: (BVHNodeVertex|number)[] = []
+    const bvs: (BVHNodeVertex | number)[] = []
 
     const vset = this.bGrabVerts!
 

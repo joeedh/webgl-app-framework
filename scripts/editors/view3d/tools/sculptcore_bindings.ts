@@ -11,13 +11,13 @@ const FalloffShape = {Spherical: 0, Cube: 1, Linear: 2, Box: 3} as const
 
 /** Mirror of C++ enum DeviceType (prop_dynamics.h). */
 const DeviceType = {
-  PRESSURE: 0,
-  TILTX: 1,
-  TILTY: 2,
-  SPEED: 3,
-  ANGLE: 4,
+  PRESSURE : 0,
+  TILTX    : 1,
+  TILTY    : 2,
+  SPEED    : 3,
+  ANGLE    : 4,
   CURVATURE: 5,
-  TWIST: 6,
+  TWIST    : 6,
 } as const
 
 /** Mirror of C++ enum BasicMix (litestl/math/mix.h). */
@@ -36,8 +36,8 @@ const BrushProp = {STRENGTH: 0, RADIUS: 1, AUTOSMOOTH: 2, PLANEOFF: 3, SPACING: 
  * concaveFilter, …) are skipped.
  */
 const DYNAMIC_CHANNEL_TO_PROP: Record<string, number> = {
-  strength: BrushProp.STRENGTH,
-  radius: BrushProp.RADIUS,
+  strength  : BrushProp.STRENGTH,
+  radius    : BrushProp.RADIUS,
   autosmooth: BrushProp.AUTOSMOOTH,
 }
 const DYN_CURVE_SAMPLES = 32
@@ -96,19 +96,19 @@ export function pushBrushDeviceInputs(wasmBrush: WasmBrush, e: PointerEvent): vo
  * / cut / fill. WING_SCRAPE runs its own kernel.
  */
 export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = {
-  [SculptTools.DRAW]:        SculptBrushes.DRAW,
-  [SculptTools.SMOOTH]:      SculptBrushes.SMOOTH,
-  [SculptTools.INFLATE]:     SculptBrushes.INFLATE,
-  [SculptTools.SHARP]:       SculptBrushes.SHARP,
-  [SculptTools.PINCH]:       SculptBrushes.PINCH,
-  [SculptTools.MASK_PAINT]:  SculptBrushes.MASK,
-  [SculptTools.CLAY]:        SculptBrushes.CLAY,
-  [SculptTools.SCRAPE]:      SculptBrushes.SCRAPE,
-  [SculptTools.FILL]:        SculptBrushes.FILL,
+  [SculptTools.DRAW]       : SculptBrushes.DRAW,
+  [SculptTools.SMOOTH]     : SculptBrushes.SMOOTH,
+  [SculptTools.INFLATE]    : SculptBrushes.INFLATE,
+  [SculptTools.SHARP]      : SculptBrushes.SHARP,
+  [SculptTools.PINCH]      : SculptBrushes.PINCH,
+  [SculptTools.MASK_PAINT] : SculptBrushes.MASK,
+  [SculptTools.CLAY]       : SculptBrushes.CLAY,
+  [SculptTools.SCRAPE]     : SculptBrushes.SCRAPE,
+  [SculptTools.FILL]       : SculptBrushes.FILL,
   [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
-  [SculptTools.COLOR]:       SculptBrushes.COLOR,
-  [SculptTools.POLYGROUP]:   SculptBrushes.POLYGROUP,
-  [SculptTools.BSMOOTH]:     SculptBrushes.BSMOOTH,
+  [SculptTools.COLOR]      : SculptBrushes.COLOR,
+  [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
+  [SculptTools.BSMOOTH]    : SculptBrushes.BSMOOTH,
 }
 
 /** Resolve a TS sculpt tool to its sculptcore kernel, or undefined if none. */

@@ -7,19 +7,14 @@
 
 import {BufferUsage} from './flags.js'
 
-export type GpuBufferUsage =
-  | 'vertex'
-  | 'index'
-  | 'uniform'
-  | 'storage'
-  | 'indirect'
+export type GpuBufferUsage = 'vertex' | 'index' | 'uniform' | 'storage' | 'indirect'
 
 const usageFlags: Record<GpuBufferUsage, number> = {
-  vertex   : BufferUsage.VERTEX,
-  index    : BufferUsage.INDEX,
-  uniform  : BufferUsage.UNIFORM,
-  storage  : BufferUsage.STORAGE,
-  indirect : BufferUsage.INDIRECT,
+  vertex  : BufferUsage.VERTEX,
+  index   : BufferUsage.INDEX,
+  uniform : BufferUsage.UNIFORM,
+  storage : BufferUsage.STORAGE,
+  indirect: BufferUsage.INDIRECT,
 }
 
 export interface GpuBufferOptions {
@@ -49,9 +44,9 @@ export class GpuBuffer {
     this.usage = flags
 
     this.handle = device.createBuffer({
-      label: opts.label,
-      size : opts.size,
-      usage: flags,
+      label           : opts.label,
+      size            : opts.size,
+      usage           : flags,
       mappedAtCreation: opts.mappedAtCreation ?? false,
     })
   }
@@ -86,11 +81,10 @@ export function ensureGpuBuffer<K>(
   byteSize: number,
   options: Omit<GpuBufferOptions, 'size'>,
   device: GPUDevice,
-  exactMatch: boolean,
+  exactMatch: boolean
 ): GpuBuffer {
   const existing = cache.get(key)
-  const needRealloc = !existing ||
-    (exactMatch ? existing.size !== byteSize : existing.size < byteSize)
+  const needRealloc = !existing || (exactMatch ? existing.size !== byteSize : existing.size < byteSize)
   if (!needRealloc) return existing!
   existing?.destroy()
   const buf = new GpuBuffer(device, {...options, size: Math.max(byteSize, 4)})

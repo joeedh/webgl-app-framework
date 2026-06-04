@@ -558,7 +558,11 @@ function idLayout(shaderLocation: number): GPUVertexBufferLayout {
  *   slot 4 → ID      (f32,  stride 4)
  */
 export const WGSL_VERTEX_SLOTS = Object.freeze({
-  LOC: 0, NORMAL: 1, UV: 2, COLOR: 3, ID: 4,
+  LOC: 0,
+  NORMAL: 1,
+  UV: 2,
+  COLOR: 3,
+  ID: 4,
 })
 
 /**
@@ -731,7 +735,7 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 export const STRIP_LINE_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 36,
   attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'}, // position
+    {shaderLocation: 0, offset: 0, format: 'float32x3'}, // position
     {shaderLocation: 1, offset: 12, format: 'float32x4'}, // _strip_dir
     {shaderLocation: 2, offset: 28, format: 'float32x2'}, // _strip_uv
   ],
@@ -1063,7 +1067,7 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 export const SCULPT_HEX_DEFORM_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 56,
   attributes: [
-    {shaderLocation: 0, offset: 0,  format: 'float32x3'},
+    {shaderLocation: 0, offset: 0, format: 'float32x3'},
     {shaderLocation: 1, offset: 12, format: 'float32x3'},
     {shaderLocation: 2, offset: 24, format: 'float32x2'},
     {shaderLocation: 3, offset: 32, format: 'float32x4'},
@@ -1244,16 +1248,16 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 export const SCULPT_PATCH_VERTEX_LAYOUT: GPUVertexBufferLayout = {
   arrayStride: 160,
   attributes: [
-    {shaderLocation: 0,  offset: 0,   format: 'float32x3'}, // position
-    {shaderLocation: 1,  offset: 12,  format: 'float32x3'}, // normal
-    {shaderLocation: 2,  offset: 24,  format: 'float32x2'}, // uv
-    {shaderLocation: 3,  offset: 32,  format: 'float32x4'}, // color
-    {shaderLocation: 4,  offset: 48,  format: 'float32x4'}, // primUV
-    {shaderLocation: 5,  offset: 64,  format: 'float32x4'}, // primc1
-    {shaderLocation: 6,  offset: 80,  format: 'float32x4'}, // primc2
-    {shaderLocation: 7,  offset: 96,  format: 'float32x4'}, // primc3
-    {shaderLocation: 8,  offset: 112, format: 'float32x4'}, // primc4
-    {shaderLocation: 9,  offset: 128, format: 'float32x4'}, // primc5
+    {shaderLocation: 0, offset: 0, format: 'float32x3'}, // position
+    {shaderLocation: 1, offset: 12, format: 'float32x3'}, // normal
+    {shaderLocation: 2, offset: 24, format: 'float32x2'}, // uv
+    {shaderLocation: 3, offset: 32, format: 'float32x4'}, // color
+    {shaderLocation: 4, offset: 48, format: 'float32x4'}, // primUV
+    {shaderLocation: 5, offset: 64, format: 'float32x4'}, // primc1
+    {shaderLocation: 6, offset: 80, format: 'float32x4'}, // primc2
+    {shaderLocation: 7, offset: 96, format: 'float32x4'}, // primc3
+    {shaderLocation: 8, offset: 112, format: 'float32x4'}, // primc4
+    {shaderLocation: 9, offset: 128, format: 'float32x4'}, // primc5
     {shaderLocation: 10, offset: 144, format: 'float32x4'}, // primc6
   ],
 }
@@ -1280,7 +1284,7 @@ const DEFAULT_COLOR_TARGET: GPUColorTargetState = {
   format: 'bgra8unorm',
   blend: {
     color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-    alpha: {srcFactor: 'one',       dstFactor: 'one-minus-src-alpha', operation: 'add'},
+    alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
   },
 }
 
@@ -1295,9 +1299,9 @@ const ID_PICKING_TARGET: GPUColorTargetState = {
  * depth-state declaration — WebGPU rejects the pair otherwise.
  */
 const DEFAULT_DEPTH_STATE: GPUDepthStencilState = {
-  format            : 'depth24plus',
-  depthWriteEnabled : true,
-  depthCompare      : 'less-equal',
+  format           : 'depth24plus',
+  depthWriteEnabled: true,
+  depthCompare     : 'less-equal',
 }
 
 /**
@@ -1331,7 +1335,7 @@ export function buildPipelineDescriptor(
   // "invalid character found".
   const wgsl = preprocess(entry.source, {defines: defines ?? {}})
   return {
-    label        : entry.key,
+    label: entry.key,
     wgsl,
     vertexBuffers: entry.vertexBuffers,
     colorTargets : entry.colorTargets,

@@ -36,23 +36,23 @@ export class Pipeline {
 
     const layout: GPUPipelineLayout | 'auto' = desc.bindGroupLayouts
       ? device.createPipelineLayout({
-        label             : desc.label ? `${desc.label}.layout` : undefined,
-        bindGroupLayouts  : desc.bindGroupLayouts,
-      })
+          label           : desc.label ? `${desc.label}.layout` : undefined,
+          bindGroupLayouts: desc.bindGroupLayouts,
+        })
       : 'auto'
 
     this.handle = device.createRenderPipeline({
-      label : desc.label,
+      label: desc.label,
       layout,
       vertex: {
-        module     : this.module,
-        entryPoint : desc.vertexEntry ?? 'vs_main',
-        buffers    : desc.vertexBuffers,
+        module    : this.module,
+        entryPoint: desc.vertexEntry ?? 'vs_main',
+        buffers   : desc.vertexBuffers,
       },
       fragment: {
-        module     : this.module,
-        entryPoint : desc.fragmentEntry ?? 'fs_main',
-        targets    : desc.colorTargets,
+        module    : this.module,
+        entryPoint: desc.fragmentEntry ?? 'fs_main',
+        targets   : desc.colorTargets,
       },
       depthStencil: desc.depthStencil,
       primitive   : desc.primitive ?? {topology: 'triangle-list'},
@@ -111,19 +111,16 @@ export function isInstancedPointSprite(handle: GPURenderPipeline): boolean {
  * Pure — no device or `this` access. Live callers pass
  * `WebGpuRenderContext.surfaceFormat` as the second argument.
  */
-const SURFACE_INTERCHANGEABLE: ReadonlySet<GPUTextureFormat> = new Set<GPUTextureFormat>([
-  'bgra8unorm',
-  'rgba8unorm',
-])
+const SURFACE_INTERCHANGEABLE: ReadonlySet<GPUTextureFormat> = new Set<GPUTextureFormat>(['bgra8unorm', 'rgba8unorm'])
 export function applySurfaceFormat(
   desc: PipelineDescriptor,
-  surfaceFormat: GPUTextureFormat | undefined,
+  surfaceFormat: GPUTextureFormat | undefined
 ): PipelineDescriptor {
   if (!surfaceFormat) return desc
   return {
     ...desc,
     colorTargets: desc.colorTargets.map((t) =>
-      SURFACE_INTERCHANGEABLE.has(t.format) ? {...t, format: surfaceFormat} : t,
+      SURFACE_INTERCHANGEABLE.has(t.format) ? {...t, format: surfaceFormat} : t
     ),
   }
 }

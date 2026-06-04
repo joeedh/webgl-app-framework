@@ -170,7 +170,6 @@ export class BVHToolMode extends PaintToolModeBase {
     })
   }
 
-
   get _brushSizeHelper(): number {
     const brush = this.getBrush()
 

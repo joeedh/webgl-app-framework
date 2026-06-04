@@ -89,13 +89,7 @@ export class CameraData extends SceneObjectData {
    green should be any sub-id (also + 1) provided by
    sceneobjectdata, e.g. vertices in a mesh.
    */
-  drawIdsQ(
-    view3d: View3D,
-    queue: DrawQueue,
-    frame: FrameContext,
-    selectMask: number,
-    object: SceneObject
-  ) {
+  drawIdsQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, selectMask: number, object: SceneObject) {
     this.drawQ(view3d, queue, frame, object)
   }
 
@@ -165,9 +159,9 @@ export class CameraData extends SceneObjectData {
       this.gen(frame.gl)
     }
 
-    queue.scheduleRawGLPass(gl => gl.disable(gl.DEPTH_TEST))
+    queue.scheduleRawGLPass((gl) => gl.disable(gl.DEPTH_TEST))
     queue.submit({pipeline: frame.program!, mesh: this.mesh!})
-    queue.scheduleRawGLPass(gl => gl.enable(gl.DEPTH_TEST))
+    queue.scheduleRawGLPass((gl) => gl.enable(gl.DEPTH_TEST))
   }
 
   exec(ctx: ToolContext) {

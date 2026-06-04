@@ -43,7 +43,8 @@ const ADDON_META_PATH = Path.join(REPO_ROOT, 'build', 'addons', 'meta-addons.jso
  * layouts since the global is already present.
  */
 function frameworkGlobalsStubPlugin() {
-  const STUB = /(^|\/)(numeric(\.js)?|scripts\/util\/numeric(\.js)?|scripts\/extern\/Math(\.js)?|scripts\/extern\/jszip\/.*)$/
+  const STUB =
+    /(^|\/)(numeric(\.js)?|scripts\/util\/numeric(\.js)?|scripts\/extern\/Math(\.js)?|scripts\/extern\/jszip\/.*)$/
   return {
     name: 'framework-globals-stub',
     setup(build) {

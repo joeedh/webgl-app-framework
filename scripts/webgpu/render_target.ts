@@ -30,26 +30,27 @@ export class RenderTarget {
     this.height = opts.height
     this.sampleCount = opts.sampleCount ?? 1
 
-    this.colors = opts.colorFormats.map((format, i) =>
-      new GpuTexture(opts.device, {
-        label : `${opts.label ?? 'RenderTarget'}.color[${i}]`,
-        width : opts.width,
-        height: opts.height,
-        format,
-        sampleCount: this.sampleCount,
-        usage : TextureUsage.RENDER_ATTACHMENT | TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_SRC,
-      })
+    this.colors = opts.colorFormats.map(
+      (format, i) =>
+        new GpuTexture(opts.device, {
+          label : `${opts.label ?? 'RenderTarget'}.color[${i}]`,
+          width : opts.width,
+          height: opts.height,
+          format,
+          sampleCount: this.sampleCount,
+          usage      : TextureUsage.RENDER_ATTACHMENT | TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_SRC,
+        })
     )
 
     this.depth = opts.depthFormat
       ? new GpuTexture(opts.device, {
-        label : `${opts.label ?? 'RenderTarget'}.depth`,
-        width : opts.width,
-        height: opts.height,
-        format: opts.depthFormat,
-        sampleCount: this.sampleCount,
-        usage : TextureUsage.RENDER_ATTACHMENT | TextureUsage.TEXTURE_BINDING,
-      })
+          label      : `${opts.label ?? 'RenderTarget'}.depth`,
+          width      : opts.width,
+          height     : opts.height,
+          format     : opts.depthFormat,
+          sampleCount: this.sampleCount,
+          usage      : TextureUsage.RENDER_ATTACHMENT | TextureUsage.TEXTURE_BINDING,
+        })
       : undefined
   }
 
@@ -58,7 +59,7 @@ export class RenderTarget {
     clearDepth: number | undefined = 1.0
   ): GPURenderPassDescriptor {
     return {
-      colorAttachments: this.colors.map(tex => ({
+      colorAttachments: this.colors.map((tex) => ({
         view      : tex.view,
         clearValue: clearColor,
         loadOp    : clearColor ? 'clear' : 'load',
@@ -66,11 +67,11 @@ export class RenderTarget {
       })),
       depthStencilAttachment: this.depth
         ? {
-          view             : this.depth.view,
-          depthClearValue  : clearDepth,
-          depthLoadOp      : clearDepth !== undefined ? 'clear' : 'load',
-          depthStoreOp     : 'store',
-        }
+            view           : this.depth.view,
+            depthClearValue: clearDepth,
+            depthLoadOp    : clearDepth !== undefined ? 'clear' : 'load',
+            depthStoreOp   : 'store',
+          }
         : undefined,
     }
   }

@@ -279,7 +279,7 @@ export class LightGenWgsl {
             case LightTypes.AREA_RECT:
             case LightTypes.SUN:
               uniforms[uname + '.dir'] = dir
-              // fallthrough
+            // fallthrough
             case LightTypes.POINT:
             default:
               //XXX
@@ -346,10 +346,10 @@ export class LightGenWgsl {
 }
 
 export const PointLightCodeWgsl = new LightGenWgsl({
-  lightType  : LightTypes.POINT,
-  name       : 'POINTLIGHT',
-  uniformName: 'POINTLIGHTS',
-  totname    : 'MAXPLIGHT',
+  lightType     : LightTypes.POINT,
+  name          : 'POINTLIGHT',
+  uniformName   : 'POINTLIGHTS',
+  totname       : 'MAXPLIGHT',
   pre: `
 #ifdef MAXPLIGHT
   #define HAVE_POINTLIGHT
@@ -386,16 +386,16 @@ export const PointLightCodeWgsl = new LightGenWgsl({
   }
 #endif
 `,
-  defines: ['MAXPLIGHT'],
+  defines       : ['MAXPLIGHT'],
   getLightVector: (co, i) => `normalize(POINTLIGHTS[${i}].co - ${co})`,
 })
 LightGenWgsl.register(PointLightCodeWgsl)
 
 export const SunLightCodeWgsl = new LightGenWgsl({
-  lightType  : LightTypes.SUN,
-  name       : 'SUNLIGHT',
-  uniformName: 'SUNLIGHTS',
-  totname    : 'MAXSLIGHT',
+  lightType     : LightTypes.SUN,
+  name          : 'SUNLIGHT',
+  uniformName   : 'SUNLIGHTS',
+  totname       : 'MAXSLIGHT',
   pre: `
 #ifdef MAXSLIGHT
   #define HAVE_SUNLIGHT
@@ -430,7 +430,7 @@ export const SunLightCodeWgsl = new LightGenWgsl({
   }
 #endif
 `,
-  defines: ['MAXSLIGHT'],
+  defines       : ['MAXSLIGHT'],
   getLightVector: (_co, i) => `SUNLIGHTS[${i}].dir`,
 })
 LightGenWgsl.register(SunLightCodeWgsl)

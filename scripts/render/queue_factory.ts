@@ -72,11 +72,11 @@ export function createDrawQueue(frame: FrameContext): DrawQueue {
   }
 
   const gpuFrame: WebGPUFrameContext = {
-    gl              : frame.gl,
-    uniforms        : frame.uniforms,
-    program         : frame.program,
-    device          : ctx.device,
-    encoder         : ctx.encoder,
+    gl      : frame.gl,
+    uniforms: frame.uniforms,
+    program : frame.program,
+    device  : ctx.device,
+    encoder : ctx.encoder,
     passEncoder,
     pipelineCache   : ctx.pipelineCache,
     pipelineBindings: ctx.pipelineBindings,

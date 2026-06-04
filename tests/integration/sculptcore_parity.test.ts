@@ -99,13 +99,17 @@ function dumpBackend(electronExe: string, backend: 'wasm' | 'native', subdiv: nu
       Path.join(REPO_ROOT, 'electron', 'main.js'),
       '--headless',
       '--no-devtools',
-      '--backend', backend,
-      '--gen-scene', 'litemesh-cube',
-      '--scene-arg', `subdiv=${subdiv}`,
-      '--dump', out,
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      '--scene-arg',
+      `subdiv=${subdiv}`,
+      '--dump',
+      out,
       '--exit',
     ],
-    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000},
+    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 60000}
   )
   if (!fs.existsSync(out)) throw new Error(`${backend} dump not written to ${out}`)
   return JSON.parse(fs.readFileSync(out, 'utf-8'))
@@ -150,9 +154,7 @@ maybe('sculptcore native↔WASM parity', () => {
   })
 
   test('both dumps contain a LiteMesh with populated GPU buffers', () => {
-    const lm = (wasmDump.objects as Array<Record<string, unknown>>).find(
-      (o) => o.dataType === 'LiteMesh',
-    )
+    const lm = (wasmDump.objects as Array<Record<string, unknown>>).find((o) => o.dataType === 'LiteMesh')
     expect(lm).toBeDefined()
     const bufs = lm!.gpuBuffers as Record<string, unknown> | undefined
     expect(bufs && Object.keys(bufs).length).toBeGreaterThan(0)

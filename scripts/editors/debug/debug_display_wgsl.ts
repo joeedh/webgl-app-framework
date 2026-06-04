@@ -89,12 +89,7 @@ export function buildDebugDisplayDescriptor(targetFormat: GPUTextureFormat): Pip
 
 // Bytes for the `DebugUniforms` block. WGSL std140-equivalent layout
 // for the uniform is u32 + f32 + 2×f32 padding = 16 bytes.
-export function writeDebugUniforms(
-  device: GPUDevice,
-  buffer: GPUBuffer,
-  mode: number,
-  valueScale: number,
-): void {
+export function writeDebugUniforms(device: GPUDevice, buffer: GPUBuffer, mode: number, valueScale: number): void {
   const data = new ArrayBuffer(16)
   const u32 = new Uint32Array(data)
   const f32 = new Float32Array(data)

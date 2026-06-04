@@ -100,7 +100,7 @@ if (mtime(exe) < mtime(src)) {
   if (r.status !== 0 || !fs.existsSync(exe)) {
     process.stderr.write(r.out)
     process.stderr.write('sccache-setup: launcher build failed; builds fall back to plain sccache\n')
-    process.exit(0)  // non-fatal: cmake falls back to find_program(sccache)
+    process.exit(0) // non-fatal: cmake falls back to find_program(sccache)
   }
 }
 

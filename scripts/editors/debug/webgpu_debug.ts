@@ -39,22 +39,12 @@ export class GpuTextureHistory {
     return this.entries[i]
   }
 
-  pushCopy(
-    device: GPUDevice,
-    encoder: GPUCommandEncoder,
-    source: GPUTexture,
-    label: string,
-  ): GpuTexture {
+  pushCopy(device: GPUDevice, encoder: GPUCommandEncoder, source: GPUTexture, label: string): GpuTexture {
     let dest: GpuTexture | undefined
     if (this.entries.length >= this.max) {
       dest = this.entries.shift()
     }
-    if (
-      !dest ||
-      dest.width !== source.width ||
-      dest.height !== source.height ||
-      dest.format !== source.format
-    ) {
+    if (!dest || dest.width !== source.width || dest.height !== source.height || dest.format !== source.format) {
       dest?.destroy()
       dest = new GpuTexture(device, {
         label,
@@ -67,7 +57,7 @@ export class GpuTextureHistory {
     encoder.copyTextureToTexture(
       {texture: source},
       {texture: dest.handle},
-      {width: source.width, height: source.height, depthOrArrayLayers: 1},
+      {width: source.width, height: source.height, depthOrArrayLayers: 1}
     )
     this.entries.push(dest)
     return dest
@@ -88,7 +78,9 @@ export class WebGpuDebug {
   }
 
   get debugEditorOpen(): boolean {
-    const w = globalThis as unknown as {_appstate?: {screen?: {sareas?: Iterable<{area?: {constructor: {define: () => {areaname: string}}}}>}}}
+    const w = globalThis as unknown as {
+      _appstate?: {screen?: {sareas?: Iterable<{area?: {constructor: {define: () => {areaname: string}}}}>}}
+    }
     const sareas = w._appstate?.screen?.sareas
     if (!sareas) return false
     for (const sarea of sareas) {
@@ -98,12 +90,7 @@ export class WebGpuDebug {
     return false
   }
 
-  pushTexture(
-    name: string,
-    source: GPUTexture,
-    encoder: GPUCommandEncoder,
-    onlyIfDebugEditor = true,
-  ): void {
+  pushTexture(name: string, source: GPUTexture, encoder: GPUCommandEncoder, onlyIfDebugEditor = true): void {
     if (onlyIfDebugEditor && !this.debugEditorOpen) return
     let history = this.fbos[name]
     if (!history) {
@@ -144,13 +131,13 @@ export interface DebugEditorWebGpuResources {
 
 export function createDebugEditorResources(device: GPUDevice): DebugEditorWebGpuResources {
   return {
-    sampler: createSampler(device, {magFilter: 'linear', minFilter: 'linear', mipmapFilter: 'nearest'}),
+    sampler      : createSampler(device, {magFilter: 'linear', minFilter: 'linear', mipmapFilter: 'nearest'}),
     uniformBuffer: new GpuBuffer(device, {
       label: 'debug-editor.uniforms',
       size : DEBUG_UNIFORMS_SIZE,
       usage: 'uniform',
     }),
-    bindGroups: new WeakMap(),
+    bindGroups   : new WeakMap(),
   }
 }
 
@@ -170,22 +157,20 @@ export function drawDebugEditorBlit(
   source: GpuTexture,
   region: {x: number; y: number; w: number; h: number},
   mode: number,
-  valueScale: number,
+  valueScale: number
 ): void {
   const {device} = viewport.gpu
   const wgpu = viewport.ctx
 
   writeDebugUniforms(device, resources.uniformBuffer.handle, mode, valueScale)
 
-  const pipeline = wgpu.pipelineCache.get(
-    buildDebugDisplayDescriptor(viewport.gpu.surfaceFormat),
-  )
+  const pipeline = wgpu.pipelineCache.get(buildDebugDisplayDescriptor(viewport.gpu.surfaceFormat))
 
   let bindGroup = resources.bindGroups.get(source)
   if (!bindGroup) {
     bindGroup = device.createBindGroup({
-      label : 'debug-editor.bindGroup',
-      layout: pipeline.handle.getBindGroupLayout(0),
+      label  : 'debug-editor.bindGroup',
+      layout : pipeline.handle.getBindGroupLayout(0),
       entries: [
         {binding: 0, resource: resources.sampler},
         {binding: 1, resource: source.view},
@@ -209,12 +194,14 @@ export function drawDebugEditorBlit(
 
   const encoder = device.createCommandEncoder({label: 'debug-editor.encoder'})
   const pass = encoder.beginRenderPass({
-    label: 'debug-editor.pass',
-    colorAttachments: [{
-      view  : canvasTex.createView(),
-      loadOp: 'load',
-      storeOp: 'store',
-    }],
+    label           : 'debug-editor.pass',
+    colorAttachments: [
+      {
+        view   : canvasTex.createView(),
+        loadOp : 'load',
+        storeOp: 'store',
+      },
+    ],
   })
   pass.setPipeline(pipeline.handle)
   pass.setBindGroup(0, bindGroup)

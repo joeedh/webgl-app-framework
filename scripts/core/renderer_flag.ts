@@ -52,5 +52,7 @@ export function resetRendererCache(): void {
  *     if (isWebGPU()) { ... } else { ... }
  */
 export function isWebGPU(): boolean {
-  return getRenderer() === 'webgpu' && typeof navigator !== 'undefined' && !!(navigator as Navigator & {gpu?: unknown}).gpu
+  return (
+    getRenderer() === 'webgpu' && typeof navigator !== 'undefined' && !!(navigator as Navigator & {gpu?: unknown}).gpu
+  )
 }

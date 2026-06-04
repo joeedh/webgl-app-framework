@@ -298,7 +298,7 @@ export class AddonManager {
           const url = await storage.urlFor(m.id, entryJs)
           return (await import(/* @vite-ignore */ url)) as IAddon
         },
-        builtin: false,
+        builtin   : false,
       })
     }
   }

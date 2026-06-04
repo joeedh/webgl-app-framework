@@ -22,7 +22,7 @@ const PORT = Number(process.env.E2E_PORT ?? 5099)
 const BASE_URL = `http://localhost:${PORT}`
 
 export default defineConfig({
-  testDir : './tests/e2e',
+  testDir  : './tests/e2e',
   testMatch: '**/*.e2e.ts',
 
   // WASM load + WebGPU init + first render can be slow.
@@ -42,19 +42,14 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium-webgpu',
-      use : {
+      use: {
         ...devices['Desktop Chrome'],
-        channel: 'chromium',
+        channel      : 'chromium',
         // WebGPU needs a real adapter; gpucontext.ts throws without one.
         // New-headless Chromium can use the GPU with these flags. If the
         // GPU isn't exposed headless on this machine, set headless:false.
         launchOptions: {
-          args: [
-            '--enable-unsafe-webgpu',
-            '--enable-features=Vulkan',
-            '--use-angle=default',
-            '--ignore-gpu-blocklist',
-          ],
+          args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
         },
       },
     },

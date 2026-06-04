@@ -1922,8 +1922,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       // vertex formats for every layer, so the WebGPU upload always
       // emits Float32 — divide by `glSizeMul` if the source was
       // already packed into a smaller integer type.
-      if (!layer.f32Ready || !(layer.data_f32 instanceof Float32Array) ||
-          layer.data_f32.length !== layer.dataUsed) {
+      if (!layer.f32Ready || !(layer.data_f32 instanceof Float32Array) || layer.data_f32.length !== layer.dataUsed) {
         const out = new Float32Array(layer.dataUsed)
         const src = layer._useTypedData ? (layer.data_f32 as ArrayLike<number>) : layer.data
         const inv = layer.glSizeMul !== 1 ? 1 / layer.glSizeMul : 1
@@ -1944,12 +1943,15 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       const view = new Uint8Array(data.buffer as ArrayBuffer, data.byteOffset, byteLength)
 
       const gpu = ensureGpuBuffer(
-        this._gpuBuffers, layer.bufferKey, byteLength,
+        this._gpuBuffers,
+        layer.bufferKey,
+        byteLength,
         {
           label: `SimpleIsland.${layer.bufferKey}`,
           usage: layer.type === LayerTypes.INDEX ? 'index' : 'vertex',
         },
-        device, /*exactMatch*/ false,
+        device,
+        /*exactMatch*/ false
       )
       gpu.write(view as unknown as BufferSource)
     }
@@ -1983,11 +1985,11 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     // `vertexBuffers` against these stable positions.
     const layerflag = this.layerflag
     const slotForType: Array<[LayerTypes, number]> = [
-      [LayerTypes.LOC,    0],
+      [LayerTypes.LOC, 0],
       [LayerTypes.NORMAL, 1],
-      [LayerTypes.UV,     2],
-      [LayerTypes.COLOR,  3],
-      [LayerTypes.ID,     4],
+      [LayerTypes.UV, 2],
+      [LayerTypes.COLOR, 3],
+      [LayerTypes.ID, 4],
     ]
 
     // A single island can carry separate `LOC/COLOR/ID` layer sets per

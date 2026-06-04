@@ -96,7 +96,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
   }
 
   const opts: HarnessOptions = {
-    genScene  : getArg('gen-scene', argv) || undefined,
+    genScene: getArg('gen-scene', argv) || undefined,
     sceneArgs,
     evals     : getArgList('eval', argv),
     runTools  : getArgList('run', argv),
@@ -263,10 +263,7 @@ function dumpScene(): unknown {
         // Spatial leaf count — a topology signal independent of geometry.
         try {
           const leaves = spatial.leaves?.()
-          const lv =
-            wasm.HEAPU8 !== undefined
-              ? (leaves as ArrayLike<unknown>)
-              : wasm.getBoundVector('', leaves)
+          const lv = wasm.HEAPU8 !== undefined ? (leaves as ArrayLike<unknown>) : wasm.getBoundVector('', leaves)
           entry.leafCount = lv?.length | 0
         } catch {
           /* leaves() not available */
@@ -300,15 +297,15 @@ function dumpScene(): unknown {
   }
 
   return {
-    backend     : (globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND ?? 'wasm',
-    objectCount : objects.length,
+    backend    : (globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND ?? 'wasm',
+    objectCount: objects.length,
     objects,
     materials,
     // Reflect the dynamic-attribute test driver's result if it ran (set by
     // litemesh_attrtest_support's `__attrtestApply`, invoked via `--eval`). Lets
     // the attr-render integration test assert the requested-attr contract +
     // missing-slot advisory alongside the GPU-buffer evidence in `objects`.
-    attrtest    : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
+    attrtest     : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
     // Reflect the shader-graph JSON round-trip driver (`__attrtestRoundtrip`),
     // proving nstructjs JSON is an adequate test-fixture format for
     // AttributeNode-carrying materials (M7 "test format" decision).

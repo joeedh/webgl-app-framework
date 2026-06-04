@@ -44,13 +44,8 @@ describe('applySurfaceFormat', () => {
   })
 
   test('multiple targets: only interchangeable ones rewrite', () => {
-    const out = applySurfaceFormat(
-      desc(['bgra8unorm', 'rgba32float', 'rgba8unorm']),
-      'bgra8unorm',
-    )
-    expect(out.colorTargets.map((t) => t.format)).toEqual([
-      'bgra8unorm', 'rgba32float', 'bgra8unorm',
-    ])
+    const out = applySurfaceFormat(desc(['bgra8unorm', 'rgba32float', 'rgba8unorm']), 'bgra8unorm')
+    expect(out.colorTargets.map((t) => t.format)).toEqual(['bgra8unorm', 'rgba32float', 'bgra8unorm'])
   })
 
   test('does not mutate the input descriptor', () => {

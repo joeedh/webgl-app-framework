@@ -60,7 +60,7 @@ const viewports = new WeakMap<HTMLCanvasElement | OffscreenCanvas, WebGpuViewpor
 // `WebGpuRenderContext` — needed by the FBO debug editor to encode its
 // own blit pass against the canvas after view3d's frame submit.
 export function getActiveWebGpuViewport(
-  canvas: HTMLCanvasElement | OffscreenCanvas | undefined,
+  canvas: HTMLCanvasElement | OffscreenCanvas | undefined
 ): WebGpuViewport | undefined {
   if (!canvas) return undefined
   return viewports.get(canvas)
@@ -77,8 +77,8 @@ async function initViewport(
 ): Promise<WebGpuViewport> {
   const gpu = await GpuContext.create({canvas, powerPreference: 'high-performance'})
   const ctx = new WebGpuRenderContext({
-    device       : gpu.device,
-    drawmats     : fakeDrawMats(),
+    device  : gpu.device,
+    drawmats: fakeDrawMats(),
     size,
     surfaceFormat: gpu.surfaceFormat,
   })
@@ -88,7 +88,10 @@ async function initViewport(
   // Debug hook — exposes the live device + ctx so the DevTools console
   // can `gpuDevice.popErrorScope()` etc. without touching app code.
   ;(globalThis as unknown as {__webgpuDebug?: unknown}).__webgpuDebug = {
-    gpu, ctx, device: gpu.device, viewport,
+    gpu,
+    ctx,
+    device: gpu.device,
+    viewport,
   }
   gpu.device.addEventListener?.('uncapturederror', (ev) => {
     const e = ev as unknown as {error: GPUError}
@@ -131,31 +134,28 @@ function warnOnce(key: string, message: string): void {
 // once GpuContext.create has resolved, undefined while still pending.
 // Used by `view3d.viewportDraw_intern` to drive the renderengine without
 // invoking the smoke-test `drawSceneWebGpu` draws.
-export function primeWebGpuViewport(
-  canvas: HTMLCanvasElement | OffscreenCanvas,
-): WebGpuViewport | undefined {
+export function primeWebGpuViewport(canvas: HTMLCanvasElement | OffscreenCanvas): WebGpuViewport | undefined {
   const existing = viewports.get(canvas)
   if (existing) return existing
   let pending = inflightInits.get(canvas)
   if (!pending) {
-    const initSize: [number, number] = [
-      Math.max(1, canvas.width | 0),
-      Math.max(1, canvas.height | 0),
-    ]
+    const initSize: [number, number] = [Math.max(1, canvas.width | 0), Math.max(1, canvas.height | 0)]
     pending = initViewport(canvas, initSize).finally(() => {
       inflightInits.delete(canvas)
     })
     inflightInits.set(canvas, pending)
-    pending.then(() => {
-      // The first frame's caller returned early before init resolved.
-      // Nothing else will schedule a frame (the rAF loop only re-fires
-      // on redraw_viewport() / interaction), so kick one ourselves once
-      // the device is up.
-      const w = window as unknown as {redraw_viewport?: () => void}
-      w.redraw_viewport?.()
-    }).catch(err => {
-      console.error('[webgpu] init failed — falling back to WebGL on next frame', err)
-    })
+    pending
+      .then(() => {
+        // The first frame's caller returned early before init resolved.
+        // Nothing else will schedule a frame (the rAF loop only re-fires
+        // on redraw_viewport() / interaction), so kick one ourselves once
+        // the device is up.
+        const w = window as unknown as {redraw_viewport?: () => void}
+        w.redraw_viewport?.()
+      })
+      .catch((err) => {
+        console.error('[webgpu] init failed — falling back to WebGL on next frame', err)
+      })
   }
   return undefined
 }
@@ -185,18 +185,20 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
   const depth = ensureDepth(viewport, surfaceW, surfaceH)
 
   const desc: GPURenderPassDescriptor = {
-    label          : 'view3d.canvasPass',
-    colorAttachments: [{
-      view      : canvasTex.createView(),
-      clearValue: {r: 0.15, g: 0.15, b: 0.15, a: 1},
-      loadOp    : 'clear',
-      storeOp   : 'store',
-    }],
+    label                 : 'view3d.canvasPass',
+    colorAttachments: [
+      {
+        view      : canvasTex.createView(),
+        clearValue: {r: 0.15, g: 0.15, b: 0.15, a: 1},
+        loadOp    : 'clear',
+        storeOp   : 'store',
+      },
+    ],
     depthStencilAttachment: {
-      view             : depth.view,
-      depthClearValue  : 1.0,
-      depthLoadOp      : 'clear',
-      depthStoreOp     : 'store',
+      view           : depth.view,
+      depthClearValue: 1.0,
+      depthLoadOp    : 'clear',
+      depthStoreOp   : 'store',
     },
   }
 
@@ -220,11 +222,7 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
     // is open. The encoder is still the active frame's encoder, so the
     // copy is submitted atomically with the canvas pass.
     if (viewport.ctx.encoder) {
-      getWebGpuDebug(viewport.gpu.device).pushTexture(
-        'render_final',
-        canvasTex,
-        viewport.ctx.encoder,
-      )
+      getWebGpuDebug(viewport.gpu.device).pushTexture('render_final', canvasTex, viewport.ctx.encoder)
     }
   } finally {
     viewport.ctx.endFrame()
@@ -288,8 +286,7 @@ function drawSceneWebGpu(view3d: ViewLike): void {
   // the material's pipeline. No AO / accumulation / offscreen passes
   // yet (TODO: rebuild the pass graph through WebGpuRenderGraph once
   // each WGSL pass sibling lands).
-  if (view3d.flag !== undefined &&
-      (view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER))) {
+  if (view3d.flag !== undefined && view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)) {
     drawRenderWebGpu(view3d)
   }
 }
@@ -328,7 +325,7 @@ function ensureMaterialPipeline(
   wgpu: WebGpuRenderContext,
   scene: SceneLike,
   mat: MaterialLike,
-  rlights: IRenderLights,
+  rlights: IRenderLights
 ): MaterialWebGpuState | undefined {
   // Include the light-count fingerprint so adding/removing a light
   // triggers a recompile — the WGSL embeds `MAXPLIGHT`/`MAXSLIGHT` as
@@ -358,8 +355,8 @@ function ensureMaterialPipeline(
 
   const desc = buildMaterialPipelineDescriptor(def.wgsl, `material-${mat.lib_id}`)
   const interchangeable = new Set<GPUTextureFormat>(['bgra8unorm', 'rgba8unorm'])
-  desc.colorTargets = desc.colorTargets.map(t =>
-    interchangeable.has(t.format) ? {...t, format: wgpu.surfaceFormat} : t,
+  desc.colorTargets = desc.colorTargets.map((t) =>
+    interchangeable.has(t.format) ? {...t, format: wgpu.surfaceFormat} : t
   )
 
   let pipeline: Pipeline
@@ -370,17 +367,15 @@ function ensureMaterialPipeline(
     // which material was being built.
     wgpu.device.pushErrorScope('validation')
     pipeline = wgpu.pipelineCache.get(desc)
-    void wgpu.device.popErrorScope().then(err => {
+    void wgpu.device.popErrorScope().then((err) => {
       if (err) console.error(`[webgpu] mat-${mat.lib_id} pipeline validation error:`, err.message)
     })
-    void pipeline.module.getCompilationInfo().then(info => {
-      const bad = info.messages.filter(m => m.type === 'error' || m.type === 'warning')
+    void pipeline.module.getCompilationInfo().then((info) => {
+      const bad = info.messages.filter((m) => m.type === 'error' || m.type === 'warning')
       if (bad.length > 0) {
         console.group(`[webgpu] mat-${mat.lib_id} WGSL compilation messages`)
         for (const m of bad) {
-          console[m.type === 'error' ? 'error' : 'warn'](
-            `${m.type} at L${m.lineNum}:${m.linePos}: ${m.message}`,
-          )
+          console[m.type === 'error' ? 'error' : 'warn'](`${m.type} at L${m.lineNum}:${m.linePos}: ${m.message}`)
         }
         console.groupEnd()
       }
@@ -452,7 +447,10 @@ function drawRenderWebGpu(view3d: ViewLike): void {
     }
   }
 
-  let nTotal = 0, nUsesMat = 0, nWithMat = 0, nDrawn = 0
+  let nTotal = 0,
+    nUsesMat = 0,
+    nWithMat = 0,
+    nDrawn = 0
   for (const ob of renderable) {
     nTotal++
     const data = ob.data as DataLike | undefined
@@ -476,7 +474,9 @@ function drawRenderWebGpu(view3d: ViewLike): void {
 
   if (!loggedRenderSummary) {
     loggedRenderSummary = true
-    console.log(`[webgpu] drawRenderWebGpu: ${nTotal} total, ${nUsesMat} usesMaterial, ${nWithMat} with material slot, ${nDrawn} drawn`)
+    console.log(
+      `[webgpu] drawRenderWebGpu: ${nTotal} total, ${nUsesMat} usesMaterial, ${nWithMat} with material slot, ${nDrawn} drawn`
+    )
   }
 }
 let loggedRenderSummary = false
@@ -515,7 +515,7 @@ export function drawDrawLinesWebGpu(view3d: ViewLike): void {
   }
 
   try {
-    const sm  = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
+    const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
     const sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
     for (let i = 0; i < drawlines.length; i++) {
       const dl = drawlines[i] as DrawLineLike
@@ -544,12 +544,7 @@ export function drawDrawLinesWebGpu(view3d: ViewLike): void {
  * calls `mesh.drawGPU(pass, pipeline, uniforms)` after uploading any
  * pending vertex buffers via `_uploadGpuBuffers`.
  */
-function submitMeshWebGpu(
-  view3d: ViewLike,
-  mesh: SimpleMesh,
-  program: ShaderProgram,
-  uniforms: IUniformsBlock
-): void {
+function submitMeshWebGpu(view3d: ViewLike, mesh: SimpleMesh, program: ShaderProgram, uniforms: IUniformsBlock): void {
   const frame: FrameContext = {gl: view3d.gl as WebGL2RenderingContext, uniforms, program}
   const queue = createDrawQueue(frame)
   queue.submit({pipeline: program, mesh, uniforms})
@@ -611,10 +606,15 @@ interface DataLike {
 
 interface MaterialLike {
   lib_id: number
-  graph: Parameters<typeof import('../../shadernodes/shader_nodes_wgsl.js').WgslShaderGenerator.prototype.setMaterialUniforms>[0]
+  graph: Parameters<
+    typeof import('../../shadernodes/shader_nodes_wgsl.js').WgslShaderGenerator.prototype.setMaterialUniforms
+  >[0]
   _regen?: number | boolean
   calcUpdateHash?: () => number
-  generateWgsl: (scene: unknown, rlights: IRenderLights) => {
+  generateWgsl: (
+    scene: unknown,
+    rlights: IRenderLights
+  ) => {
     wgsl: string
     setUniforms: (graph: unknown, uniforms: Record<string, unknown>) => void
   }
@@ -655,28 +655,72 @@ interface DrawLineLike {
 // These are SILENT NO-OPS on the stub — legacy code that calls them
 // is harmless.
 const SILENT_NOOP_METHODS = new Set([
-  'enable', 'disable', 'isEnabled',
-  'depthMask', 'depthFunc', 'depthRange',
-  'blendFunc', 'blendFuncSeparate', 'blendEquation', 'blendEquationSeparate', 'blendColor',
-  'colorMask', 'stencilMask', 'stencilFunc', 'stencilFuncSeparate',
-  'stencilOp', 'stencilOpSeparate',
-  'cullFace', 'frontFace', 'lineWidth', 'polygonOffset',
-  'scissor', 'viewport',
-  'clearColor', 'clearDepth', 'clearStencil', 'clear',
-  'pixelStorei', 'hint',
-  'activeTexture', 'bindTexture', 'bindFramebuffer', 'bindRenderbuffer',
-  'bindBuffer', 'bindBufferBase', 'bindBufferRange',
-  'bindVertexArray', 'bindSampler',
+  'enable',
+  'disable',
+  'isEnabled',
+  'depthMask',
+  'depthFunc',
+  'depthRange',
+  'blendFunc',
+  'blendFuncSeparate',
+  'blendEquation',
+  'blendEquationSeparate',
+  'blendColor',
+  'colorMask',
+  'stencilMask',
+  'stencilFunc',
+  'stencilFuncSeparate',
+  'stencilOp',
+  'stencilOpSeparate',
+  'cullFace',
+  'frontFace',
+  'lineWidth',
+  'polygonOffset',
+  'scissor',
+  'viewport',
+  'clearColor',
+  'clearDepth',
+  'clearStencil',
+  'clear',
+  'pixelStorei',
+  'hint',
+  'activeTexture',
+  'bindTexture',
+  'bindFramebuffer',
+  'bindRenderbuffer',
+  'bindBuffer',
+  'bindBufferBase',
+  'bindBufferRange',
+  'bindVertexArray',
+  'bindSampler',
   'useProgram',
-  'flush', 'finish',
+  'flush',
+  'finish',
   'getError',
-  'disableVertexAttribArray', 'enableVertexAttribArray',
-  'uniform1i', 'uniform1f', 'uniform2f', 'uniform2fv', 'uniform2i', 'uniform2iv',
-  'uniform3f', 'uniform3fv', 'uniform3i', 'uniform3iv',
-  'uniform4f', 'uniform4fv', 'uniform4i', 'uniform4iv',
-  'uniform1iv', 'uniform1fv',
-  'uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv',
-  'vertexAttribPointer', 'vertexAttribIPointer', 'vertexAttribDivisor',
+  'disableVertexAttribArray',
+  'enableVertexAttribArray',
+  'uniform1i',
+  'uniform1f',
+  'uniform2f',
+  'uniform2fv',
+  'uniform2i',
+  'uniform2iv',
+  'uniform3f',
+  'uniform3fv',
+  'uniform3i',
+  'uniform3iv',
+  'uniform4f',
+  'uniform4fv',
+  'uniform4i',
+  'uniform4iv',
+  'uniform1iv',
+  'uniform1fv',
+  'uniformMatrix2fv',
+  'uniformMatrix3fv',
+  'uniformMatrix4fv',
+  'vertexAttribPointer',
+  'vertexAttribIPointer',
+  'vertexAttribDivisor',
   'sampleCoverage',
 ])
 
@@ -684,9 +728,12 @@ const SILENT_NOOP_METHODS = new Set([
 // something innocuous instead of a throw. (E.g. getParameter is used
 // for capability detection.)
 const SAFE_GETTER_METHODS = new Set([
-  'getParameter', 'getExtension', 'getSupportedExtensions',
+  'getParameter',
+  'getExtension',
+  'getSupportedExtensions',
   'getContextAttributes',
-  'getUniformLocation', 'getAttribLocation',
+  'getUniformLocation',
+  'getAttribLocation',
 ])
 
 const noop = () => undefined

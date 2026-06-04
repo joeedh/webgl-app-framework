@@ -6,4 +6,4 @@ export const DisplayModes = {
   ALPHA : 4,
 } as const
 
-export type DisplayMode = typeof DisplayModes[keyof typeof DisplayModes]
+export type DisplayMode = (typeof DisplayModes)[keyof typeof DisplayModes]

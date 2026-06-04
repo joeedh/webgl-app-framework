@@ -81,14 +81,17 @@ function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: s
       Path.join(REPO_ROOT, 'electron', 'main.js'),
       '--headless',
       '--no-devtools',
-      '--backend', 'wasm',
-      '--gen-scene', 'empty',
+      '--backend',
+      'wasm',
+      '--gen-scene',
+      'empty',
       ...evalArgs,
       ...runArgs,
-      '--dump', out,
+      '--dump',
+      out,
       '--exit',
     ],
-    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 90000},
+    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 90000}
   )
 
   if (!fs.existsSync(out)) throw new Error(`dump not written to ${out}`)
@@ -133,10 +136,7 @@ maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
     // can target its graph path from the baseline run.
     const g = `graphPath='library.material[${baseline.libId}].graph' graphClass='shader'`
     afterAdd = runOps(electronExe!, [`node.add_node(${g} nodeClass='DiffuseNode')`])
-    afterDeleteAll = runOps(electronExe!, [
-      `node.toggle_select_all(${g} mode='ADD')`,
-      `node.delete_selected(${g})`,
-    ])
+    afterDeleteAll = runOps(electronExe!, [`node.toggle_select_all(${g} mode='ADD')`, `node.delete_selected(${g})`])
   }, 300000)
 
   test('material.new yields the 3-node makeDefaultMaterial graph', () => {

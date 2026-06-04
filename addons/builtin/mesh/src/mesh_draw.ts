@@ -278,9 +278,7 @@ export function genRenderMesh(
           } while (l !== e.l && _i++ < 10)
         }
 
-        const line = smoothline
-          ? sm.smoothline(e.v1.co, e.v2.co, e.eid)
-          : sm.line(e.v1.co, e.v2.co, e.eid)
+        const line = smoothline ? sm.smoothline(e.v1.co, e.v2.co, e.eid) : sm.line(e.v1.co, e.v2.co, e.eid)
 
         const mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
 

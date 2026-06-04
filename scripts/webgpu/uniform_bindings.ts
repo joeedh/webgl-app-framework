@@ -16,12 +16,7 @@
  */
 
 import {GpuBuffer} from './buffer.js'
-import {
-  reflectWgslStructs,
-  UniformWriter,
-  ArrayedStructWriter,
-  type WgslStruct,
-} from '../shaders/wgsl_reflect.js'
+import {reflectWgslStructs, UniformWriter, ArrayedStructWriter, type WgslStruct} from '../shaders/wgsl_reflect.js'
 import type {IUniformsBlock} from '../webgl/webgl.js'
 
 export interface UniformBindingSlot {
@@ -47,8 +42,7 @@ const ARRAY_TYPE_RE = /^array<\s*(\w+)\s*,\s*(\d+)\s*>$/
 
 // Plain resource bindings: `var NAME : Type ;` (no `<uniform>` qualifier).
 // Matches texture_2d<f32>, texture_depth_2d, sampler, sampler_comparison etc.
-const RESOURCE_VAR_RE =
-  /@group\(\s*(\d+)\s*\)\s*@binding\(\s*(\d+)\s*\)\s*var\s+(\w+)\s*:\s*([^;<]+(?:<[^;]+>)?)\s*;/g
+const RESOURCE_VAR_RE = /@group\(\s*(\d+)\s*\)\s*@binding\(\s*(\d+)\s*\)\s*var\s+(\w+)\s*:\s*([^;<]+(?:<[^;]+>)?)\s*;/g
 
 interface ReflectResult {
   uniforms: UniformBindingSlot[]
@@ -115,10 +109,11 @@ export function reflectPipelineBindings(wgsl: string): ReflectResult {
     const binding = parseInt(m[2], 10)
     const varName = m[3]
     const typeStr = m[4].trim()
-    const kind: ResourceBindingSlot['kind'] | undefined =
-      typeStr.startsWith('texture') ? 'texture'
-      : typeStr.startsWith('sampler') ? 'sampler'
-      : undefined
+    const kind: ResourceBindingSlot['kind'] | undefined = typeStr.startsWith('texture')
+      ? 'texture'
+      : typeStr.startsWith('sampler')
+        ? 'sampler'
+        : undefined
     if (!kind) continue
     // Resources are likewise stripped from the layout when unused (e.g.
     // passAO_tex/_smp without WITH_AO) — drop them so we never bind a slot
@@ -175,9 +170,7 @@ export class UniformBindings {
         bufSize = Math.max(slot.struct.size, 16)
       }
       const buffer = new GpuBuffer(device, {
-        label: label
-          ? `${label}.uniforms.g${slot.group}b${slot.binding}`
-          : `uniforms.g${slot.group}b${slot.binding}`,
+        label: label ? `${label}.uniforms.g${slot.group}b${slot.binding}` : `uniforms.g${slot.group}b${slot.binding}`,
         size : Math.max(bufSize, 16), // WGSL uniform buffer min size
         usage: 'uniform',
       })
@@ -224,24 +217,18 @@ export class UniformBindings {
         // demands it, surfacing the missing seed loudly.
         continue
       }
-      const resource = r.kind === 'sampler'
-        ? (val as GPUSampler)
-        : (val as GPUTextureView)
+      const resource = r.kind === 'sampler' ? (val as GPUSampler) : (val as GPUTextureView)
       entries.push({binding: r.binding, resource})
     }
     if (entries.length === 0) return undefined
     return this.device.createBindGroup({
-      label  : `UniformBindings.g${gs.group}`,
-      layout : pipeline.getBindGroupLayout(gs.group),
+      label : `UniformBindings.g${gs.group}`,
+      layout: pipeline.getBindGroupLayout(gs.group),
       entries,
     })
   }
 
-  getBindGroup(
-    pipeline: GPURenderPipeline,
-    group: number,
-    uniforms?: IUniformsBlock
-  ): GPUBindGroup | undefined {
+  getBindGroup(pipeline: GPURenderPipeline, group: number, uniforms?: IUniformsBlock): GPUBindGroup | undefined {
     const gs = this.groups.get(group)
     if (!gs) return undefined
 
@@ -267,11 +254,7 @@ export class UniformBindings {
 
   // Caller still owns `setPipeline`, vertex/index buffers, and any
   // material (`@group(1)`) bind group that holds textures.
-  bind(
-    pass: GPURenderPassEncoder,
-    pipeline: GPURenderPipeline,
-    uniforms: IUniformsBlock
-  ): void {
+  bind(pass: GPURenderPassEncoder, pipeline: GPURenderPipeline, uniforms: IUniformsBlock): void {
     this.write(uniforms)
     for (const group of this.groups.keys()) {
       const bg = this.getBindGroup(pipeline, group, uniforms)

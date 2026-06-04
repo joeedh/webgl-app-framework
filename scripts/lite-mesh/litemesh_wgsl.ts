@@ -119,4 +119,3 @@ export function wgslForSpatialShader(sdef: ShaderDef): string {
     `litemesh_wgsl: no WGSL port registered for sculptcore ShaderDef "${name}". ` + `Add it to litemesh_wgsl.ts.`
   )
 }
-

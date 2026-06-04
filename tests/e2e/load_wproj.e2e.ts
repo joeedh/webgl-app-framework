@@ -17,9 +17,7 @@ test('loads a .wproj project and renders it', async ({page}) => {
   const pageErrors: string[] = []
   const failedRequests: string[] = []
   page.on('pageerror', (err) => pageErrors.push(String(err)))
-  page.on('requestfailed', (req) =>
-    failedRequests.push(`${req.failure()?.errorText ?? 'failed'} ${req.url()}`),
-  )
+  page.on('requestfailed', (req) => failedRequests.push(`${req.failure()?.errorText ?? 'failed'} ${req.url()}`))
   page.on('response', (res) => {
     if (res.status() >= 400) failedRequests.push(`HTTP ${res.status()} ${res.url()}`)
   })
@@ -32,7 +30,7 @@ test('loads a .wproj project and renders it', async ({page}) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     () => !!(window as any)._appstate?.screen,
     undefined,
-    {timeout: 60_000},
+    {timeout: 60_000}
   )
 
   // WebGPU actually initialized in this browser.
@@ -45,11 +43,11 @@ test('loads a .wproj project and renders it', async ({page}) => {
     const buf = await fetch(url).then((r) => r.arrayBuffer())
 
     await appstate.loadFileAsync(buf, {
-      load_library  : true,
-      load_screen   : false,
-      load_settings : false,
+      load_library   : true,
+      load_screen    : false,
+      load_settings  : false,
       reset_toolstack: true,
-      reset_context : true,
+      reset_context  : true,
     })
 
     // datalib.mesh is aliased to brush (known bug), so count every block set.
@@ -89,9 +87,7 @@ test('loads a .wproj project and renders it', async ({page}) => {
     screen.completeUpdate()
 
     const app = w._appstate
-    const view3d = screen.sareas
-      .map((sa: any) => sa.area)
-      .find((a: any) => a && a.constructor.define?.().has3D)
+    const view3d = screen.sareas.map((sa: any) => sa.area).find((a: any) => a && a.constructor.define?.().has3D)
     const scene = app.ctx.scene
 
     // SHOW_RENDER (=2) drives the full RealtimeEngine render of the scene's

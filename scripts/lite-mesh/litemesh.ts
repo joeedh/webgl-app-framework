@@ -45,7 +45,7 @@ import {wgslForSpatialShader} from './litemesh_wgsl'
  */
 export const LiteMeshDisplayMode = {
   VERTEX_COLOR: 1,
-  POLY_GROUP: 2,
+  POLY_GROUP  : 2,
 } as const
 
 /** Element domains (mirror the C++ `ElemType`, which isn't bound to TS). */
@@ -53,8 +53,17 @@ export const AttrDomain = {VERTEX: 1, EDGE: 2, CORNER: 4, LIST: 8, FACE: 16} as 
 const ATTR_DOMAIN_LABEL: Record<number, string> = {1: 'vert', 2: 'edge', 4: 'corner', 8: 'list', 16: 'face'}
 /** Bound `AttrType` integer values are the C++ bitflags (FLOAT=1, FLOAT4=8, …). */
 const ATTR_TYPE_LABEL: Record<number, string> = {
-  1: 'Float', 2: 'Float2', 4: 'Float3', 8: 'Float4', 16: 'Bool',
-  32: 'Int', 64: 'Int2', 128: 'Int3', 256: 'Int4', 512: 'Byte', 1024: 'Short',
+  1   : 'Float',
+  2   : 'Float2',
+  4   : 'Float3',
+  8   : 'Float4',
+  16  : 'Bool',
+  32  : 'Int',
+  64  : 'Int2',
+  128 : 'Int3',
+  256 : 'Int4',
+  512 : 'Byte',
+  1024: 'Short',
 }
 /** `AttrUse` bitflags = the attribute's category/role. */
 export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8} as const
@@ -318,10 +327,13 @@ export class LiteMesh extends SceneObjectData {
     // per the valid-categories table and lets C++ assign a unique name; Remove
     // deletes the selected layer (C++ refuses builtins). Args are the AttrDomain
     // / AttrType / AttrUseFlags ints.
-    const C = AttrDomain.VERTEX, F = AttrDomain.FACE
+    const C = AttrDomain.VERTEX,
+      F = AttrDomain.FACE
     attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float4} use=${AttrUseFlags.COLOR})`, {label: 'Add Color'})
     attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float2} use=${AttrUseFlags.UV})`, {label: 'Add UV'})
-    attrs.tool(`litemesh.add_attr(domain=${F} type=${AttrType.Int} use=${AttrUseFlags.POLYGROUP})`, {label: 'Add Poly Group'})
+    attrs.tool(`litemesh.add_attr(domain=${F} type=${AttrType.Int} use=${AttrUseFlags.POLYGROUP})`, {
+      label: 'Add Poly Group',
+    })
     attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
   }
 
@@ -464,7 +476,9 @@ export class LiteMesh extends SceneObjectData {
    * as a seam (EDGE_SEAM). Returns the edge count, or -1 if no path. */
   markSeamPath(vStart: number, vEnd: number, state: number): number {
     const n = (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
-      vStart, vEnd, state
+      vStart,
+      vEnd,
+      state
     )
     this._seamsDirty = true // the persistent overlay rebuilds on next draw
     return n
@@ -491,14 +505,18 @@ export class LiteMesh extends SceneObjectData {
   /** The shortest edge-path's vertex positions as flat xyz triples (for drawing
    * the candidate/marked seam). Reads the bound Vector<float> out-param. */
   edgePathCoords(vStart: number, vEnd: number): number[] {
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown} | undefined}).findVectorClass(
-      'float'
-    )
+    const cls = (
+      this.wasm.manager as {
+        findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown} | undefined
+      }
+    ).findVectorClass('float')
     if (!cls) return []
     const ctor = cls.findDefaultConstructor()
     const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
     ;(this.mesh as unknown as {edgePathCoords(a: number, b: number, out: never): void}).edgePathCoords(
-      vStart, vEnd, vec as never
+      vStart,
+      vEnd,
+      vec as never
     )
     const arr = this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
     const out: number[] = []
@@ -511,7 +529,9 @@ export class LiteMesh extends SceneObjectData {
   edgePathEdges(vStart: number, vEnd: number): number[] {
     const out = this._intVecOut()
     ;(this.mesh as unknown as {edgePathEdges(a: number, b: number, o: never): void}).edgePathEdges(
-      vStart, vEnd, out.vec as never
+      vStart,
+      vEnd,
+      out.vec as never
     )
     const arr = out.read()
     const res: number[] = []
@@ -543,9 +563,9 @@ export class LiteMesh extends SceneObjectData {
   private _cornerLayerNames(): string[] {
     const grp = this._domainGroup(AttrDomain.CORNER)
     if (!grp?.attrs) return []
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
-      'sculptcore::mesh::AttrRef'
-    )
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
     if (!cls) return []
     const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
     const out: string[] = []
@@ -589,9 +609,9 @@ export class LiteMesh extends SceneObjectData {
 
   /** Construct two empty bound Vector<int> out-params + an array-like reader. */
   private _intVecOut() {
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}).findVectorClass(
-      'int'
-    )
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
+    ).findVectorClass('int')
     const ctor = cls.findDefaultConstructor()
     const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
     const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
@@ -832,10 +852,10 @@ export class LiteMesh extends SceneObjectData {
 
   setSelectedAttrFromItem(item: LiteMeshAttrItem): void {
     this._selectedAttr = {
-      domain: item.domain,
+      domain    : item.domain,
       layerIndex: item.layerIndex,
-      attrName: item.attrName,
-      attrType: item.attrType,
+      attrName  : item.attrName,
+      attrType  : item.attrType,
     }
   }
 
@@ -844,9 +864,9 @@ export class LiteMesh extends SceneObjectData {
   private _attrUseAt(domain: number, layerIndex: number): number {
     const grp = this._domainGroup(domain)
     if (!grp?.attrs || layerIndex < 0) return 0
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
-      'sculptcore::mesh::AttrRef'
-    )
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
     if (!cls) return 0
     const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{use: number}>
     return layerIndex < arr.length ? arr[layerIndex].use : 0
@@ -876,9 +896,9 @@ export class LiteMesh extends SceneObjectData {
     const idx = (this.mesh as unknown as {addAttr(d: number, t: number, u: number): number}).addAttr(domain, type, use)
     if (idx >= 0) {
       const grp = this._domainGroup(domain)
-      const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
-        'sculptcore::mesh::AttrRef'
-      )
+      const cls = (
+        this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+      ).findVectorClass('sculptcore::mesh::AttrRef')
       let name = ''
       if (grp?.attrs && cls) {
         const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
@@ -953,9 +973,9 @@ export class LiteMesh extends SceneObjectData {
   layerIndexByName(domain: number, name: string): number {
     const grp = this._domainGroup(domain)
     if (!grp?.attrs) return -1
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
-      'sculptcore::mesh::AttrRef'
-    )
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
     if (!cls) return -1
     const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
     for (let i = 0; i < arr.length; i++) {
@@ -1020,9 +1040,9 @@ export class LiteMesh extends SceneObjectData {
       c?: {attrs?: {attrs: unknown}}
       f?: {attrs?: {attrs: unknown}}
     }
-    const cls = (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}).findVectorClass(
-      'sculptcore::mesh::AttrRef'
-    )
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
     if (!cls) {
       return items
     }

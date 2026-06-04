@@ -53,7 +53,14 @@ import {BusMessage} from '../../core/bus'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
 import * as sculptcore_demo from '../../sculptcore_demo'
 import {isWebGPU} from '../../core/renderer_flag'
-import {drawDrawLinesWebGpu, drawGridWebGpu, drawViewportWebGpu, makeWebGpuGlStub, primeWebGpuViewport, type ViewLike} from './view3d_draw_webgpu'
+import {
+  drawDrawLinesWebGpu,
+  drawGridWebGpu,
+  drawViewportWebGpu,
+  makeWebGpuGlStub,
+  primeWebGpuViewport,
+  type ViewLike,
+} from './view3d_draw_webgpu'
 
 export interface ITempText {
   co: Vector3
@@ -208,13 +215,15 @@ function loadWgslShaderStubs(): void {
   for (const k in view3d_shaders.ShaderDef) {
     const key = k as keyof typeof view3d_shaders.ShaderDef
     const stub = {
-      wgslKey: key,
-      name   : key,
+      wgslKey : key,
+      name    : key,
       uniforms: {...(view3d_shaders.ShaderDef[key].uniforms ?? {})},
       bind() {},
       unbind() {},
       destroy() {},
-      uniformloc() {return null},
+      uniformloc() {
+        return null
+      },
       uniform_set(_k: string, _v: unknown) {},
     } as unknown as view3d_shaders.Shaders[typeof key]
     view3d_shaders.Shaders[key] = stub
@@ -1543,7 +1552,13 @@ View3D {
           console.error('[overlay] widgets.draw threw:', err)
         }
       }
-      engine.render(this.activeCamera, this.gl, this.glPos as unknown as number[], this.glSize as unknown as number[], this.ctx.scene)
+      engine.render(
+        this.activeCamera,
+        this.gl,
+        this.glPos as unknown as number[],
+        this.glSize as unknown as number[],
+        this.ctx.scene
+      )
       return
     }
 
@@ -1696,7 +1711,7 @@ View3D {
       // drew them. Non-renderables (empties, lights, cameras, helpers)
       // still draw so their icon/frustum geometry shows up over the
       // rendered scene.
-      if ((this.flag & View3DFlags.SHOW_RENDER) && ob.data?.usesMaterial) {
+      if (this.flag & View3DFlags.SHOW_RENDER && ob.data?.usesMaterial) {
         continue
       }
 

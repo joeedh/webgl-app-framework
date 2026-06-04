@@ -128,9 +128,12 @@ export class TetMesh extends SceneObjectData {
     const program = frame.program ?? Shaders.BasicLitMesh
 
     queue.submit({pipeline: program, mesh: smeshes.faces})
-    queue.submit({pipeline: Shaders.ObjectLineShader, mesh: {
-      draw: (gl, u, p) => smeshes.edges.drawLines(gl, u, p),
-    }})
+    queue.submit({
+      pipeline: Shaders.ObjectLineShader,
+      mesh    : {
+        draw: (gl, u, p) => smeshes.edges.drawLines(gl, u, p),
+      },
+    })
   }
 
   recalcStartLengths(edges = this.edges) {

@@ -62,7 +62,7 @@ function gpuTypeBytes(t: GPUType): number {
 function gpuTypeWGSLFormat(t: GPUType, elemsize: number): GPUVertexFormat {
   switch (t) {
     case GPUType.FLOAT32:
-      return (`float32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat)
+      return `float32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat
     case GPUType.FLOAT16:
       return (elemsize >= 4 ? 'float16x4' : 'float16x2') as GPUVertexFormat
     case GPUType.UINT8:
@@ -70,9 +70,9 @@ function gpuTypeWGSLFormat(t: GPUType, elemsize: number): GPUVertexFormat {
     case GPUType.UINT16:
       return (elemsize >= 4 ? 'uint16x4' : 'uint16x2') as GPUVertexFormat
     case GPUType.UINT32:
-      return (`uint32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat)
+      return `uint32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat
     case GPUType.INT32:
-      return (`sint32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat)
+      return `sint32x${Math.max(1, Math.min(elemsize, 4))}` as GPUVertexFormat
     default:
       return 'float32x4'
   }
@@ -127,7 +127,6 @@ export class WebGPUBatchExecutor {
   // Shaders we've already logged a build/dispatch failure for, so a persistently
   // broken command warns once instead of every frame.
   private readonly warnedShaders = new Set<string>()
-
 
   constructor(opts: WebGPUBatchExecutorOptions) {
     this.device = opts.device
@@ -201,10 +200,8 @@ export class WebGPUBatchExecutor {
 
     // WASM tracks the data pointer to detect a realloc; native relies on the
     // engine's `update_buffer` dirty flag (the pointer stays in C++).
-    const dataPtr =
-      this.wasm.HEAPU8 !== undefined ? (buf as unknown as {data: number}).data : undefined
-    const needsWrite =
-      (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
+    const dataPtr = this.wasm.HEAPU8 !== undefined ? (buf as unknown as {data: number}).data : undefined
+    const needsWrite = (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
     if (needsWrite) {
       const view = this.bufferBytes(buf, bytes)
       cached.buf.write(view)
@@ -253,17 +250,17 @@ export class WebGPUBatchExecutor {
       if (!s) return null
       return {
         arrayStride: s.stride,
-        attributes: [{shaderLocation: slot, offset: 0, format: s.format}],
+        attributes : [{shaderLocation: slot, offset: 0, format: s.format}],
       }
     })
 
     const desc: PipelineDescriptor = {
-      label        : `WebGPUBatch.pipeline[${sdefPtr}]`,
-      wgsl         : this.opts.wgslForShader(sdef),
+      label: `WebGPUBatch.pipeline[${sdefPtr}]`,
+      wgsl : this.opts.wgslForShader(sdef),
       vertexBuffers,
-      colorTargets : this.opts.colorTargets,
-      depthStencil : this.opts.depthStencil,
-      primitive    : {topology, cullMode: 'none'},
+      colorTargets: this.opts.colorTargets,
+      depthStencil: this.opts.depthStencil,
+      primitive   : {topology, cullMode: 'none'},
     }
 
     pipeline = this.pipelineCache.get(desc)
@@ -299,9 +296,7 @@ export class WebGPUBatchExecutor {
         const count = cmd.end - cmd.start
 
         pass.setPipeline(pipeline.handle)
-        const groups: CommandBindGroup[] = Array.isArray(bindGroup)
-          ? bindGroup
-          : [{group: 0, bindGroup}]
+        const groups: CommandBindGroup[] = Array.isArray(bindGroup) ? bindGroup : [{group: 0, bindGroup}]
         for (const e of groups) pass.setBindGroup(e.group, e.bindGroup)
         for (let slot = 0; slot < sdefAttrs.length; slot++) {
           const found = cmdAttrs.find((a) => a.name === sdefAttrs[slot].name)

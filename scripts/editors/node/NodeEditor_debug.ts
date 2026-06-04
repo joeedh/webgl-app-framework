@@ -195,7 +195,10 @@ export class NodeViewer extends Editor {
     layout.size.mulScalar(scale[0])
     layout.size.floor()
 
-    const nodeSockets = node as unknown as {inputs: {[k: string]: {constructor: {nodedef(): {color?: number[]}}}}; outputs: {[k: string]: {constructor: {nodedef(): {color?: number[]}}}}}
+    const nodeSockets = node as unknown as {
+      inputs: {[k: string]: {constructor: {nodedef(): {color?: number[]}}}}
+      outputs: {[k: string]: {constructor: {nodedef(): {color?: number[]}}}}
+    }
 
     for (let i = 0; i < 2; i++) {
       const lsocks = i ? layout.outputs : layout.inputs

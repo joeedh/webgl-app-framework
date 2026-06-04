@@ -30,8 +30,8 @@ await new Promise((res) => ws.addEventListener('open', res))
 
 if (mode === 'eval') {
   const r = await send('Runtime.evaluate', {
-    expression: `(async()=>{ ${arg} })()`,
-    awaitPromise: true,
+    expression   : `(async()=>{ ${arg} })()`,
+    awaitPromise : true,
     returnByValue: true,
   })
   console.log(JSON.stringify(r.result?.result?.value ?? r.result, null, 2))

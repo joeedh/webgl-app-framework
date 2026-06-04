@@ -36,13 +36,9 @@ export interface WebGpuRenderContextOptions {
 // differently-oriented buffers, producing a visible vertical-mirror ghost.
 const FULLSCREEN_QUAD_DATA = new Float32Array([
   // tri 1
-  -1, -1,  0, 1,
-   1, -1,  1, 1,
-   1,  1,  1, 0,
+  -1, -1, 0, 1, 1, -1, 1, 1, 1, 1, 1, 0,
   // tri 2
-  -1, -1,  0, 1,
-   1,  1,  1, 0,
-  -1,  1,  0, 0,
+  -1, -1, 0, 1, 1, 1, 1, 0, -1, 1, 0, 0,
 ])
 
 export const FULLSCREEN_QUAD_LAYOUT: GPUVertexBufferLayout = {
@@ -106,23 +102,24 @@ export class WebGpuRenderContext {
     if (!this.encoder) {
       throw new Error('WebGpuRenderContext.renderStage: no frame open — call beginFrame() first.')
     }
-    target.beginPass(this.encoder, (pass) => {
-      this.currentPass = pass
-      try {
-        drawCb(pass)
-      } finally {
-        this.currentPass = undefined
-      }
-    }, opts)
+    target.beginPass(
+      this.encoder,
+      (pass) => {
+        this.currentPass = pass
+        try {
+          drawCb(pass)
+        } finally {
+          this.currentPass = undefined
+        }
+      },
+      opts
+    )
   }
 
   // For color attachments that don't live on a `RenderTarget` — most
   // notably the canvas texture from `GPUCanvasContext.getCurrentTexture()`,
   // which is volatile per frame and not owned by a persistent object.
-  renderStageDesc(
-    desc: GPURenderPassDescriptor,
-    drawCb: (pass: GPURenderPassEncoder) => void
-  ): void {
+  renderStageDesc(desc: GPURenderPassDescriptor, drawCb: (pass: GPURenderPassEncoder) => void): void {
     if (!this.encoder) {
       throw new Error('WebGpuRenderContext.renderStageDesc: no frame open — call beginFrame() first.')
     }
