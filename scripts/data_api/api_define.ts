@@ -497,15 +497,10 @@ export function api_define_mesh(api: DataAPI, pstruct: DataStruct): void {
   //MeshModifierFlags
 }
 
+// Phase 3 shim — body moved to CurveSpline.defineAPI
+// (addons/builtin/curve/src/curve.ts).
 export function api_define_curvespline(api: DataAPI): DataStruct {
-  let cstruct = api.inheritStruct(CurveSpline, Mesh)
-
-  cstruct.bool('isClosed', 'isClosed', 'Closed Curve').on('change', function (this: ApiCallbackThis) {
-    this.dataref.checkUpdate()
-    this.dataref.regenRender()
-  })
-
-  return cstruct
+  return CurveSpline.defineAPI(api)
 }
 
 function api_define_shadernode(api: DataAPI, cls?: AnyClass): DataStruct {
@@ -514,32 +509,9 @@ function api_define_shadernode(api: DataAPI, cls?: AnyClass): DataStruct {
   return nstruct
 }
 
+// Phase 3 shim — body moved to Camera.defineAPI (scripts/webgl/webgl.ts).
 export function api_define_camera(api: DataAPI): void {
-  let cstruct = api.mapStruct(Camera, true)
-
-  let onchange = function () {
-    window.redraw_viewport()
-  }
-
-  cstruct.bool('isPerspective', 'isPerspective', 'Perspective or Orthographic').on('change', onchange)
-  cstruct.vec3('pos', 'pos', 'Position').on('change', onchange)
-  cstruct.vec3('target', 'target', 'Target').on('change', onchange)
-  cstruct.vec3('up', 'up', 'Up').on('change', function (this: ApiCallbackThis) {
-    let up = this.dataref
-
-    console.log('up changed')
-
-    if (up !== undefined) {
-      up.normalize()
-    }
-
-    window.redraw_viewport()
-  })
-
-  cstruct.float('near', 'near', 'Near Clipping Plane').range(0.00001, 100).on('change', onchange).rollerSlider()
-  cstruct.float('far', 'far', 'Far Clipping Plane').range(0.00001, 100000000).on('change', onchange).rollerSlider()
-  cstruct.float('aspect', 'aspect', 'Aspect').range(0.001, 4.0)
-  cstruct.float('fovy', 'fov', 'Field of View').range(0.01, 110.0).baseUnit('degree').on('change', onchange)
+  Camera.defineAPI(api)
 }
 
 export function api_define_cameradata(api: DataAPI): void {

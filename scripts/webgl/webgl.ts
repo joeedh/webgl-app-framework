@@ -1,6 +1,6 @@
 'use strict'
 
-import {util, nstructjs, Vector3, Matrix4, JSONAny} from '../path.ux/scripts/pathux'
+import {util, nstructjs, Vector3, Matrix4, JSONAny, DataAPI, DataStruct} from '../path.ux/scripts/pathux'
 import {StructReader} from '../path.ux/scripts/util/nstructjs'
 import '../core/const'
 
@@ -1743,6 +1743,36 @@ Camera {
 
     this.near = 0.25
     this.far = 10000.0
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const cstruct = struct ?? api.mapStruct(this, true)
+
+    const onchange = function () {
+      window.redraw_viewport()
+    }
+
+    cstruct.bool('isPerspective', 'isPerspective', 'Perspective or Orthographic').on('change', onchange)
+    cstruct.vec3('pos', 'pos', 'Position').on('change', onchange)
+    cstruct.vec3('target', 'target', 'Target').on('change', onchange)
+    cstruct.vec3('up', 'up', 'Up').on('change', function (this: {dataref: any}) {
+      const up = this.dataref
+
+      console.log('up changed')
+
+      if (up !== undefined) {
+        up.normalize()
+      }
+
+      window.redraw_viewport()
+    })
+
+    cstruct.float('near', 'near', 'Near Clipping Plane').range(0.00001, 100).on('change', onchange).rollerSlider()
+    cstruct.float('far', 'far', 'Far Clipping Plane').range(0.00001, 100000000).on('change', onchange).rollerSlider()
+    cstruct.float('aspect', 'aspect', 'Aspect').range(0.001, 4.0)
+    cstruct.float('fovy', 'fov', 'Field of View').range(0.01, 110.0).baseUnit('degree').on('change', onchange)
+
+    return cstruct
   }
 
   generateUpdateHash(objectMatrix?: Matrix4) {
