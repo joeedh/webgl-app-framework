@@ -341,22 +341,24 @@ migration. Add to it when you discover another one.
 ## Submodules
 
 - Keep submodules checked out at the HEADs of their current branches, pulling and
-  merging as needed — **except** `sculptcore/emsdk` and `sculptcore/extern/imgui`,
-  which stay pinned at their recorded commits (third-party, version-locked).
+  merging as needed — **except** `sculptcore/extern/imgui`, which stays pinned at
+  its recorded commit (third-party, version-locked). (`sculptcore/emsdk` is no
+  longer a submodule — it is git-cloned and pinned by `make.mjs install-emsdk`
+  and is gitignored.)
 - The `master` branch must always link submodules at their default-branch commits
   (never pin `master`'s gitlinks to a submodule feature branch).
 - **Commit a parent repo and its submodules together** whenever their branch names
   match, or both are on their default branches: make the submodule commit, then
-  bump the parent's gitlink, as one logical change. The pinned exceptions
-  (`sculptcore/emsdk`, `sculptcore/extern/imgui`) are excluded — bump those
-  deliberately, never as part of a co-commit.
+  bump the parent's gitlink, as one logical change. The pinned exception
+  (`sculptcore/extern/imgui`) is excluded — bump it deliberately, never as part
+  of a co-commit.
 - **Parent on a branch, submodule on its default branch:** do not silently commit
   or advance the submodule's shared default branch. Ask the user whether they want
   to commit and/or push the submodule's default branch (and bump the gitlink)
   before doing so.
 - **Worktree teardown:** before removing a worktree, every submodule sitting on its
-  default branch — except the pinned `sculptcore/emsdk` / `sculptcore/extern/imgui`
-  — must be committed and pushed, so no work is lost when the checkout goes away.
+  default branch — except the pinned `sculptcore/extern/imgui` — must be committed
+  and pushed, so no work is lost when the checkout goes away.
 
 ## Secondary-agent worktree
 
