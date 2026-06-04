@@ -1,4 +1,4 @@
-import {nstructjs, ToolProperty, EnumProperty, util, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {nstructjs, ToolProperty, EnumProperty, util, DataAPI, DataStruct, DataPathError} from '../path.ux/scripts/pathux.js'
 
 import {IDGen} from '../util/util.js'
 import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
@@ -735,6 +735,77 @@ BlockSet {
   }
 }
 
+/**
+ * Define a per-blocktype datablock list (e.g. `library.mesh`, `library.scene`)
+ * on `parent`. Shared by {@link Library.defineAPI} (one list per registered
+ * block type) and the late-registration hook in api_define (which adds a list
+ * when a new DataBlock subclass registers after the API was first built).
+ */
+export function defineLibrarySet(
+  api: DataAPI,
+  path: string,
+  apiname: string,
+  uiname: string,
+  parent: DataStruct,
+  cls: IDataBlockConstructor
+): void {
+  //let lstruct = api.mapStruct(BlockSet, true);
+  //parent.struct(path, apiname, uiname, lstruct);
+  parent.list(path, apiname, [
+    function get(api: DataAPI, list: any, key: number | string) {
+      if (typeof key === 'number') {
+        return list.idmap[key]
+      } else {
+        return list.namemap[key]
+      }
+    },
+
+    function getIter(api: DataAPI, list: any) {
+      return list
+    },
+
+    function getLength(api: DataAPI, list: any) {
+      return list.length
+    },
+
+    function getActive(api: DataAPI, list: any) {
+      return list.active
+    },
+
+    function setActive(api: DataAPI, list: any, key: number | undefined) {
+      if (key === undefined || key === -1) {
+        list.active = undefined
+        return
+      }
+
+      let obj = list.idmap[key]
+      if (obj === undefined) {
+        throw new DataPathError('unknown datablock key ' + key + '.')
+      }
+
+      list.obj = obj
+    },
+    function getKey(api: DataAPI, list: any, obj: any) {
+      return obj.lib_id
+    },
+    function getStruct(api: DataAPI, list: any, key: number | string) {
+      let obj = typeof key === 'string' ? list.namemap[key] : list.idmap[key]
+
+      if (obj === undefined) {
+        return api.getStruct(DataBlock)
+      }
+
+      let ret = api.getStruct(obj.constructor)
+
+      if (ret === undefined) {
+        return api.getStruct(DataBlock)
+      }
+
+      return ret
+    },
+  ])
+}
+
 export class Library {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -746,6 +817,18 @@ Library {
 }
 `
   )
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let lstruct = struct ?? api.mapStruct(this)
+
+    for (let cls of BlockTypes) {
+      let def = cls.blockDefine()
+
+      defineLibrarySet(api, def.typeName!, def.typeName!, def.uiName!, lstruct, cls)
+    }
+
+    return lstruct
+  }
 
   graph: Graph<ToolContext>
   libs: BlockSet<any>[]

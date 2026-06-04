@@ -44,8 +44,8 @@ import '../editors/view3d/widgets/widget_tools.js' //ensure widget tools are all
 import {WidgetFlags} from '../editors/view3d/widgets/widgets.js'
 import {AddLightOp} from '../light/light_ops.js'
 import {Light} from '../light/light.js'
-import {DataAPI, DataPathError, DataStruct} from '../path.ux/scripts/pathux.js'
-import {DataBlock, DataRef, Library, BlockTypes, BlockSet, onBlockRegister} from '../core/lib_api.js'
+import {DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {DataBlock, DataRef, Library, onBlockRegister, defineLibrarySet} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
 import {App, buildEditorsAPI} from '../editors/editor_base.js'
@@ -308,90 +308,23 @@ function api_define_sceneobject(api: DataAPI, parent: DataStruct): DataStruct {
   return ostruct
 }
 
-function api_define_libraryset(
-  api: DataAPI,
-  path: string,
-  apiname: string,
-  uiname: string,
-  parent: DataStruct,
-  cls: AnyClass
-): void {
-  //let lstruct = api.mapStruct(BlockSet, true);
-  //parent.struct(path, apiname, uiname, lstruct);
-  parent.list(path, apiname, [
-    function get(api: DataAPI, list: any, key: number | string) {
-      if (typeof key === 'number') {
-        return list.idmap[key]
-      } else {
-        return list.namemap[key]
-      }
-    },
-
-    function getIter(api: DataAPI, list: any) {
-      return list
-    },
-
-    function getLength(api: DataAPI, list: any) {
-      return list.length
-    },
-
-    function getActive(api: DataAPI, list: any) {
-      return list.active
-    },
-
-    function setActive(api: DataAPI, list: any, key: number | undefined) {
-      if (key === undefined || key === -1) {
-        list.active = undefined
-        return
-      }
-
-      let obj = list.idmap[key]
-      if (obj === undefined) {
-        throw new DataPathError('unknown datablock key ' + key + '.')
-      }
-
-      list.obj = obj
-    },
-    function getKey(api: DataAPI, list: any, obj: any) {
-      return obj.lib_id
-    },
-    function getStruct(api: DataAPI, list: any, key: number | string) {
-      let obj = typeof key === 'string' ? list.namemap[key] : list.idmap[key]
-
-      if (obj === undefined) {
-        return api.getStruct(DataBlock)
-      }
-
-      let ret = api.getStruct(obj.constructor)
-
-      if (ret === undefined) {
-        return api.getStruct(DataBlock)
-      }
-
-      return ret
-    },
-  ])
-}
-
 let libraryStruct: DataStruct | undefined
 onBlockRegister(function onDataBlockRegister(blockCls: any) {
   if (libraryStruct !== undefined) {
     let def = blockCls.blockDefine()
-    api_define_libraryset(api, def.typeName, def.typeName, def.uiName, libraryStruct, blockCls)
+    defineLibrarySet(api, def.typeName, def.typeName, def.uiName, libraryStruct, blockCls)
   }
 })
 
 function api_define_library(api: DataAPI, parent: DataStruct): void {
-  let lstruct = api.mapStruct(Library)
+  // The per-blocktype lists (library.mesh, library.scene, …) are Library's
+  // own struct members and move onto Library.defineAPI. The driver keeps the
+  // dynamic-registration wiring (libraryStruct, used by the onBlockRegister
+  // hook above) and the parent-level attaches below.
+  let lstruct = Library.defineAPI(api)
   libraryStruct = lstruct
 
   parent.struct('datalib', 'library', 'Library', lstruct)
-
-  for (let cls of BlockTypes) {
-    let def = cls.blockDefine()
-
-    api_define_libraryset(api, def.typeName!, def.typeName!, def.uiName!, lstruct, cls)
-  }
 
   //let lstruct = api.mapStruct(BlockSet, true);
   //parent.struct(path, apiname, uiname, lstruct);
