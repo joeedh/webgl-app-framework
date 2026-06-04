@@ -1,6 +1,6 @@
 ---
 name: create-worktree
-description: Create a new git worktree wired for fast cached builds. Use when the user wants to "create/spin up/add a worktree", a "new worktree", an "isolated build worktree", or a parallel checkout to build in without recompiling sculptcore from scratch. Runs the submodule-sync recovery and registers the worktree with the cross-worktree sccache launcher so compiles hit the shared cache across worktrees.
+description: Create a new git worktree wired for fast cached builds. Use when the user wants to "create/spin up/add a worktree", a "new worktree", an "isolated build worktree", or a parallel checkout to build in without recompiling sculptcore from scratch. Populates submodules from their remotes (asking whether to require pinned commits be pushed, or to branch each submodule from its remote master) and registers the worktree with the cross-worktree sccache launcher so compiles hit the shared cache across worktrees.
 ---
 
 # Create a build-ready worktree
@@ -19,16 +19,25 @@ worktree (it's reserved for secondary agent work and is often in use).
 `tools/new-worktree.mjs` (zero-dep Node ESM), run from any worktree of this repo:
 
 ```sh
-node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsdk]
+node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] \
+                                   [--submodules require-pushed|remote-master] [--no-emsdk]
 ```
 
 - Creates the worktree at `<main-worktree>-<name>` (e.g.
   `C:/dev/webgl-app-framework-<name>`) on a new branch (`<name>` by default),
   branched from `--base` (default `master`).
-- Runs `git submodule update --init --recursive`, and on the expected
-  `not our ref` failures (sculptcore and sculptcore/source/litestl are pinned to
-  local-only commits) fetches that exact commit from the **main** worktree's
-  matching submodule and resumes — the recovery dance from CLAUDE.md, automated.
+- Populates submodules **from their own remotes** (it never fetches unpushed
+  local-only commits from another worktree). `--submodules` selects the policy
+  (default `require-pushed`):
+  - `require-pushed` — `git submodule update --init --recursive` against the
+    superproject's pinned commits, then verifies each is at its pin. If a pinned
+    commit isn't reachable from its remote (e.g. local-only sculptcore work that
+    was never pushed) the tool **fails** with a message naming the submodule and
+    pointing at the two fixes (push it, or re-run with `remote-master`).
+  - `remote-master` — ignores the pinned commits: runs
+    `submodule update --init --recursive --remote` (checks out each submodule's
+    remote master/default-branch tip) and puts each submodule on a new branch
+    `<branch>` at that tip.
 - Writes `worktree-env.ps1` and `worktree-env.sh` into the new worktree that
   export `SCCACHE_DIR` (shared cache at `%LOCALAPPDATA%\sccache`). It no longer
   sets `SCCACHE_BASEDIRS` — the cross-worktree launcher (below) computes that
@@ -55,8 +64,20 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
 
 ## Workflow
 
-1. From the repo, run `node tools/new-worktree.mjs <name>`. (To base it on an
-   in-progress feature branch instead of `master`, pass `--base <branch>`.)
+1. **Ask the user how submodules should be populated** (use `AskUserQuestion`)
+   before running the tool — the choice maps directly to `--submodules`:
+   - **Require pushed** (`require-pushed`, the default) — check out the pinned
+     submodule commits; the run fails if any pin isn't on its remote. Pick this
+     when the submodules are fully pushed and you want the new worktree to match
+     the superproject's recorded state exactly.
+   - **Branch from remote master** (`remote-master`) — ignore the pins and put
+     each submodule on a fresh branch at its remote master tip. Pick this when
+     submodule work is local-only/unpushed, or when you want to start new
+     submodule work from the latest remote.
+
+   Then run `node tools/new-worktree.mjs <name> [--submodules <mode>]`. (To base
+   it on an in-progress feature branch instead of `master`, pass
+   `--base <branch>`.)
 2. `cd` into the new worktree and load the env **in the shell you'll build from**
    (env vars are per-shell):
    - PowerShell: `. .\worktree-env.ps1`
@@ -81,16 +102,20 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsd
    The node-addon build (`node make.mjs node`) uses the same toolchain and is
    cached too. WASM builds are not cached (emcc runs through a python wrapper).
 
-## Sharing a submodule commit into a new worktree
+## Getting a feature branch's submodule commits into a new worktree
 
-The tool recovers each worktree's pinned submodule commits by fetching them from
-the **main** worktree's matching submodule. A new worktree based on a feature
-branch therefore needs that branch's submodule commit to already exist in the
-main worktree's submodule. If you committed sculptcore work in another worktree,
-push it into main first, e.g.:
+`--submodules require-pushed` populates submodules **only from their remotes**.
+A worktree based on a feature branch therefore needs that branch's pinned
+submodule commits to already exist on the submodule's remote. If you committed
+sculptcore (or other submodule) work elsewhere, **push it to the remote first**,
+e.g.:
 ```sh
-git -C <other-worktree>/sculptcore push <main>/sculptcore <branch>:refs/heads/<branch>
+git -C <other-worktree>/sculptcore push origin <branch>
 ```
+If the commits are local-only and you don't want to push yet, use
+`--submodules remote-master` instead: it skips the pins and branches each
+submodule from its remote master tip. (There is no longer any cross-worktree
+local-fetch recovery — that path was removed.)
 
 ## Why SCCACHE_BASEDIRS matters
 

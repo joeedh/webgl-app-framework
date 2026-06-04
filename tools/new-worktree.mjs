@@ -5,12 +5,20 @@
 // (.claude/skills/create-worktree/SKILL.md) for the why and the workflow.
 //
 // Usage (from any worktree of this repo):
-//   node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsdk]
+//   node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>]
+//                                       [--submodules require-pushed|remote-master] [--no-emsdk]
 //
-//   <name>            worktree is created at <main-worktree>-<name>
-//   --base <ref>      branch point for the new branch (default: master)
-//   --branch <name>   new branch name (default: <name>)
-//   --no-emsdk        don't point WASM builds at the main worktree's emsdk (default: do)
+//   <name>               worktree is created at <main-worktree>-<name>
+//   --base <ref>         branch point for the new branch (default: master)
+//   --branch <name>      new branch name (default: <name>)
+//   --submodules <mode>  how to populate submodules (default: require-pushed):
+//                          require-pushed  check out the superproject's pinned
+//                                          commits; FAIL if any isn't on its
+//                                          remote (no local-fetch recovery).
+//                          remote-master   ignore the pinned commits and put each
+//                                          submodule on a new branch at its remote
+//                                          master tip.
+//   --no-emsdk           don't point WASM builds at the main worktree's emsdk (default: do)
 //
 // It does NOT build anything and never touches the persistent -agent worktree.
 
@@ -49,16 +57,21 @@ let name = null
 let base = 'master'
 let branch = null
 let noEmsdk = false
+let submodMode = 'require-pushed'
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   if (a === '--base') base = argv[++i]
   else if (a === '--branch') branch = argv[++i]
+  else if (a === '--submodules') submodMode = argv[++i]
   else if (a === '--no-emsdk') noEmsdk = true
   else if (a.startsWith('--')) die(`unknown flag ${a}`)
   else if (name === null) name = a
   else die(`unexpected argument ${a}`)
 }
-if (!name) die('usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--no-emsdk]')
+if (!name) die('usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--submodules require-pushed|remote-master] [--no-emsdk]')
+if (submodMode !== 'require-pushed' && submodMode !== 'remote-master') {
+  die(`--submodules must be 'require-pushed' or 'remote-master', got '${submodMode}'`)
+}
 branch = branch || name
 
 // --- resolve the MAIN worktree root (parent of the shared .git common dir) ---
@@ -75,54 +88,48 @@ console.log(`branch        : ${branch}  (base ${base})`)
 // --- create the worktree ---
 runOrDie('git', ['-C', MAIN, 'worktree', 'add', '-b', branch, DEST, base])
 
-// --- sync submodules, recovering the local-only pinned commits ---
-// sculptcore and sculptcore/source/litestl are pinned to commits never pushed
-// to their remotes, so `submodule update` aborts with "not our ref"; fetch the
-// exact commit from the MAIN worktree's matching submodule and resume. See the
-// "Syncing the worktree + submodules" section of CLAUDE.md.
-syncSubmodules()
+// --- populate submodules ---
+// Two policies, both relying ONLY on the submodules' own remotes (no local-fetch
+// of unpushed pinned commits — that recovery path was removed deliberately):
+//   require-pushed  check out the superproject's pinned commits, failing loudly
+//                   if any isn't reachable from its remote.
+//   remote-master   ignore the pinned commits; branch each submodule from its
+//                   remote master tip.
+if (submodMode === 'remote-master') branchSubmodulesFromRemoteMaster()
+else syncSubmodulesRequirePushed()
 
-function syncSubmodules() {
-  const tried = new Set()
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const r = run('git', ['-C', DEST, 'submodule', 'update', '--init', '--recursive'])
-    if (r.status === 0) {
-      console.log('submodules: synced')
-      return
+function syncSubmodulesRequirePushed() {
+  const r = run('git', ['-C', DEST, 'submodule', 'update', '--init', '--recursive'])
+  if (r.status === 0) {
+    console.log('submodules: synced to pinned commits')
+    // verify clean (every line at its pinned commit -> leading space)
+    const status = runOrDie('git', ['-C', DEST, 'submodule', 'status', '--recursive'])
+    const dirty = status.split('\n').filter((l) => l && !l.startsWith(' '))
+    if (dirty.length) {
+      process.stderr.write(dirty.join('\n') + '\n')
+      die('submodules not at pinned commits after sync')
     }
-    // Two error shapes carry (path, sha) we can recover from:
-    //   "Fetched in submodule path 'X', but it did not contain <sha>..."
-    //   "Unable to fetch in submodule path 'X'; ... could not require <sha>"
-    const m =
-      r.out.match(/submodule path '([^']+)',? but it did not contain ([0-9a-f]{40})/) ||
-      r.out.match(/submodule path '([^']+)'.*?(?:require|contain) ([0-9a-f]{40})/s)
-    if (!m) {
-      process.stderr.write(r.out)
-      die('submodule update failed and no recoverable "not our ref" commit was found')
-    }
-    const [, subPath, sha] = m
-    const key = `${subPath}@${sha}`
-    if (tried.has(key)) {
-      process.stderr.write(r.out)
-      die(`recovery for ${key} did not stick; aborting`)
-    }
-    tried.add(key)
-    const subDest = Path.join(DEST, subPath)
-    const subMain = `${MAIN}/${fwd(subPath)}`
-    console.log(`submodules: fetching ${sha.slice(0, 10)} for '${subPath}' from main worktree`)
-    if (!fs.existsSync(subDest)) die(`submodule dir missing, cannot recover: ${subDest}`)
-    runOrDie('git', ['-C', subDest, 'fetch', subMain, sha])
-    runOrDie('git', ['-C', subDest, 'checkout', sha])
+    return
   }
-  die('submodule sync exceeded retry budget')
+  process.stderr.write(r.out)
+  const m = r.out.match(/submodule path '([^']+)'.*?([0-9a-f]{40})/s)
+  const which = m ? `submodule '${m[1]}' is pinned to ${m[2].slice(0, 10)}, which isn't on its remote` : 'a submodule pinned commit could not be fetched from its remote'
+  die(
+    `${which}.\n` +
+      `Push the missing submodule commit(s) to their remotes, then retry; or re-run with\n` +
+      `  --submodules remote-master\n` +
+      `to branch each submodule from its remote master instead of the pinned commit.`,
+  )
 }
 
-// --- verify clean ---
-const status = runOrDie('git', ['-C', DEST, 'submodule', 'status', '--recursive'])
-const dirty = status.split('\n').filter((l) => l && !l.startsWith(' '))
-if (dirty.length) {
-  process.stderr.write(dirty.join('\n') + '\n')
-  die('submodules not at pinned commits after sync')
+function branchSubmodulesFromRemoteMaster() {
+  console.log(`submodules: branching each from its remote master (ignoring pinned commits) onto '${branch}'`)
+  // --remote fetches and checks out each submodule's configured/default remote
+  // branch tip instead of the recorded (possibly unpushed) SHA.
+  runOrDie('git', ['-C', DEST, 'submodule', 'update', '--init', '--recursive', '--remote'])
+  // Turn the detached remote-tip checkout into a working branch in each submodule.
+  runOrDie('git', ['-C', DEST, 'submodule', 'foreach', '--recursive', `git switch -c ${branch} 2>/dev/null || git switch ${branch}`])
+  console.log(`submodules: each on new branch '${branch}' at its remote master tip`)
 }
 
 // --- resolve a shared emsdk to borrow (avoid the 2.4 GB reinstall) ---

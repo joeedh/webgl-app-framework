@@ -326,38 +326,20 @@ checkout. Conventions:
   gitlink in the superproject branch.
 - **When done, return to idle:** commit/stash or discard your work, then
   `git -C C:/dev/webgl-app-framework-agent checkout --detach master` and
-  re-sync submodules (below). (`checkout master` will fail — it's held by the
-  main worktree; always use `--detach master`.)
-
-### Syncing the worktree + submodules
-
-Linked worktrees do **not** auto-populate submodules, and this repo pins
-several submodules to **local-only commits that were never pushed** (currently
-`sculptcore` and `sculptcore/source/litestl`; historically others). Plain
-`git submodule update --init --recursive` therefore fails with
-`upload-pack: not our ref <sha>` on those. Recover by fetching the missing
-commit from the **main worktree's** copy of that submodule, then re-running the
-recursive update:
-
-```sh
-cd C:/dev/webgl-app-framework-agent
-
-# 1. Sync the superproject to master, then submodules to their pinned commits.
-git checkout --detach master
-git submodule update --init --recursive
-
-# 2. If step 1 aborts with "not our ref <sha>" for a submodule <path>,
-#    fetch that exact commit from the main worktree's matching submodule,
-#    check it out, then resume the recursive update. Repeat per failing path:
-cd <path>                                                  # e.g. sculptcore
-git fetch C:/dev/webgl-app-framework/<path> <sha>
-git checkout <sha>
-cd C:/dev/webgl-app-framework-agent
-git submodule update --init --recursive                    # continue / finish
-```
-
-A clean result has every line of `git submodule status --recursive` prefixed
-with a space (no `+`/`-`), matching the main worktree's pinned commits. To
-instead advance a submodule to the tip of its own `master` (e.g. before new
-work in it), `cd` into it and `git switch master && git pull`, then bump the
-gitlink in the superproject branch.
+  re-sync submodules (`git submodule update --init --recursive`).
+  (`checkout master` will fail — it's held by the main worktree; always use
+  `--detach master`.)
+- **Submodules populate only from their remotes** (no cross-worktree local-fetch
+  of unpushed pinned commits — that recovery path was removed). So
+  `git submodule update --init --recursive` requires every pinned submodule
+  commit to be reachable from its remote; it fails on local-only commits with
+  `Fetched in submodule path '<X>', but it did not contain <sha>`. Two fixes,
+  mirroring `new-worktree.mjs`'s `--submodules` modes:
+  - **require-pushed** — push the missing submodule commit(s) to their remote
+    (`git -C <main-or-other-worktree>/<sub> push origin <branch>`), then re-run
+    the recursive update so the worktree matches the recorded pins exactly.
+  - **remote-master** — ignore the pins and branch each submodule from its remote
+    master tip: `git submodule update --init --recursive --remote`, then
+    `git submodule foreach --recursive 'git switch -c <branch>'`. Use this when
+    submodule work is local-only/unpushed or you want to start from the latest
+    remote.
