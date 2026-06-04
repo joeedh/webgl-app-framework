@@ -116,25 +116,39 @@ hook so it can be cleanly torn down; see `documentation/addons.md`). `getDataAPI
 then iterates `dataAPIRegistry` and calls each `cls.defineAPI(api)` instead of a
 hand-maintained call list.
 
-**Ordering constraint (important).** `getDataAPI()` today is order-sensitive:
-some structs reference others (`cstruct.struct('graph', …, api.mapStruct(Graph))`
-at `api_define.ts:1142`, sockets resolved lazily, `ToolMode.defineAPI` consumed
-as a base for `dynamicStruct`). A flat "iterate the registry in load order" pass
-will **not** reproduce that order, and gen:paths will diverge. The registry must
-therefore be **declaration-order-independent**, achieved by one of:
-- Making `defineAPI` idempotent + lazy: `api.mapStruct(cls)` is already
-  memoized (`hasStruct`/`getStruct` guards exist at `api_define.ts:191–199`), so
-  a class that references another's struct calls *that class's* `defineAPI`
-  on demand (a `api.ensureStruct(Other)` helper that calls
-  `Other.defineAPI(api)` once). Cross-references resolve themselves; iteration
-  order stops mattering.
-- **or** keeping an explicit phase list for the handful of root/ordering-
-  sensitive structs (context root, graph, toolsys, editors, propCache) and only
-  auto-iterating the leaf datablocks.
+**Ordering is mostly a non-issue — struct *creation* is decoupled from struct
+*population*.** `api.mapStruct(cls, true)` auto-creates an **empty** `DataStruct`
+and caches it on the class (`CLS_API_KEY`). A `defineAPI` that references another
+class's struct via `api.mapStruct(Other)` (e.g.
+`cstruct.struct('graph', …, api.mapStruct(Graph))` at `api_define.ts:1142`)
+receives that **cached object by reference**; it does not read its contents at
+definition time. Whenever `Other.defineAPI` runs — earlier or later — it
+populates that same object in place. So a flat "iterate the registry, call each
+`defineAPI` once" pass reproduces the catalog regardless of registration order,
+for all reference-style cross-links.
 
-The first (lazy `ensureStruct`) is the cleaner end state and is recommended; the
-second is the lower-risk incremental step. **Decide this before Phase 3** — it's
-the one genuine design fork.
+Note: a naïve `ensureStruct(api, cls)` that does
+`api.hasStruct(cls) ? api.getStruct(cls) : cls.defineAPI(api)` does **not** help
+and is in fact wrong — `hasStruct` flips true the moment the empty struct is
+auto-created, so it would return an empty struct and skip `defineAPI`. There is
+no general lazy-resolution primitive to add; plain iteration suffices.
+
+**The only true ordering constraints** are operations that read/copy a struct's
+*contents* at call time (not by reference):
+- `inheritStruct(cls, parent)` → `mapStruct(parent).copy()` copies the parent's
+  **members** immediately (`controller.ts:656`). The ported
+  `api_define_meshvertex` (`api.inheritStruct(Vertex, Element)`) needs
+  `Element`'s struct fully populated first; likewise any future inherit.
+- `mergeStructs(dest, src)` copies `src.members` at call time
+  (`controller.ts:650`).
+
+These few cases need their source class defined-first. The registry driver
+handles them with a small `Set<DefineAPIClass>` of already-defined classes plus a
+`defineOnce(cls)` that runs `cls.defineAPI` if absent — invoked explicitly for the
+*source* of an inherit/merge right before the dependent runs (not as a generic
+cross-ref mechanism). Equivalently, the handful of inherit/merge sources can be
+ordered explicitly at the front of the registry. **This is the only ordering
+work Phase 4 must do.**
 
 ### 3. Rename `apiDefine` → `defineAPI`
 
@@ -153,9 +167,9 @@ Each phase ends by running `pnpm gen:paths` and diffing `api-paths.json` against
 the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
 
 - **Phase 0 — scaffolding.** Add `registerDataAPI` + `dataAPIRegistry` +
-  `ensureStruct` (or the explicit phase list) to `api_define.ts`. No behavior
-  change yet; `getDataAPI()` still calls everything explicitly. Gate: identical
-  catalog (trivially).
+  `getDataAPIRegistry` to `api_define.ts` (no `ensureStruct` — see §2). No
+  behavior change yet; `getDataAPI()` still calls everything explicitly. Gate:
+  identical catalog (trivially).
 
 - **Phase 1 — normalize signatures.** Make every existing `defineAPI` return
   `DataStruct` and accept the optional `struct`. Update `buildEditorsAPI`,
@@ -180,10 +194,12 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   Per-subsystem gate: catalog unchanged.
 
 - **Phase 4 — flip `getDataAPI()` to drive the registry.** Replace the explicit
-  call list with iteration over `dataAPIRegistry` (using `ensureStruct` for
-  cross-refs, or the retained root phase list). This is the step most likely to
-  perturb ordering — keep the previous explicit list behind a feature check
-  until the catalog matches, then delete it. Gate: catalog unchanged.
+  call list with iteration over `dataAPIRegistry`, calling each `defineAPI`
+  once. The only ordering work is the inherit/merge sources (§2): a
+  `defineOnce(cls)`-style guard that runs the *source* class's `defineAPI`
+  before the dependent's, or those few sources ordered at the front. Keep the
+  previous explicit list behind a feature check until the catalog matches, then
+  delete it. Gate: catalog unchanged.
 
 - **Phase 5 — cleanup.** Delete dead shims, fold the per-subsystem dispatch
   loops (`buildEditorsAPI`/`buildToolSysAPI`) into the registry pass where
@@ -193,7 +209,8 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
 
 ## Risks / watch-list
 
-- **Iteration order vs. catalog stability** — the central risk (see §2). The
+- **Iteration order vs. catalog stability** — bounded to the inherit/merge
+  sources (see §2); plain `mapStruct` references are order-independent. The
   `propCache`/`toolDefaults` paths are also sensitive to *runtime* state (the
   port investigation found the baseline's extra `toolDefaults.light.*` paths
   were a cache artifact, not structural); don't be fooled by those if they

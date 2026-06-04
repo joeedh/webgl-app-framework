@@ -132,6 +132,39 @@ interface ApiCallbackThis<Ref = any> {
   datapath: string
 }
 
+/**
+ * The canonical data-API definition contract (refactor target — see
+ * documentation/plans/api-define-defineapi-refactor.md). A participating class
+ * exposes a static `defineAPI(api, struct?)` that declares its `DataStruct` and
+ * returns it. `struct` defaults to `api.mapStruct(this)`; subclasses pass it
+ * through `super.defineAPI(api, struct)` to inherit base properties.
+ *
+ * During the migration the registry below coexists with the legacy explicit
+ * call list in `getDataAPI()`; it is not yet the source of truth.
+ */
+export interface DefineAPIClass {
+  defineAPI(api: DataAPI, struct?: DataStruct): DataStruct
+}
+
+const dataAPIRegistry: DefineAPIClass[] = []
+
+/**
+ * Register a class so its `defineAPI` is invoked while the data API is built.
+ * Idempotent. Addon classes should route through the addon `register(api)`
+ * hook (see documentation/addons.md) so they can be torn down cleanly, rather
+ * than calling this at module scope.
+ */
+export function registerDataAPI(cls: DefineAPIClass): void {
+  if (!dataAPIRegistry.includes(cls)) {
+    dataAPIRegistry.push(cls)
+  }
+}
+
+/** The classes registered via {@link registerDataAPI}, in registration order. */
+export function getDataAPIRegistry(): readonly DefineAPIClass[] {
+  return dataAPIRegistry
+}
+
 export function api_define_rendersettings(api: DataAPI): void {
   let st = api.mapStruct(RenderSettings, true)
 
