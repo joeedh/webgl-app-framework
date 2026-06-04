@@ -13,7 +13,7 @@ export interface ICustomDataElemConstructor<type = CustomDataElem<any>> {
   new (): type
 
   define(): ICustomDataElemDef
-  apiDefine(api: DataAPI, st: DataStruct): void
+  defineAPI(api: DataAPI, st: DataStruct): void
 }
 
 export const CDFlags = {
@@ -114,7 +114,7 @@ mesh.CustomDataElem {
   }
   */
 
-  static apiDefine(api: DataAPI, dstruct: DataStruct) {}
+  static defineAPI(api: DataAPI, dstruct: DataStruct) {}
 
   setValue(b: ValueType) {
     throw new Error('implement me')
@@ -266,7 +266,7 @@ export function buildCDAPI(api: DataAPI) {
     const cls = ret.constructor
 
     if (!api.hasStruct(cls)) {
-      cls.apiDefine(api, api.mapStruct(cls, true))
+      cls.defineAPI(api, api.mapStruct(cls, true))
     }
 
     return ret
@@ -289,7 +289,7 @@ export function buildCDAPI(api: DataAPI) {
 
     //settings classes can be shared among customdata types
     if (ldef.settingsClass !== undefined && !api.hasStruct(ldef.settingsClass)) {
-      ldef.settingsClass.apiDefine(api)
+      ldef.settingsClass.defineAPI(api)
     }
 
     st.struct(ldef.typeName, ldef.typeName, 'Active ' + ldef.typeName + ' layer', layerst)
@@ -321,7 +321,7 @@ export function buildCDAPI(api: DataAPI) {
 export function buildElementAPI(api: DataAPI, dstruct: DataStruct) {
   for (const cls of CDElemTypes) {
     const cstruct = api.mapStruct(cls, true)
-    cls.apiDefine(api, cstruct)
+    cls.defineAPI(api, cstruct)
   }
 
   dstruct.list<CustomDataElem[], number, CustomDataElem>('customData', 'dataLayers', {
@@ -395,7 +395,7 @@ LayerSettingsBase {
     throw new Error('implement me')
   }
 
-  static apiDefine(api: DataAPI, st: DataStruct) {
+  static defineAPI(api: DataAPI, st: DataStruct) {
     return api.mapStruct(this, true)
   }
 
@@ -415,7 +415,7 @@ LayerSettingsBase {
 export interface ILayerSettingsConstructor<T extends LayerSettingsBase = LayerSettingsBase> {
   readonly STRUCT: string
   new (): T
-  apiDefine(api: DataAPI, st?: DataStruct): DataStruct
+  defineAPI(api: DataAPI, st?: DataStruct): DataStruct
 }
 
 // empty child class to signal a customdata elem type has no settings

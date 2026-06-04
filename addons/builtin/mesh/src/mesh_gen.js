@@ -40,7 +40,7 @@ export class ProceduralGen {
 
   static buildSettings(ui) {}
 
-  static apiDefine(api) {
+  static defineAPI(api) {
     let st = api.mapStruct(this)
 
     return st
@@ -389,8 +389,8 @@ export class CubeGenerator extends ProceduralGen {
     ui.prop('toSphere')
   }
 
-  static apiDefine(api) {
-    let st = super.apiDefine(api)
+  static defineAPI(api) {
+    let st = super.defineAPI(api)
 
     st.int('dimen', 'dimen', 'dimen')
       .noUnits()
@@ -485,7 +485,7 @@ ProceduralMesh.STRUCT =
 
 export function buildProcMeshAPI(api) {
   for (let cls of Generators) {
-    cls.apiDefine(api)
+    cls.defineAPI(api)
   }
 
   let st = api.inheritStruct(ProceduralMesh, DataBlock)

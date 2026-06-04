@@ -114,7 +114,7 @@ export class CurvVert extends CustomDataElem {
     this.covmat = new Float64Array(16)
   }
 
-  static apiDefine(api, dstruct) {}
+  static defineAPI(api, dstruct) {}
 
   static propegateUpdateFlags(mesh, cd_curv) {
     for (let v of mesh.verts) {

@@ -49,7 +49,7 @@ export namespace WeightModes {
   let COTAN: number
 }
 export class ParamVertSettings extends LayerSettingsBase {
-  static apiDefine(api: any): any
+  static defineAPI(api: any): any
   updateGen: number
   smoothTangents: boolean
   weightMode: number

@@ -38,8 +38,8 @@ export class SolverElem extends CustomDataElem {
     this.mass = 1.0
   }
 
-  static apiDefine(api) {
-    let st = super.apiDefine(api)
+  static defineAPI(api) {
+    let st = super.defineAPI(api)
     return st
   }
 

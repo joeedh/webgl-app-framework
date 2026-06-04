@@ -88,7 +88,7 @@ mesh.GridSettings {
     this._last_coords_hash = ''
   }
 
-  static apiDefine(api: DataAPI) {
+  static defineAPI(api: DataAPI) {
     const st = api.mapStruct(GridSettings, true)
 
     st.flags('flag', 'flag', GridSettingFlags, 'Flag', 'Flags')
@@ -583,7 +583,7 @@ export interface IGridConstructor<GridClass = any> {
   define(): ICustomDataElemConstructor<GridClass>
   gridDefine(): IGridDef
   updateSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>, checkCoords?: boolean): void
-  apiDefine(api: DataAPI, st: DataStruct): void
+  defineAPI(api: DataAPI, st: DataStruct): void
 }
 
 export class GridVert extends GridVertBase<GridVert[]> {

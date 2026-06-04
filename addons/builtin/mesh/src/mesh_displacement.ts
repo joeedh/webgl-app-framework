@@ -671,7 +671,7 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     }
   }
 
-  static apiDefine(api: DataAPI, st: DataStruct) {
+  static defineAPI(api: DataAPI, st: DataStruct) {
     return st
   }
 
