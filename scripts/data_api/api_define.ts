@@ -85,19 +85,9 @@ let api = new DataAPI()
 import {Icons} from '../editors/icon_enum.js'
 import {SceneObjectData, setSceneObjectMaterialClass} from '../sceneobject/sceneobject_base.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
-import {
-  BrushDynamics,
-  BrushDynChannel,
-  BrushFlags,
-  BrushSpacingModes,
-  DynTopoSettings,
-  DynTopoSettingsSC,
-  SculptBrush,
-  SculptIcons,
-  SculptTools,
-} from '../brush/index'
+import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../brush/index'
 
-import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js'
+import {buildProcTextureAPI} from '../texture/proceduralTex.js'
 import {ImageBlock, ImageUser} from '../image/image.js'
 import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
 import {AppSettings} from '../core/settings.js'
@@ -613,72 +603,7 @@ export function api_define_dyntopo_sc(api: DataAPI): void {
 }
 
 export function api_define_brush(api: DataAPI, cstruct: DataStruct): void {
-  let bst = api_define_datablock(api, SculptBrush)
-
-  api_define_dyntopo(api)
-  api_define_dyntopo_sc(api)
-
-  bst.flags('flag', 'flag', BrushFlags, 'Flag').icons({
-    SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
-  })
-
-  bst
-    .float('smoothRadiusMul', 'smoothRadiusMul', 'Smooth Radius')
-    .description('Multiply brush radius by this factor for smoothing')
-    .range(0.125, 15.0)
-    .noUnits()
-
-  bst.float('rakeCurvatureFactor', 'rakeCurvatureFactor', 'Curvature Factor').noUnits().range(0.0, 1.0)
-
-  bst.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
-    EVEN: 'Fixed distance between brush points',
-    NONE: 'Use raw brush points',
-  })
-
-  bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
-
-  bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
-  bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(1.0)
-  bst.enum('tool', 'tool', SculptTools).icons(SculptIcons)
-
-  bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
-  bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
-
-  bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
-  bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
-  bst.color4('color', 'color', 'Primary Color')
-  bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
-  bst.float('concaveFilter', 'concaveFilter', 'Concave Wash').range(0.0, 1.0).noUnits()
-  bst.float('rake', 'rake', 'Rake').range(0.0, 1.0).noUnits()
-  bst.float('normalfac', 'normalfac', 'Normal Fac').range(0.0, 1.0).noUnits()
-  bst.float('pinch', 'pinch', 'Pinch').range(0.0, 1.0).noUnits()
-
-  bst
-    .float('smoothProj', 'smoothProj', 'Projection', 'How much smoothing should project to surface')
-    .range(0.0, 0.97)
-    .noUnits()
-
-  bst.struct('texUser', 'texUser', 'Texture', api.mapStruct(ProceduralTexUser))
-  bst.struct('dynTopo', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettings))
-  bst.struct('dynTopoSC', 'dynTopoSC', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
-
-  bst.curve1d('falloff', 'falloff', 'Falloff')
-  bst.curve1d('falloff2', 'falloff2', 'Falloff', 'Inbetween Falloff')
-
-  let dst
-
-  let cst = api.mapStruct(BrushDynChannel, true)
-  cst.bool('useDynamics', 'useDynamics', 'Use Dynamics').icon(Icons.BRUSH_DYNAMICS)
-  cst.curve1d('curve', 'curve', 'Curve')
-
-  dst = api.mapStruct(BrushDynamics, true)
-  let b = new BrushDynamics()
-
-  for (let ch of b.channels) {
-    dst.struct(ch.name, ch.name, ch.name, cst)
-  }
-
-  bst.struct('dynamics', 'dynamics', 'Dynamics', dst)
+  SculptBrush.defineAPI(api)
 }
 
 export function api_define_matrix4(api: DataAPI): DataStruct {

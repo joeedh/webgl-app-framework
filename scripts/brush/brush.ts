@@ -1,4 +1,4 @@
-import {Curve1D, SplineTemplates, util, Vector4} from '../path.ux/scripts/pathux.js'
+import {Curve1D, SplineTemplates, util, Vector4, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {Icons} from '../editors/icon_enum.js'
 import {DataBlock, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 import {NodeFlags} from '../core/graph.js'
@@ -14,10 +14,10 @@ import {nstructjs, Number4} from '../path.ux/pathux.js'
 import type {Scene} from '../scene/scene.js'
 import type {ToolContext} from '../core/context'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import {BrushDynamics} from './brush_dynamics'
+import {BrushDynamics, BrushDynChannel} from './brush_dynamics'
 export {BrushDynamics} from './brush_dynamics'
 
-import {SculptTools, BrushFlags, DynTopoFlags, DynTopoOverrides, BrushSpacingModes} from './brush_base'
+import {SculptTools, SculptIcons, BrushFlags, DynTopoFlags, DynTopoOverrides, BrushSpacingModes} from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
 
@@ -120,6 +120,78 @@ SculptBrush {
       inputs : {},
       outputs: {},
     }
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let bst = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    // Sibling structs referenced below must exist first.
+    DynTopoSettings.defineAPI(api)
+    DynTopoSettingsSC.defineAPI(api)
+
+    bst.flags('flag', 'flag', BrushFlags, 'Flag').icons({
+      SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
+    })
+
+    bst
+      .float('smoothRadiusMul', 'smoothRadiusMul', 'Smooth Radius')
+      .description('Multiply brush radius by this factor for smoothing')
+      .range(0.125, 15.0)
+      .noUnits()
+
+    bst.float('rakeCurvatureFactor', 'rakeCurvatureFactor', 'Curvature Factor').noUnits().range(0.0, 1.0)
+
+    bst.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
+      EVEN: 'Fixed distance between brush points',
+      NONE: 'Use raw brush points',
+    })
+
+    bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
+
+    bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
+    bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(1.0)
+    bst.enum('tool', 'tool', SculptTools).icons(SculptIcons)
+
+    bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
+    bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
+
+    bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
+    bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
+    bst.color4('color', 'color', 'Primary Color')
+    bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
+    bst.float('concaveFilter', 'concaveFilter', 'Concave Wash').range(0.0, 1.0).noUnits()
+    bst.float('rake', 'rake', 'Rake').range(0.0, 1.0).noUnits()
+    bst.float('normalfac', 'normalfac', 'Normal Fac').range(0.0, 1.0).noUnits()
+    bst.float('pinch', 'pinch', 'Pinch').range(0.0, 1.0).noUnits()
+
+    bst
+      .float('smoothProj', 'smoothProj', 'Projection', 'How much smoothing should project to surface')
+      .range(0.0, 0.97)
+      .noUnits()
+
+    bst.struct('texUser', 'texUser', 'Texture', api.mapStruct(ProceduralTexUser))
+    bst.struct('dynTopo', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettings))
+    bst.struct('dynTopoSC', 'dynTopoSC', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
+
+    bst.curve1d('falloff', 'falloff', 'Falloff')
+    bst.curve1d('falloff2', 'falloff2', 'Falloff', 'Inbetween Falloff')
+
+    let dst
+
+    let cst = api.mapStruct(BrushDynChannel, true)
+    cst.bool('useDynamics', 'useDynamics', 'Use Dynamics').icon(Icons.BRUSH_DYNAMICS)
+    cst.curve1d('curve', 'curve', 'Curve')
+
+    dst = api.mapStruct(BrushDynamics, true)
+    let b = new BrushDynamics()
+
+    for (let ch of b.channels) {
+      dst.struct(ch.name, ch.name, ch.name, cst)
+    }
+
+    bst.struct('dynamics', 'dynamics', 'Dynamics', dst)
+
+    return bst
   }
 
   equals(b: this, fast = true, ignoreRadiusStrength = false): boolean {
