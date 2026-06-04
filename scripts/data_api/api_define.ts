@@ -67,7 +67,7 @@ import {
   MeshSymFlags,
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
-import {LiteMesh, LiteMeshDisplayMode, LiteMeshAttrItem, LiteMeshAttrCategory} from '../lite-mesh/litemesh.js'
+import {LiteMesh} from '../lite-mesh/litemesh.js'
 import {Vertex, Element} from '../../addons/builtin/mesh/src/mesh_types.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
@@ -215,64 +215,7 @@ export function api_define_sceneobject_data(api: DataAPI, cls: AnyClass): DataSt
  * invoke it. Keeping the pattern here for now to match api_define_mesh.
  */
 export function api_define_litemesh(api: DataAPI): DataStruct {
-  let mstruct = api_define_sceneobject_data(api, LiteMesh)
-
-  let def = mstruct
-    .flags(
-      'displayColorMode',
-      'displayColorMode',
-      LiteMeshDisplayMode,
-      'Display',
-      'Attributes shown on the LiteMesh surface (combinable)'
-    )
-    .uiNames({
-      VERTEX_COLOR: 'Vertex Color',
-      POLY_GROUP  : 'Poly Groups',
-    })
-  def.on('change', function () {
-    window.redraw_viewport()
-  })
-
-  // ObData attribute manager (Wave 2b). The attribute ListBox binds to this
-  // `attrs` DataList; `showBuiltinAttrs` toggles the builtin filter.
-  mstruct.bool('showBuiltinAttrs', 'showBuiltinAttrs', 'Show builtin attributes').on('change', function () {
-    window.redraw_all?.()
-  })
-
-  // Category (AttrUse) of the attr selected in the ListBox. The setter rejects
-  // roles invalid for the attr's type/domain (validCategories), so offering the
-  // full set here is safe; setting a role also activates the layer.
-  mstruct
-    .enum('selectedAttrCategory', 'selectedAttrCategory', LiteMeshAttrCategory, 'Category', 'Attribute category / role')
-    .uiNames({NONE: 'None', COLOR: 'Color', UV: 'UV', POLYGROUP: 'Poly Group'})
-    .on('change', function () {
-      window.redraw_all?.()
-    })
-
-  let astruct = api.mapStruct(LiteMeshAttrItem, true)
-  astruct.string('attrName', 'attrName', 'Name').readOnly()
-
-  // list(valueProp, apiPathSegment, funcs): value read from mesh.attrItems,
-  // addressed in the data API as `object.data.attrs`.
-  mstruct.list('attrItems', 'attrs', {
-    getIter(api: DataAPI, list: LiteMeshAttrItem[]) {
-      return list
-    },
-    getLength(api: DataAPI, list: LiteMeshAttrItem[]) {
-      return list.length
-    },
-    get(api: DataAPI, list: LiteMeshAttrItem[], key: number) {
-      return list[key]
-    },
-    getKey(api: DataAPI, list: LiteMeshAttrItem[], obj: LiteMeshAttrItem) {
-      return list.indexOf(obj)
-    },
-    getStruct(api: DataAPI, list: LiteMeshAttrItem[], key: number) {
-      return api.mapStruct(LiteMeshAttrItem)
-    },
-  })
-
-  return mstruct
+  return LiteMesh.defineAPI(api)
 }
 
 export function api_define_imageuser(api: DataAPI): DataStruct {
