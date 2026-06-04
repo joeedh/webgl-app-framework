@@ -1,4 +1,5 @@
 import type {View3D} from '../editors/all.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {nstructjs, util, DataAPI, DataStruct} from '../path.ux/pathux.js'
 
 const sdigest = new util.HashDigest()
@@ -103,3 +104,5 @@ export class RenderEngine {
   }
 }
 RenderEngine.engines = []
+
+registerDataAPI(RenderSettings)

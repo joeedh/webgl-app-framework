@@ -1,4 +1,5 @@
 import {Container, DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 import '../util/polyfill.d.ts'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
@@ -1985,3 +1986,5 @@ graph.Graph {
     return ret
   }
 }
+
+registerDataAPI(Node)

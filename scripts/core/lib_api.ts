@@ -1,4 +1,5 @@
 import {nstructjs, ToolProperty, EnumProperty, util, DataAPI, DataStruct, DataPathError} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 import {IDGen} from '../util/util.js'
 import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
@@ -1377,3 +1378,6 @@ DataRefList {
     this._array = undefined
   }
 }
+
+registerDataAPI(DataBlock)
+registerDataAPI(Library)

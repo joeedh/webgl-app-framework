@@ -1,4 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {nstructjs, ToolOp, IntProperty, StringProperty, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {Icons} from '../editors/icon_enum.js'
@@ -225,5 +226,6 @@ Material {
 }
 
 DataBlock.register(Material)
+registerDataAPI(Material)
 
 DefaultMat = Object.freeze(new Material())

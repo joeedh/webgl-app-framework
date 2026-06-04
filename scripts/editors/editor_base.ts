@@ -1,3 +1,4 @@
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {
   nstructjs,
   Vector2,
@@ -2152,3 +2153,5 @@ export class DirectionChooser extends UIBase<ViewContext, Vector3> {
 }
 
 UIBase.register(DirectionChooser)
+
+registerDataAPI(App)

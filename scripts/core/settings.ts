@@ -1,4 +1,5 @@
 import {util, nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
 
@@ -363,3 +364,5 @@ AppSettings {
     }
   }
 }
+
+registerDataAPI(AppSettings)

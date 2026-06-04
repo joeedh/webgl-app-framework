@@ -1,5 +1,6 @@
 import {DataBlock, DataRef} from '../core/lib_api.js'
 import {nstructjs} from '../path.ux/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 let STRUCT = nstructjs.STRUCT
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js'
@@ -133,3 +134,4 @@ Light {
 
 DataBlock.register(Light)
 SceneObjectData.register(Light)
+registerDataAPI(Light)

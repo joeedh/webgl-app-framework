@@ -1,4 +1,5 @@
 import {Container, DataAPI, DataStruct, Matrix4, nstructjs, Vector2, Vector3, Vector4} from '../path.ux/pathux'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import type {ListBoxChangeEvent} from '../path.ux/pathux'
 import type {ScreenPickResult} from '../editors/view3d/findnearest'
 import type {ViewContext} from '../core/context'
@@ -1469,3 +1470,4 @@ export class LiteMesh extends SceneObjectData {
 
 DataBlock.register(LiteMesh)
 SceneObjectData.register(LiteMesh)
+registerDataAPI(LiteMesh)

@@ -1,4 +1,5 @@
 import {DataBlock} from '../core/lib_api.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import type {BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 import {Graph, INodeSocketSet, type GenericNode} from '../core/graph.js'
 import {nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
@@ -296,3 +297,5 @@ export function makeDefaultShaderNetwork() {
 
   return sn
 }
+
+registerDataAPI(ShaderNetwork)

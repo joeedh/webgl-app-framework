@@ -1,4 +1,5 @@
 import {DataBlock, DataRef, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {WidgetManager} from '../editors/view3d/widgets/widgets.js'
 import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
@@ -938,3 +939,4 @@ propIslandOnly : bool;
 }
 
 DataBlock.register(Scene)
+registerDataAPI(Scene)

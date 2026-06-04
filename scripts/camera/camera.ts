@@ -1,4 +1,5 @@
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {Vector3, Vector4, Matrix4} from '../util/vectormath.js'
 import {Shaders} from '../shaders/shaders.js'
 import {nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
@@ -328,3 +329,4 @@ CameraData {
 
 DataBlock.register(CameraData)
 SceneObjectData.register(CameraData)
+registerDataAPI(CameraData)

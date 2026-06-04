@@ -1,4 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {nstructjs, util, Matrix4, EulerOrders, Vector3, Vector4, IVector4, DataAPI, DataStruct} from '../path.ux/pathux.js'
 
 import {SocketFlags} from '../core/graph.js'
@@ -435,3 +436,4 @@ SceneObject {
 }
 
 DataBlock.register(SceneObject)
+registerDataAPI(SceneObject)

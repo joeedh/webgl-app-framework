@@ -1,6 +1,7 @@
 'use strict'
 
 import {util, nstructjs, Vector3, Matrix4, JSONAny, DataAPI, DataStruct} from '../path.ux/scripts/pathux'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs'
 import '../core/const'
 
@@ -1929,3 +1930,5 @@ Camera {
     reader(this)
   }
 }
+
+registerDataAPI(Camera)

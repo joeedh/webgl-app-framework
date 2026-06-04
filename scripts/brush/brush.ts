@@ -1,4 +1,5 @@
 import {Curve1D, SplineTemplates, util, Vector4, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {Icons} from '../editors/icon_enum.js'
 import {DataBlock, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 import {NodeFlags} from '../core/graph.js'
@@ -925,3 +926,5 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
 }
 
 ;(window as unknown as any)._getBrushes = getBrushes
+
+registerDataAPI(SculptBrush)
