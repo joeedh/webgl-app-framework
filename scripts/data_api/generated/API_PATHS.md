@@ -121,8 +121,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `library.nullobject` | list |  |  |  |
 | `library.object` | list |  |  |  |
 | `library.TetMesh` | list |  |  |  |
-| `library.light` | list |  |  |  |
 | `library.image` | list |  |  |  |
+| `library.light` | list |  |  |  |
 | `library.shadernetwork` | list |  |  |  |
 | `library.material` | list |  |  |  |
 | `library.screen` | list |  |  |  |

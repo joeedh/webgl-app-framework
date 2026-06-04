@@ -63,6 +63,17 @@ new post-process or scene-walk passes. Key conventions:
   themselves via `engine.encodeOverlaysCB`; the engine reopens a
   `loadOp: 'load'` pass against the same swap-chain view OutputPass
   wrote.
+- Shader-node materials (`scripts/shadernodes/`) are **WGSL-only** (the
+  legacy GLSL `ShaderGenerator`/`genCode()` path is gone; codegen lives
+  on the node classes via `ShaderNode.genWgsl`) and **attribute-driven**:
+  a material declares which named mesh attributes it reads (`AttributeNode`
+  → `WgslShaderGenerator.requestAttribute`), and `generateWgsl` returns a
+  slot-ordered `requestedAttrs` contract. For a `LiteMesh` the renderengine
+  hands that set to sculptcore (`setRequestedAttrs`/`setDrawShader`), which
+  builds one vertex buffer per attribute (default-filled when absent, never
+  throwing). See [documentation/shader-attributes.md](documentation/shader-attributes.md);
+  the C++ side is `sculptcore/documentation/spatial.md` ("Requested
+  attributes & the material draw shader").
 
 ## Picking
 

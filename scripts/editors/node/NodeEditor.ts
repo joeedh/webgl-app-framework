@@ -1449,7 +1449,9 @@ NodeEditor {
       menu.addItem(menu2)
     }
 
-    // NOTE: original assigns the menu-select callback to `onselect`; preserved verbatim.
+    // Use the public `on_select` hook (the old TS port cast to a non-existent
+    // `onselect`, so the callback never fired). Wrap the tool call in
+    // push/pop_ctx_active so node.add_node runs against this editor's graph.
     menu.on_select = (id: string | number) => {
       this.push_ctx_active()
       try {

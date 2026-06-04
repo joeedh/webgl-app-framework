@@ -1059,11 +1059,11 @@
       "kind": "list",
       "indexed": false
     },
-    "library.light": {
+    "library.image": {
       "kind": "list",
       "indexed": false
     },
-    "library.image": {
+    "library.light": {
       "kind": "list",
       "indexed": false
     },

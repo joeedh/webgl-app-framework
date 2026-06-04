@@ -1342,9 +1342,17 @@ export function buildPipelineDescriptor(
 
 /**
  * Build a `PipelineDescriptor` for a per-material WGSL shader emitted by
- * `WgslShaderGenerator`. Pinned to `LIT_MESH_VERTEX_LAYOUT` +
- * `DEFAULT_COLOR_TARGET` since every shader-network compile shares that
- * vertex shape (see `VERTEX_INPUTS_WGSL` in `shader_lib_wgsl.ts`).
+ * `WgslShaderGenerator`, for the fixed-layout (non-LiteMesh) draw path
+ * (SimpleMesh / scene objects). Pinned to `LIT_MESH_VERTEX_LAYOUT` +
+ * `DEFAULT_COLOR_TARGET`: those meshes upload the fixed
+ * position/normal/uv/color buffers regardless of which varyings the
+ * material reads (unread `@location`s are simply ignored).
+ *
+ * NB: the generated VsIn is now *dynamic* — a material with an
+ * `AttributeNode` declares extra `@location(2+)` inputs that this fixed
+ * layout does not supply. Those materials only render correctly through
+ * the LiteMesh/sculptcore draw path (which builds matching per-attribute
+ * vertex buffers); see `documentation/shader-attributes.md`.
  */
 export function buildMaterialPipelineDescriptor(wgsl: string, label: string): PipelineDescriptor {
   return {

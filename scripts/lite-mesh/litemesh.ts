@@ -1117,6 +1117,49 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /**
+   * A cheap order-sensitive hash of the mesh's attribute layers (name + type +
+   * domain + use, across every domain). The renderengine compares it frame to
+   * frame: when it changes but the material hash hasn't, only the *layers* moved
+   * (e.g. a color attribute was added/removed), and it calls
+   * `refreshRequestedAttrs()` to re-gather the per-attribute buffers without
+   * relinking the shader. Built from the same `attrItems` `setRequestedAttrs`
+   * resolves domains against, so the two always agree.
+   */
+  attrLayersSignature(): number {
+    let h = 0x811c9dc5 | 0 // FNV-1a basis
+    const mix = (v: number) => {
+      h ^= v | 0
+      h = Math.imul(h, 0x01000193)
+    }
+    for (const item of this.attrItems) {
+      const name = item.attrName
+      for (let i = 0; i < name.length; i++) {
+        mix(name.charCodeAt(i))
+      }
+      mix(item.attrType)
+      mix(item.domain)
+      mix(item.use)
+    }
+    return h | 0
+  }
+
+  /**
+   * Force the spatial tree to re-gather its per-attribute vertex buffers against
+   * the *current* mesh layers, even when the requested descriptor set is
+   * byte-identical (a layer added/removed whose domain matches the category
+   * default leaves the descriptors unchanged but flips a buffer between
+   * default-fill and real data). Cheaper than `setDrawShader` — no ShaderDef
+   * relink. The renderengine calls this when `attrLayersSignature` changed but
+   * the material hash didn't. Never throws.
+   */
+  refreshRequestedAttrs(): void {
+    if (!this.spatial) {
+      return
+    }
+    this.wasm.SpatialTree_refreshRequestedAttrs(this.spatial)
+  }
+
+  /**
    * DataBlock teardown — called by the library when the block is removed
    * (including the scene-clear that precedes a file load). Releases the C++
    * mesh + spatial tree (allocator-correct `Mesh_free`/`SpatialTree_free`, NOT

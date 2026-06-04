@@ -72,15 +72,33 @@ elemSize, slot}`. **`slot` is the contract**: the generated WGSL
 - `getMissingAttrSlots(): number[]` — slots sculptcore reports as absent on the
   mesh (advisory only; those buffers are default-filled, the frame is never
   blank).
+- `attrLayersSignature(): number` — a cheap order-sensitive hash of the mesh's
+  attribute layers (name + type + domain + use). Lets the renderengine notice a
+  *layer* change (a color/UV attr added or removed) independently of the
+  *material* hash.
+- `refreshRequestedAttrs()` — forces the spatial tree to re-gather its
+  per-attribute buffers against the current layers **without relinking the
+  shader**. Needed because `setRequestedAttrs` short-circuits on a byte-identical
+  descriptor set: adding/removing a layer whose domain matches the category
+  default leaves the descriptors unchanged, so the buffers would otherwise stay
+  default-filled. See `sculptcore/documentation/spatial.md`.
 
 The renderengine wires this in the BasePass material-compile step
 (`scripts/renderengine/renderengine_realtime.ts`): after `generateWgsl()`, for a
-LiteMesh object it calls `setRequestedAttrs` + `setDrawShader`, then
-`getMissingAttrSlots()` once and `console.warn`s per missing name.
+LiteMesh object it compares two cached signatures so the push runs only on a real
+change, never per frame:
+
+- **material hash changed** → `setRequestedAttrs` + `setDrawShader` (rebuilds the
+  C++ ShaderDef);
+- **only `attrLayersSignature` changed** → `setRequestedAttrs` +
+  `refreshRequestedAttrs` (re-gather buffers, keep the shader).
+
+Either way it then reads `getMissingAttrSlots()` once and `console.warn`s per
+missing name.
 
 Both backends go through the same `IWasmInterface` entry points
-(`SpatialTree_setRequestedAttrs` / `_setDrawShader` /
-`_getMissingAttrSlots`, `sculptcore/typescript/api/wasm.ts`). Per the native
+(`SpatialTree_setRequestedAttrs` / `_setDrawShader` / `_getMissingAttrSlots` /
+`_refreshRequestedAttrs`, `sculptcore/typescript/api/wasm.ts`). Per the native
 conventions: pointers never cross to JS, bulk reads copy (no zero-copy), and the
 seam never throws — a not-yet-filled buffer yields an empty view, a missing
 source layer yields a default-filled buffer (never an absent/half-sized one).

@@ -271,11 +271,7 @@ export class RealtimeEngine extends RenderEngine {
   // `WebGpuRenderContext`, an open `GPURenderPassEncoder` attached to the
   // canvas swap-chain (load-not-clear so OutputPass's pixels stay), and
   // the jittered projection matrix already applied to the rendered scene.
-  encodeOverlaysCB?: (
-    rctx: WebGpuRenderContext,
-    pass: GPURenderPassEncoder,
-    projmat: Matrix4
-  ) => void
+  encodeOverlaysCB?: (rctx: WebGpuRenderContext, pass: GPURenderPassEncoder, projmat: Matrix4) => void
   // Live for the duration of the `webgpuGraph.exec` call — the
   // `hooks.encodeOverlays` callback reads these to re-open a pass
   // against the same canvas attachment OutputPass just wrote.
@@ -330,7 +326,7 @@ export class RealtimeEngine extends RenderEngine {
   // a size change destroys the prior set and forces a fresh build.
   _ensureTarget(device: GPUDevice, key: string, w: number, h: number): RenderTarget {
     const cached = this.webgpuTargets.get(key)
-    if (cached && cached.width === w && cached.height === h) return cached
+    if (cached?.width === w && cached.height === h) return cached
     cached?.destroy()
     const target = new RenderTarget({
       device,
@@ -433,12 +429,7 @@ export class RealtimeEngine extends RenderEngine {
     return nodes
   }
 
-  _renderWebGPU(
-    camera: Camera,
-    viewbox_pos: number[],
-    viewbox_size: number[],
-    scene: Scene
-  ): void {
+  _renderWebGPU(camera: Camera, viewbox_pos: number[], viewbox_size: number[], scene: Scene): void {
     const canvas = (this.view3d as unknown as {canvas?: HTMLCanvasElement | OffscreenCanvas}).canvas
     const viewport = getActiveWebGpuViewport(canvas)
     if (!viewport) {
@@ -564,17 +555,19 @@ export class RealtimeEngine extends RenderEngine {
 
     const desc: GPURenderPassDescriptor = {
       label           : 'RealtimeEngine.overlays',
-      colorAttachments: [{
-        view,
-        loadOp : 'load',
-        storeOp: 'store',
-      }],
+      colorAttachments: [
+        {
+          view,
+          loadOp : 'load',
+          storeOp: 'store',
+        },
+      ],
     }
     if (depthView) {
       desc.depthStencilAttachment = {
-        view          : depthView,
-        depthLoadOp   : 'load',
-        depthStoreOp  : 'store',
+        view        : depthView,
+        depthLoadOp : 'load',
+        depthStoreOp: 'store',
       }
     }
 
@@ -629,10 +622,14 @@ export class RealtimeEngine extends RenderEngine {
       defHash = (defHash * 31 + k.charCodeAt(0)) | 0
     }
 
-    const hash = (((mat as unknown as {calcUpdateHash?: () => number}).calcUpdateHash?.() ?? 0) * 1009 + lightHash * 17 + defHash) | 0
+    const hash =
+      (((mat as unknown as {calcUpdateHash?: () => number}).calcUpdateHash?.() ?? 0) * 1009 +
+        lightHash * 17 +
+        defHash) |
+      0
 
     const existing = this.webgpuMaterialStates.get(mat)
-    if (existing && existing.hash === hash && !(mat as unknown as {_regen?: number})._regen) {
+    if (existing?.hash === hash && !(mat as unknown as {_regen?: number})._regen) {
       return existing
     }
 
@@ -645,11 +642,7 @@ export class RealtimeEngine extends RenderEngine {
     try {
       def = (
         mat as unknown as {
-          generateWgsl: (
-            s: unknown,
-            l: IRenderLights,
-            d?: Record<string, number | string | boolean>
-          ) => WgslDef
+          generateWgsl: (s: unknown, l: IRenderLights, d?: Record<string, number | string | boolean>) => WgslDef
         }
       ).generateWgsl(scene, rlights, matDefines)
     } catch (err) {
@@ -1028,8 +1021,8 @@ export class RealtimeEngine extends RenderEngine {
     const jit = getJitterSamples(55)
     const shift = jit[this.uSample % jit.length]
     const r = this.renderSettings.filterWidth
-    const sx = (shift[0] * r / viewbox_size[0]) * 0.5
-    const sy = (shift[1] * r / viewbox_size[1]) * 0.5
+    const sx = ((shift[0] * r) / viewbox_size[0]) * 0.5
+    const sy = ((shift[1] * r) / viewbox_size[1]) * 0.5
     const proj = new Matrix4(this.getProjMat(camera, viewbox_size))
     const jitterMat = new Matrix4()
     jitterMat.translate(sx, sy, 0.0)
@@ -1091,31 +1084,48 @@ export class RealtimeEngine extends RenderEngine {
       // LiteMesh integration: its sculpt draw batch renders with the C++ tree
       // shader, not this BasePass pipeline. Feed it the compiled material WGSL +
       // requested attribute set so sculptcore builds the matching vertex buffers
-      // and draws with the material. Guarded on the material hash — setDrawShader
-      // rebuilds the C++ ShaderDef (drops the batch, flags leaves), so it must
-      // run only on a genuine material change, never per frame. Duck-typed to
-      // keep the renderengine decoupled from the lite-mesh layer.
+      // and draws with the material. Guarded on two cheap signatures so the work
+      // runs only when something actually changed, never per frame:
+      //   • material hash — the WGSL/attr set changed; re-push both (setDrawShader
+      //     rebuilds the C++ ShaderDef: drops the batch, flags leaves).
+      //   • attr-layer signature — the *mesh* layers changed (a color/UV layer
+      //     added or removed) while the material is unchanged. The requested
+      //     descriptors can be byte-identical (a layer whose domain matches the
+      //     category default), so setRequestedAttrs would short-circuit and the
+      //     buffers would stay default-filled; refreshRequestedAttrs forces the
+      //     per-attribute buffers to re-gather without relinking the shader.
+      // Duck-typed to keep the renderengine decoupled from the lite-mesh layer.
       const litemesh = ob.data as unknown as {
         setRequestedAttrs?: (reqs: RequestedAttrDesc[]) => void
         setDrawShader?: (wgsl: string) => void
         getMissingAttrSlots?: () => number[]
+        attrLayersSignature?: () => number
+        refreshRequestedAttrs?: () => void
         _engineDrawShaderHash?: number
+        _engineAttrLayersSig?: number
       }
-      if (typeof litemesh.setDrawShader === 'function' && litemesh._engineDrawShaderHash !== state.hash) {
+      const layerSig = litemesh.attrLayersSignature?.() ?? 0
+      const matChanged = litemesh._engineDrawShaderHash !== state.hash
+      const layersChanged = litemesh._engineAttrLayersSig !== layerSig
+      if (typeof litemesh.setDrawShader === 'function' && (matChanged || layersChanged)) {
         try {
           litemesh.setRequestedAttrs?.(state.requestedAttrs)
-          litemesh.setDrawShader(state.wgsl)
+          if (matChanged) {
+            litemesh.setDrawShader(state.wgsl)
+          } else {
+            // Only the mesh layers moved — re-gather buffers, keep the shader.
+            litemesh.refreshRequestedAttrs?.()
+          }
           const missing = litemesh.getMissingAttrSlots?.() ?? []
           if (missing.length > 0) {
-            const names = state.requestedAttrs
-              .filter((r) => missing.includes(r.slot))
-              .map((r) => r.name)
+            const names = state.requestedAttrs.filter((r) => missing.includes(r.slot)).map((r) => r.name)
             console.warn(
               `[renderengine.webgpu] mat-${mat.lib_id}: ${missing.length} requested attribute(s) ` +
                 `absent on the mesh, rendering with defaults: ${names.join(', ')}`
             )
           }
           litemesh._engineDrawShaderHash = state.hash
+          litemesh._engineAttrLayersSig = layerSig
         } catch (err) {
           console.error(`[renderengine.webgpu] LiteMesh attr push failed for mat-${mat.lib_id}:`, err)
         }
@@ -1218,13 +1228,7 @@ export class RealtimeEngine extends RenderEngine {
     }
   }
 
-  render(
-    camera: Camera,
-    gl: WebGL2RenderingContext,
-    viewbox_pos: number[],
-    viewbox_size: number[],
-    scene: Scene
-  ) {
+  render(camera: Camera, gl: WebGL2RenderingContext, viewbox_pos: number[], viewbox_size: number[], scene: Scene) {
     const shash = this.renderSettings.calcUpdateHash()
     if (this._last_update_hash !== shash) {
       this._last_update_hash = shash
@@ -1247,13 +1251,7 @@ export class RealtimeEngine extends RenderEngine {
     }
   }
 
-  _render(
-    camera: Camera,
-    gl: WebGL2RenderingContext,
-    viewbox_pos: number[],
-    viewbox_size: number[],
-    scene: Scene
-  ) {
+  _render(camera: Camera, gl: WebGL2RenderingContext, viewbox_pos: number[], viewbox_size: number[], scene: Scene) {
     this.scene = scene
     this.gl = gl
     this.camera = camera

@@ -1,10 +1,13 @@
 /**
  * WGSL port of `shader_lib.ts` ShaderFragments + LightGen + BRDFGen.
  *
- * Runs side-by-side with the GLSL version. The GLSL emitter
- * (`ShaderGenerator` in `shader_nodes.ts`) is untouched; the WGSL
- * emitter (`WgslShaderGenerator`) consumes these strings and produces a
- * pipeline-ready WGSL module.
+ * The legacy GLSL emitter has been deleted; shader-node materials are
+ * WGSL-only. The WGSL emitter (`WgslShaderGenerator`) consumes these
+ * strings and produces a pipeline-ready WGSL module. Note the vertex
+ * stages (`VsIn`/`VsOut`/`vs_main`) are no longer static — the generator
+ * builds them dynamically per material from its requested-attribute set
+ * (`_buildVertexStagesWgsl`), so only the uniform/closure/light fragments
+ * below are shared here.
  *
  * Conventions:
  * - Per-frame uniforms live in `@group(0)` (mirrors `wgsl_shaders.ts`).
@@ -77,50 +80,13 @@ struct FrameUniforms {
 @group(0) @binding(2) var passAO_smp : sampler;
 `
 
-/**
- * Vertex attributes — `position` / `normal` / `uv` / `color`. Matches
- * `LIT_MESH_VERTEX_LAYOUT` in `wgsl_shaders.ts` so existing SimpleMesh /
- * scene-object uploads work unchanged. Per-object `id` lives on the
- * object uniform block (`object.object_id`), not as a vertex attribute.
+/*
+ * The vertex stages (`VsIn`/`VsOut`/`vs_main`) used to live here as fixed
+ * `position`/`normal`/`uv`/`color` templates. They're now generated per
+ * material from the requested-attribute set — see
+ * `WgslShaderGenerator._buildVertexStagesWgsl` / `FALLBACK_VERTEX_WGSL` in
+ * `shader_nodes_wgsl.ts`.
  */
-export const VERTEX_INPUTS_WGSL = `
-struct VsIn {
-  @location(0) position : vec3f,
-  @location(1) normal   : vec3f,
-  @location(2) uv       : vec2f,
-  @location(3) color    : vec4f,
-};
-
-struct VsOut {
-  @builtin(position) clipPos : vec4f,
-  @location(0) vColor    : vec4f,
-  @location(1) vNormal   : vec3f,
-  @location(2) vGlobalCo : vec3f,
-  @location(3) vLocalCo  : vec3f,
-  @location(4) vuv       : vec2f,
-};
-`
-
-/**
- * Vertex entry point — emits the same per-fragment varyings the GLSL
- * vertex template produces (`vGlobalCo`, `vLocalCo`, `vNormal`, `vColor`,
- * `vuv`, `vId`). Caller doesn't have to override this; the WGSL emitter
- * appends fragment code generated from the shader graph.
- */
-export const VERTEX_MAIN_WGSL = `
-@vertex
-fn vs_main(in : VsIn) -> VsOut {
-  var out : VsOut;
-  let p_obj = object.objectMatrix * vec4f(in.position, 1.0);
-  out.clipPos   = frame.projectionMatrix * vec4f(p_obj.xyz, 1.0);
-  out.vColor    = in.color;
-  out.vNormal   = (object.normalMatrix * vec4f(in.normal, 0.0)).xyz;
-  out.vGlobalCo = p_obj.xyz;
-  out.vLocalCo  = in.position;
-  out.vuv       = in.uv;
-  return out;
-}
-`
 
 /**
  * Closure helpers — vec3/vec4/float → Closure coercion, used by
