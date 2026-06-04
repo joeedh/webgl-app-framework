@@ -341,6 +341,11 @@ migration. Add to it when you discover another one.
   which stay pinned at their recorded commits (third-party, version-locked).
 - The `master` branch must always link submodules at their default-branch commits
   (never pin `master`'s gitlinks to a submodule feature branch).
+- **Commit a parent repo and its submodules together** whenever their branch names
+  match, or both are on their default branches: make the submodule commit, then
+  bump the parent's gitlink, as one logical change. The pinned exceptions
+  (`sculptcore/emsdk`, `sculptcore/extern/imgui`) are excluded — bump those
+  deliberately, never as part of a co-commit.
 
 ## Secondary-agent worktree
 
