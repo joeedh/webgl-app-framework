@@ -280,14 +280,15 @@ baseline is 106 pre-existing errors concentrated in
 ## Data API paths
 
 See [documentation/datapath-bindings.md](documentation/datapath-bindings.md)
-for the binding-system overview (how `api_define.js` declares props, and how
-enum/flag icons attach via `.icons(...)`).
+for the binding-system overview (how each class's `static defineAPI` declares
+props, and how enum/flag icons attach via `.icons(...)`).
 
 Valid `path` strings for `container.prop("...")` (and `slider`, `check`,
 `checkenum`, `listenum`, `pathlabel`, `textbox`, plus `<prop path="...">`
 xmlpage tags) are catalogued by walking `getDataAPI()`
-(`scripts/data_api/api_define.js`). Run `pnpm gen:paths` after editing
-`api_define.js` to regenerate `scripts/data_api/generated/`:
+(`scripts/data_api/api_define.ts`). Run `pnpm gen:paths` after editing
+`api_define.ts` (or a class's `defineAPI`) to regenerate
+`scripts/data_api/generated/`:
 
 - `API_PATHS.md` — human/LLM reference (path, type, UI name, range, unit, enum)
 - `api-paths.json` — machine-readable catalog
@@ -299,6 +300,22 @@ type-checking (`pnpm build` does not — generation is type/lint-only). The
 `pathux/valid-datapath` ESLint rule (warn) flags `prop(...)` strings not in the
 catalog; dynamically-indexed paths (e.g. `flag[ENUMNAME]`) warn because the
 walker can't enumerate them — those are expected and harmless.
+
+**How `getDataAPI()` is built.** Each participating class exposes
+`static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct` (subclasses
+chain `super.defineAPI(api, struct)` onto their own struct — no
+`inheritStruct`-style ordering dependency for plain cross-links). `getDataAPI()`
+(`scripts/data_api/api_define.ts`) runs in two passes: a **population pass**
+(non-class pre-steps like sockets/matrix4/customdata → `registerCoreDataAPIClasses()`
+→ a `defineOnce` loop over `dataAPIRegistry` → class-dependent helpers that
+`inheritStruct` from `DataBlock`), then an explicit **attach pass** that wires
+the populated structs into the `ToolContext` tree. Register a new class with
+`registerDataAPI(cls)`; the only call-order constraints are the three
+`inheritStruct`/`mergeStruct` edges (`ShaderNetwork → Material`,
+`Element → Vertex`, `Mesh → CurveSpline`), enforced by the order in
+`registerCoreDataAPIClasses()`. The on-disk catalog is **canonically sorted**
+(lexicographic by normalized path in `tools/gen-datapaths.mjs`), so the committed
+`generated/` files are stable regardless of population/traversal order.
 
 ## Cross-layer follow-ups
 

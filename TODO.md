@@ -35,6 +35,26 @@ After `scripts/curve/*` and `curvetool*.ts` move into `addons/builtin/curve/src/
   - the `KnotDataLayer` CustomData type is registered via a runtime hook from the curve addon's register() (curve depends on mesh, registers its CustomData class into mesh's registry on load).
   The latter is the more idiomatic dependency-injection direction — mesh shouldn't know what KnotDataLayer is.
 
+## Data API `defineAPI` registry — addon class decoupling (from api-define refactor)
+
+The `defineAPI` refactor flipped `getDataAPI()` to iterate `dataAPIRegistry`
+(see `documentation/plans/api-define-defineapi-refactor.md`). Core
+`scripts/data_api/api_define.ts` still **hard-imports** the addon-owned classes
+it registers, which is the registry's remaining layering debt:
+
+- `Mesh`, `Vertex`, `Element` — from `addons/builtin/mesh/src/*`
+- `CurveSpline` — from `addons/builtin/curve/src/*` (supersedes the older
+  `api_define.js:41` note above)
+- `BVHSettings` — from the pbvh_sculpt addon
+
+Follow-up: route their registration through each addon's `register(api)` hook
+(`api.register(cls)` → `registerDataAPI(cls)`) so core `api_define.ts` stops
+importing `addons/builtin/*`. The registry already supports this — the classes
+just need to call `registerDataAPI` from their addon's lifecycle hook instead of
+being imported and registered centrally in `registerCoreDataAPIClasses()`. Mind
+the three `inheritStruct` ordering edges (`ShaderNetwork → Material`,
+`Element → Vertex`, `Mesh → CurveSpline`) when distributing registration.
+
 ## Non-addon side-effect imports (registration triggers)
 
 Some core-side files contain `import '…/addons/builtin/<id>/src/…'` purely

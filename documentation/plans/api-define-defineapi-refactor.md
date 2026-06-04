@@ -246,29 +246,73 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   `registerDataAPI` wiring stays deferred to Phase 4 (the registry isn't
   consumed until the driver flips).
 
-- **Phase 4 — flip `getDataAPI()` to drive the registry.** Replace the explicit
-  call list with iteration over `dataAPIRegistry`, calling each `defineAPI`
-  once. The only ordering work is the inherit/merge sources (§2): a
-  `defineOnce(cls)`-style guard that runs the *source* class's `defineAPI`
-  before the dependent's, or those few sources ordered at the front. Keep the
-  previous explicit list behind a feature check until the catalog matches, then
-  delete it. Gate: catalog unchanged.
+- **Phase 4 — flip `getDataAPI()` to drive the registry.** *(done.)*
+  `getDataAPI()` now builds in two explicit passes:
+  - **Population pass** — a handful of non-class struct builders stay explicit
+    (`api_define_matrix4`/`_velpan` for path.ux submodule types,
+    `api_define_nodesockets` for the socket inherit loop, `api_define_shadernode`
+    = `Node.defineAPI` on ShaderNode's struct, `api_define_graph` for the Graph
+    free struct, `buildCDAPI`); then **every participating class is populated by
+    iterating `dataAPIRegistry`** (`registerCoreDataAPIClasses()` + a
+    `defineOnce` guard). Class-dependent helpers that `inheritStruct` from a
+    populated class (`buildProcTextureAPI`, `buildProcMeshAPI`,
+    `api_define_graphclasses`) run *after* the loop.
+  - **Attach pass** — the ToolContext tree assembly (`cstruct.struct/list`,
+    `setRoot`, the inline `objects`/`datablocks`/`blocks` lists, `selectMask`,
+    `material`/`settings`/`propCache`, `buildEditorsAPI`, `buildToolSysAPI`)
+    stays an explicit driver; it wires the now-populated class structs under
+    named paths by reference (`mapStruct(_, false)`).
 
-- **Phase 5 — cleanup.** Delete dead shims, fold the per-subsystem dispatch
-  loops (`buildEditorsAPI`/`buildToolSysAPI`) into the registry pass where
-  possible, update `documentation/datapath-bindings.md` and the
-  `api_define_litemesh` legacy note (`api_define.ts:287–296`, which already
-  flags the intended direction). Update `CLAUDE.md`'s "Data API paths" section.
+  The inherit/merge ordering turned out to be **three** edges, not one:
+  `ShaderNetwork → Material`, `Element → Vertex`, `Mesh → CurveSpline`. They are
+  handled by registration order in `registerCoreDataAPIClasses()`.
+  `DefineAPIClass` became an `(abstract new …) & {defineAPI}` intersection so
+  class objects type-check both as registrants and as `mapStruct` keys. Gate
+  met: catalog byte-identical (818 paths, 0 diffs), tsgo clean.
+
+  Two non-class helper steps had real ordering constraints the original plan
+  missed: `buildCDAPI` must run *before* the loop (Mesh attaches `CustomData`
+  by ref, so the struct must exist), and `buildProcMeshAPI` /
+  `buildProcTextureAPI` / `api_define_graphclasses` must run *after* (they
+  `inheritStruct` from `DataBlock`).
+
+- **Canonical catalog ordering (`tools/gen-datapaths.mjs`).** *(done.)* Before
+  flipping the driver, the generator now sorts the deduped entries
+  lexicographically by normalized path before rendering, so the on-disk catalog
+  order is determined by content, not by `walkAPI` traversal / struct-build
+  order. This decouples the committed `generated/` files from any future
+  reordering of the population pass (the value-compare gate was already
+  order-independent; this makes the *committed files* order-independent too).
+  The one-time recanonicalization also dropped 4 stale `toolDefaults.light.*`
+  cache-artifact keys (822 → 818), aligning the committed catalog with the
+  generator's deterministic output.
+
+- **Phase 5 — cleanup.** *(done.)* Deleted the dead per-subsystem
+  `api_define_<x>` shims (23 of them) and their orphaned imports; `getDataAPI`
+  is the sole consumer and no longer calls them. `api_define_library` is now
+  attach-only. **`buildEditorsAPI`/`buildToolSysAPI` were left explicit** —
+  editor/toolop registration doesn't fit the per-class `defineAPI` registry; a
+  follow-up could give it its own registry pass. **Addon-import decoupling
+  (core `api_define.ts` still hard-imports `Mesh`/`Vertex`/`Element`/
+  `BVHSettings`/`CurveSpline` from `addons/builtin/*`) is the registry's larger
+  payoff and is left as a follow-up** (route them through each addon's
+  `register(api)` hook → `registerDataAPI`); see `TODO.md`. `CLAUDE.md`'s "Data
+  API paths" section and `documentation/datapath-bindings.md` updated.
 
 ## Risks / watch-list
 
 - **Iteration order vs. catalog stability** — bounded to the inherit/merge
-  sources (see §2); plain `mapStruct` references are order-independent. The
-  `propCache`/`toolDefaults` paths are also sensitive to *runtime* state (the
-  port investigation found the baseline's extra `toolDefaults.light.*` paths
-  were a cache artifact, not structural); don't be fooled by those if they
-  reappear — compare against a freshly regenerated pre-phase catalog, not an old
-  one.
+  sources (see §2); plain `mapStruct` references are order-independent.
+  *Resolved two ways:* (a) the inherit edges are ordered in
+  `registerCoreDataAPIClasses()` (`ShaderNetwork → Material`, `Element →
+  Vertex`, `Mesh → CurveSpline`); (b) the on-disk catalog is now canonically
+  sorted (`tools/gen-datapaths.mjs`), so even a *reordering* of the population
+  pass produces no committed-file diff. The `propCache`/`toolDefaults` paths are
+  also sensitive to *runtime* state (the port investigation found the
+  baseline's extra `toolDefaults.light.*` paths were a cache artifact, not
+  structural); don't be fooled by those if they reappear — compare against a
+  freshly regenerated pre-phase catalog, not an old one. The recanonicalization
+  removed those 4 artifact keys from the committed catalog (822 → 818).
 - **Addon teardown** — addon classes must register through the addon
   `register(api)` hook, **not** module-scope side effects, so they unregister
   cleanly (per `CLAUDE.md` addon rules). `registerDataAPI` from addon code goes
@@ -281,13 +325,23 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   api.mapStruct(this)` default must match each call site's existing flag or the
   struct identity/dedup changes. Verify per class during Phase 3.
 
-## Definition of done
+## Definition of done — *met*
 
-- One convention: `static defineAPI(api, struct?): DataStruct` everywhere; no
-  `apiDefine`, no `api_define_*` free functions (except a possible thin internal
-  ordering driver).
-- `getDataAPI()` builds the API by iterating `dataAPIRegistry`.
-- `pnpm gen:paths` catalog byte-identical to pre-refactor; `npx tsgo --noEmit`
-  clean.
-- `documentation/datapath-bindings.md` + `CLAUDE.md` updated to describe the
-  single pattern.
+- ✅ One convention: `static defineAPI(api, struct?): DataStruct` on every
+  participating class; no `apiDefine`, no per-subsystem `api_define_*` free
+  functions. The handful that remain are the non-class / thin-driver helpers
+  noted in Phase 5 (`api_define_socket`, `_node`, `_datablock`, `_shadernode`,
+  `_graph`, `_nodesockets`, `_library`, `_velpan`, `_matrix4`), not class
+  populators.
+- ✅ `getDataAPI()` builds the class structs by iterating `dataAPIRegistry`
+  (population pass: non-class pre-steps → `registerCoreDataAPIClasses()` →
+  `defineOnce` loop → class-dependent helpers), then assembles the
+  `ToolContext` tree in an explicit attach pass.
+- ✅ Catalog byte-identical to pre-refactor (818 paths, 0 diffs) and now
+  canonically sorted, so it stays stable under any future reordering of the
+  population pass; `npx tsgo --noEmit` clean.
+- ✅ `documentation/datapath-bindings.md` + `CLAUDE.md` "Data API paths" updated
+  to describe the registry-driven build and canonical ordering.
+- ⏭️ Follow-up (tracked in `TODO.md`): route addon class registration
+  (`Mesh`/`Vertex`/`Element`/`BVHSettings`/`CurveSpline`) through each addon's
+  `register(api)` hook so core `api_define.ts` stops importing `addons/builtin/*`.
