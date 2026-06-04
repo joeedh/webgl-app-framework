@@ -276,6 +276,19 @@ async function main() {
     unique.push(e)
   }
 
+  // Canonical (lexicographic) ordering. walkAPI yields entries in DataAPI
+  // struct-build / traversal order, and renderJSON / renderMarkdown preserve
+  // that input order (markdown only sorts top-level group keys, not entries
+  // within a group; renderDts already sorts its literals internally). Sorting
+  // by normalized path here decouples the on-disk catalog order from the build
+  // order, so reordering when/how structs are populated (e.g. registry-driven
+  // defineAPI) produces no spurious catalog diffs — only real content changes.
+  unique.sort((a, b) => {
+    const ka = normalizePath(a.path)
+    const kb = normalizePath(b.path)
+    return ka < kb ? -1 : ka > kb ? 1 : 0
+  })
+
   await mkdir(OUT_DIR, {recursive: true})
   const json = renderJSON(unique)
   await writeFile(join(OUT_DIR, 'api-paths.json'), json, 'utf8')
