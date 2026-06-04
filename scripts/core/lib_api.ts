@@ -1,4 +1,4 @@
-import {nstructjs, ToolProperty, EnumProperty, util} from '../path.ux/scripts/pathux.js'
+import {nstructjs, ToolProperty, EnumProperty, util, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {IDGen} from '../util/util.js'
 import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
@@ -223,6 +223,41 @@ DataBlock {
       flag       : 0,
       icon       : -1,
     } as IBlockDef
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let dstruct = Node.defineAPI(api, struct ?? api.mapStruct(this, true))
+
+    dstruct.int('lib_id', 'lib_id', 'Lib ID').readOnly()
+
+    let def = dstruct.flags('lib_flag', 'lib_flag', BlockFlags, 'Flag')
+
+    def.icons({
+      FAKE_USER: Icons.FAKE_USER,
+    })
+
+    def.on('change', function (this: {dataref: any}, newval: any, oldval: any) {
+      let owner = this.dataref
+      console.log('Fake user change', newval, oldval)
+
+      if (newval === oldval) {
+        return
+      }
+
+      if (newval) {
+        owner.lib_users++
+      } else {
+        owner.lib_users--
+      }
+    })
+
+    def.descriptions({
+      FAKE_USER: 'Protect against auto delete',
+    })
+
+    dstruct.string('name', 'name', 'name')
+
+    return dstruct
   }
 
   /**

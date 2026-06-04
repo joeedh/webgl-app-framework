@@ -46,7 +46,7 @@ import {WidgetFlags} from '../editors/view3d/widgets/widgets.js'
 import {AddLightOp} from '../light/light_ops.js'
 import {Light} from '../light/light.js'
 import {DataAPI, DataPathError, DataStruct} from '../path.ux/scripts/pathux.js'
-import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags, onBlockRegister} from '../core/lib_api.js'
+import {DataBlock, DataRef, Library, BlockTypes, BlockSet, onBlockRegister} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
 import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js'
@@ -73,7 +73,7 @@ import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {Material} from '../core/material.js'
 import '../shadernodes/allnodes.js'
 import {ShaderNode} from '../shadernodes/shader_nodes.js'
-import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js'
+import {Graph, Node, SocketFlags, NodeSocketType} from '../core/graph.js'
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js'
@@ -84,7 +84,7 @@ import {DebugEditor} from '../editors/debug/DebugEditor.js'
 
 let api = new DataAPI()
 import {Icons} from '../editors/icon_enum.js'
-import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
+import {SceneObjectData, setSceneObjectMaterialClass} from '../sceneobject/sceneobject_base.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
 import {
   BrushDynamics,
@@ -103,6 +103,12 @@ import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js'
 import {BVHSettings} from '../../addons/builtin/mesh/src/bvh.js'
 import {AppSettings} from '../core/settings.js'
+
+// Inject the Material class into sceneobject_base so SceneObjectData.defineAPI
+// can map its `materials` list struct without a sceneobject_base → core/material
+// import cycle (see setSceneObjectMaterialClass). This runs at module load, so
+// the class is set before getDataAPI() walks the API.
+setSceneObjectMaterialClass(Material)
 
 /**
  * A class constructor accepted by `api.mapStruct` / `inheritStruct`. The
@@ -173,93 +179,11 @@ function api_define_socket(api: DataAPI, cls: AnyClass = NodeSocketType): DataSt
 }
 
 function api_define_node(api: DataAPI, cls: AnyClass = Node): DataStruct {
-  let nstruct = api.mapStruct(cls, true)
-
-  nstruct.flags('graph_flag', 'graph_flag', NodeFlags, 'Graph Flags', 'Flags')
-  nstruct.int('graph_id', 'graph_id', 'Graph ID', 'Unique graph ID').readOnly()
-
-  function defineSockets(inorouts: 'inputs' | 'outputs'): void {
-    nstruct.list('', inorouts, [
-      function getIter(api: DataAPI, list: any) {
-        return (function* () {
-          for (let k in list[inorouts]) {
-            yield list[inorouts][k]
-          }
-        })()
-      },
-      function getLength(api: DataAPI, list: any) {
-        return Object.keys(list[inorouts]).length
-      },
-      function get(api: DataAPI, list: any, key: string) {
-        return list[inorouts][key]
-      },
-      function getKey(api: DataAPI, list: any, obj: any) {
-        for (let k in list[inorouts]) {
-          if (list[inorouts][k] === obj) return k
-        }
-      },
-      function getStruct(api: DataAPI, list: any, key: string) {
-        let obj = list[inorouts][key]
-
-        if (obj === undefined) return api.getStruct(NodeSocketType)
-
-        let ret
-
-        if (obj.graph_flag & SocketFlags.INSTANCE_API_DEFINE) {
-          if (!api.hasStruct(obj)) {
-            ret = api.mapStruct(obj, true)
-            obj.defineInstanceAPI(api, ret)
-          } else {
-            ret = api.getStruct(obj)
-          }
-        } else {
-          ret = api.getStruct(obj.constructor)
-        }
-
-        return ret === undefined ? api.getStruct(NodeSocketType) : ret
-      },
-    ])
-  }
-
-  defineSockets('inputs')
-  defineSockets('outputs')
-
-  return nstruct
+  return Node.defineAPI(api, api.mapStruct(cls, true))
 }
 
 function api_define_datablock(api: DataAPI, cls: AnyClass = DataBlock): DataStruct {
-  let dstruct = api_define_node(api, cls)
-
-  dstruct.int('lib_id', 'lib_id', 'Lib ID').readOnly()
-
-  let def = dstruct.flags('lib_flag', 'lib_flag', BlockFlags, 'Flag')
-
-  def.icons({
-    FAKE_USER: Icons.FAKE_USER,
-  })
-
-  def.on('change', function (this: ApiCallbackThis, newval: any, oldval: any) {
-    let owner = this.dataref
-    console.log('Fake user change', newval, oldval)
-
-    if (newval === oldval) {
-      return
-    }
-
-    if (newval) {
-      owner.lib_users++
-    } else {
-      owner.lib_users--
-    }
-  })
-
-  def.descriptions({
-    FAKE_USER: 'Protect against auto delete',
-  })
-
-  dstruct.string('name', 'name', 'name')
-
-  return dstruct
+  return DataBlock.defineAPI(api, api.mapStruct(cls, true))
 }
 
 export function api_define_meshelem(api: DataAPI): void {
@@ -277,28 +201,7 @@ export function api_define_meshvertex(api: DataAPI): void {
 }
 
 export function api_define_sceneobject_data(api: DataAPI, cls: AnyClass): DataStruct {
-  let mstruct = api_define_datablock(api, cls)
-
-  mstruct.list<Material[], number, Material>('materials', 'materials', [
-    function getIter(api: DataAPI, list: Material[]) {
-      return list
-    },
-    function getLength(api: DataAPI, list: Material[]) {
-      return list.length
-    },
-    function get(api: DataAPI, list: Material[], key: number) {
-      return list[key]
-    },
-    function getKey(api: DataAPI, list: Material[], obj: Material) {
-      return list.indexOf(obj)
-    },
-    function getStruct(api: DataAPI, list: Material[], key: number) {
-      return api.mapStruct(Material)
-    },
-  ])
-
-  mstruct.bool('usesMaterial', 'usesMaterial', 'Uses Material').readOnly()
-  return mstruct
+  return SceneObjectData.defineAPI(api, api.mapStruct(cls, true))
 }
 
 /**
