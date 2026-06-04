@@ -48,7 +48,7 @@ import {DataAPI, DataPathError, DataStruct} from '../path.ux/scripts/pathux.js'
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, onBlockRegister} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
-import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js'
+import {App, buildEditorsAPI} from '../editors/editor_base.js'
 import {NodeEditorBase} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
@@ -451,52 +451,9 @@ export function api_define_velpan(api: DataAPI, parent?: DataStruct): DataStruct
 }
 
 export function api_define_screen(api: DataAPI, parent: DataStruct): void {
-  let st = api.mapStruct(App)
+  let st = App.defineAPI(api)
 
   parent.struct('screen', 'screen', 'Screen', st)
-
-  st.list('sareas', 'editors', [
-    //list should be main App (Screen) instance
-    function get(api: DataAPI, list: any, key: number) {
-      return list[key].area
-    },
-
-    function getKey(api: DataAPI, list: any, obj: any) {
-      console.log(arguments)
-      for (let i = 0; i < list.length; i++) {
-        if (list[i].area === obj) {
-          return i
-        }
-      }
-    },
-
-    function getLength(api: DataAPI, list: any) {
-      return list.length
-    },
-
-    function getIter(api: DataAPI, list: any) {
-      return (function* () {
-        for (let sarea of list) {
-          yield sarea.area
-        }
-      })()
-    },
-
-    function getStruct(api: DataAPI, list: any, key: number) {
-      let obj = list[key]
-      if (obj === undefined) return api.getStruct(Editor)
-      obj = obj.area
-
-      let ret = api.getStruct(obj.constructor)
-      ret = ret === undefined ? api.getStruct(Editor) : ret
-
-      return ret
-    },
-
-    function getActive(api: DataAPI, list: any) {
-      return Editor.getActiveArea()
-    },
-  ])
 }
 
 export function api_define_envlight(api: DataAPI): DataStruct {

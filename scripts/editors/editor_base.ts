@@ -1062,6 +1062,55 @@ App {
   `
   )
 
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this)
+
+    st.list('sareas', 'editors', [
+      //list should be main App (Screen) instance
+      function get(api: DataAPI, list: any, key: number) {
+        return list[key].area
+      },
+
+      function getKey(api: DataAPI, list: any, obj: any) {
+        console.log(arguments)
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].area === obj) {
+            return i
+          }
+        }
+      },
+
+      function getLength(api: DataAPI, list: any) {
+        return list.length
+      },
+
+      function getIter(api: DataAPI, list: any) {
+        return (function* () {
+          for (let sarea of list) {
+            yield sarea.area
+          }
+        })()
+      },
+
+      function getStruct(api: DataAPI, list: any, key: number) {
+        let obj = list[key]
+        if (obj === undefined) return api.getStruct(Editor)
+        obj = obj.area
+
+        let ret = api.getStruct(obj.constructor)
+        ret = ret === undefined ? api.getStruct(Editor) : ret
+
+        return ret
+      },
+
+      function getActive(api: DataAPI, list: any) {
+        return Editor.getActiveArea()
+      },
+    ])
+
+    return st
+  }
+
   _last_wutime = 0
   //last dpi update time
   _last_dpi: number | undefined
