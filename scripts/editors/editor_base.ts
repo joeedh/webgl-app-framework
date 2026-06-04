@@ -798,7 +798,7 @@ UIBase.register(EditorSideBar)
 
 export interface IEditorConstructor<T extends Editor = Editor> extends IAreaConstructor<ViewContext, T> {
   new (): T
-  defineAPI(api: DataAPI): DataStruct
+  defineAPI(api: DataAPI, struct?: DataStruct): DataStruct
 }
 
 const dataPathCache = new Map<IEditorConstructor, string>()
@@ -851,8 +851,8 @@ Editor {
     this.shadow.appendChild(this.container as unknown as HTMLElement)
   }
 
-  static defineAPI(api: DataAPI): DataStruct {
-    const st = api.mapStruct(this, true)
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    const st = struct ?? api.mapStruct(this, true)
 
     st.vec2('pos', 'pos', 'Position', 'Position of editor in window')
     st.vec2('size', 'size', 'Size', 'Size of editor')

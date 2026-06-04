@@ -953,10 +953,6 @@ export function api_define_scene(api: DataAPI, pstruct: DataStruct): void {
 
     let struct3 = cls.defineAPI(api)
 
-    if (struct3 === undefined) {
-      throw new Error('ToolMode.defineAPI cannot return undefined')
-    }
-
     struct2.struct(def.name, def.name, def.uiname, struct3)
   }
 }
