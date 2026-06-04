@@ -57,6 +57,22 @@ interface ReflectResult {
 
 const REFLECT_CACHE = new Map<string, ReflectResult>()
 
+// True if `varName` is referenced anywhere in the WGSL beyond its own
+// declaration. WebGPU's auto-generated bind-group layout (the one
+// `getBindGroupLayout(group)` returns) DROPS bindings whose variable is
+// never read — so if we still hand `createBindGroup` an entry for that
+// binding, validation fails ("binding index N not present in the bind group
+// layout"). Mirroring the strip here keeps the reflected set in lockstep with
+// the layout. A var that appears exactly once (the declaration) is dead.
+function isVarReferenced(wgsl: string, varName: string): boolean {
+  const re = new RegExp(`\\b${varName}\\b`, 'g')
+  let count = 0
+  while (re.exec(wgsl)) {
+    if (++count > 1) return true
+  }
+  return false
+}
+
 // Cached on the WGSL source string so a `PipelineCache` hit also skips reflection.
 export function reflectPipelineBindings(wgsl: string): ReflectResult {
   const hit = REFLECT_CACHE.get(wgsl)
@@ -88,6 +104,8 @@ export function reflectPipelineBindings(wgsl: string): ReflectResult {
       // aren't supported by this reflector — skip rather than crash.
       continue
     }
+    // Skip dead uniforms (the auto-layout strips them; see isVarReferenced).
+    if (!isVarReferenced(wgsl, varName)) continue
     uniforms.push({group, binding, varName, struct, arrayLength})
   }
 
@@ -102,6 +120,10 @@ export function reflectPipelineBindings(wgsl: string): ReflectResult {
       : typeStr.startsWith('sampler') ? 'sampler'
       : undefined
     if (!kind) continue
+    // Resources are likewise stripped from the layout when unused (e.g.
+    // passAO_tex/_smp without WITH_AO) — drop them so we never bind a slot
+    // the pipeline layout doesn't have.
+    if (!isVarReferenced(wgsl, varName)) continue
     resources.push({group, binding, varName, kind})
   }
 

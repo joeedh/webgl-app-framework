@@ -1,12 +1,10 @@
 /**
- * WGSL emitter for the shader-node graph. Mirror of `ShaderGenerator`
- * in `shader_nodes.ts` that targets WGSL instead of GLSL.
- *
- * Per-node emission lives in this file (not on the node classes
- * themselves) via a dispatch table keyed by node constructor. Keeps the
- * existing GLSL `genCode(gen)` methods untouched and lets nodes that
- * haven't been ported yet fall back to a default zero/passthrough
- * emission with a one-time warning.
+ * WGSL emitter for the shader-node graph. Walks the graph in sorted order
+ * and asks each node to emit its own WGSL via `node.genWgsl(this)` (the
+ * per-node codegen lives on the `ShaderNode` subclasses themselves, in
+ * `shader_nodes.ts` / `math_node.ts`). This generator owns the shared
+ * machinery: socket naming, type coercion, uniform/texture collection, and
+ * assembly of the final WGSL module.
  *
  * Conventions (see `shader_lib_wgsl.ts`):
  *   `@group(0)` — per-frame uniforms + AO texture
@@ -17,45 +15,62 @@
 
 import type {Graph, GenericNode, NodeSocketType} from '../core/graph.js'
 import {SocketTypes} from '../core/graph.js'
-import {
-  FloatSocket,
-  Vec2Socket,
-  Vec3Socket,
-  Vec4Socket,
-  Matrix4Socket,
-} from '../core/graphsockets.js'
+import {FloatSocket, Vec2Socket, Vec3Socket, Vec4Socket, Matrix4Socket} from '../core/graphsockets.js'
 import type {ImageBlock} from '../image/image.js'
-import {
-  ShaderNode,
-  OutputNode,
-  MixNode,
-  MixModes,
-  ImageNode,
-  DiffuseNode,
-  GeometryNode,
-  ShaderContext,
-  ClosureSocket,
-} from './shader_nodes.js'
-import {MathNode, MathNodeFuncs} from './math_node.js'
+import {ShaderNode, OutputNode, ShaderContext, ClosureSocket} from './shader_nodes.js'
 import {
   CLOSURE_WGSL,
   OBJECT_UNIFORMS_WGSL,
   FRAME_UNIFORMS_WGSL,
-  VERTEX_INPUTS_WGSL,
-  VERTEX_MAIN_WGSL,
   SHADER_LIB_WGSL,
   ALPHA_HASH_WGSL,
   LightGenWgsl,
-  DiffuseBRDFWgsl,
   type IRenderLights,
 } from './shader_lib_wgsl.js'
 import {preprocess} from '../shaders/preprocess.js'
+
+/**
+ * One geometry attribute a material reads (via an `AttributeNode`). Collected
+ * while walking the graph, deduped by `name`, slot-assigned after the walk.
+ * This array is the contract the renderengine hands to sculptcore: build one
+ * vertex buffer per entry (by name), at the given `slot`, of `elemSize`
+ * components — default-filled when the source layer is absent.
+ */
+export interface RequestedAttrDesc {
+  /** Source attribute name on the mesh (e.g. `uv`, `color`). */
+  name: string
+  /** `AttributeCategory` (matches sculptcore AttrUse: COLOR=2, UV=4, GENERIC=0). */
+  category: number
+  /** Sanitized WGSL field name in VsIn/VsOut (e.g. `attr_uv`). */
+  field: string
+  /** WGSL element type (`vec2f` / `vec3f` / `vec4f`). */
+  wgslType: string
+  /** sculptcore `AttrType` bitflag (FLOAT2=2, FLOAT3=4, FLOAT4=8). */
+  gpuType: number
+  /** Component count (2 / 3 / 4). */
+  elemSize: number
+  /** Vertex `@location`, assigned after the graph walk (2 + index). */
+  slot: number
+}
+
+/** Map an `AttributeCategory` to its WGSL/GPU element type. */
+function attrCategoryType(category: number): {wgslType: string; gpuType: number; elemSize: number} {
+  // AttributeCategory.COLOR === 2, UV === 4 (AttrUse bitflags); GENERIC === 0.
+  if (category === 4) return {wgslType: 'vec2f', gpuType: 2, elemSize: 2} // UV → FLOAT2
+  if (category === 2) return {wgslType: 'vec4f', gpuType: 8, elemSize: 4} // COLOR → FLOAT4
+  return {wgslType: 'vec3f', gpuType: 4, elemSize: 3} // GENERIC → FLOAT3
+}
+
+function sanitizeAttrField(name: string): string {
+  return 'attr_' + name.trim().replace(/[^A-Za-z0-9_]/g, '_')
+}
 
 export class WgslShaderGenerator {
   scene: unknown
   paramnames: Record<number, string>
   uniforms: Record<string, NodeSocketType>
   textures: Map<ImageBlock, number>
+  requestedAttrs: Map<string, RequestedAttrDesc>
   graph: Graph<unknown> | undefined
   buf: string
   wgsl: string | undefined
@@ -65,14 +80,15 @@ export class WgslShaderGenerator {
     this.paramnames = {}
     this.uniforms = {}
     this.textures = new Map()
+    this.requestedAttrs = new Map()
     this.buf = ''
 
-    this.paramnames[ShaderContext.LOCALCO] = 'input.vLocalCo'
     this.paramnames[ShaderContext.GLOBALCO] = 'input.vGlobalCo'
-    this.paramnames[ShaderContext.NORMAL] = 'input.vNormal'
-    this.paramnames[ShaderContext.UV] = 'input.vuv'
-    this.paramnames[ShaderContext.COLOR] = 'input.vColor'
-    this.paramnames[ShaderContext.ID] = 'object.object_id'
+    this.paramnames[ShaderContext.LOCALCO] = 'input.vLocalCo'
+    this.paramnames[ShaderContext.SCREENCO] = 'vec3f(input.clipPos.xy, input.clipPos.z)'
+    // COLOR has no fixed varying anymore — vertex color is requested by name
+    // through an AttributeNode (category COLOR). Fall back to local position.
+    this.paramnames[ShaderContext.COLOR] = 'vec3f(input.vLocalCo)'
   }
 
   getType(sock: NodeSocketType): string {
@@ -130,7 +146,14 @@ export class WgslShaderGenerator {
     return '0.0'
   }
 
-  getSocketValue(sock: NodeSocketType, default_param?: number): string {
+  /**
+   * Resolve a socket to a WGSL expression. If connected, follows the edge
+   * (coercing types if needed). Otherwise `fallback` decides the default:
+   * a number indexes a `ShaderContext` coordinate-space varying, a string
+   * is used verbatim as a WGSL expression; with no fallback an input socket
+   * becomes a material uniform and an output socket its own name.
+   */
+  getSocketValue(sock: NodeSocketType, fallback?: number | string): string {
     if (sock.edges.length > 0 && sock.socketType === SocketTypes.INPUT) {
       const ctorA = sock.constructor as new () => NodeSocketType
       if (!(sock.edges[0] instanceof ctorA)) {
@@ -138,7 +161,9 @@ export class WgslShaderGenerator {
       }
       return this.getSocketValue(sock.edges[0])
     }
-    if (default_param !== undefined) return this.paramnames[default_param]
+    if (fallback !== undefined) {
+      return typeof fallback === 'number' ? this.paramnames[fallback] : fallback
+    }
     if (sock.socketType === SocketTypes.INPUT) return this.getUniform(sock)
     return this.getSocketName(sock)
   }
@@ -152,6 +177,78 @@ export class WgslShaderGenerator {
   getTexture(image: ImageBlock): string {
     if (!this.textures.has(image)) this.textures.set(image, this.textures.size)
     return `sampler_${image.lib_id}`
+  }
+
+  /**
+   * Record that the material reads geometry attribute `name` (in `category`),
+   * returning the WGSL expression (`input.<field>`) that reads its per-fragment
+   * varying and the element type. Deduped by name; slots are assigned after the
+   * full graph walk (see `_assignAttrSlots`). The renderer turns the collected
+   * set into per-attribute vertex buffers handed to sculptcore.
+   */
+  requestAttribute(name: string, category: number): {field: string; wgslType: string} {
+    let desc = this.requestedAttrs.get(name)
+    if (!desc) {
+      const {wgslType, gpuType, elemSize} = attrCategoryType(category)
+      desc = {name, category, field: sanitizeAttrField(name), wgslType, gpuType, elemSize, slot: -1}
+      this.requestedAttrs.set(name, desc)
+    }
+    return {field: `input.${desc.field}`, wgslType: desc.wgslType}
+  }
+
+  /** Assign each requested attribute its vertex `@location` (2 + index; 0/1 are
+   * the implicit position/normal). Call once after the graph walk. */
+  private _assignAttrSlots(): void {
+    let i = 0
+    for (const desc of this.requestedAttrs.values()) {
+      desc.slot = 2 + i++
+    }
+  }
+
+  /** Build the `VsIn` (vertex buffer layout) + `VsOut` (varyings) structs and
+   * the `vs_main` pass-through, all sized to the requested-attribute set. This
+   * is the single source of truth for the vertex interface — the C++ ShaderDef
+   * attr order must match the `slot` field. */
+  private _buildVertexStagesWgsl(): string {
+    const attrs = [...this.requestedAttrs.values()].sort((a, b) => a.slot - b.slot)
+
+    let vsIn = 'struct VsIn {\n'
+    vsIn += '  @location(0) position : vec3f,\n'
+    vsIn += '  @location(1) normal   : vec3f,\n'
+    for (const a of attrs) vsIn += `  @location(${a.slot}) ${a.field} : ${a.wgslType},\n`
+    vsIn += '};\n'
+
+    let vsOut = 'struct VsOut {\n'
+    vsOut += '  @builtin(position) clipPos : vec4f,\n'
+    vsOut += '  @location(0) vNormal   : vec3f,\n'
+    vsOut += '  @location(1) vGlobalCo : vec3f,\n'
+    vsOut += '  @location(2) vLocalCo  : vec3f,\n'
+    let loc = 3
+    for (const a of attrs) vsOut += `  @location(${loc++}) ${a.field} : ${a.wgslType},\n`
+    vsOut += '};\n'
+
+    let passthrough = ''
+    for (const a of attrs) passthrough += `  out.${a.field} = in.${a.field};\n`
+
+    const vsMain = `
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let p_obj = object.objectMatrix * vec4f(in.position, 1.0);
+  out.clipPos   = frame.projectionMatrix * vec4f(p_obj.xyz, 1.0);
+  out.vNormal   = (object.normalMatrix * vec4f(in.normal, 0.0)).xyz;
+  out.vGlobalCo = p_obj.xyz;
+  out.vLocalCo  = in.position;
+${passthrough}  return out;
+}
+`
+    return `${vsIn}\n${vsOut}\n${vsMain}`
+  }
+
+  /** The collected requested-attribute set, slot-ordered. The renderengine
+   * hands this to sculptcore after `generate()`. */
+  getRequestedAttrs(): RequestedAttrDesc[] {
+    return [...this.requestedAttrs.values()].sort((a, b) => a.slot - b.slot)
   }
 
   out(s: string): void {
@@ -199,9 +296,14 @@ export class WgslShaderGenerator {
         this.out(`var ${name} : ${type};\n`)
       }
       this.out('{\n')
-      emitNode(node as ShaderNode, this)
+      ;(node as ShaderNode).genWgsl(this)
       this.out('\n}\n')
     }
+
+    // Attributes were collected during the walk (via requestAttribute); assign
+    // their vertex slots now and build the matching VsIn/VsOut/vs_main.
+    this._assignAttrSlots()
+    const vertexStages = this._buildVertexStagesWgsl()
 
     let materialStruct = 'struct MaterialUniforms {\n'
     const fields: string[] = []
@@ -235,9 +337,8 @@ ${OBJECT_UNIFORMS_WGSL}
 ${lightPre}
 ${materialStruct}
 ${texdecl}
-${VERTEX_INPUTS_WGSL}
+${vertexStages}
 ${SHADER_LIB_WGSL}
-${VERTEX_MAIN_WGSL}
 
 @fragment
 fn fs_main(input : VsOut) -> @location(0) vec4f {
@@ -270,8 +371,7 @@ fn fs_main(input : VsOut) -> @location(0) vec4f {
 
   /**
    * Pack material-side uniforms (`_color_42` etc) into `uniforms` for
-   * `UniformBindings.write` to consume. Mirrors the GLSL side's
-   * `IShaderDefCompilable.setUniforms` per-socket loop.
+   * `UniformBindings.write` to consume.
    */
   setMaterialUniforms(graph: Graph<unknown>, uniforms: Record<string, unknown>): void {
     for (const node of graph.sortlist) {
@@ -288,166 +388,37 @@ fn fs_main(input : VsOut) -> @location(0) vec4f {
   }
 }
 
+/** Minimal vertex interface (position+normal only) for the no-output fallback
+ * shader — no requested attributes, so just the implicit slots 0/1. */
+const FALLBACK_VERTEX_WGSL = `
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
+};
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vNormal   : vec3f,
+  @location(1) vGlobalCo : vec3f,
+  @location(2) vLocalCo  : vec3f,
+};
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let p_obj = object.objectMatrix * vec4f(in.position, 1.0);
+  out.clipPos   = frame.projectionMatrix * vec4f(p_obj.xyz, 1.0);
+  out.vNormal   = (object.normalMatrix * vec4f(in.normal, 0.0)).xyz;
+  out.vGlobalCo = p_obj.xyz;
+  out.vLocalCo  = in.position;
+  return out;
+}
+`
+
 function buildFallbackWgsl(): string {
   return `
 ${CLOSURE_WGSL}
 ${FRAME_UNIFORMS_WGSL}
 ${OBJECT_UNIFORMS_WGSL}
-${VERTEX_INPUTS_WGSL}
-${VERTEX_MAIN_WGSL}
+${FALLBACK_VERTEX_WGSL}
 @fragment fn fs_main(input : VsOut) -> @location(0) vec4f { return vec4f(0.0, 0.0, 0.0, 1.0); }
 `
 }
-
-// -------- per-node WGSL emission --------------------------------------------
-
-type WgslEmit = (node: ShaderNode, gen: WgslShaderGenerator) => void
-const emitters = new Map<unknown, WgslEmit>()
-
-export function registerWgslEmit<T extends new (...args: never[]) => ShaderNode>(
-  ctor: T,
-  fn: (node: InstanceType<T>, gen: WgslShaderGenerator) => void
-): void {
-  emitters.set(ctor as unknown, fn as WgslEmit)
-}
-
-const warned = new Set<string>()
-
-function emitNode(node: ShaderNode, gen: WgslShaderGenerator): void {
-  const fn = emitters.get(node.constructor as unknown)
-  if (fn) {
-    fn(node, gen)
-    return
-  }
-  const name = node.constructor?.name ?? '<unknown>'
-  if (!warned.has(name)) {
-    warned.add(name)
-    console.warn(`WgslShaderGenerator: no emitter for ${name} — emitting defaults`)
-  }
-  for (const k in node.outputs) {
-    const sock = node.outputs[k]
-    const t = gen.getType(sock)
-    const n = gen.getSocketName(sock)
-    if (t === 'f32') gen.out(`${n} = 0.0;\n`)
-    else if (t === 'vec2f') gen.out(`${n} = vec2f(0.0, 0.0);\n`)
-    else if (t === 'vec3f') gen.out(`${n} = vec3f(0.0, 0.0, 0.0);\n`)
-    else if (t === 'vec4f') gen.out(`${n} = vec4f(0.0, 0.0, 0.0, 1.0);\n`)
-    else if (t === 'Closure') {
-      gen.out(`${n}.diffuse = vec3f(0.0); ${n}.light = vec3f(0.0); `)
-      gen.out(`${n}.emission = vec3f(0.0); ${n}.scatter = vec3f(0.0); ${n}.alpha = 1.0;\n`)
-    }
-  }
-}
-
-registerWgslEmit(OutputNode, (node, gen) => {
-  gen.out(`_mainSurface = ${gen.getSocketValue(node.inputs.surface)};\n`)
-})
-
-registerWgslEmit(MixNode, (node, gen) => {
-  let expr = 'a + (b - a)*fac'
-  switch (node.mode) {
-    case MixModes.MIX:
-      expr = 'a + (b - a)*fac'
-      break
-    case MixModes.MULTIPLY:
-      expr = 'a + (a*b - a)*fac'
-      break
-    case MixModes.DIVIDE:
-      expr = 'a + (a/b - a)*fac'
-      break
-    case MixModes.ADD:
-      expr = 'a + ((a+b) - a)*fac'
-      break
-    case MixModes.SUBTRACT:
-      expr = 'a + ((a-b) - a)*fac'
-      break
-  }
-  gen.out(`
-    let a : vec4f = ${gen.getSocketValue(node.inputs.color1)};
-    let b : vec4f = ${gen.getSocketValue(node.inputs.color2)};
-    let fac : f32 = ${gen.getSocketValue(node.inputs.factor)};
-    ${gen.getSocketName(node.outputs.color)} = ${expr};
-  `)
-})
-
-registerWgslEmit(ImageNode, (node, gen) => {
-  const out = gen.getSocketName(node.outputs.color)
-  if (node.imageUser.image) {
-    const tex = gen.getTexture(node.imageUser.image)
-    gen.out(`
-      let uv : vec2f = ${gen.getSocketValue(node.inputs.uv, ShaderContext.UV)};
-      let _c : vec4f = textureSample(${tex}_tex, ${tex}_smp, uv);
-      ${out} = vec4f(_c.rgb, 1.0);
-    `)
-  } else {
-    gen.out(`${out} = vec4f(1.0, 1.0, 1.0, 1.0);\n`)
-  }
-})
-
-registerWgslEmit(DiffuseNode, (node, gen) => {
-  const brdf = DiffuseBRDFWgsl.gen('cl', 'co', 'normal', 'color')
-  const lights = LightGenWgsl.generate('cl', 'co', 'normal', 'color', brdf)
-  const surfName = gen.getSocketName(node.outputs.surface)
-  gen.out(`
-    var cl : Closure;
-    cl.diffuse  = vec3f(0.0);
-    cl.light    = vec3f(0.0);
-    cl.emission = vec3f(0.0);
-    cl.scatter  = vec3f(0.0);
-    cl.alpha    = 1.0;
-
-    let co : vec3f = input.vGlobalCo;
-    let roughness : f32 = ${gen.getSocketValue(node.inputs.roughness)};
-    let normal : vec3f = ${gen.getSocketValue(node.inputs.normal, ShaderContext.NORMAL)};
-    let color : vec4f = ${gen.getSocketValue(node.inputs.color)};
-
-    cl.alpha   = color.a;
-    cl.diffuse = color.rgb;
-
-    ${lights}
-    ${surfName} = cl;
-  `)
-})
-
-registerWgslEmit(GeometryNode, (node, gen) => {
-  gen.out(`
-    ${gen.getSocketName(node.outputs.position)} = input.vGlobalCo;
-    ${gen.getSocketName(node.outputs.local)}    = input.vLocalCo;
-    ${gen.getSocketName(node.outputs.normal)}   = input.vNormal;
-    ${gen.getSocketName(node.outputs.uv)}       = input.vuv;
-    ${gen.getSocketName(node.outputs.screen)}   = vec3f(input.clipPos.xy, input.clipPos.z);
-  `)
-})
-
-const WgslMathSnippets: Record<number, string> = {
-  [MathNodeFuncs.ADD]  : 'A + B',
-  [MathNodeFuncs.SUB]  : 'A - B',
-  [MathNodeFuncs.MUL]  : 'A * B',
-  [MathNodeFuncs.DIV]  : 'A / B',
-  [MathNodeFuncs.POW]  : 'pow(A, B)',
-  [MathNodeFuncs.SQRT] : 'sqrt(A)',
-  [MathNodeFuncs.FLOOR]: 'floor(A)',
-  [MathNodeFuncs.CEIL] : 'ceil(A)',
-  [MathNodeFuncs.MIN]  : 'min(A, B)',
-  [MathNodeFuncs.MAX]  : 'max(A, B)',
-  [MathNodeFuncs.FRACT]: 'fract(A)',
-  [MathNodeFuncs.TENT] : 'abs(fract(A) - 0.5) * 2.0',
-  [MathNodeFuncs.COS]  : 'cos(A)',
-  [MathNodeFuncs.SIN]  : 'sin(A)',
-  [MathNodeFuncs.TAN]  : 'tan(A)',
-  [MathNodeFuncs.ACOS] : 'acos(A)',
-  [MathNodeFuncs.ASIN] : 'asin(A)',
-  [MathNodeFuncs.ATAN] : 'atan(A)',
-  [MathNodeFuncs.ATAN2]: 'atan2(B, A)',
-  [MathNodeFuncs.LOG]  : 'log(A)',
-  [MathNodeFuncs.EXP]  : 'exp(A)',
-}
-
-registerWgslEmit(MathNode, (node, gen) => {
-  const snippet = WgslMathSnippets[node.mathFunc] ?? 'A'
-  gen.out(`
-    let A : f32 = ${gen.getSocketValue(node.inputs.a)};
-    let B : f32 = ${gen.getSocketValue(node.inputs.b)};
-    ${gen.getSocketName(node.outputs.value)} = ${snippet};
-  `)
-})

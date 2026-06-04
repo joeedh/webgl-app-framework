@@ -1281,9 +1281,9 @@ NodeEditor {
     const mat = this.ctx.api.getValue<Material>(this.ctx, key)
     if (mat === undefined) return
 
-    // original called generate() with just the scene; rlights is undefined at runtime
-    const shader = mat.generate(this.ctx.scene, undefined as never)
-    const script = JSON.stringify(shader)
+    // Recompile-detection only: regenerate the WGSL and compare the source
+    // string. rlights doesn't affect the change-detection here, so pass {}.
+    const script = mat.generateWgsl(this.ctx.scene, {}).wgsl
 
     if (script !== this._last_script) {
       console.log('Shader compile update!')
@@ -1551,7 +1551,13 @@ NodeEditor {
 
     for (const node of this.nodes) {
       for (const uisock of node.inputs) {
-        const sock = uisock.socket!
+        const sock = uisock.socket
+        // A UI socket whose data-socket ref hasn't resolved yet (e.g. mid-
+        // rebuild after a graph edit) has no edges to draw — skip it rather
+        // than dereferencing undefined (matches the uisock2 guard below).
+        if (sock === undefined) {
+          continue
+        }
         const p = uisock.getAbsPos(true)
         this.project(p)
 

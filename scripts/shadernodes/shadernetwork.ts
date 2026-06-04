@@ -6,9 +6,8 @@ import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 import {DependSocket, Vec3Socket, Vec4Socket, FloatSocket, IntSocket, BoolSocket} from '../core/graphsockets.js'
 import * as util from '../util/util.js'
-import {ShaderGenerator, OutputNode, DiffuseNode, type IRenderLights} from './shader_nodes.js'
-import {WgslShaderGenerator} from './shader_nodes_wgsl.js'
-import {ShaderProgram} from '../webgl/webgl.js'
+import {OutputNode, DiffuseNode, type IRenderLights} from './shader_nodes.js'
+import {WgslShaderGenerator, type RequestedAttrDesc} from './shader_nodes_wgsl.js'
 
 /**
  * WebGPU-side compiled material shader. Holds the emitted WGSL source +
@@ -20,9 +19,12 @@ export interface IWgslShaderDef {
   wgsl: string
   generator: WgslShaderGenerator
   setUniforms: (graph: Graph<unknown>, uniforms: Record<string, unknown>) => void
+  /** Geometry attributes this material reads, slot-ordered. The renderengine
+   * hands this set to sculptcore (one vertex buffer per entry, by name). */
+  requestedAttrs: RequestedAttrDesc[]
 }
 
-export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from './shader_nodes.js'
+export {ShaderNetworkClass, ShaderNodeTypes} from './shader_nodes.js'
 
 export const MaterialFlags = {
   SELECT: 1,
@@ -65,7 +67,6 @@ ShadowSettings {
 nstructjs.register(ShadowSettings)
 
 export class ShaderNetwork extends DataBlock {
-  _program?: ShaderProgram
   shadow: ShadowSettings
   flag: number
   graph: Graph<unknown>
@@ -212,24 +213,8 @@ ShaderNetwork {
     this.graph.dataLink(this, getblock, getblock_addUser)
   }
 
-  generate(scene: unknown, rlights: IRenderLights, defines = '') {
-    if (scene === undefined) {
-      throw new Error('scene cannot be undefined')
-    }
-
-    this._regen = false
-    this.usedNodes = this.getUsedNodes()
-
-    let gen = new ShaderGenerator(scene)
-
-    gen.generate(this.graph, rlights, defines)
-    let shader = gen.genShader()
-
-    return shader
-  }
-
   /**
-   * WGSL counterpart to `generate()` — emits a WGSL fragment shader from
+   * Emits a WGSL fragment shader from
    * the same shader-node graph for the WebGPU backend. Called from the
    * WebGPU draw path when this material is bound to a drawable.
    */
@@ -249,9 +234,10 @@ ShaderNetwork {
     gen.generate(this.graph, rlights, defines)
 
     return {
-      wgsl       : gen.wgsl!,
-      generator  : gen,
-      setUniforms: (graph, uniforms) => gen.setMaterialUniforms(graph, uniforms),
+      wgsl          : gen.wgsl!,
+      generator     : gen,
+      setUniforms   : (graph, uniforms) => gen.setMaterialUniforms(graph, uniforms),
+      requestedAttrs: gen.getRequestedAttrs(),
     }
   }
 

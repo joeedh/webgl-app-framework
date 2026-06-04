@@ -25,7 +25,10 @@ import {registerTestScene, TestSceneArgs} from '../core/test_scenes'
 import {SceneObject} from '../sceneobject/index'
 import {Light} from '../light/light.js'
 import {getWasmImmediate} from '@sculptcore/api/api'
-import {LiteMesh} from './litemesh'
+import {AttrDomain, AttrUseFlags, LiteMesh} from './litemesh'
+import {AttrType} from './litemesh_base'
+// Side-effect: registers globalThis.__attrtestApply for the attr-render test.
+import './litemesh_attrtest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
@@ -71,3 +74,65 @@ function buildLiteMeshCube(_ctx: ToolContext, lib: Library, scene: Scene, args: 
 }
 
 registerTestScene('litemesh-cube', buildLiteMeshCube)
+
+/**
+ * Builds a LiteMesh cube carrying the two attribute layers the renderengine ↔
+ * sculptcore dynamic-attribute path is meant to consume:
+ *
+ *   - a VERTEX FLOAT4 layer named `color` (AttrUse COLOR), filled with a
+ *     deterministic position→rgb gradient (`fillVertexColorFromPosition`), and
+ *   - a CORNER FLOAT2 layer named `uv` (AttrUse UV) from a per-face box unwrap
+ *     (every edge seamed → `generateUVFromSeams`).
+ *
+ * Both layers are created procedurally and deterministically (C++-side, so the
+ * WASM and native backends build byte-identical data), so a material's
+ * `AttributeNode`s requesting `color`/`uv` resolve to real buffers, and the
+ * parity dump can diff the new attr buffers. A material requesting a name that
+ * isn't here exercises the missing-attr (default-fill + advisory) path.
+ *
+ * Scene args:
+ *   subdiv=<n>   cube subdivision (default 8 — small, fast, parity-friendly)
+ *   size=<f>     cube half-extent (default 6)
+ *   light=0      omit the light
+ *
+ * Deliberately a *real* cube (sphere=0) so the per-face planar charts are clean.
+ */
+function buildLiteMeshAttrTest(_ctx: ToolContext, lib: Library, scene: Scene, args: TestSceneArgs): void {
+  const subdiv = args.subdiv && Number.isFinite(parseInt(args.subdiv, 10)) ? parseInt(args.subdiv, 10) : 8
+  const size = args.size && Number.isFinite(parseFloat(args.size)) ? parseFloat(args.size) : 6.0
+
+  const wasm = getWasmImmediate()!
+  const lm = new LiteMesh(wasm.Mesh_createCube(subdiv, size, 0.0))
+  lib.add(lm)
+
+  // Vertex color layer (FLOAT4, tagged COLOR), filled position→rgb.
+  lm.addAttr(AttrDomain.VERTEX, AttrType.Float4, AttrUseFlags.COLOR)
+  lm.fillVertexColorFromPosition()
+
+  // Per-face UV unwrap: seam every edge, then generate a packed corner UV layer.
+  lm.markAllSeams()
+  lm.generateUVFromSeams()
+
+  const sob = new SceneObject()
+  lib.add(sob)
+  sob.data = lm
+  lm.lib_addUser(sob)
+
+  scene.add(sob)
+  scene.objects.setSelect(sob, true)
+  scene.objects.setActive(sob)
+
+  if (args.light !== '0') {
+    const light = new Light()
+    lib.add(light)
+    const lightOb = new SceneObject(light)
+    lib.add(lightOb)
+    lightOb.location[2] = 7.0
+    scene.add(lightOb)
+  }
+
+  sob.graphUpdate()
+  lm.graphUpdate()
+}
+
+registerTestScene('litemesh-attrtest', buildLiteMeshAttrTest)

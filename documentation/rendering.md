@@ -6,9 +6,11 @@ signatures (`RenderEngine.render(camera, gl, ...)`) for source-compat
 with old call sites that still pass it. The realtime engine ignores
 `gl`.
 
-The node-editor's material preview still compiles GLSL via the
-`shader_nodes` graph; that's a separate path from the realtime engine
-and lives in `scripts/shadernodes/`.
+Shader-node materials (`scripts/shadernodes/`) now emit **WGSL only** —
+the legacy GLSL `ShaderGenerator`/`genCode()` path has been deleted and
+codegen lives on the node classes (`ShaderNode.genWgsl`). Materials feed
+sculptcore draw batches through a **dynamic, attribute-driven** interface;
+see [shader-attributes.md](shader-attributes.md).
 
 ## Layout
 

@@ -1,5 +1,6 @@
 import {nstructjs, Container, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
-import {ShaderNetworkClass, ShaderNode, ShaderGenerator} from './shader_nodes.js'
+import {ShaderNetworkClass, ShaderNode} from './shader_nodes.js'
+import type {WgslShaderGenerator} from './shader_nodes_wgsl.js'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {FloatSocket} from '../core/graphsockets.js'
 
@@ -28,7 +29,7 @@ export const MathNodeFuncs = {
 }
 
 let mf = MathNodeFuncs
-export const MathSnippets = {
+export const WgslMathSnippets: Record<number, string> = {
   [mf.ADD]  : 'A + B',
   [mf.SUB]  : 'A - B',
   [mf.MUL]  : 'A * B',
@@ -37,10 +38,10 @@ export const MathSnippets = {
   [mf.SQRT] : 'sqrt(A)',
   [mf.FLOOR]: 'floor(A)',
   [mf.CEIL] : 'ceil(A)',
-  [mf.MIN]  : 'min(A)',
-  [mf.MAX]  : 'max(A)',
+  [mf.MIN]  : 'min(A, B)',
+  [mf.MAX]  : 'max(A, B)',
   [mf.FRACT]: 'fract(A)',
-  [mf.TENT] : 'abs(fract(A)-0.5)*2.0',
+  [mf.TENT] : 'abs(fract(A) - 0.5) * 2.0',
   [mf.COS]  : 'cos(A)',
   [mf.SIN]  : 'sin(A)',
   [mf.TAN]  : 'tan(A)',
@@ -69,14 +70,13 @@ export class MathNode extends ShaderNode {
     nstruct.enum('mathFunc', 'mathFunc', MathNodeFuncs, 'Function', 'Math function to use')
   }
 
-  genCode(gen: ShaderGenerator) {
-    let snippet = MathSnippets[this.mathFunc]
+  genWgsl(gen: WgslShaderGenerator) {
+    const snippet = WgslMathSnippets[this.mathFunc] ?? 'A'
 
     gen.out(`
-      float A = ${gen.getSocketValue(this.inputs.a)};
-      float B = ${gen.getSocketValue(this.inputs.b)};
-      
-      ${gen.getSocketName(this.outputs.value)} = ${snippet};    
+      let A : f32 = ${gen.getSocketValue(this.inputs.a)};
+      let B : f32 = ${gen.getSocketValue(this.inputs.b)};
+      ${gen.getSocketName(this.outputs.value)} = ${snippet};
     `)
   }
 

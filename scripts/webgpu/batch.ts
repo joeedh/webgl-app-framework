@@ -93,16 +93,25 @@ function cmdTypeToTopology(t: GPUCmdType): GPUPrimitiveTopology {
   }
 }
 
+/** One `@group(n)` → `GPUBindGroup` binding the dispatch loop will set. */
+export interface CommandBindGroup {
+  group: number
+  bindGroup: GPUBindGroup
+}
+
 export interface WebGPUBatchExecutorOptions {
   device: GPUDevice
   wasm: IWasmInterface
   pipelineCache?: PipelineCache
   wgslForShader: (sdef: ShaderDef) => string
-  // Returns a `GPUBindGroup` matching `@group(0)` of the WGSL source, or `null`
-  // to skip this draw command (the dispatch loop continues with the rest of the
-  // batch rather than aborting the whole pass — see the "never throw on the
-  // render seam" note: a throw here is swallowed as a drawObjects warning).
-  bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup | null
+  // Returns the bind group(s) the WGSL source declares, or `null` to skip this
+  // draw command (the dispatch loop continues with the rest of the batch rather
+  // than aborting the whole pass — see the "never throw on the render seam"
+  // note: a throw here is swallowed as a drawObjects warning). A bare
+  // `GPUBindGroup` is shorthand for `@group(0)`; return a `CommandBindGroup[]`
+  // when the shader spans several groups (e.g. a material's frame/light/object
+  // groups), and every entry is bound before the draw.
+  bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup | CommandBindGroup[] | null
   colorTargets: GPUColorTargetState[]
   depthStencil?: GPUDepthStencilState
 }
@@ -290,7 +299,10 @@ export class WebGPUBatchExecutor {
         const count = cmd.end - cmd.start
 
         pass.setPipeline(pipeline.handle)
-        pass.setBindGroup(0, bindGroup)
+        const groups: CommandBindGroup[] = Array.isArray(bindGroup)
+          ? bindGroup
+          : [{group: 0, bindGroup}]
+        for (const e of groups) pass.setBindGroup(e.group, e.bindGroup)
         for (let slot = 0; slot < sdefAttrs.length; slot++) {
           const found = cmdAttrs.find((a) => a.name === sdefAttrs[slot].name)
           if (!found) continue

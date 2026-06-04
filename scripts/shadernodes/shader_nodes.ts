@@ -1,43 +1,22 @@
-import type {DataBlock, DataRef, BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
+import type {DataBlock, BlockLoader, BlockLoaderAddUser} from '../core/lib_api.js'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
-import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes, INodeSocketSet} from '../core/graph.js'
-import type {GenericNode} from '../core/graph.js'
+import {Node, NodeSocketType, SocketFlags, INodeSocketSet} from '../core/graph.js'
 import {nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
-import {
-  DependSocket,
-  Vec2Socket,
-  Vec3Socket,
-  RGBASocket,
-  Vec4Socket,
-  Matrix4Socket,
-  FloatSocket,
-} from '../core/graphsockets.js'
+import {Vec2Socket, Vec3Socket, RGBASocket, FloatSocket} from '../core/graphsockets.js'
 import {UIBase} from '../path.ux/scripts/core/ui_base.js'
 import {Container} from '../path.ux/scripts/core/ui.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js'
-import * as util from '../util/util.js'
+import {Vector3} from '../util/vectormath.js'
 import {AbstractGraphClass} from '../core/graph_class.js'
-import {ShaderFragments, LightGen, DiffuseBRDF} from './shader_lib.js'
-import {Light, LightTypes} from '../light/light.js'
-import {initShader, loadShader} from '../shaders/shaders.js'
-import {ShaderProgram, IUniformsBlock} from '../webgl/webgl.js'
-import {ImageUser, ImageBlock} from '../image/image.js'
+import {ImageUser} from '../image/image.js'
 import type {ImageUserWidget} from '../editors/editor_base.js'
-import {RenderLight, ShaderProgramCompilable} from '../renderengine/renderengine_realtime.js'
+import type {RenderLight} from '../renderengine/renderengine_realtime.js'
+import type {WgslShaderGenerator} from './shader_nodes_wgsl.js'
+import {LightGenWgsl, DiffuseBRDFWgsl} from './shader_lib_wgsl.js'
 
 export {ClosureGLSL, PointLightCode} from './shader_lib.js'
 
 export type IRenderLights = Record<string, RenderLight>
-
-export interface IShaderDefCompilable {
-  vertex: string
-  fragment: string
-  uniforms: IUniformsBlock
-  attributes: string[]
-  setUniforms(gl: WebGL2RenderingContext, graph: Graph<unknown>, uniforms: IUniformsBlock): void
-  compile(gl: WebGL2RenderingContext): ShaderProgramCompilable
-}
 
 export let ShaderNodeTypes: Array<typeof ShaderNode> = []
 
@@ -155,412 +134,20 @@ ClosureSocket.STRUCT =
 nstructjs.register(ClosureSocket)
 NodeSocketType.register(ClosureSocket)
 
+/**
+ * Always-present coordinate-space varyings a node can fall back to when an
+ * input socket is unconnected. WebGL-era attribute slots (NORMAL/UV/TANGENT/ID)
+ * are gone — geometry attributes are now requested by name through the
+ * `AttributeNode` and supplied as dynamic vertex buffers by the renderer.
+ */
 export const ShaderContext = {
   GLOBALCO: 1,
   LOCALCO : 2,
   SCREENCO: 4,
-  NORMAL  : 8,
-  UV      : 16,
   COLOR   : 32,
-  TANGENT : 64,
-  ID      : 128,
 }
 
-export class ShaderGenerator {
-  _regen: boolean
-  scene: unknown
-  paramnames: {[key: number]: string}
-  uniforms: {[key: string]: NodeSocketType}
-  textures: Map<ImageBlock, number>
-  buf: string
-  vertex: string | undefined
-  fragment: string | undefined
-  graph: Graph<unknown> | undefined
-  glshader: ShaderProgram | undefined
-
-  constructor(scene: unknown) {
-    this._regen = true
-    this.scene = scene
-    this.paramnames = {}
-    this.uniforms = {}
-    this.textures = new Map()
-
-    this.buf = ''
-    this.vertex = undefined
-
-    let p = this.paramnames
-
-    p[ShaderContext.LOCALCO] = 'vLocalCo'
-    p[ShaderContext.GLOBALCO] = 'vGlobalCo'
-    p[ShaderContext.NORMAL] = 'vNormal'
-    p[ShaderContext.UV] = 'vuv'
-    p[ShaderContext.COLOR] = 'vColor'
-    p[ShaderContext.TANGENT] = 'vTangent'
-    p[ShaderContext.ID] = 'vId'
-  }
-
-  update(gl: WebGL2RenderingContext, scene: unknown, graph: Graph<unknown>, engine: unknown): void {
-    if (this._regen) {
-      this._regen = false
-
-      this.scene = scene
-      this.graph = graph
-
-      this.generate(graph, engine as IRenderLights)
-      this.glshader = this.genShader().compile(gl)
-    }
-  }
-
-  bind(gl: WebGL2RenderingContext, uniforms: IUniformsBlock): void {
-    this.glshader!.bind(gl, uniforms)
-  }
-
-  getType(sock: NodeSocketType): string | undefined {
-    if (sock instanceof ClosureSocket) {
-      return 'Closure'
-    } else if (sock instanceof FloatSocket) return 'float'
-    else if (sock instanceof Vec3Socket) return 'vec3'
-    else if (sock instanceof Vec4Socket) return 'vec4'
-    else if (sock instanceof Vec2Socket) return 'vec2'
-    else if (sock instanceof Matrix4Socket) return 'mat4'
-  }
-
-  coerce(socka: NodeSocketType, sockb: NodeSocketType): string {
-    let n1 = this.getSocketName(socka),
-      n2 = this.getSocketName(sockb)
-
-    const ctorA = socka.constructor as new () => NodeSocketType
-    const ctorB = sockb.constructor as new () => NodeSocketType
-    if (socka instanceof ctorB || sockb instanceof ctorA) {
-      return `${n1}`
-    }
-
-    // Re-cast to reset TypeScript's type narrowing after instanceof variable checks
-    const sa = socka as NodeSocketType
-    const sb = sockb as NodeSocketType
-
-    if (sb instanceof FloatSocket) {
-      if (sa instanceof Vec2Socket) {
-        return `(length(${n1})/sqrt(2.0))`
-      } else if (sa instanceof Vec3Socket) {
-        return `(length(${n1})/sqrt(3.0))`
-      } else if (sa instanceof Vec4Socket) {
-        //should include RGBASocket
-        return `(length(${n1})/sqrt(4.0))`
-      } else if (sa instanceof ClosureSocket) {
-        return `closure2${this.getType(sb)}(${n1})`
-      }
-    } else if (sb instanceof Vec2Socket) {
-      if (sa instanceof FloatSocket) {
-        return `vec2(${n1}, ${n1})`
-      } else if (sa instanceof Vec3Socket || sa instanceof Vec4Socket) {
-        return `(${n1}).xy`
-      } else if (sa instanceof ClosureSocket) {
-        return `closure2${this.getType(sb)}(${n1})`
-      }
-    } else if (sb instanceof Vec3Socket) {
-      if (sa instanceof FloatSocket) {
-        return `vec3(${n1}, ${n1}, ${n1})`
-      } else if (sa instanceof Vec4Socket) {
-        return `(${n1}).xyz`
-      } else if (sa instanceof Vec2Socket) {
-        return `vec3(${n1}, 0.0)`
-      } else if (sa instanceof ClosureSocket) {
-        return `closure2${this.getType(sb)}(${n1})`
-      }
-    } else if (sb instanceof Vec4Socket) {
-      if (sa instanceof FloatSocket) {
-        return `vec4(${n1}, ${n1}, ${n1}, 1.0)`
-      } else if (sa instanceof Vec3Socket) {
-        return `vec4(${n1}, 1.0)`
-      } else if (sa instanceof Vec2Socket) {
-        return `vec4(${n1}, 0.0, 1.0)`
-      } else if (sa instanceof ClosureSocket) {
-        return `closureto${this.getType(sb)}(${n1})`
-      }
-    } else if (sb instanceof ClosureSocket) {
-      return `${this.getType(sa)}toclosure(${n1})`
-    }
-
-    console.warn('failed coercion for', sa, sb)
-    return '0.0'
-  }
-
-  getParameter(_param: unknown): void {}
-
-  getSocketName(sock: NodeSocketType): string {
-    let name = sock.socketName
-
-    name = '_' + name.trim().replace(/[ \t\n\r]/g, '_')
-    name += '_' + sock.graph_id
-
-    return name
-  }
-
-  getSocketValue(sock: NodeSocketType, default_param?: number): string {
-    let name = this.getSocketName(sock)
-
-    if (sock.edges.length > 0 && sock.socketType === SocketTypes.INPUT) {
-      if (!(sock.edges[0] instanceof (sock.constructor as Function as new () => NodeSocketType))) {
-        return this.coerce(sock.edges[0], sock)
-      } else {
-        return this.getSocketValue(sock.edges[0])
-      }
-    } else if (default_param !== undefined) {
-      return this.paramnames[default_param]
-    } else if (sock.socketType === SocketTypes.INPUT) {
-      return this.getUniform(sock)
-    } else {
-      return this.getSocketName(sock)
-    }
-  }
-
-  //returns a unique name for a uniform
-  //for an interactively-editable shader parameter
-  getUniform(sock: NodeSocketType, _type?: string): string {
-    let name = this.getSocketName(sock)
-    this.uniforms[name] = sock
-    return name
-  }
-
-  out(s: string): void {
-    this.buf += s
-  }
-
-  getTexture(imageblock: ImageBlock): string {
-    if (!this.textures.has(imageblock)) {
-      this.textures.set(imageblock, 0)
-    }
-
-    return 'sampler_' + imageblock.lib_id
-  }
-
-  generate(graph: Graph<unknown>, rlights: IRenderLights, defines = ''): this {
-    this.graph = graph
-    graph.sort()
-
-    let glsl300 = true //XXX
-
-    this.textures = new Map()
-
-    this.vertex = `#version 300 es
-#define attribute in
-#define varying out
-precision highp float;
-precision highp samplerCubeShadow;
-precision highp sampler2DShadow;
-    
-    ${defines}
-    
-    ${ShaderFragments.CLOSUREDEF}
-    ${ShaderFragments.UNIFORMS}
-    ${ShaderFragments.ATTRIBUTES}
-    ${ShaderFragments.VARYINGS}
-    
-    void main() {
-      vec4 p = vec4(position, 1.0);
-      
-      p = objectMatrix * vec4(p.xyz, 1.0);
-      p = projectionMatrix * vec4(p.xyz, 1.0);
-      
-      gl_Position = p;
-
-      vColor = color;
-      vNormal = normal;
-      ${ShaderProgram.multilayerVertexCode('uv')}
-      vId = object_id;        
-      
-      vGlobalCo = (objectMatrix * vec4(position, 1.0)).xyz;
-      vLocalCo = position;
-    }
-    `
-
-    this.buf = ''
-
-    let uvdecl = ShaderProgram.multilayerAttrDeclare('uv', 'vec2', false, glsl300)
-    this.vertex = this.vertex.replace(/MULTILAYER_UV_DECLARE/, uvdecl)
-
-    //find output node
-    let output = undefined
-    for (let node of graph.nodes) {
-      if (node instanceof OutputNode) {
-        output = node
-        break
-      }
-    }
-
-    if (output === undefined) {
-      console.warn('no output node')
-
-      this.fragment = `
-      out vec4 fragColor;
-      
-      void main() {
-        fragColor = vec4(0.0, 0.0, 0.0, 1.0);  
-      }
-      `
-      return this
-    }
-
-    const visit: {[id: number]: number} = {}
-
-    const rec = (n: GenericNode<unknown>): void => {
-      if (n.graph_id in visit) {
-        return
-      }
-
-      visit[n.graph_id] = 1
-
-      for (let k in n.inputs) {
-        let sock = n.inputs[k]
-        for (let sock2 of sock.edges) {
-          rec(sock2.node)
-        }
-      }
-    }
-
-    rec(output)
-
-    //console.log(visit);
-
-    for (let node of graph.sortlist) {
-      if (!(node.graph_id in visit)) {
-        continue
-      }
-
-      let buf = this.buf
-
-      this.out('//' + (node.constructor?.name ?? 'unknown') + '\n')
-
-      for (let k in node.outputs) {
-        let sock = node.outputs[k]
-        if (sock.edges.length === 0) {
-          //continue;
-        }
-
-        let type = this.getType(sock)
-        let name = this.getSocketName(sock)
-
-        this.out(`${type} ${name};\n`)
-      }
-
-      this.out('{\n')
-      ;(node as ShaderNode).genCode(this)
-      this.out('\n}\n')
-    }
-
-    let uniforms = ShaderFragments.UNIFORMS
-
-    for (let k in this.uniforms) {
-      let sock = this.uniforms[k]
-      let type = this.getType(sock)
-
-      uniforms += `uniform ${type} ${k};\n`
-    }
-
-    uniforms += LightGen.pre()
-    defines += LightGen.genDefines(rlights)
-
-    let varyings = ShaderFragments.VARYINGS
-
-    let texdecl = ''
-    for (let image of this.textures.keys()) {
-      let key = 'sampler_' + image.lib_id
-      texdecl += `uniform sampler2D ${key};`
-    }
-
-    let script = `#version 300 es
-precision highp float;
-precision highp samplerCubeShadow;
-#define varying in
-#define texture2D texture
-
-    ${defines}
-    ${ShaderFragments.CLOSUREDEF}
-    ${uniforms}
-    ${texdecl}
-    ${varyings}
-    MULTILAYER_UV_DECLARE
-    ${ShaderFragments.SHADERLIB}    
-    
-    out vec4 fragColor;
-    
-    void main() {
-      Closure _mainSurface;
-      
-      _mainSurface.alpha = 1.0;
-      
-      ${this.buf.replace(/SHADER_SURFACE/g, '_mainSurface')}
-      
-      {
-        vec4 color = vec4(_mainSurface.light+_mainSurface.emission, _mainSurface.alpha);  
-        //gl_FragColor = color;
-        //gl_FragColor = vec4(color.rgb, 1.0);
-        fragColor = vec4(color.rgb, 1.0);
-      }
-      
-      ${ShaderFragments.ALPHA_HASH.replace(/SHADER_SURFACE/g, '_mainSurface')}
-      
-      //gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-    }
-    `
-
-    this.fragment = script
-
-    uvdecl = ShaderProgram.multilayerAttrDeclare('uv', 'vec2', true, glsl300)
-    this.fragment = this.fragment.replace(/MULTILAYER_UV_DECLARE/, uvdecl)
-
-    return this
-  }
-
-  genShader(): IShaderDefCompilable {
-    if (this.fragment === undefined) {
-      throw new Error('must called .generate() before .genShader')
-    }
-
-    const gen = this
-    const ret: IShaderDefCompilable = {
-      fragment  : this.fragment,
-      vertex    : this.vertex!,
-      uniforms  : {},
-      attributes: ['position', 'normal', 'uv', 'color', 'id'],
-
-      setUniforms(gl: WebGL2RenderingContext, graph: Graph<unknown>, uniforms: IUniformsBlock) {
-        for (let image of gen.textures.keys()) {
-          image.update()
-
-          if (!image.ready) {
-            continue
-          }
-
-          let gltex = image.getGlTex(gl)
-          uniforms['sampler_' + image.lib_id] = gltex
-        }
-
-        for (let node of graph.sortlist) {
-          for (let k in node.inputs) {
-            let sock = node.inputs[k]
-
-            if (sock.edges.length === 0) {
-              let name = gen.getSocketName(sock)
-              uniforms[name] = sock.getValue()
-            }
-          }
-        }
-      },
-
-      compile(gl: WebGL2RenderingContext): ShaderProgramCompilable {
-        const program = new ShaderProgramCompilable(gl, this.vertex, this.fragment, this.attributes)
-        initShader(gl, program, this)
-        program.shaderdef = this
-        ret.setUniforms(gl, gen.graph!, ret.uniforms)
-        return program
-      },
-    }
-
-    return ret
-  }
-}
+const _warnedNoEmitter = new Set<string>()
 
 export class ShaderNode<
   InputSet extends INodeSocketSet = INodeSocketSet,
@@ -574,7 +161,32 @@ export class ShaderNode<
     super.graphDefineAPI(api, nodeStruct)
   }
 
-  genCode(_gen: ShaderGenerator): void {}
+  /**
+   * Emit this node's WGSL into `gen.buf`. The base implementation writes
+   * type-appropriate zero/default values for every output socket (used by
+   * nodes that have no bespoke emission yet), warning once per class.
+   * Subclasses override with their real codegen.
+   */
+  genWgsl(gen: WgslShaderGenerator): void {
+    const name = this.constructor?.name ?? '<unknown>'
+    if (!_warnedNoEmitter.has(name)) {
+      _warnedNoEmitter.add(name)
+      console.warn(`ShaderNode: no genWgsl override for ${name} — emitting defaults`)
+    }
+    for (const k in this.outputs) {
+      const sock = this.outputs[k]
+      const t = gen.getType(sock)
+      const n = gen.getSocketName(sock)
+      if (t === 'f32') gen.out(`${n} = 0.0;\n`)
+      else if (t === 'vec2f') gen.out(`${n} = vec2f(0.0, 0.0);\n`)
+      else if (t === 'vec3f') gen.out(`${n} = vec3f(0.0, 0.0, 0.0);\n`)
+      else if (t === 'vec4f') gen.out(`${n} = vec4f(0.0, 0.0, 0.0, 1.0);\n`)
+      else if (t === 'Closure') {
+        gen.out(`${n}.diffuse = vec3f(0.0); ${n}.light = vec3f(0.0); `)
+        gen.out(`${n}.emission = vec3f(0.0); ${n}.scatter = vec3f(0.0); ${n}.alpha = 1.0;\n`)
+      }
+    }
+  }
 
   buildUI(_container: Container): void {}
 }
@@ -605,11 +217,8 @@ export class OutputNode<InputSet extends INodeSocketSet = {}, OutputSet extends 
     }
   }
 
-  genCode(gen: ShaderGenerator): void {
-    gen.out(`
-      //SHADER_SURFACE.emission = vec3(hash3f(gl_FragCoord.xyz));
-      SHADER_SURFACE = ${gen.getSocketValue(this.inputs.surface)};
-    `)
+  genWgsl(gen: WgslShaderGenerator): void {
+    gen.out(`_mainSurface = ${gen.getSocketValue(this.inputs.surface)};\n`)
   }
 }
 OutputNode.STRUCT =
@@ -666,33 +275,32 @@ export class MixNode<InputSet extends INodeSocketSet = {}, OutputSet extends INo
     }
   }
 
-  genCode(gen: ShaderGenerator): void {
-    let code = ''
+  genWgsl(gen: WgslShaderGenerator): void {
+    let expr = 'a + (b - a)*fac'
 
     switch (this.mode) {
       case MixModes.MIX:
-        code = 'a + (b - a)*fac'
+        expr = 'a + (b - a)*fac'
         break
       case MixModes.MULTIPLY:
-        code = 'a + (a*b - a)*fac'
+        expr = 'a + (a*b - a)*fac'
         break
       case MixModes.DIVIDE:
-        code = 'a + (a/b - a)*fac'
+        expr = 'a + (a/b - a)*fac'
         break
       case MixModes.ADD:
-        code = 'a + ((a+b) - a)*fac'
+        expr = 'a + ((a+b) - a)*fac'
         break
       case MixModes.SUBTRACT:
-        code = 'a + ((a-b) - a)*fac'
+        expr = 'a + ((a-b) - a)*fac'
         break
     }
 
     gen.out(`
-      vec4 a = ${gen.getSocketValue(this.inputs.color1)};
-      vec4 b = ${gen.getSocketValue(this.inputs.color2)};
-      float fac = ${gen.getSocketValue(this.inputs.factor)};
-      
-      ${gen.getSocketName(this.outputs.color)} = ${code};        
+      let a : vec4f = ${gen.getSocketValue(this.inputs.color1)};
+      let b : vec4f = ${gen.getSocketValue(this.inputs.color2)};
+      let fac : f32 = ${gen.getSocketValue(this.inputs.factor)};
+      ${gen.getSocketName(this.outputs.color)} = ${expr};
     `)
   }
 
@@ -749,22 +357,18 @@ export class ImageNode<InputSet extends INodeSocketSet = {}, OutputSet extends I
     }
   }
 
-  genCode(gen: ShaderGenerator): void {
+  genWgsl(gen: WgslShaderGenerator): void {
+    const out = gen.getSocketName(this.outputs.color)
+
     if (this.imageUser.image) {
+      const tex = gen.getTexture(this.imageUser.image)
       gen.out(`
-        vec2 uv = ${gen.getSocketValue(this.inputs.uv, ShaderContext.UV)};
-        vec4 c;
-        
-        c = texture2D(${gen.getTexture(this.imageUser.image)}, uv);
-        ${gen.getSocketName(this.outputs.color)} = vec4(c.rgb, 1.0);
-        
-        //${gen.getSocketName(this.outputs.color)} = vec4(uv[0], uv[1], 0.0, 1.0);
-        
+        let uv : vec2f = ${gen.getSocketValue(this.inputs.uv, 'input.vLocalCo.xy')};
+        let _c : vec4f = textureSample(${tex}_tex, ${tex}_smp, uv);
+        ${out} = vec4f(_c.rgb, 1.0);
       `)
     } else {
-      gen.out(`
-        ${gen.getSocketName(this.outputs.color)} = vec4(1.0, 1.0, 1.0, 1.0);
-      `)
+      gen.out(`${out} = vec4f(1.0, 1.0, 1.0, 1.0);\n`)
     }
   }
 
@@ -774,10 +378,6 @@ export class ImageNode<InputSet extends INodeSocketSet = {}, OutputSet extends I
     container.label('Image')
     let iuser = UIBase.createElement('image-user-x') as ImageUserWidget
     let path = container._joinPrefix('imageUser') ?? ''
-
-    //iuser.ownerPath = path;
-
-    console.log('PATH', path)
 
     iuser.setAttribute('datapath', path)
     iuser.vertical = true
@@ -831,22 +431,29 @@ export class DiffuseNode<InputSet extends INodeSocketSet = {}, OutputSet extends
     }
   }
 
-  genCode(gen: ShaderGenerator): void {
-    let brdf = DiffuseBRDF.gen('cl', 'co', 'normal', 'color')
-    let lights = LightGen.generate('cl', 'co', 'normal', 'color', brdf)
+  genWgsl(gen: WgslShaderGenerator): void {
+    const brdf = DiffuseBRDFWgsl.gen('cl', 'co', 'normal', 'color')
+    const lights = LightGenWgsl.generate('cl', 'co', 'normal', 'color', brdf)
+    const surfName = gen.getSocketName(this.outputs.surface)
 
     gen.out(`
-Closure cl;
-vec3 co = vGlobalCo;
-float roughness = ${gen.getSocketValue(this.inputs.roughness)};
-vec3 normal = ${gen.getSocketValue(this.inputs.normal, ShaderContext.NORMAL)};
-vec4 color = ${gen.getSocketValue(this.inputs.color)};
+      var cl : Closure;
+      cl.diffuse  = vec3f(0.0);
+      cl.light    = vec3f(0.0);
+      cl.emission = vec3f(0.0);
+      cl.scatter  = vec3f(0.0);
+      cl.alpha    = 1.0;
 
-cl.alpha = color[3];
-cl.diffuse = color.rgb;
+      let co : vec3f = input.vGlobalCo;
+      let roughness : f32 = ${gen.getSocketValue(this.inputs.roughness)};
+      let normal : vec3f = ${gen.getSocketValue(this.inputs.normal, 'input.vNormal')};
+      let color : vec4f = ${gen.getSocketValue(this.inputs.color)};
 
-${lights}
-${gen.getSocketName(this.outputs.surface)} = cl;
+      cl.alpha   = color.a;
+      cl.diffuse = color.rgb;
+
+      ${lights}
+      ${surfName} = cl;
     `)
   }
 
@@ -874,7 +481,6 @@ export class GeometryNode<
     normal: Vec3Socket
     screen: Vec3Socket
     local: Vec3Socket
-    uv: Vec2Socket
   }
 > {
   constructor() {
@@ -892,18 +498,16 @@ export class GeometryNode<
         normal  : new Vec3Socket(),
         screen  : new Vec3Socket(),
         local   : new Vec3Socket(),
-        uv      : new Vec2Socket(),
-        //tangent  : new Vec3Socket()
       },
     }
   }
 
-  genCode(gen: ShaderGenerator): void {
+  genWgsl(gen: WgslShaderGenerator): void {
     gen.out(`
-      ${gen.getSocketName(this.outputs.position)} = vGlobalCo;
-      ${gen.getSocketName(this.outputs.local)} = vLocalCo;
-      ${gen.getSocketName(this.outputs.normal)} = vNormal;
-      ${gen.getSocketName(this.outputs.uv)} = vuv;
+      ${gen.getSocketName(this.outputs.position)} = input.vGlobalCo;
+      ${gen.getSocketName(this.outputs.local)}    = input.vLocalCo;
+      ${gen.getSocketName(this.outputs.normal)}   = input.vNormal;
+      ${gen.getSocketName(this.outputs.screen)}   = vec3f(input.clipPos.xy, input.clipPos.z);
     `)
   }
 
@@ -920,3 +524,161 @@ GeometryNode.STRUCT =
 `
 nstructjs.register(GeometryNode)
 ShaderNetworkClass.register(GeometryNode)
+
+/**
+ * Attribute categories an `AttributeNode` can request. Values match the
+ * sculptcore `AttrUse` bitflags (COLOR=2, UV=4) so they pass straight through
+ * to the renderer / C++ attribute resolution; `GENERIC` (0) requests by name
+ * regardless of role and is read as a vec3.
+ */
+export const AttributeCategory = {
+  GENERIC: 0,
+  COLOR  : 2,
+  UV     : 4,
+}
+
+/** One attribute row offered in the AttributeNode dropdown. Duck-typed against
+ * `LiteMesh.attrItems` so shadernodes need not import the lite-mesh layer. */
+interface IAttrItem {
+  attrName: string
+  use: number
+  name: string
+}
+
+/**
+ * Reads a single named mesh attribute and exposes it Blender-style through
+ * three fixed outputs (`color`/vec4, `vector`/vec3, `fac`/float), all driven
+ * from the one selected attribute by swizzle/broadcast. The attribute is
+ * requested by name + category from the renderer, which supplies it as a
+ * dynamic vertex buffer (default-filled when absent — never an error).
+ */
+export class AttributeNode<
+  InputSet extends INodeSocketSet = {},
+  OutputSet extends INodeSocketSet = {},
+> extends ShaderNode<
+  InputSet,
+  OutputSet & {color: RGBASocket; vector: Vec3Socket; fac: FloatSocket}
+> {
+  attrName: string
+  category: number
+
+  constructor() {
+    super()
+
+    this.attrName = ''
+    this.category = AttributeCategory.COLOR
+  }
+
+  static graphDefineAPI(api: DataAPI, nodeStruct: DataStruct) {
+    super.graphDefineAPI(api, nodeStruct)
+
+    nodeStruct.enum('category', 'category', AttributeCategory, 'Category', 'Attribute category to list')
+  }
+
+  static nodedef() {
+    return {
+      category: 'Inputs',
+      uiname  : 'Attribute',
+      name    : 'attribute',
+      inputs  : {},
+      outputs: {
+        color : new RGBASocket(undefined, SocketFlags.NO_UI_EDITING),
+        vector: new Vec3Socket(undefined, SocketFlags.NO_UI_EDITING),
+        fac   : new FloatSocket(undefined, SocketFlags.NO_UI_EDITING),
+      },
+    }
+  }
+
+  genWgsl(gen: WgslShaderGenerator): void {
+    const colorOut = gen.getSocketName(this.outputs.color)
+    const vecOut = gen.getSocketName(this.outputs.vector)
+    const facOut = gen.getSocketName(this.outputs.fac)
+
+    if (!this.attrName) {
+      gen.out(`
+        ${colorOut} = vec4f(0.0, 0.0, 0.0, 1.0);
+        ${vecOut}   = vec3f(0.0, 0.0, 0.0);
+        ${facOut}   = 0.0;
+      `)
+      return
+    }
+
+    const {field, wgslType} = gen.requestAttribute(this.attrName, this.category)
+    const lum = 'vec3f(0.2126, 0.7152, 0.0722)'
+
+    let asVec4: string
+    let asVec3: string
+    let asFac: string
+
+    switch (wgslType) {
+      case 'vec4f':
+        asVec4 = field
+        asVec3 = `${field}.xyz`
+        asFac = `dot(${field}.rgb, ${lum})`
+        break
+      case 'vec2f':
+        asVec4 = `vec4f(${field}, 0.0, 1.0)`
+        asVec3 = `vec3f(${field}, 0.0)`
+        asFac = `${field}.x`
+        break
+      default: // vec3f
+        asVec4 = `vec4f(${field}, 1.0)`
+        asVec3 = field
+        asFac = `dot(${field}, ${lum})`
+        break
+    }
+
+    gen.out(`
+      ${colorOut} = ${asVec4};
+      ${vecOut}   = ${asVec3};
+      ${facOut}   = ${asFac};
+    `)
+  }
+
+  buildUI(container: Container): void {
+    super.buildUI(container)
+
+    container.prop('category')
+
+    const ctx = container.ctx as {mesh?: {attrItems?: IAttrItem[]}} | undefined
+    const mesh = ctx?.mesh
+    const enumDef: Record<string, string> = {}
+
+    if (mesh && Array.isArray(mesh.attrItems)) {
+      for (const item of mesh.attrItems) {
+        if (this.category === AttributeCategory.GENERIC || item.use & this.category) {
+          enumDef[item.name] = item.attrName
+        }
+      }
+    }
+
+    if (Object.keys(enumDef).length === 0) {
+      enumDef['(no attributes)'] = ''
+    }
+
+    container.listenum(undefined, {
+      name      : 'Attribute',
+      enumDef,
+      defaultval: this.attrName,
+      callback  : (val: string | number) => {
+        this.attrName = String(val)
+        this.graphUpdate()
+      },
+    })
+  }
+
+  loadSTRUCT(reader: StructReader): void {
+    reader(this)
+    super.loadSTRUCT(reader)
+  }
+}
+
+AttributeNode.STRUCT =
+  nstructjs.inherit(AttributeNode, ShaderNode, 'shader.AttributeNode') +
+  `
+  attrName : string;
+  category : int;
+}
+`
+nstructjs.register(AttributeNode)
+ShaderNetworkClass.register(AttributeNode)

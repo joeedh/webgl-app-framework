@@ -104,6 +104,17 @@ export function wgslForSpatialShader(sdef: ShaderDef): string {
   const name = sdef.name
   if (name === 'Basic Mesh Shader') return SPATIAL_BASIC_MESH_WGSL
   if (name === 'Basic Line Shader') return SPATIAL_BASIC_LINE_WGSL
+  // The tree's dynamic material draw shader (SpatialTree.setDrawShader, M6):
+  // the renderengine compiled the material's WGSL and C++ stored it on the
+  // ShaderDef's `wgslSource`. Read it straight back — the attr layout in
+  // `sdef.attrs` already matches the requested set, so batch.ts binds by name.
+  if (name === 'Spatial Material Shader') {
+    const wgsl = sdef.wgslSource
+    if (wgsl && wgsl.length > 0) return wgsl
+    // setDrawShader not yet called (or empty) — fall back so the frame still
+    // renders rather than throwing on the draw seam.
+    return SPATIAL_BASIC_MESH_WGSL
+  }
   throw new Error(
     `litemesh_wgsl: no WGSL port registered for sculptcore ShaderDef "${name}". ` + `Add it to litemesh_wgsl.ts.`
   )

@@ -54,6 +54,26 @@ but actually lives in the main bundle (pre-extraction):
 
 - `addons/builtin/mesh/src/mesh_ops.ts:3461` — `import {BVHToolMode} from '../../../../scripts/editors/view3d/tools/pbvh.js'` used only for an `instanceof` check at mesh_ops.ts:948. BVHToolMode is the pbvh_sculpt addon's public class; mesh shouldn't know about it. Either: (a) eliminate the `instanceof` check via a behavior interface on ToolMode, or (b) the pbvh_sculpt addon installs a "bvh sculpt is active" predicate into a shared context that mesh consults.
 
+## lite-mesh → shadernodes coupling (renderengine-sculptcore integration)
+
+The dynamic-attribute integration introduced a runtime dependency from the
+lite-mesh layer onto the shader-node layer:
+
+- `scripts/lite-mesh/litemesh.ts:23` — runtime `import {LightGenWgsl} from
+  '../shadernodes/shader_lib_wgsl'` (plus type-only `RequestedAttrDesc` /
+  `IRenderLights`). LiteMesh builds its fallback draw shader from the shared
+  WGSL light-gen helper so the sculpt batch and material path agree on lighting.
+  Both are core `scripts/` (not addons), so this doesn't cross the `@addon`
+  boundary — but it is a new layer edge (lite-mesh now depends on shadernodes).
+  Acceptable for now; revisit if either becomes an addon. See
+  [documentation/shader-attributes.md](documentation/shader-attributes.md).
+- **Pre-existing (not from this work):** opening the `MaterialEditor` while a
+  `LiteMesh` object is active throws `invalid path library.object[N].data` from
+  `_MaterialEditor.buildHeader → updatePath` — the editor header binds the active
+  object's `.data` mesh path, which a LiteMesh datablock doesn't satisfy. The
+  node-graph render path (`_recalcLines`, AttributeNode `buildUI`) is unaffected.
+  Fix when LiteMesh gains a proper data-API surface for the editor header.
+
 ## WebGPU debug-capture coverage
 
 The FBO debug editor's WebGPU path (`scripts/editors/debug/webgpu_debug.ts`)

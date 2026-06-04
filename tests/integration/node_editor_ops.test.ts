@@ -68,7 +68,11 @@ function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: s
   const env = {...process.env}
   delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
 
-  const evalArgs = evals.flatMap((e) => ['--eval', e])
+  // `--eval=<expr>` (single token), NOT `--eval <expr>`: a bare `<expr>` token
+  // is parsed by headless Chromium as a positional URL and can abort the launch
+  // when a value-taking flag follows it. The `=` form is an ignored switch to
+  // Chromium; getArgList() still reads it.
+  const evalArgs = evals.map((e) => `--eval=${e}`)
   const runArgs = runTools.flatMap((t) => ['--run', t])
 
   execFileSync(

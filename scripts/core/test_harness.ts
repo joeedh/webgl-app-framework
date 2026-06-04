@@ -304,6 +304,15 @@ function dumpScene(): unknown {
     objectCount : objects.length,
     objects,
     materials,
+    // Reflect the dynamic-attribute test driver's result if it ran (set by
+    // litemesh_attrtest_support's `__attrtestApply`, invoked via `--eval`). Lets
+    // the attr-render integration test assert the requested-attr contract +
+    // missing-slot advisory alongside the GPU-buffer evidence in `objects`.
+    attrtest    : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
+    // Reflect the shader-graph JSON round-trip driver (`__attrtestRoundtrip`),
+    // proving nstructjs JSON is an adequate test-fixture format for
+    // AttributeNode-carrying materials (M7 "test format" decision).
+    attrRoundtrip: (globalThis as {__attrtestRoundtripResult?: unknown}).__attrtestRoundtripResult,
   }
 }
 

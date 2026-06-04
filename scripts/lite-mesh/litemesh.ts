@@ -18,6 +18,9 @@ import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
+import type {RequestedAttrBridge} from '@sculptcore/api/api'
+import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
+import {LightGenWgsl, type IRenderLights} from '../shadernodes/shader_lib_wgsl'
 import {IUniformsBlock, WebGLBatchExecutor} from '../webgl/index'
 import type {View3D} from '../editors/all'
 import {SceneObject} from '../sceneobject/index'
@@ -27,7 +30,7 @@ import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 import type {DrawQueue, FrameContext} from '../render/queue'
 import {isWebGPU} from '../core/renderer_flag'
 import {getActiveWebGpuContext} from '../render/queue_factory'
-import {WebGPUBatchExecutor} from '../webgpu/batch'
+import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
@@ -358,6 +361,11 @@ export class LiteMesh extends SceneObjectData {
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   private gpuUniforms?: IUniformsBlock
+  /** True once `setDrawShader` installed a real material WGSL on the spatial
+   * tree (M6). The viewport draw then provides the material's full uniform set
+   * (frame/object/lights across @group 0/1/2) instead of the basic-shader
+   * single @group(0) block — see `drawQ` / `drawQGPU`. */
+  private _hasMaterialDrawShader = false
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array
@@ -556,6 +564,19 @@ export class LiteMesh extends SceneObjectData {
     )
     const name = this._cornerLayerNames().find((n) => !before.has(n)) ?? ''
     return {charts, name}
+  }
+
+  /** Seam every edge (so generateUVFromSeams produces a per-face cuboid map).
+   * Test/demo helper; flags the seam overlay for rebuild. */
+  markAllSeams(): void {
+    ;(this.mesh as unknown as {markAllSeams(): void}).markAllSeams()
+    this._seamsDirty = true
+  }
+
+  /** Fill the first vertex FLOAT4 COLOR layer with a deterministic position->rgb
+   * gradient. Test/demo helper (no brush stroke needed). */
+  fillVertexColorFromPosition(): void {
+    ;(this.mesh as unknown as {fillVertexColorFromPosition(): void}).fillVertexColorFromPosition()
   }
 
   /* ----- Viewport area picking (overrides SceneObjectData defaults) -----
@@ -1033,6 +1054,69 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /**
+   * Install the material's requested geometry-attribute set on this mesh's
+   * spatial tree (M6). The shader-graph only knows each attribute's *category*
+   * (UV/Color/Generic); the true element *domain* (UVs corner-domain, vertex
+   * color vertex-domain) is resolved here against the live mesh layers
+   * (`attrItems`), falling back to a category default when the layer is absent
+   * (it gets default-filled in C++). sculptcore then builds one vertex buffer
+   * per entry, by name, in slot order. Never throws — an empty set restores the
+   * legacy single-color draw path.
+   */
+  setRequestedAttrs(reqs: RequestedAttrDesc[]): void {
+    if (!this.spatial) {
+      return
+    }
+    // Index the live layers by name so each request resolves to its real domain.
+    const byName = new Map<string, LiteMeshAttrItem>()
+    for (const item of this.attrItems) {
+      byName.set(item.attrName, item)
+    }
+    const bridges: RequestedAttrBridge[] = reqs.map((r) => {
+      const item = byName.get(r.name)
+      const domain = item ? item.domain : LiteMesh._defaultDomainForCategory(r.category)
+      // Missing color reads as white (the legacy default); everything else zero.
+      const defaultKind = r.category === AttrUseFlags.COLOR ? 1 : 0
+      return {name: r.name, srcType: r.gpuType, elemSize: r.elemSize, slot: r.slot, domain, defaultKind}
+    })
+    this.wasm.SpatialTree_setRequestedAttrs(this.spatial, bridges)
+  }
+
+  /** Default element domain to assume for an absent requested layer, by category
+   * (UV → corner, matching box-unwrap; everything else vertex). Only used for
+   * the missing-layer (default-filled) case — present layers use their real
+   * domain. */
+  private static _defaultDomainForCategory(category: number): number {
+    return category === AttrUseFlags.UV ? AttrDomain.CORNER : AttrDomain.VERTEX
+  }
+
+  /**
+   * Set the material WGSL the spatial tree's draw batches render with (M6).
+   * C++ stores it on the tree's `drawShader` ShaderDef (`wgslSource`) and flags
+   * leaves for a GPU regen; `wgslForSpatialShader` reads it straight back off
+   * the bound ShaderDef. Call after `setRequestedAttrs`.
+   */
+  setDrawShader(wgsl: string): void {
+    if (!this.spatial) {
+      return
+    }
+    this.wasm.SpatialTree_setDrawShader(this.spatial, wgsl)
+    this._hasMaterialDrawShader = !!wgsl && wgsl.length > 0
+  }
+
+  /**
+   * The advisory list of requested slots with no matching mesh layer (rendered
+   * with defaults). Read once after a material change to warn the user. Never
+   * throws.
+   */
+  getMissingAttrSlots(): number[] {
+    if (!this.spatial) {
+      return []
+    }
+    return this.wasm.SpatialTree_getMissingAttrSlots(this.spatial)
+  }
+
+  /**
    * DataBlock teardown — called by the library when the block is removed
    * (including the scene-clear that precedes a file load). Releases the C++
    * mesh + spatial tree (allocator-correct `Mesh_free`/`SpatialTree_free`, NOT
@@ -1107,6 +1191,48 @@ export class LiteMesh extends SceneObjectData {
       ...uniforms,
       drawMatrix,
       normalMatrix,
+    } as IUniformsBlock & Record<string, unknown>
+
+    // When a material WGSL is the draw shader, the spatial mesh batch needs the
+    // renderengine's full uniform schema (FrameUniforms @group0, lights @group1,
+    // ObjectUniforms @group2) rather than the basic shader's single packed
+    // @group(0) block. Provide it here so the LiteMesh renders the material on
+    // both the offscreen BasePass and the viewport canvas pass (the C++ tree
+    // ShaderDef is shared between them). The basic line/bounds overlays still
+    // read `drawMatrix`/`uColor` from the same block — UniformBindings ignores
+    // fields a given shader doesn't declare.
+    if (this._hasMaterialDrawShader) {
+      const scene = view3d.ctx?.scene as unknown as
+        | {lights?: Iterable<unknown>; envlight?: {color?: unknown; power?: number}}
+        | undefined
+      // ObjectUniforms.normalMatrix is the object's world rotation (the material
+      // lights in world space) — NOT the proj*object rotation the basic shader
+      // wants. Overwrite the basic value computed above.
+      if (uniforms.objectMatrix instanceof Matrix4) {
+        uniforms2.normalMatrix = uniforms.objectMatrix.copy().makeRotationOnly()
+      } else {
+        uniforms2.normalMatrix = new Matrix4()
+      }
+      if (uniforms2.ambientColor === undefined && scene?.envlight?.color !== undefined) {
+        uniforms2.ambientColor = scene.envlight.color
+      }
+      if (uniforms2.ambientPower === undefined) {
+        uniforms2.ambientPower = scene?.envlight?.power ?? 1.0
+      }
+      if (uniforms2.viewportSize === undefined) uniforms2.viewportSize = view3d.glSize
+      if (uniforms2.uSample === undefined) uniforms2.uSample = 1
+      if (uniforms2.alpha === undefined) uniforms2.alpha = 1.0
+      // Per-light uniforms (POINTLIGHTS[i].co/.power/...) — the same
+      // RenderLight-fed machinery the renderengine BasePass uses. Build a
+      // minimal IRenderLights from the scene lights (only `.light` is read).
+      const rlights: IRenderLights = {}
+      let lid = 0
+      if (scene?.lights) {
+        for (const light of scene.lights) {
+          ;(rlights as Record<string, unknown>)[lid++] = {light}
+        }
+      }
+      LightGenWgsl.setUniforms(uniforms2 as unknown as Record<string, unknown>, scene, rlights)
     }
 
     if (isWebGPU()) {
@@ -1181,16 +1307,23 @@ export class LiteMesh extends SceneObjectData {
             bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
             bindingsCache.set(pipeline, bindings)
           }
-          bindings.write(self.gpuUniforms!)
-          const bg = bindings.getBindGroup(pipeline.handle, 0)
-          if (!bg) {
-            // Skip rather than throw: a throw on the render seam is swallowed as
-            // a drawObjects warning on the native backend and silently aborts
-            // the whole pass.
-            console.error('litemesh: spatial pipeline declares no @group(0) uniform bindings')
+          const uniforms = self.gpuUniforms!
+          bindings.write(uniforms)
+          // Bind every @group the shader declares — the basic spatial shaders
+          // use only @group(0), but a material draw shader spans @group 0/1/2
+          // (frame / lights / object). Missing/declined groups are skipped (a
+          // throw on the render seam is swallowed as a drawObjects warning and
+          // silently aborts the whole pass).
+          const groups: CommandBindGroup[] = []
+          for (const group of bindings.groups.keys()) {
+            const bg = bindings.getBindGroup(pipeline.handle, group, uniforms)
+            if (bg) groups.push({group, bindGroup: bg})
+          }
+          if (groups.length === 0) {
+            console.error('litemesh: spatial pipeline declares no uniform bind groups')
             return null
           }
-          return bg
+          return groups
         },
       })
       this.drawBatchExecutorGPU = exec

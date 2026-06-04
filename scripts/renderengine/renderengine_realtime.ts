@@ -8,7 +8,7 @@ import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {View3D} from '../editors/all.js'
 import type {Scene} from '../scene/scene.js'
 import type {Material} from '../core/material.js'
-import type {IShaderDefCompilable} from '../shadernodes/shader_nodes.js'
+import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
 
 // WebGPU-only renderengine. The realtime engine constructs a
 // `WebGpuRenderGraph` of `GraphNodeRef`s every frame and dispatches via
@@ -125,13 +125,6 @@ function getJitterSamples(totpoint: number): [number, number, number][] {
   return jcache[totpoint]
 }
 
-// Kept solely because `shader_nodes.ts` declares the GL `compile()` method
-// to return this type — the NodeEditor preview path still compiles GLSL
-// material shaders. The realtime engine no longer owns a GL shader cache.
-export class ShaderProgramCompilable extends ShaderProgram {
-  declare shaderdef: IShaderDefCompilable
-}
-
 export class RenderLight {
   light: SceneObject<Light>
   id: number
@@ -215,6 +208,12 @@ interface WebgpuMaterialState {
   program: WebgpuEngineProgram
   pipeline: Pipeline
   hash: number
+  // Compiled material WGSL + the geometry attributes it reads — the contract
+  // handed to sculptcore for LiteMesh draw batches (M6). The pipeline above
+  // serves regular meshes drawn via the scene walk; a LiteMesh instead routes
+  // its sculpt batch through the C++ tree shader, fed from these.
+  wgsl: string
+  requestedAttrs: RequestedAttrDesc[]
 }
 
 export class RealtimeEngine extends RenderEngine {
@@ -640,6 +639,7 @@ export class RealtimeEngine extends RenderEngine {
     type WgslDef = {
       wgsl: string
       setUniforms: (graph: unknown, uniforms: Record<string, unknown>) => void
+      requestedAttrs?: RequestedAttrDesc[]
     }
     let def: WgslDef
     try {
@@ -682,7 +682,13 @@ export class RealtimeEngine extends RenderEngine {
     LightGenWgsl.setUniforms(program.uniforms as unknown as Record<string, unknown>, scene, rlights)
     ctx.pipelineBindings.set(program, pipeline)
 
-    const state: WebgpuMaterialState = {program, pipeline, hash}
+    const state: WebgpuMaterialState = {
+      program,
+      pipeline,
+      hash,
+      wgsl          : def.wgsl,
+      requestedAttrs: def.requestedAttrs ?? [],
+    }
     this.webgpuMaterialStates.set(mat, state)
     return state
   }
@@ -1081,6 +1087,39 @@ export class RealtimeEngine extends RenderEngine {
 
       const state = this._ensureWebgpuMaterial(ctx, scene, mat, rlights)
       if (!state) continue
+
+      // LiteMesh integration: its sculpt draw batch renders with the C++ tree
+      // shader, not this BasePass pipeline. Feed it the compiled material WGSL +
+      // requested attribute set so sculptcore builds the matching vertex buffers
+      // and draws with the material. Guarded on the material hash — setDrawShader
+      // rebuilds the C++ ShaderDef (drops the batch, flags leaves), so it must
+      // run only on a genuine material change, never per frame. Duck-typed to
+      // keep the renderengine decoupled from the lite-mesh layer.
+      const litemesh = ob.data as unknown as {
+        setRequestedAttrs?: (reqs: RequestedAttrDesc[]) => void
+        setDrawShader?: (wgsl: string) => void
+        getMissingAttrSlots?: () => number[]
+        _engineDrawShaderHash?: number
+      }
+      if (typeof litemesh.setDrawShader === 'function' && litemesh._engineDrawShaderHash !== state.hash) {
+        try {
+          litemesh.setRequestedAttrs?.(state.requestedAttrs)
+          litemesh.setDrawShader(state.wgsl)
+          const missing = litemesh.getMissingAttrSlots?.() ?? []
+          if (missing.length > 0) {
+            const names = state.requestedAttrs
+              .filter((r) => missing.includes(r.slot))
+              .map((r) => r.name)
+            console.warn(
+              `[renderengine.webgpu] mat-${mat.lib_id}: ${missing.length} requested attribute(s) ` +
+                `absent on the mesh, rendering with defaults: ${names.join(', ')}`
+            )
+          }
+          litemesh._engineDrawShaderHash = state.hash
+        } catch (err) {
+          console.error(`[renderengine.webgpu] LiteMesh attr push failed for mat-${mat.lib_id}:`, err)
+        }
+      }
 
       const obMat = ob.outputs.matrix.getValue() as Matrix4
       uniforms.objectMatrix = obMat
