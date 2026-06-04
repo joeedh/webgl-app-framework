@@ -767,13 +767,6 @@ NodeEditor {
     return undefined
   }
 
-  static ensureAPI(api: DataAPI): DataStruct {
-    if (!api.hasStruct(NodeEditorBase)) {
-      NodeEditorBase.defineAPI(api)
-    }
-    return api.getStruct(NodeEditorBase)
-  }
-
   static defineAPI(api: DataAPI): DataStruct {
     const nedstruct = super.defineAPI(api)
 
