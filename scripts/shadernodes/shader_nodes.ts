@@ -88,6 +88,11 @@ shader.Closure {
 nstructjs.register(Closure)
 
 export class ClosureSocket extends NodeSocketType<Closure> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+shader.ClosureSocket {
+  data : shader.Closure;
+}`)
+
   data: Closure
 
   constructor() {
@@ -136,13 +141,6 @@ export class ClosureSocket extends NodeSocketType<Closure> {
   }
 }
 
-ClosureSocket.STRUCT =
-  nstructjs.inherit(ClosureSocket, NodeSocketType, 'shader.ClosureSocket') +
-  `
-  data : shader.Closure;
-}
-`
-nstructjs.register(ClosureSocket)
 NodeSocketType.register(ClosureSocket)
 
 /**
@@ -164,6 +162,10 @@ export class ShaderNode<
   InputSet extends INodeSocketSet = INodeSocketSet,
   OutputSet extends INodeSocketSet = INodeSocketSet,
 > extends Node<InputSet, OutputSet, unknown> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+shader.ShaderNode {
+}`)
+
   constructor() {
     super()
   }
@@ -202,16 +204,13 @@ export class ShaderNode<
   buildUI(_container: Container): void {}
 }
 
-ShaderNode.STRUCT =
-  nstructjs.inherit(ShaderNode, Node, 'shader.ShaderNode') +
-  `
-}
-`
-nstructjs.register(ShaderNode)
-
 export class OutputNode<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> //
   extends ShaderNode<InputSet & {surface: ClosureSocket}, OutputSet>
 {
+  static STRUCT = nstructjs.inlineRegister(this, `
+shader.OutputNode {
+}`)
+
   constructor() {
     super()
   }
@@ -232,12 +231,6 @@ export class OutputNode<InputSet extends INodeSocketSet = {}, OutputSet extends 
     gen.out(`_mainSurface = ${gen.getSocketValue(this.inputs.surface)};\n`)
   }
 }
-OutputNode.STRUCT =
-  nstructjs.inherit(OutputNode, ShaderNode, 'shader.OutputNode') +
-  `
-}
-`
-nstructjs.register(OutputNode)
 ShaderNetworkClass.register(OutputNode)
 
 export const MixModes = {
@@ -254,6 +247,11 @@ export class MixNode<InputSet extends INodeSocketSet = {}, OutputSet extends INo
     OutputSet & {color: RGBASocket}
   >
 {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.MixNode {
+    mode : int;
+  }`)
+
   mode: number
 
   constructor() {
@@ -327,17 +325,16 @@ export class MixNode<InputSet extends INodeSocketSet = {}, OutputSet extends INo
   }
 }
 
-MixNode.STRUCT =
-  nstructjs.inherit(MixNode, ShaderNode) +
-  `
-  mode : int;
-}`
-nstructjs.register(MixNode)
 ShaderNetworkClass.register(MixNode)
 
 export class ImageNode<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> //
   extends ShaderNode<InputSet & {uv: Vec2Socket}, OutputSet & {color: RGBASocket}>
 {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.ImageNode {
+    imageUser : ImageUser;
+  }`)
+
   imageUser: ImageUser
 
   constructor() {
@@ -408,12 +405,6 @@ export class ImageNode<InputSet extends INodeSocketSet = {}, OutputSet extends I
   }
 }
 
-ImageNode.STRUCT =
-  nstructjs.inherit(ImageNode, ShaderNode) +
-  `
-  imageUser : ImageUser;
-}`
-nstructjs.register(ImageNode)
 ShaderNetworkClass.register(ImageNode)
 
 export class DiffuseNode<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> //
@@ -422,6 +413,10 @@ export class DiffuseNode<InputSet extends INodeSocketSet = {}, OutputSet extends
     OutputSet & {surface: ClosureSocket}
   >
 {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.DiffuseNode {
+  }`)
+
   constructor() {
     super()
   }
@@ -474,12 +469,6 @@ export class DiffuseNode<InputSet extends INodeSocketSet = {}, OutputSet extends
   }
 }
 
-DiffuseNode.STRUCT =
-  nstructjs.inherit(DiffuseNode, ShaderNode, 'shader.DiffuseNode') +
-  `
-}
-`
-nstructjs.register(DiffuseNode)
 ShaderNetworkClass.register(DiffuseNode)
 
 /**
@@ -524,6 +513,11 @@ export class SubsurfaceScatteringNode<
   },
   OutputSet & {surface: ClosureSocket}
 > {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.SubsurfaceScatteringNode {
+    unit : int;
+  }`)
+
   unit: number
 
   constructor() {
@@ -628,13 +622,6 @@ export class SubsurfaceScatteringNode<
   }
 }
 
-SubsurfaceScatteringNode.STRUCT =
-  nstructjs.inherit(SubsurfaceScatteringNode, ShaderNode, 'shader.SubsurfaceScatteringNode') +
-  `
-  unit : int;
-}
-`
-nstructjs.register(SubsurfaceScatteringNode)
 ShaderNetworkClass.register(SubsurfaceScatteringNode)
 
 export class GeometryNode<
@@ -649,6 +636,10 @@ export class GeometryNode<
     local: Vec3Socket
   }
 > {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.GeometryNode {
+  }`)
+
   constructor() {
     super()
   }
@@ -683,12 +674,6 @@ export class GeometryNode<
   }
 }
 
-GeometryNode.STRUCT =
-  nstructjs.inherit(GeometryNode, ShaderNode, 'shader.GeometryNode') +
-  `
-}
-`
-nstructjs.register(GeometryNode)
 ShaderNetworkClass.register(GeometryNode)
 
 /**
@@ -722,6 +707,12 @@ export class AttributeNode<
   InputSet extends INodeSocketSet = {},
   OutputSet extends INodeSocketSet = {},
 > extends ShaderNode<InputSet, OutputSet & {color: RGBASocket; vector: Vec3Socket; fac: FloatSocket}> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  shader.AttributeNode {
+    attrName : string;
+    category : int;
+  }`)
+
   attrName: string
   category: number
 
@@ -836,12 +827,4 @@ export class AttributeNode<
   }
 }
 
-AttributeNode.STRUCT =
-  nstructjs.inherit(AttributeNode, ShaderNode, 'shader.AttributeNode') +
-  `
-  attrName : string;
-  category : int;
-}
-`
-nstructjs.register(AttributeNode)
 ShaderNetworkClass.register(AttributeNode)

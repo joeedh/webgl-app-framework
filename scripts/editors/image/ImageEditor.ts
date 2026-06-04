@@ -32,6 +32,12 @@ function clampInt(v: number, lo: number, hi: number): number {
 }
 
 export class ImageEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+image.ImageEditor {
+  imageUser : ImageUser;
+  velpan    : VelPan;
+}`)
+
   imageUser: ImageUser
   velpan: VelPan
 
@@ -514,14 +520,6 @@ export class ImageEditor extends Editor {
   }
 }
 
-ImageEditor.STRUCT =
-  nstructjs.inherit(ImageEditor, Editor) +
-  `
-  imageUser : ImageUser;
-  velpan    : VelPan;
-}`
-
-nstructjs.register(ImageEditor)
 Editor.register(ImageEditor)
 
 declare global {

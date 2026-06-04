@@ -411,6 +411,16 @@ const {SELECT, LEAF, DEAD, TEMP, TEMP2} = KdTreeFlags
 const _getuv_rets = util.cachering.fromConstructor(Vector2, 32)
 
 export class KdTreeGrid extends GridBase<KDGridVert> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.KdTreeGrid {
+  nodes               : array(mesh_grid.CompressedKdNode) | this._saveNodes();
+  depthLimitEnabled   : bool;
+  depthLimit          : int;
+  normalQuad          : array(vec3);
+  loopEid             : int;
+  nodeFieldSize       : int;
+}`)
+
   leafPoints: number[]
   leafNodes: number[]
   depthLimit: number
@@ -4548,14 +4558,3 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this._rebuildHash()
   }
 }
-
-KdTreeGrid.STRUCT =
-  nstructjs.inherit(KdTreeGrid, GridBase, 'mesh.KdTreeGrid') +
-  `
-  nodes               : array(mesh_grid.CompressedKdNode) | this._saveNodes();
-  depthLimitEnabled   : bool;
-  depthLimit          : int;
-  normalQuad          : array(vec3);
-  loopEid             : int;
-  nodeFieldSize       : int;
-}`

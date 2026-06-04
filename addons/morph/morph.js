@@ -12,6 +12,11 @@ export function register(api) {
   let Editor = api.editor.Editor
 
   class MorphEditor extends api.editor.Editor {
+    static STRUCT = api.nstructjs.inlineRegister(this, `
+morph.MorphEditor {
+  }
+  `)
+
     constructor() {
       super()
     }
@@ -40,11 +45,6 @@ export function register(api) {
       }
     }
   }
-  MorphEditor.STRUCT =
-    api.nstructjs.inherit(MorphEditor, Editor) +
-    `
-  }
-  `
   api.register(MorphEditor)
 
   console.error('API', api)

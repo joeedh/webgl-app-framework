@@ -38,6 +38,13 @@ import {getArrayTemp} from '../../addons/builtin/mesh/src/mesh_base.js'
 */
 
 export class TetMesh extends SceneObjectData {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  tet.TetMesh {
+  eidgen : IDGen;
+  elists : iterkeys(tet.TetElementList);
+}
+`)
+
   symflag = 0
 
   constructor() {
@@ -1188,13 +1195,5 @@ export class TetMesh extends SceneObjectData {
   }
 }
 
-TetMesh.STRUCT =
-  nstructjs.inherit(TetMesh, SceneObjectData, 'tet.TetMesh') +
-  `
-  eidgen : IDGen;
-  elists : iterkeys(tet.TetElementList);
-}
-`
-nstructjs.register(TetMesh)
 DataBlock.register(TetMesh)
 SceneObjectData.register(TetMesh)

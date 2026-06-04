@@ -419,6 +419,11 @@ export class CubeGenerator extends ProceduralGen {
 ProceduralGen.register(CubeGenerator)
 
 export class ProceduralMesh extends SceneObjectData {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.ProceduralMesh {
+  generator : abstract(mesh.ProceduralGen);
+}`)
+
   constructor() {
     super()
 
@@ -476,12 +481,6 @@ export class ProceduralMesh extends SceneObjectData {
     return this.generator.getBoundingBox()
   }
 }
-
-ProceduralMesh.STRUCT =
-  nstructjs.inherit(ProceduralMesh, SceneObjectData, 'mesh.ProceduralMesh') +
-  `
-  generator : abstract(mesh.ProceduralGen);
-}`
 
 export function buildProcMeshAPI(api) {
   for (let cls of Generators) {

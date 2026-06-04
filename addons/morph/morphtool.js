@@ -2,6 +2,11 @@ export function makeMorphToolMode(api) {
   let nstructjs = api.nstructjs
 
   class MorphToolMode extends api.toolmode.ToolMode {
+    static STRUCT = nstructjs.inlineRegister(this, `
+morph.MorphToolMode {
+  }
+  `)
+
     constructor() {
       super()
     }
@@ -17,12 +22,6 @@ export function makeMorphToolMode(api) {
       }
     }
   }
-
-  MorphToolMode.STRUCT =
-    nstructjs.inherit(MorphToolMode, api.toolmode.ToolMode) +
-    `
-  }
-  `
 
   api.register(MorphToolMode)
 }

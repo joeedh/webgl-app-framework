@@ -34,6 +34,11 @@ AttachPoint {
 nstructjs.register(AttachPoint)
 
 export class Strand extends CurveSpline {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  hair.Strand {
+  id          : int;
+  attachPoint : AttachPoint;
+}`)
   constructor() {
     super()
 
@@ -54,10 +59,3 @@ export class Strand extends CurveSpline {
     this.attachPoint.dataLink(getblock, getblock_us)
   }
 }
-Strand.STRUCT =
-  nstructjs.inherit(Strand, CurveSpline) +
-  `
-  id          : int;
-  attachPoint : AttachPoint;
-}`
-nstructjs.register(Strand)

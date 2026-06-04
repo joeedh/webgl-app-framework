@@ -23,6 +23,10 @@ import type {View3D} from '@framework/api'
 import {IUniformsBlock} from '@framework/api'
 
 export class MeshToolBase extends ToolMode {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh_edit.MeshToolBase {
+}`)
+
   transformConstraint: string | undefined
   transparentMeshElements: boolean
   drawOwnIds: boolean
@@ -616,8 +620,3 @@ export class MeshToolBase extends ToolMode {
     super.loadSTRUCT(reader)
   }
 }
-
-MeshToolBase.STRUCT =
-  nstructjs.inherit(MeshToolBase, ToolMode) +
-  `
-}`

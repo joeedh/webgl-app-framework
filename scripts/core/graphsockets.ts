@@ -635,6 +635,12 @@ graph.FloatSocket {
 NodeSocketType.register(FloatSocket)
 
 export class EnumSocket extends IntSocket {
+  static STRUCT = nstructjs.inlineRegister(this, `
+graph.EnumSocket {
+  items : array(EnumKeyPair) | this._saveMap(this.items);
+  uimap : array(EnumKeyPair) | this._saveMap(this.uimap);
+}`)
+
   items: {[k: string]: number}
   uimap: {[k: string]: string}
 
@@ -798,14 +804,6 @@ export class EnumSocket extends IntSocket {
   }
 }
 
-EnumSocket.STRUCT =
-  nstructjs.inherit(EnumSocket, IntSocket, 'graph.EnumSocket') +
-  `
-  items : array(EnumKeyPair) | this._saveMap(this.items);
-  uimap : array(EnumKeyPair) | this._saveMap(this.uimap);
-}
-`
-nstructjs.register(EnumSocket)
 NodeSocketType.register(EnumSocket)
 
 export class BoolSocket extends NodeSocketType<boolean> {

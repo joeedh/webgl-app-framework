@@ -1,8 +1,17 @@
 import {DataBlock} from '../core/lib_api.js'
 import {Icons} from '../editors/icon_enum.js'
 import {Graph, Node, NodeFlags} from '../core/graph.js'
+import {nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class NodeGroup extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  graph.NodeGroup {
+  category     : string;
+  graph        : graph.Graph;
+  groupInputs  : abstract(graph.NodeSocketType);
+  groupOutputs : abstract(graph.NodeSocketType);
+}
+`)
   constructor() {
     super()
 
@@ -47,39 +56,31 @@ export class NodeGroup extends DataBlock {
     this.graph.dataLink(this, getblock, getblock_addUser)
   }
 }
-NodeGroup.STRUCT =
-  nstructjs.inherit(NodeGroup, DataBlock) +
-  `
-  category     : string;
-  graph        : graph.Graph;
-  groupInputs  : abstract(graph.NodeSocketType);
-  groupOutputs : abstract(graph.NodeSocketType); 
-}
-`
-nstructjs.register(NodeGroup)
 DataBlock.register(NodeGroup)
 
 export class NodeGroupInputs extends Node {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  graph.NodeGroupInputs {
+}`)
   constructor() {
     super()
   }
 }
-NodeGroupInputs.STRUCT =
-  nstructjs.inherit(NodeGroupInputs, Node) +
-  `
-}`
 
 export class NodeGroupOutputs extends Node {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  graph.NodeGroupOutputs {
+}`)
   constructor() {
     super()
   }
 }
-NodeGroupOutputs.STRUCT =
-  nstructjs.inherit(NodeGroupOutputs, Node) +
-  `
-}`
 
 export class NodeGroupInst extends Node {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  graph.NodeGroupInst {
+  group : DataRef | DataRef.fromBlock(this.group);
+}`)
   constructor() {
     super()
 
@@ -115,8 +116,3 @@ export class NodeGroupInst extends Node {
     this.group = getblock_addUser(this.group)
   }
 }
-NodeGroupInst.STRUCT =
-  nstructjs.inherit(NodeGroupInst, Node) +
-  `
-  group : DataRef | DataRef.fromBlock(this.group);
-}`

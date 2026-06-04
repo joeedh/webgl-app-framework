@@ -13,20 +13,22 @@ export const DerivFlags = {
 }
 
 export class SolverSettings extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.SolverSettings {
+  speed : float;
+}`)
+
   constructor() {
     super()
     this.speed = 1.0
   }
 }
 
-SolverSettings.STRUCT =
-  nstructjs.inherit(SolverSettings, LayerSettingsBase) +
-  `
-  speed : float;
-}
-`
-
 export class SolverElem extends CustomDataElem {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.SolverElem {
+}`)
+
   constructor() {
     super()
 
@@ -77,12 +79,6 @@ export class SolverElem extends CustomDataElem {
     b.mass = this.mass
   }
 }
-
-SolverElem.STRUCT =
-  nstructjs.inherit(SolverElem, CustomDataElem) +
-  `
-}
-`
 
 export class Constraint {
   constructor(klst, params, wlst = undefined, vel_lst = undefined, force_lst = undefined, scratch_lst) {

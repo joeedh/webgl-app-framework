@@ -442,6 +442,15 @@ export function onFileLoadDispVert(mesh: Mesh) {
 }
 
 export class DispLayerSettings extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.DispLayerSettings {
+  dispSpace     : int;
+  base          : int;
+  flag          : int;
+  updateGen     : int;
+  lastUpdateGen : int;
+}`)
+
   dispSpace: DispSpace
   base: number
   flag: number
@@ -486,16 +495,6 @@ export class DispLayerSettings extends LayerSettingsBase {
     b.lastUpdateGen = this.lastUpdateGen
   }
 }
-
-DispLayerSettings.STRUCT =
-  nstructjs.inherit(DispLayerSettings, LayerSettingsBase) +
-  `
-  dispSpace     : int;
-  base          : int;
-  flag          : int;
-  updateGen     : int;
-  lastUpdateGen : int;
-}`
 
 export enum DispVertFlags {
   NONE = 0,
@@ -616,6 +615,24 @@ const disp_contexts = util.cachering.fromConstructor(DispContext, 32)
 const tmptmp = new Vector3()
 
 export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLayerSettings> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.DispLayerVert {
+  flag        : int;
+  _worldco    : vec3;
+  tanco       : vec3;
+
+  no          : vec3;
+  tan         : vec3;
+  scale       : float;
+
+  baseco      : vec3;
+  parentTan   : vec3;
+  parentNo    : vec3;
+  parentScale : float;
+
+  smoothco    : vec3;
+}`)
+
   baseco: Vector3
   _worldco: Vector3
   worldco: Vector3
@@ -1056,25 +1073,6 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
     this.worldco = this._worldco
   }
 }
-
-DispLayerVert.STRUCT =
-  nstructjs.inherit(DispLayerVert, CustomDataElem) +
-  `
-  flag        : int;
-  _worldco    : vec3;
-  tanco       : vec3;
-
-  no          : vec3;
-  tan         : vec3;
-  scale       : float;
-
-  baseco      : vec3;
-  parentTan   : vec3;
-  parentNo    : vec3;
-  parentScale : float;
-
-  smoothco    : vec3;
-}`
 
 export function initDispLayers(mesh: Mesh) {
   if (!mesh.verts.customData.hasLayer('displace')) {

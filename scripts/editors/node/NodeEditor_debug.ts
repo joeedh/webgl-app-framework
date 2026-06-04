@@ -35,6 +35,13 @@ interface ViewerLayout {
  * `hashNode`) and blitted, so large graphs stay cheap to pan/zoom.
  */
 export class NodeViewer extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+node.NodeViewer {
+  graphPath  : string;
+  graphClass : string;
+  velpan     : VelPan;
+}`)
+
   graphPath = 'graph'
   graphClass: string | undefined = ''
 
@@ -486,15 +493,6 @@ export class NodeViewer extends Editor {
 
 type AnyNode = Node
 
-NodeViewer.STRUCT =
-  nstructjs.inherit(NodeViewer, Editor) +
-  `
-  graphPath  : string;
-  graphClass : string;
-  velpan     : VelPan;
-}`
-
-nstructjs.register(NodeViewer)
 Editor.register(NodeViewer)
 
 export function getNodeViewer(screen: Screen<ViewContext>) {

@@ -26,6 +26,12 @@ declare global {
   }
 }
 export class CurveToolBase extends MeshToolBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+curve.CurveToolBase {
+  curve    : DataRef | DataRef.fromBlock(obj.curve);
+  drawflag : int;
+}`)
+
   _isCurveTool: boolean
   sceneObject: any | undefined
   _meshPath: string | undefined
@@ -218,10 +224,3 @@ export class CurveToolBase extends MeshToolBase {
     }
   }
 }
-
-CurveToolBase.STRUCT =
-  nstructjs.inherit(CurveToolBase, ToolMode) +
-  `
-  curve    : DataRef | DataRef.fromBlock(obj.curve);
-  drawflag : int;
-}`

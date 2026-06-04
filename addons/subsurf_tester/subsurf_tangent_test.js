@@ -27,6 +27,13 @@ export function registerToolMode(api) {
   let _digest = new util.HashDigest()
 
   class PVert extends CustomDataElem {
+    static STRUCT = nstructjs.inlineRegister(this, `
+  subsurf_tester.PVert {
+  flag  : int;
+  tanco : vec3;
+  uv    : vec3;
+}`)
+
     constructor() {
       super()
 
@@ -74,17 +81,13 @@ export function registerToolMode(api) {
     }
   }
 
-  PVert.STRUCT =
-    nstructjs.inherit(PVert, CustomDataElem) +
-    `
-  flag  : int;
-  tanco : vec3;
-  uv    : vec3;
-}`
-  nstructjs.register(PVert)
   CustomDataElem.register(PVert)
 
   class PFace extends CustomDataElem {
+    static STRUCT = nstructjs.inlineRegister(this, `
+  subsurf_tester.PFace {
+}`)
+
     static define() {
       return {
         typeName     : 'pface',
@@ -98,14 +101,15 @@ export function registerToolMode(api) {
     copyTo(b) {}
   }
 
-  PFace.STRUCT =
-    nstructjs.inherit(PFace, CustomDataElem) +
-    `
-}`
-  nstructjs.register(PFace)
   CustomDataElem.register(PFace)
 
   class PatchTester extends Mesh {
+    static STRUCT = nstructjs.inlineRegister(this, `
+  subsurf_tester.PatchTester {
+  patch : array(array(int)) | this._save_patch();
+  steps : int;
+}`)
+
     constructor() {
       super()
 
@@ -520,13 +524,6 @@ export function registerToolMode(api) {
     }
   }
 
-  PatchTester.STRUCT =
-    nstructjs.inherit(PatchTester, Mesh) +
-    `
-  patch : array(array(int)) | this._save_patch();
-  steps : int;
-}`
-  nstructjs.register(PatchTester)
   DataBlock.register(PatchTester)
   SceneObjectData.register(PatchTester)
 
@@ -596,6 +593,10 @@ export function registerToolMode(api) {
   ToolOp.register(MakeTangentTester)
 
   class SubsurfTangentTester extends MeshToolBase {
+    static STRUCT = nstructjs.inlineRegister(this, `
+  subsurf_tester.SubsurfTangentTester {
+}`)
+
     constructor() {
       super()
 
@@ -649,11 +650,6 @@ export function registerToolMode(api) {
       return this.keymap
     }
   }
-
-  SubsurfTangentTester.STRUCT =
-    nstructjs.inherit(SubsurfTangentTester, ToolMode) +
-    `
-}`
 
   api.register(SubsurfTangentTester)
 }

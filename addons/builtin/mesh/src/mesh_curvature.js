@@ -96,6 +96,18 @@ let bstmp6 = new Vector4()
 let bstmp7 = new Vector4()
 
 export class CurvVert extends CustomDataElem {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.CurvVert {
+  flag      : int;
+  tan       : vec3;
+  dir       : vec3;
+  k1        : double;
+  k2        : double;
+  no        : vec3;
+  weight    : double;
+  diruv     : vec4;
+}`)
+
   constructor() {
     super()
     this.tan = new Vector3()
@@ -708,20 +720,6 @@ export class CurvVert extends CustomDataElem {
     dst.weight = weight
   }
 }
-
-CurvVert.STRUCT =
-  nstructjs.inherit(CurvVert, CustomDataElem) +
-  `
-  flag      : int;
-  tan       : vec3;
-  dir       : vec3;
-  k1        : double;
-  k2        : double;
-  no        : vec3;
-  weight    : double;
-  diruv     : vec4;  
-}
-`
 
 export function getCurveVerts(mesh) {
   let cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
