@@ -1,5 +1,5 @@
 import {util, Vector2, Vector3, Vector4, Matrix4, Quat, Number3, IVectorOrHigher} from '@framework/api'
-import {nstructjs} from '@framework/pathux'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
 import '../../../../scripts/path.ux/scripts/global.d.ts'
 
@@ -110,6 +110,16 @@ bvh.BVHSettings {
 
   copy(b: this) {
     return new BVHSettings().load(this)
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this, true)
+
+    st.int('depthLimit', 'depthLimit', 'Depth Limit').range(1, 32).noUnits()
+    st.int('drawLevelOffset', 'drawLevelOffset', 'Draw Level').range(0, 8).noUnits()
+    st.int('leafLimit', 'leafLimit', 'Tri Limit').range(1, 4096).step(5).noUnits()
+
+    return st
   }
 }
 

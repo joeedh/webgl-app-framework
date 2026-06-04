@@ -77,7 +77,7 @@ import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js'
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js'
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js'
-import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.js'
+import {Scene, EnvLight} from '../scene/scene.js'
 import {api_define_graphclasses} from '../core/graph_class.js'
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js'
 import {DebugEditor} from '../editors/debug/DebugEditor.js'
@@ -158,15 +158,7 @@ export function getDataAPIRegistry(): readonly DefineAPIClass[] {
 }
 
 export function api_define_rendersettings(api: DataAPI): void {
-  let st = api.mapStruct(RenderSettings, true)
-
-  st.bool('sharpen', 'sharpen', 'Sharpen')
-  st.int('sharpenWidth', 'sharpenWidth', 'Sharpen Width').noUnits()
-  st.float('filterWidth', 'filterWidth', 'AA Width').noUnits()
-  st.float('sharpenFac', 'sharpenFac', 'Sharpen Fac').noUnits()
-  st.int('minSamples', 'minSamples', 'Min Samples', 'Minimum samples to render before drawing to screen')
-    .noUnits()
-    .range(0, 10)
+  RenderSettings.defineAPI(api)
 }
 
 function api_define_socket(api: DataAPI, cls: AnyClass = NodeSocketType): DataStruct {
@@ -404,11 +396,7 @@ export function api_define_image(api: DataAPI): void {
 }
 
 export function api_define_bvhsettings(api: DataAPI): void {
-  let st = api.mapStruct(BVHSettings, true)
-
-  st.int('depthLimit', 'depthLimit', 'Depth Limit').range(1, 32).noUnits()
-  st.int('drawLevelOffset', 'drawLevelOffset', 'Draw Level').range(0, 8).noUnits()
-  st.int('leafLimit', 'leafLimit', 'Tri Limit').range(1, 4096).step(5).noUnits()
+  BVHSettings.defineAPI(api)
 }
 
 export function api_define_mesh(api: DataAPI, pstruct: DataStruct): void {
@@ -803,19 +791,7 @@ export function api_define_screen(api: DataAPI, parent: DataStruct): void {
 }
 
 export function api_define_envlight(api: DataAPI): DataStruct {
-  let estruct = api.mapStruct(EnvLight)
-
-  let onchange = () => {
-    window.redraw_viewport()
-  }
-
-  estruct.color3('color', 'color', 'Color', 'Ambient light color').on('change', onchange)
-  estruct.float('power', 'power', 'Power', 'Power of ambient light power').on('change', onchange).noUnits()
-  estruct.flags('flag', 'flag', EnvLightFlags, 'flag', 'Ambient light flags').on('change', onchange)
-  estruct.float('ao_dist', 'ao_dist', 'Distance').on('change', onchange).noUnits()
-  estruct.float('ao_fac', 'ao_fac', 'Factor').on('change', onchange).noUnits()
-
-  return estruct
+  return EnvLight.defineAPI(api)
 }
 
 export function api_define_light(api: DataAPI, pstruct: DataStruct): void {

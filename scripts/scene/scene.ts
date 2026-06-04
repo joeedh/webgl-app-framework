@@ -1,7 +1,7 @@
 import {DataBlock, DataRef, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api'
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {WidgetManager} from '../editors/view3d/widgets/widgets.js'
-import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3} from '../path.ux/scripts/pathux.js'
+import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject'
 import {DependSocket, FloatSocket} from '../core/graphsockets.js'
@@ -73,6 +73,22 @@ export class EnvLight {
     ret.add(this.sunRadius)
 
     return ret.get()
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let estruct = struct ?? api.mapStruct(this)
+
+    let onchange = () => {
+      window.redraw_viewport()
+    }
+
+    estruct.color3('color', 'color', 'Color', 'Ambient light color').on('change', onchange)
+    estruct.float('power', 'power', 'Power', 'Power of ambient light power').on('change', onchange).noUnits()
+    estruct.flags('flag', 'flag', EnvLightFlags, 'flag', 'Ambient light flags').on('change', onchange)
+    estruct.float('ao_dist', 'ao_dist', 'Distance').on('change', onchange).noUnits()
+    estruct.float('ao_fac', 'ao_fac', 'Factor').on('change', onchange).noUnits()
+
+    return estruct
   }
 }
 
