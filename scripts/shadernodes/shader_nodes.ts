@@ -13,6 +13,7 @@ import type {ImageUserWidget} from '../editors/editor_base.js'
 import type {RenderLight} from '../renderengine/renderengine_realtime.js'
 import type {WgslShaderGenerator} from './shader_nodes_wgsl.js'
 import {LightGenWgsl, DiffuseBRDFWgsl} from './shader_lib_wgsl.js'
+import * as units from '../path.ux/scripts/core/units.js'
 
 export {ClosureGLSL, PointLightCode} from './shader_lib.js'
 
@@ -43,6 +44,7 @@ export class Closure {
   scatter: Vector3
   normal: Vector3
   roughness: number
+  sssRadius: number
   alpha: number
 
   constructor() {
@@ -51,6 +53,7 @@ export class Closure {
     this.scatter = new Vector3()
     this.normal = new Vector3()
     this.roughness = 0.1
+    this.sssRadius = 0.0
     this.alpha = 1.0
   }
 
@@ -60,6 +63,7 @@ export class Closure {
     this.scatter.load(b.scatter)
     this.normal = new Vector3()
     this.roughness = b.roughness
+    this.sssRadius = b.sssRadius
     this.alpha = b.alpha
 
     return this
@@ -77,6 +81,7 @@ shader.Closure {
   scatter    : vec3;
   normal     : vec3;
   roughness  : float;
+  sssRadius  : float;
   alpha      : float;
 }
 `
@@ -96,7 +101,13 @@ export class ClosureSocket extends NodeSocketType<Closure> {
       name  : 'closure',
       uiname: 'Surface',
       color : [0.59, 0.78, 1.0, 1.0],
-      flag  : 0,
+      // A closure has no editable scalar value, so suppress the base socket's
+      // inline value editor. Without this an *unconnected* closure socket
+      // (e.g. a Diffuse `surface` output with nothing plugged in) makes
+      // NodeSocketType.buildUI call container.prop('value'), which throws —
+      // ClosureSocket exposes `data`, not `value` — and the throw aborts the
+      // socket-widget build so the output dot never renders.
+      flag  : SocketFlags.NO_UI_EDITING,
     }
   }
 
@@ -470,6 +481,161 @@ DiffuseNode.STRUCT =
 `
 nstructjs.register(DiffuseNode)
 ShaderNetworkClass.register(DiffuseNode)
+
+/**
+ * Distance units the SubsurfaceScattering node can author its scatter radius
+ * in. Fixed integer enum (stable across saves); the meter-conversion factor is
+ * resolved at codegen via `units.convert(1, name, baseUnit)`. Skin profiles are
+ * conventionally authored in millimeters, so that is the default.
+ */
+export const SSSUnits = {
+  MILLIMETER: 0,
+  CENTIMETER: 1,
+  METER     : 2,
+  INCH      : 3,
+  FOOT      : 4,
+}
+
+const SSSUnitName: Record<number, string> = {
+  [SSSUnits.MILLIMETER]: 'millimeter',
+  [SSSUnits.CENTIMETER]: 'centimeter',
+  [SSSUnits.METER]     : 'meter',
+  [SSSUnits.INCH]      : 'inch',
+  [SSSUnits.FOOT]      : 'foot',
+}
+
+/**
+ * Subsurface scattering BSDF node. Like DiffuseNode it accumulates lit diffuse
+ * irradiance into the closure, but writes it into `scatter` (the irradiance the
+ * screen-space SSS passes diffuse) and records a per-pixel world-space
+ * `sssRadius`. The `unit` parameter converts the authored `radius`/`scale` into
+ * world units (meters) via a CPU-computed factor baked into the emitted WGSL.
+ */
+export class SubsurfaceScatteringNode<
+  InputSet extends INodeSocketSet = {},
+  OutputSet extends INodeSocketSet = {},
+> extends ShaderNode<
+  InputSet & {
+    surface: ClosureSocket
+    color: RGBASocket
+    radius: Vec3Socket
+    scale: FloatSocket
+    normal: Vec3Socket
+  },
+  OutputSet & {surface: ClosureSocket}
+> {
+  unit: number
+
+  constructor() {
+    super()
+    this.unit = SSSUnits.MILLIMETER
+  }
+
+  static graphDefineAPI(api: DataAPI, nodeStruct: DataStruct) {
+    super.graphDefineAPI(api, nodeStruct)
+    nodeStruct.enum('unit', 'unit', SSSUnits, 'Unit', 'Unit the scatter radius is authored in')
+  }
+
+  buildUI(container: Container): void {
+    container.prop('unit')
+  }
+
+  static nodedef() {
+    return {
+      category: 'Shaders',
+      uiname  : 'Subsurface Scattering',
+      name    : 'subsurface_scattering',
+      inputs: {
+        // Optional upstream lit surface (e.g. a Diffuse node). When connected,
+        // its lit irradiance (cl.light) is what gets diffused; color/normal are
+        // ignored. When unconnected the node lights itself from color/normal.
+        surface: new ClosureSocket(),
+        color  : new RGBASocket(undefined, undefined, [0.8, 0.5, 0.4, 1.0]),
+        radius : new Vec3Socket(undefined, undefined, [1.0, 0.3, 0.2]),
+        scale  : new FloatSocket(undefined, undefined, 1.0),
+        normal : new Vec3Socket(),
+      },
+      outputs: {
+        surface: new ClosureSocket(),
+      },
+    }
+  }
+
+  genWgsl(gen: WgslShaderGenerator): void {
+    const surfName = gen.getSocketName(this.outputs.surface)
+
+    // CPU-side: factor that converts the authored unit to internal/world
+    // meters, baked as a WGSL literal (the user changes units rarely; this
+    // recompiles the material). See [[shadernodes]] unit handling.
+    const unitName = SSSUnitName[this.unit] ?? 'millimeter'
+    const unitFactor = units.convert(1, unitName, units.Unit.baseUnit)
+
+    const radiusVal = gen.getSocketValue(this.inputs.radius)
+    const scaleVal = gen.getSocketValue(this.inputs.scale)
+
+    // Common tail: route the lit irradiance into `scatter` (so the screen-space
+    // SSS passes blur it) and record the per-pixel world-space radius.
+    const tail = `
+      let sssRadiusVec : vec3f = ${radiusVal};
+      let sssScale : f32 = ${scaleVal};
+      cl.scatter      = cl.light;
+      cl.sssRadiusVec = sssRadiusVec * sssScale * ${unitFactor};
+      cl.sssRadius    = max(cl.sssRadiusVec.x, max(cl.sssRadiusVec.y, cl.sssRadiusVec.z));
+      ${surfName} = cl;
+    `
+
+    if (this.inputs.surface.edges.length > 0) {
+      // Diffuse → SSS → Output: take the upstream node's already-lit closure and
+      // mark its irradiance for subsurface diffusion. color/normal are unused
+      // here (the upstream surface owns the shading), so they emit no uniforms.
+      const upstream = gen.getSocketValue(this.inputs.surface)
+      gen.out(`
+      var cl : Closure = ${upstream};
+      ${tail}
+    `)
+      return
+    }
+
+    // Standalone: light ourselves from color/normal, like DiffuseNode.
+    const brdf = DiffuseBRDFWgsl.gen('cl', 'co', 'normal', 'color')
+    const lights = LightGenWgsl.generate('cl', 'co', 'normal', 'color', brdf)
+
+    gen.out(`
+      var cl : Closure;
+      cl.diffuse   = vec3f(0.0);
+      cl.light     = vec3f(0.0);
+      cl.emission  = vec3f(0.0);
+      cl.scatter   = vec3f(0.0);
+      cl.sssRadius = 0.0;
+      cl.alpha     = 1.0;
+
+      let co : vec3f = input.vGlobalCo;
+      let normal : vec3f = ${gen.getSocketValue(this.inputs.normal, 'input.vNormal')};
+      let color : vec4f = ${gen.getSocketValue(this.inputs.color)};
+      let roughness : f32 = 1.0;
+
+      cl.alpha   = color.a;
+      cl.diffuse = color.rgb;
+
+      ${lights}
+      ${tail}
+    `)
+  }
+
+  loadSTRUCT(reader: StructReader): void {
+    reader(this)
+    super.loadSTRUCT(reader)
+  }
+}
+
+SubsurfaceScatteringNode.STRUCT =
+  nstructjs.inherit(SubsurfaceScatteringNode, ShaderNode, 'shader.SubsurfaceScatteringNode') +
+  `
+  unit : int;
+}
+`
+nstructjs.register(SubsurfaceScatteringNode)
+ShaderNetworkClass.register(SubsurfaceScatteringNode)
 
 export class GeometryNode<
   InputSet extends INodeSocketSet = {},

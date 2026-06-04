@@ -324,15 +324,27 @@ export class RealtimeEngine extends RenderEngine {
 
   // Allocates (or reuses) a RenderTarget by name. Sized to the viewport;
   // a size change destroys the prior set and forces a fresh build.
-  _ensureTarget(device: GPUDevice, key: string, w: number, h: number): RenderTarget {
+  _ensureTarget(
+    device: GPUDevice,
+    key: string,
+    w: number,
+    h: number,
+    colorFormats: GPUTextureFormat[] = [RealtimeEngine.WEBGPU_PASS_FORMAT]
+  ): RenderTarget {
     const cached = this.webgpuTargets.get(key)
-    if (cached?.width === w && cached.height === h) return cached
+    if (
+      cached?.width === w &&
+      cached.height === h &&
+      cached.colorFormats.length === colorFormats.length
+    ) {
+      return cached
+    }
     cached?.destroy()
     const target = new RenderTarget({
       device,
       width       : w,
       height      : h,
-      colorFormats: [RealtimeEngine.WEBGPU_PASS_FORMAT],
+      colorFormats,
       depthFormat : RealtimeEngine.WEBGPU_DEPTH_FORMAT,
       label       : `RealtimeEngine.${key}`,
     })
@@ -350,8 +362,8 @@ export class RealtimeEngine extends RenderEngine {
     // referenced by the new node list — keeps texture memory bounded
     // across an `ao`/`sharpen` toggle.
     const fresh = new Map<string, RenderTarget>()
-    const target = (key: string) => {
-      const t = this._ensureTarget(device, key, w, h)
+    const target = (key: string, colorFormats?: GPUTextureFormat[]) => {
+      const t = this._ensureTarget(device, key, w, h, colorFormats)
       fresh.set(key, t)
       return t
     }
@@ -371,11 +383,47 @@ export class RealtimeEngine extends RenderEngine {
       })
     }
 
+    // BasePass is MRT when SSS is on: colors[0] = lit color, colors[1] = SSS
+    // irradiance (rgb) + max world scatter radius (a — footprint + mask),
+    // colors[2] = per-channel world scatter radius (rgb). When SSS is off it
+    // stays single-attachment (byte-identical to before; sculptcore's C++ tree
+    // shader, which reuses the same material WGSL, also stays single-output).
+    const baseFormats = this.renderSettings.sss
+      ? [
+          RealtimeEngine.WEBGPU_PASS_FORMAT,
+          RealtimeEngine.WEBGPU_PASS_FORMAT,
+          RealtimeEngine.WEBGPU_PASS_FORMAT,
+        ]
+      : [RealtimeEngine.WEBGPU_PASS_FORMAT]
     nodes.push({
       passKey: 'BasePass',
-      target : target('base'),
+      target : target('base', baseFormats),
       label  : 'BasePass',
     })
+
+    // Screen-space SSS chain — only when enabled. Two separable blur passes
+    // diffuse the SSS irradiance (BasePass colors[1]); the composite folds the
+    // result back into the lit color before AccumPass reads it. Targets are
+    // owned by the local `target()` helper, so toggling SSS off frees them.
+    if (this.renderSettings.sss) {
+      nodes.push({
+        passKey: 'SSSBlurPass',
+        defines: {SAMPLES: this.renderSettings.sssWidth},
+        target : target('sssBlurA'),
+        label  : 'SSSBlurPass.x',
+      })
+      nodes.push({
+        passKey: 'SSSBlurPass',
+        defines: {SAMPLES: this.renderSettings.sssWidth, AXIS_Y: true},
+        target : target('sssBlurB'),
+        label  : 'SSSBlurPass.y',
+      })
+      nodes.push({
+        passKey: 'SSSCompositePass',
+        target : target('sssComposite'),
+        label  : 'SSSCompositePass',
+      })
+    }
 
     // Ping-pong slot is resolved at exec time — we register both
     // possible targets up front so neither one gets evicted between
@@ -617,9 +665,12 @@ export class RealtimeEngine extends RenderEngine {
     // re-compile the pipeline, so it folds into the material hash.
     const matDefines: Record<string, number | string | boolean> = {}
     if (this.renderSettings.ao) matDefines.WITH_AO = 1
+    if (this.renderSettings.sss) matDefines.WITH_SSS = 1
     let defHash = 0
     for (const k of Object.keys(matDefines).sort()) {
-      defHash = (defHash * 31 + k.charCodeAt(0)) | 0
+      for (let i = 0; i < k.length; i++) {
+        defHash = (defHash * 31 + k.charCodeAt(i)) | 0
+      }
     }
 
     const hash =
@@ -653,7 +704,26 @@ export class RealtimeEngine extends RenderEngine {
     const desc = buildMaterialPipelineDescriptor(def.wgsl, `engine-material-${mat.lib_id}`)
     // BasePass target is rgba16float — rewrite the registry's default
     // bgra8unorm color target so the pipeline matches our RenderTarget.
-    desc.colorTargets = desc.colorTargets.map((t) => ({...t, format: RealtimeEngine.WEBGPU_PASS_FORMAT}))
+    // When SSS is on the fragment emits a 2-location FsOut (lit color + SSS
+    // data) and BasePass is a 2-attachment MRT, so the pipeline carries two
+    // color targets; when SSS is off it stays single-target (byte-identical to
+    // before, and the sculptcore C++ tree shader path is unaffected).
+    if (this.renderSettings.sss) {
+      // colors[0] keeps the material's alpha blend (src-alpha). colors[1] (SSS
+      // irradiance + max radius) and colors[2] (per-channel radius) MUST NOT be
+      // alpha-blended: their alpha/values are data, not coverage, so src-alpha
+      // blending would partially mix each fragment. Because the mesh's faces are
+      // not drawn in depth order, that turns into order-dependent partial blends
+      // across the surface (a hard seam / banding). Disable blend so the
+      // depth-nearest fragment writes raw SSS data verbatim.
+      desc.colorTargets = [
+        {...desc.colorTargets[0], format: RealtimeEngine.WEBGPU_PASS_FORMAT},
+        {...desc.colorTargets[0], format: RealtimeEngine.WEBGPU_PASS_FORMAT, blend: undefined},
+        {...desc.colorTargets[0], format: RealtimeEngine.WEBGPU_PASS_FORMAT, blend: undefined},
+      ]
+    } else {
+      desc.colorTargets = desc.colorTargets.map((t) => ({...t, format: RealtimeEngine.WEBGPU_PASS_FORMAT}))
+    }
 
     let pipeline: Pipeline
     try {
@@ -814,6 +884,7 @@ export class RealtimeEngine extends RenderEngine {
     let extraSize = 0
     if (node.passKey === 'AccumPass' || node.passKey === 'SharpenPass') extraSize = 16
     if (node.passKey === 'AOPass') extraSize = 32
+    if (node.passKey === 'SSSBlurPass' || node.passKey === 'SSSCompositePass') extraSize = 16
     const extra =
       extraSize > 0
         ? new GpuBuffer(ctx.device, {
@@ -853,8 +924,34 @@ export class RealtimeEngine extends RenderEngine {
       return nor.target
     }
     if (node.passKey === 'AccumPass') {
+      // When SSS is on, the composite has already folded scatter into the lit
+      // color; AccumPass reads it instead of raw BasePass.
+      const composite = nodes.find((n) => n.passKey === 'SSSCompositePass')
+      if (composite) return composite.target
       const base = nodes.find((n) => n.passKey === 'BasePass')
       if (!base) throw new Error('AccumPass without BasePass upstream')
+      return base.target
+    }
+    if (node.passKey === 'SSSBlurPass') {
+      const isYAxis = node.defines?.AXIS_Y === true
+      if (isYAxis) {
+        // Y reads the X-pass output (the nearest prior SSSBlurPass).
+        for (let i = idx - 1; i >= 0; i--) {
+          if (nodes[i].passKey === 'SSSBlurPass') return nodes[i].target
+        }
+        throw new Error('SSSBlurPass.y without SSSBlurPass.x upstream')
+      }
+      // X reads the SSS irradiance attachment — BasePass colors[1]. The bind
+      // group (below) selects color index 1; here we just return the target.
+      const base = nodes.find((n) => n.passKey === 'BasePass')
+      if (!base) throw new Error('SSSBlurPass.x without BasePass upstream')
+      return base.target
+    }
+    if (node.passKey === 'SSSCompositePass') {
+      // Primary input (binding 1) is the lit BasePass colors[0]; the blurred
+      // and original SSS textures are added as extras in the bind group.
+      const base = nodes.find((n) => n.passKey === 'BasePass')
+      if (!base) throw new Error('SSSCompositePass without BasePass upstream')
       return base.target
     }
     if (node.passKey === 'PassThruPass') {
@@ -879,7 +976,13 @@ export class RealtimeEngine extends RenderEngine {
       // Walk back to the nearest upstream post-process target.
       for (let i = idx - 1; i >= 0; i--) {
         const k = nodes[i].passKey
-        if (k === 'SharpenPass' || k === 'PassThruPass' || k === 'AccumPass' || k === 'BasePass') {
+        if (
+          k === 'SharpenPass' ||
+          k === 'PassThruPass' ||
+          k === 'AccumPass' ||
+          k === 'SSSCompositePass' ||
+          k === 'BasePass'
+        ) {
           return nodes[i].target
         }
       }
@@ -945,6 +1048,22 @@ export class RealtimeEngine extends RenderEngine {
       buf.write(data)
       return
     }
+    if (node.passKey === 'SSSBlurPass') {
+      // SSSBlurUniforms: falloff, maxScreenPx, pad, pad. The per-pixel world
+      // scatter radius (with the node's CPU-side unit factor already folded in)
+      // comes from BasePass colors[1].a; falloff here is a global shape knob.
+      const data = new Float32Array(4)
+      data[0] = this.renderSettings.sssFalloff
+      data[1] = 64.0 // maxScreenPx — clamp the screen-space kernel half-width
+      buf.write(data)
+      return
+    }
+    if (node.passKey === 'SSSCompositePass') {
+      const data = new Float32Array(4)
+      data[0] = this.renderSettings.sssStrength
+      buf.write(data)
+      return
+    }
   }
 
   // Phase 3.1 — entry point for `DispatchHooks.bindGroupForPass`. Builds
@@ -968,7 +1087,12 @@ export class RealtimeEngine extends RenderEngine {
     if (buffers.extra) this._writeExtraUniforms(ctx, node, buffers.extra, scene, viewbox_size)
 
     const input = this._getPassInputTarget(node)
-    const colorView = input.colors[0].view
+    // The SSS X-blur reads the SSS irradiance/radius attachment (BasePass
+    // colors[1]); every other pass reads colors[0]. The Y-blur reads its
+    // X-pass output, which is a single-attachment target, so index 0 there.
+    const isSssBlurX = node.passKey === 'SSSBlurPass' && node.defines?.AXIS_Y !== true
+    const colorIndex = isSssBlurX ? 1 : 0
+    const colorView = input.colors[colorIndex].view
     const depthView = input.depth?.view
     if (!depthView) {
       throw new Error(`bindGroupForPass: input target for "${node.passKey}" has no depth attachment`)
@@ -1001,6 +1125,28 @@ export class RealtimeEngine extends RenderEngine {
       entries.push({binding: 4, resource: {buffer: buffers.extra!.handle}})
       entries.push({binding: 5, resource: blue.view})
       entries.push({binding: 6, resource: nearest})
+    } else if (node.passKey === 'SSSBlurPass') {
+      entries.push({binding: 4, resource: {buffer: buffers.extra!.handle}})
+      // binding 8 — per-channel world scatter radius (BasePass colors[2]),
+      // sampled at the center pixel to build the per-channel blur weights. It's a
+      // per-pixel constant (not blurred), so both the X and Y pass read it from
+      // the base pass directly.
+      const base = this.webgpuNodes!.find((n) => n.passKey === 'BasePass')
+      if (!base) throw new Error('SSSBlurPass bind: no BasePass to source per-channel radius from')
+      entries.push({binding: 8, resource: base.target.colors[2].view})
+    } else if (node.passKey === 'SSSCompositePass') {
+      entries.push({binding: 4, resource: {buffer: buffers.extra!.handle}})
+      // binding 5 — the diffused SSS (Y-blur output, single attachment).
+      const blurY = this.webgpuNodes!.find(
+        (n) => n.passKey === 'SSSBlurPass' && n.defines?.AXIS_Y === true
+      )
+      if (!blurY) throw new Error('SSSCompositePass bind: no SSSBlurPass.y to source blurred SSS from')
+      entries.push({binding: 5, resource: blurY.target.colors[0].view})
+      // binding 6 — the original (sharp) SSS irradiance, BasePass colors[1],
+      // for the energy-conserving difference composite.
+      const base = this.webgpuNodes!.find((n) => n.passKey === 'BasePass')
+      if (!base) throw new Error('SSSCompositePass bind: no BasePass to source original SSS from')
+      entries.push({binding: 6, resource: base.target.colors[1].view})
     }
 
     return ctx.device.createBindGroup({

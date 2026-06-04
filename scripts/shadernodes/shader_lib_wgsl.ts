@@ -35,11 +35,16 @@ export type IRenderLights = Record<string, RenderLight>
  */
 export const CLOSURE_WGSL = `
 struct Closure {
-  diffuse  : vec3f,
-  light    : vec3f,
-  emission : vec3f,
-  scatter  : vec3f,
-  alpha    : f32,
+  diffuse      : vec3f,
+  light        : vec3f,
+  emission     : vec3f,
+  scatter      : vec3f,
+  // Per-channel world scatter radius (red bleeds widest). sssRadius is the
+  // max component, used as the kernel footprint + silhouette mask; the full
+  // vector drives the per-channel blur weights.
+  sssRadiusVec : vec3f,
+  sssRadius    : f32,
+  alpha        : f32,
 };
 `
 

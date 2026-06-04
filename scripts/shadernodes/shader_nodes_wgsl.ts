@@ -271,7 +271,7 @@ ${passthrough}  return out;
       }
     }
     if (!output) {
-      this.wgsl = buildFallbackWgsl()
+      this.wgsl = buildFallbackWgsl(!!extraDefines.WITH_SSS)
       return this
     }
 
@@ -340,20 +340,52 @@ ${texdecl}
 ${vertexStages}
 ${SHADER_LIB_WGSL}
 
+// When WITH_SSS is set, BasePass is MRT: @location(0) is the lit color,
+// @location(1) carries the diffuse irradiance to scatter (rgb) + the max
+// world-space scatter radius (a — kernel footprint + silhouette mask), and
+// @location(2) carries the per-channel world scatter radius (rgb) so the blur
+// can weight each colour band independently (red bleeds widest). Materials with
+// no SSS node leave scatter/radius at 0, making the SSS chain a no-op for them.
+// When WITH_SSS is unset the fragment is single-output, byte-identical to before
+// SSS landed.
+#ifdef WITH_SSS
+struct FsOut {
+  @location(0) color     : vec4f,
+  @location(1) sss       : vec4f,
+  @location(2) sssRadius : vec4f,
+};
+#endif
+
 @fragment
+#ifdef WITH_SSS
+fn fs_main(input : VsOut) -> FsOut {
+#endif
+#ifndef WITH_SSS
 fn fs_main(input : VsOut) -> @location(0) vec4f {
+#endif
   var _mainSurface : Closure;
-  _mainSurface.diffuse  = vec3f(0.0);
-  _mainSurface.light    = vec3f(0.0);
-  _mainSurface.emission = vec3f(0.0);
-  _mainSurface.scatter  = vec3f(0.0);
-  _mainSurface.alpha    = 1.0;
+  _mainSurface.diffuse      = vec3f(0.0);
+  _mainSurface.light        = vec3f(0.0);
+  _mainSurface.emission     = vec3f(0.0);
+  _mainSurface.scatter      = vec3f(0.0);
+  _mainSurface.sssRadiusVec = vec3f(0.0);
+  _mainSurface.sssRadius    = 0.0;
+  _mainSurface.alpha        = 1.0;
 
   ${this.buf.replace(/SHADER_SURFACE/g, '_mainSurface')}
 
   ${ALPHA_HASH_WGSL.replace(/SHADER_SURFACE/g, '_mainSurface')}
 
+#ifdef WITH_SSS
+  var out : FsOut;
+  out.color     = vec4f(_mainSurface.light + _mainSurface.emission, _mainSurface.alpha);
+  out.sss       = vec4f(_mainSurface.scatter, _mainSurface.sssRadius);
+  out.sssRadius = vec4f(_mainSurface.sssRadiusVec, 0.0);
+  return out;
+#endif
+#ifndef WITH_SSS
   return vec4f(_mainSurface.light + _mainSurface.emission, _mainSurface.alpha);
+#endif
 }
 `
     // The preprocessor only handles `#ifdef`/`#define`/`#endif`; it does
@@ -413,12 +445,32 @@ fn vs_main(in : VsIn) -> VsOut {
 }
 `
 
-function buildFallbackWgsl(): string {
-  return `
+function buildFallbackWgsl(withSss: boolean): string {
+  const head = `
 ${CLOSURE_WGSL}
 ${FRAME_UNIFORMS_WGSL}
 ${OBJECT_UNIFORMS_WGSL}
 ${FALLBACK_VERTEX_WGSL}
+`
+  if (withSss) {
+    // MRT-shaped fallback: BasePass has three color attachments when SSS is on,
+    // so a single-output fragment would fail WGSL validation against it.
+    return `${head}
+struct FsOut {
+  @location(0) color     : vec4f,
+  @location(1) sss       : vec4f,
+  @location(2) sssRadius : vec4f,
+};
+@fragment fn fs_main(input : VsOut) -> FsOut {
+  var out : FsOut;
+  out.color     = vec4f(0.0, 0.0, 0.0, 1.0);
+  out.sss       = vec4f(0.0, 0.0, 0.0, 0.0);
+  out.sssRadius = vec4f(0.0, 0.0, 0.0, 0.0);
+  return out;
+}
+`
+  }
+  return `${head}
 @fragment fn fs_main(input : VsOut) -> @location(0) vec4f { return vec4f(0.0, 0.0, 0.0, 1.0); }
 `
 }

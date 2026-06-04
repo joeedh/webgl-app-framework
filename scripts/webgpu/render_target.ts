@@ -23,12 +23,14 @@ export class RenderTarget {
   readonly height: number
   readonly sampleCount: number
   readonly colors: GpuTexture[]
+  readonly colorFormats: GPUTextureFormat[]
   readonly depth: GpuTexture | undefined
 
   constructor(opts: RenderTargetOptions) {
     this.width = opts.width
     this.height = opts.height
     this.sampleCount = opts.sampleCount ?? 1
+    this.colorFormats = opts.colorFormats.slice()
 
     this.colors = opts.colorFormats.map(
       (format, i) =>

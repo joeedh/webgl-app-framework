@@ -511,6 +511,198 @@ fn fs_main(in : VsOut) -> FsOut {
 }
 `
 
+/**
+ * SSSBlurPass — one axis of a Jimenez-style separable screen-space
+ * subsurface-scatter blur. The input color carries the SSS irradiance
+ * (rgb) and the per-pixel **world-space** scatter radius (a) — for the X
+ * pass that's BasePass `colors[1]`, for the Y pass it's the X-pass output
+ * (which passes the radius through unchanged in `.a`).
+ *
+ * The world radius (already includes the node's CPU-side unit factor) is
+ * projected to screen pixels per-fragment using depth + the pass
+ * projection (same view-space unproject/project trick as AOPass), then the
+ * kernel steps along X or Y weighting by a per-channel Gaussian (red
+ * diffuses widest). Pixels with radius == 0 pass straight through, so
+ * non-SSS geometry is a no-op (risk R6).
+ *
+ * Defines: `SAMPLES` (numeric, required — half-width of the tap loop),
+ * `AXIS_Y` (Y-axis variant; omit for X).
+ * Binding 4 = SSSBlurUniforms.
+ */
+export const SSS_BLUR_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex   : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp        : sampler;
+@group(0) @binding(3) var fbo_depth_tex  : texture_depth_2d;
+@group(0) @binding(7) var depth_smp      : sampler;
+// Per-channel world scatter radius (BasePass colors[2].rgb), sampled at the
+// center pixel only — it's a per-pixel constant, so both blur axes read it from
+// the base pass to build per-channel kernel weights (red bleeds widest).
+@group(0) @binding(8) var fbo_radius_tex : texture_2d<f32>;
+
+struct SSSBlurUniforms {
+  falloff     : f32,  // diffusion-profile falloff multiplier on the radius
+  maxScreenPx : f32,  // clamp on the screen-space kernel half-width
+  _pad0       : f32,
+  _pad1       : f32,
+};
+@group(0) @binding(4) var<uniform> sssU : SSSBlurUniforms;
+
+fn sssUnproject(p : vec4f) -> vec4f {
+  var p2 = passU.iprojectionMatrix * vec4f(p.xyz, 1.0);
+  return vec4f(p2.xyz / p2.w, p2.w);
+}
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  let depthSample = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
+  // textureSampleLevel (explicit LOD, no derivatives) — the radius early-out
+  // below makes control flow non-uniform, and plain textureSample is illegal
+  // there. These are full-res screen textures, so LOD 0 is exact anyway.
+  let center      = textureSampleLevel(fbo_rgba_tex, fbo_smp, in.v_Uv, 0.0);
+  let worldRadius = center.a;
+  // Per-channel world radius for the diffusion profile (clamped away from 0 so
+  // the per-channel weight below never divides by zero). The footprint/spacing
+  // is driven by the max radius (worldRadius); the per-channel radii only shape
+  // how fast each colour band falls off within that footprint.
+  let radiusVec = max(textureSampleLevel(fbo_radius_tex, fbo_smp, in.v_Uv, 0.0).rgb, vec3f(1.0e-6));
+
+  // No scatter radius here — pass irradiance + radius through untouched so
+  // the next pass / composite sees a clean no-op for non-SSS pixels.
+  if (worldRadius <= 0.0) {
+    out.color = center;
+    out.depth = depthSample;
+    return out;
+  }
+
+  // Convert the per-pixel world scatter radius to a screen-space kernel
+  // half-width *along the blur axis*. Measure how far one screen pixel travels
+  // in world space at this fragment's depth — unproject the fragment and a
+  // neighbour one pixel away on the blur axis (same depth) — then
+  // screenPx = worldRadius / worldDistancePerPixel.
+  //
+  // This MUST be measured along the screen axis. The earlier code offset the
+  // unprojected world point along a *world* axis (world +X / +Y) and reprojected;
+  // wherever that world axis foreshortens toward the camera the reprojected
+  // delta collapses to ~0, starving the blur along a screen-space line and
+  // leaving a hard seam (the "vertical line" bug). Stepping along the actual
+  // screen axis is depth-correct and independent of camera orientation.
+  let centerW = sssUnproject(vec4f(in.v_Uv * 2.0 - vec2f(1.0), depthSample, 1.0)).xyz;
+#ifdef AXIS_Y
+  let stepUv = in.v_Uv + vec2f(0.0, 1.0 / passU.size.y);
+#else
+  let stepUv = in.v_Uv + vec2f(1.0 / passU.size.x, 0.0);
+#endif
+  let stepW = sssUnproject(vec4f(stepUv * 2.0 - vec2f(1.0), depthSample, 1.0)).xyz;
+  let worldPerPx = max(length(stepW - centerW), 1.0e-9);
+  var screenPx = (worldRadius / worldPerPx) * sssU.falloff;
+  screenPx = clamp(screenPx, 0.0, sssU.maxScreenPx);
+
+  var accum = vec3f(0.0);
+  var wsum  = vec3f(0.0);
+  let p = in.v_Uv * passU.size;
+
+  for (var i : i32 = -SAMPLES; i <= SAMPLES; i = i + 1) {
+    let t = f32(i) / f32(SAMPLES);  // -1..1 along the kernel
+    var p2 = p;
+#ifdef AXIS_Y
+    p2.y = p2.y + t * screenPx;
+#else
+    p2.x = p2.x + t * screenPx;
+#endif
+    // Per-channel Gaussian: each colour band falls off over its OWN world
+    // scatter radius, so a narrow channel (e.g. blue) stays sharp while a wide
+    // one (red) bleeds, even though all share one sample footprint. worldDist is
+    // this tap's world-space offset from center.
+    let worldDist = abs(t) * screenPx * worldPerPx;
+    let xr = vec3f(worldDist) / radiusVec;
+    let w  = exp(-xr * xr * 3.0);
+    let s  = textureSampleLevel(fbo_rgba_tex, fbo_smp, p2 / passU.size, 0.0);
+    // Only gather from texels that are themselves SSS (radius > 0) so the
+    // blur never drags background irradiance across the silhouette.
+    let mask = select(0.0, 1.0, s.a > 0.0);
+    accum = accum + s.rgb * w * mask;
+    wsum  = wsum + w * mask;
+  }
+
+  let safe = max(wsum, vec3f(1.0e-5));
+  out.color = vec4f(accum / safe, worldRadius);
+  out.depth = depthSample;
+  return out;
+}
+`
+
+/**
+ * SSSCompositePass — fold the diffused SSS irradiance back into the lit
+ * frame using a difference composite that conserves energy. The SSS node
+ * leaves its diffuse irradiance in BOTH \`cl.light\` (so the frame is
+ * correct with SSS off) and \`cl.scatter\` (the SSS attachment). Here we
+ * add \`blurred - original\` so the sharp diffuse is *replaced* by the
+ * diffused version; for non-SSS pixels both are 0 and the frame is
+ * untouched.
+ *
+ * Bindings: binding 1 = lit color (BasePass \`colors[0]\`), binding 5 =
+ * blurred SSS (\`sssBlurB.colors[0]\`), binding 6 = original SSS irradiance
+ * (BasePass \`colors[1]\`), binding 4 = SSSCompositeUniforms.
+ */
+export const SSS_COMPOSITE_PASS_WGSL = `
+${VS_BLIT_WGSL}
+${PASS_UNIFORMS_WGSL}
+
+@group(0) @binding(1) var fbo_rgba_tex  : texture_2d<f32>;
+@group(0) @binding(2) var fbo_smp       : sampler;
+@group(0) @binding(3) var fbo_depth_tex : texture_depth_2d;
+@group(0) @binding(7) var depth_smp     : sampler;
+
+struct SSSCompositeUniforms {
+  strength : f32,
+  _pad0    : f32,
+  _pad1    : f32,
+  _pad2    : f32,
+};
+@group(0) @binding(4) var<uniform> sssC : SSSCompositeUniforms;
+
+@group(0) @binding(5) var sss_blur_tex : texture_2d<f32>;
+@group(0) @binding(6) var sss_orig_tex : texture_2d<f32>;
+
+struct FsOut {
+  @location(0)         color : vec4f,
+  @builtin(frag_depth) depth : f32,
+};
+
+@fragment
+fn fs_main(in : VsOut) -> FsOut {
+  var out : FsOut;
+  let lit      = textureSample(fbo_rgba_tex, fbo_smp, in.v_Uv);
+  let blurred  = textureSample(sss_blur_tex, fbo_smp, in.v_Uv);
+  let original = textureSample(sss_orig_tex, fbo_smp, in.v_Uv);
+  // strength is the fraction of diffuse irradiance that scatters subsurface.
+  // On an SSS pixel original == lit, so lit + (blurred - original)*s is exactly
+  // mix(lit, blurred, s) — a proper blend ONLY for s in [0,1]. With s > 1 the
+  // sharp term gets a negative weight, turning the composite into an
+  // overshooting unsharp mask that rings at any edge (e.g. a mesh normal seam),
+  // which shows up as spurious lines / concentric banding. Clamp to the
+  // physical range; "more SSS" is achieved by widening the radius, not by
+  // extrapolating past full scatter.
+  let strength = clamp(sssC.strength, 0.0, 1.0);
+  let diff = (blurred.rgb - original.rgb) * strength;
+  // Keep the generically-wired PassUniforms binding (0) referenced so the
+  // auto-derived bind-group layout doesn't strip it (same trick as PassThru).
+  let keep : f32 = 1.0 + passU.weightSum * 0.0;
+  out.color = vec4f((lit.rgb + diff * keep), lit.a);
+  out.depth = textureSampleLevel(fbo_depth_tex, depth_smp, in.v_Uv, 0);
+  return out;
+}
+`
+
 export interface WgslPassEntry {
   key: string
   source: string
@@ -620,6 +812,26 @@ registerWgslPass({
 registerWgslPass({
   key          : 'AOPass',
   source       : AO_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+// SSS separable blur — like BlurPass, callers select SAMPLES / AXIS_Y via
+// buildPassPipelineDescriptor's defines map (one Pipeline per axis).
+registerWgslPass({
+  key          : 'SSSBlurPass',
+  source       : SSS_BLUR_PASS_WGSL,
+  vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
+  colorTargets : [PASS_COLOR_TARGET],
+  primitive    : {topology: 'triangle-list'},
+  depthStencil : PASS_DEPTH_STENCIL,
+})
+
+registerWgslPass({
+  key          : 'SSSCompositePass',
+  source       : SSS_COMPOSITE_PASS_WGSL,
   vertexBuffers: [FULLSCREEN_QUAD_LAYOUT],
   colorTargets : [PASS_COLOR_TARGET],
   primitive    : {topology: 'triangle-list'},

@@ -10,6 +10,13 @@ export class RenderSettings {
   sharpenFac: number
   minSamples: number
   ao: boolean
+  // Screen-space subsurface scattering. The per-pixel world scatter radius
+  // (incl. the node's CPU-side unit factor) is carried in the MRT BasePass;
+  // these are the global blur/composite knobs.
+  sss: boolean
+  sssWidth: number // separable-blur sample count → SAMPLES define (graph rebuild)
+  sssFalloff: number // diffusion-profile falloff shape
+  sssStrength: number // composite blend strength
 
   static STRUCT: string
 
@@ -20,6 +27,10 @@ export class RenderSettings {
     this.sharpenFac = 0.4
     this.minSamples = 1
     this.ao = true
+    this.sss = false
+    this.sssWidth = 7
+    this.sssFalloff = 1.0
+    this.sssStrength = 1.0
   }
 
   calcUpdateHash() {
@@ -28,6 +39,10 @@ export class RenderSettings {
     sdigest.add(this.filterWidth)
     sdigest.add(this.sharpenWidth)
     sdigest.add(this.ao)
+    // sss/sssWidth change the node topology + SAMPLES define → must rebuild
+    // the graph (allocates/frees the SSS targets), so they fold into the hash.
+    sdigest.add(!!this.sss)
+    sdigest.add(this.sssWidth)
 
     return sdigest.get()
   }
@@ -39,6 +54,10 @@ renderengine_realtime.RenderSettings {
   sharpenWidth : int;
   sharpenFac   : float;
   minSamples   : int;
+  sss          : bool;
+  sssWidth     : int;
+  sssFalloff   : float;
+  sssStrength  : float;
 }
 `
 nstructjs.register(RenderSettings)
