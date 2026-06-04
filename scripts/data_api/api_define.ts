@@ -26,7 +26,7 @@ import '../hair/strand_selectops.js'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {resourceManager} from '../core/resource.js'
 import '../core/image.js'
-import {buildCDAPI, buildElementAPI, CustomData} from '../../addons/builtin/mesh/src/customdata.js'
+import {buildCDAPI, buildElementAPI} from '../../addons/builtin/mesh/src/customdata.js'
 import {CameraData} from '../camera/camera.js'
 import {Camera} from '../webgl/webgl.js'
 
@@ -58,12 +58,8 @@ import {SelMask} from '../editors/view3d/selectmode.js'
 import {ToolContext} from '../core/context.js'
 import type {ViewContext} from '../core/context.js'
 import {
-  MeshModifierFlags,
   MeshFlags,
   MeshTypes,
-  MeshDrawFlags,
-  MeshFeatures,
-  MeshSymFlags,
 } from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
 import {LiteMesh} from '../lite-mesh/litemesh.js'
@@ -220,81 +216,16 @@ export function api_define_bvhsettings(api: DataAPI): void {
 }
 
 export function api_define_mesh(api: DataAPI, pstruct: DataStruct): void {
+  // Sibling structs the Mesh struct's element lists reference. Build them
+  // first so their structs exist when Mesh.defineAPI wires up verts/edges/
+  // loops/faces (the bodies moved onto Mesh.defineAPI in mesh.ts).
   api_define_bvhsettings(api)
-
-  let mstruct = api_define_sceneobject_data(api, Mesh)
-  pstruct.struct('mesh', 'mesh', 'Mesh', mstruct)
-
-  mstruct.int('uiTriangleCount', 'triCount', 'Triangles', 'Total number of triangles in the mesh').readOnly()
-  mstruct.struct('bvhSettings', 'bvhSettings', 'BVH Settings', api.mapStruct(BVHSettings))
-
-  let def
-  def = mstruct.flags('symFlag', 'symFlag', MeshSymFlags, 'Symmetry Flags', 'Mesh Symmetry Flags')
-  def.icons({
-    X: Icons.SYM_X,
-    Y: Icons.SYM_Y,
-    Z: Icons.SYM_Z,
-  })
-  def.on('change', function (this: ApiCallbackThis<Mesh>, e: any) {
-    let mesh = this.dataref
-
-    mesh.updateMirrorTags()
-
-    mesh.recalcNormals()
-    mesh.regenRender()
-    mesh.regenTessellation()
-    mesh.graphUpdate()
-  })
-
-  def = mstruct.flags('flag', 'flag', MeshModifierFlags, 'Modifier Flag', 'Mesh modifier flags')
-  def.icons({
-    SUBSURF: Icons.SUBSURF,
-  })
-
-  def.on('change', (e: any) => {
-    window.redraw_viewport()
-  })
-
   buildCDAPI(api)
-
   api_define_meshelem(api)
   api_define_meshvertex(api)
 
-  function defineElemList(key: string, type: number): void {
-    mstruct.struct(key + '.customData', key + 'Data', 'Custom Datas', api.mapStruct(CustomData, false))
-
-    mstruct.list(key, key, [
-      function getIter(api: DataAPI, list: any) {
-        return list
-      },
-      function getLength(api: DataAPI, list: any) {
-        return list.length
-      },
-      function get(api: DataAPI, list: any, key: number) {
-        return list.local_eidmap[key]
-      },
-      function getKey(api: DataAPI, list: any, obj: any) {
-        return obj !== undefined ? obj.eid : -1
-      },
-      function getActive(api: DataAPI, list: any) {
-        return list.active
-      },
-      function setActive(api: DataAPI, list: any, key: number | undefined) {
-        list.active = key !== undefined ? list.local_eidmap[key] : undefined
-        window.redraw_viewport()
-      },
-      function getStruct(api: DataAPI, list: any, key: number) {
-        return api.mapStruct(Vertex, false)
-      },
-    ])
-  }
-
-  defineElemList('verts', MeshTypes.VERTEX)
-  defineElemList('edges', MeshTypes.EDGE)
-  defineElemList('loops', MeshTypes.LOOP)
-  defineElemList('faces', MeshTypes.FACE)
-
-  //MeshModifierFlags
+  let mstruct = Mesh.defineAPI(api)
+  pstruct.struct('mesh', 'mesh', 'Mesh', mstruct)
 }
 
 // Phase 3 shim — body moved to CurveSpline.defineAPI
