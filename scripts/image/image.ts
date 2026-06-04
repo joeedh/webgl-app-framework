@@ -1,5 +1,5 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api.js'
-import {nstructjs, util, color2css, Vector4} from '../path.ux/scripts/pathux.js'
+import {nstructjs, util, color2css, Vector4, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {Icons} from '../editors/icon_enum.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {NodeFlags} from '../core/graph.js'
@@ -803,5 +803,13 @@ ImageUser {
     }
 
     return digest.get()
+  }
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this, true)
+
+    st.struct('image', 'image', 'Image', api.mapStruct(ImageBlock))
+
+    return st
   }
 }

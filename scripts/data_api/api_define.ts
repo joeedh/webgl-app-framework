@@ -373,11 +373,7 @@ export function api_define_litemesh(api: DataAPI): DataStruct {
 }
 
 export function api_define_imageuser(api: DataAPI): DataStruct {
-  let st = api.mapStruct(ImageUser, true)
-
-  st.struct('image', 'image', 'Image', api.mapStruct(ImageBlock))
-
-  return st
+  return ImageUser.defineAPI(api)
 }
 
 export function api_define_image(api: DataAPI): void {
