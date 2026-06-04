@@ -16,6 +16,8 @@ export const GenTypes = {}
 let _digest = new util.HashDigest()
 
 export class ProceduralGen {
+  static STRUCT = nstructjs.inlineRegister(this, `mesh.ProceduralGen { }`)
+
   constructor() {
     let def = this.constructor.genDefine()
 
@@ -89,12 +91,6 @@ export class ProceduralGen {
     Generators.push(cls)
   }
 }
-
-ProceduralGen.STRUCT = `
-mesh.ProceduralGen {
-
-}
-`
 
 let VX = 0
 let VY = 1
@@ -419,10 +415,13 @@ export class CubeGenerator extends ProceduralGen {
 ProceduralGen.register(CubeGenerator)
 
 export class ProceduralMesh extends SceneObjectData {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.ProceduralMesh {
   generator : abstract(mesh.ProceduralGen);
-}`)
+}`
+  )
 
   constructor() {
     super()

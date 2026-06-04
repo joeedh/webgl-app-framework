@@ -32,6 +32,17 @@ export class StrandSelectSet extends Set {
 }
 
 export class StrandList extends Array {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+StrandList {
+  _list : array(abstract(hair.Strand));
+  highlight : int | this.highlight !== undefined ? this.highlight.id : -1;
+  active : int | this.active !== undefined ? this.active.id : -1;
+}
+`
+  )
+
   constructor() {
     super()
 
@@ -94,20 +105,17 @@ export class StrandList extends Array {
     this._list = undefined
   }
 }
-StrandList.STRUCT = `
-StrandList {
-  _list : array(abstract(Strand));
-  highlight : int | this.highlight !== undefined ? this.highlight.id : -1;
-  active : int | this.active !== undefined ? this.active.id : -1;
-}
-`
+
 export class StrandSet extends SceneObjectData {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   hair.StrandSet {
   idgen      : int;
-  strands    : StrandSet;
+  strands    : StrandList;
   target     : DataRef | DataRef.fromBlock(this.target);
-}`)
+}`
+  )
   constructor() {
     super()
 

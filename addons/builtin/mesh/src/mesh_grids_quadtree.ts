@@ -235,7 +235,7 @@ for (let ix = -1; ix <= 1; ix++) {
 
 export class CompressedQuadNode {
   static fields = makeCompressedNodeStruct().fields
-  static STRUCT = makeCompressedNodeStruct().nstruct
+  static STRUCT = nstructjs.inlineRegister(this, makeCompressedNodeStruct().nstruct)
 
   constructor() {
     const def = this as unknown as any
