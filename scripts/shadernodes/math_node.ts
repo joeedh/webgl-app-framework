@@ -54,6 +54,11 @@ export const WgslMathSnippets: Record<number, string> = {
 }
 
 export class MathNode extends ShaderNode {
+  static STRUCT = nstructjs.inlineRegister(this, `
+shader.MathNode {
+  mathFunc : int;
+}`)
+
   mathFunc: number
 
   constructor() {
@@ -110,11 +115,4 @@ export class MathNode extends ShaderNode {
   }
 }
 
-MathNode.STRUCT =
-  nstructjs.inherit(MathNode, ShaderNode, 'shader.MathNode') +
-  `
-  mathFunc : int;
-}
-`
-nstructjs.register(MathNode)
 ShaderNetworkClass.register(MathNode)

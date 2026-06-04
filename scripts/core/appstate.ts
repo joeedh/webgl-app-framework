@@ -36,6 +36,7 @@ import {Library, DataBlock, DataRef, BlockFlags, BlockLoader} from './lib_api'
 import * as util from '../util/util'
 import {getDataAPI} from '../data_api/api_define'
 import {BinaryReader, BinaryWriter} from '../util/binarylib'
+import {remapLegacyStructSchema} from './legacy_struct_migration'
 import * as cconst from './const'
 import {AppSettings} from './settings'
 
@@ -648,7 +649,10 @@ export class AppState {
 
     const istruct = new nstructjs.STRUCT()
 
-    istruct.parse_structs(structs)
+    // Rewrite legacy bare/mangled struct names (from the old nstructjs.inherit
+    // form) to their new module-qualified names before parsing the embedded
+    // schema, so renamed classes still resolve. No-op for post-migration files.
+    istruct.parse_structs(remapLegacyStructSchema(structs))
 
     filectx.lastscreens_active = lastscreens_active
     filectx.lastscreens = lastscreens

@@ -123,6 +123,13 @@ export const WeightModes = {
 }
 
 export class ParamVertSettings extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.ParamVertSettings {
+  updateGen      : int;
+  smoothTangents : bool;
+  weightMode     : int;
+}`)
+
   declare updateGen: number
   declare smoothTangents: boolean
   declare weightMode: number
@@ -152,17 +159,18 @@ export class ParamVertSettings extends LayerSettingsBase {
   }
 }
 
-ParamVertSettings.STRUCT =
-  nstructjs.inherit(ParamVertSettings, LayerSettingsBase) +
-  `
-  updateGen      : int;
-  smoothTangents : bool;
-  weightMode     : int;
-}`
-
 const tmp = new Vector3()
 
 export class ParamVert extends CustomDataElem {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.ParamVert {
+    disUV        : vec4;
+    updateGen    : int;
+    smoothTan    : vec3;
+    wlist        : array(float);
+    totarea      : float;
+  }`)
+
   updateGen: number
   needsSmooth: boolean
   disUV: Vector4
@@ -579,16 +587,6 @@ export class ParamVert extends CustomDataElem {
     b.smoothTan.load(this.smoothTan)
   }
 }
-
-ParamVert.STRUCT =
-  nstructjs.inherit(ParamVert, CustomDataElem) +
-  `
-    disUV        : vec4;
-    updateGen    : int;
-    smoothTan    : vec3;
-    wlist        : array(float);
-    totarea      : float;
-  }`
 
 export function calcGeoDist(mesh: Mesh, cd_pvert: AttrRef<ParamVert>, shell: Face[], mode: number) {
   const ps = mesh.verts.customData.flatlist[cd_pvert.i].getTypeSettings() as ParamVertSettings

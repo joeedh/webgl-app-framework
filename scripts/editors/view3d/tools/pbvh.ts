@@ -70,6 +70,28 @@ import type {View3D} from '../view3d'
 import type {ViewContext} from '../../../core/context'
 
 export class BVHToolMode extends PaintToolModeBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+view3d.BVHToolMode {
+  drawBVH                : bool;
+  drawCavityMap          : bool;
+  drawFlat               : bool;
+  drawWireframe          : bool;
+  drawValidEdges         : bool;
+  drawNodeIds            : bool;
+  drawMask               : bool;
+  drawDispDisField       : bool;
+  editDisplaced          : bool;
+  drawColPatches         : bool;
+  symmetryAxes           : int;
+  gridEditDepth          : int;
+  enableMaxEditDepth     : bool;
+  tool                   : int;
+  slots                  : iterkeys(PaintToolSlot);
+  sharedBrushRadius      : float;
+  dynTopo                : DynTopoSettings;
+  reprojectCustomData    : bool;
+}`)
+
   _apiDynTopo: DynTopoSettings
 
   constructor(manager: any) {
@@ -2552,29 +2574,5 @@ export class BVHToolMode extends PaintToolModeBase {
     }
   }
 }
-
-BVHToolMode.STRUCT =
-  nstructjs.inherit(BVHToolMode, ToolMode) +
-  `
-  drawBVH                : bool;
-  drawCavityMap          : bool;
-  drawFlat               : bool;
-  drawWireframe          : bool;
-  drawValidEdges         : bool;
-  drawNodeIds            : bool;
-  drawMask               : bool;
-  drawDispDisField       : bool;          
-  editDisplaced          : bool;
-  drawColPatches         : bool;
-  symmetryAxes           : int;
-  gridEditDepth          : int;
-  enableMaxEditDepth     : bool;
-  tool                   : int;
-  slots                  : iterkeys(PaintToolSlot);
-  sharedBrushRadius      : float;
-  dynTopo                : DynTopoSettings; 
-  reprojectCustomData    : bool;
-}`
-nstructjs.register(BVHToolMode)
 
 ToolMode.register(BVHToolMode)

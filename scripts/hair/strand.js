@@ -102,6 +102,12 @@ StrandList {
 }
 `
 export class StrandSet extends SceneObjectData {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  hair.StrandSet {
+  idgen      : int;
+  strands    : StrandSet;
+  target     : DataRef | DataRef.fromBlock(this.target);
+}`)
   constructor() {
     super()
 
@@ -178,13 +184,5 @@ export class StrandSet extends SceneObjectData {
     }
   }
 }
-StrandSet.STRUCT =
-  nstructjs.inherit(StrandSet, SceneObjectData) +
-  `
-  idgen      : int;
-  strands    : StrandSet;
-  target     : DataRef | DataRef.fromBlock(this.target);
-}`
-nstructjs.register(StrandSet)
 DataBlock.register(StrandSet)
 SceneObjectData.register(StrandSet)

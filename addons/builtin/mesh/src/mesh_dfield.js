@@ -4,6 +4,10 @@ import {nstructjs} from '@framework/pathux'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '@framework/api'
 
 export class DFieldSettings extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.DFieldSettings {
+}`)
+
   constructor() {
     super()
   }
@@ -16,11 +20,6 @@ export class DFieldSettings extends LayerSettingsBase {
     return st
   }
 }
-
-DFieldSettings.STRUCT =
-  nstructjs.inherit(DFieldSettings, LayerSettingsBase) +
-  `
-}`
 
 let interp_v1 = new Vector3()
 let interp_v2 = new Vector3()
@@ -35,6 +34,12 @@ export const DFieldFlags = {
 }
 
 export class DFieldElem extends CustomDataElem {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.DFieldElem {
+  flag               : int;
+  vec                : vec3;
+}`)
+
   constructor() {
     super()
 
@@ -113,12 +118,6 @@ export class DFieldElem extends CustomDataElem {
     }
   }
 }
-DFieldElem.STRUCT =
-  nstructjs.inherit(DFieldElem, CustomDataElem) +
-  `
-  flag               : int;
-  vec                : vec3;
-}`
 
 export function getCDFieldOffsets(mesh) {
   let cd_vfield = mesh.verts.customData.getLayerIndex('dfield')

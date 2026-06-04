@@ -16,6 +16,13 @@ export function makeGraphItToolMode(api) {
   let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh
 
   let GraphItToolMode = (exports.GraphItToolMode = class GraphItToolMode extends api.toolmode.MeshToolBase {
+    static STRUCT = nstructjs.inlineRegister(this, `
+  graphit.GraphItToolMode {
+    drawTangents : bool;
+    drawVerts    : bool;
+  }
+  `)
+
     constructor() {
       super()
 
@@ -174,14 +181,6 @@ export function makeGraphItToolMode(api) {
       }
     }
   })
-
-  GraphItToolMode.STRUCT =
-    nstructjs.inherit(GraphItToolMode, api.toolmode.ToolMode) +
-    `
-    drawTangents : bool;
-    drawVerts    : bool;
-  }
-  `
 
   api.register(GraphItToolMode)
 

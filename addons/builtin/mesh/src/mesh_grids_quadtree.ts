@@ -315,6 +315,16 @@ export class QTGridVert extends GridVertBase<Set<QTGridVert>> {
 }
 
 export class QuadTreeGrid extends GridBase<QTGridVert> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.QuadTreeGrid {
+  nodes               : array(mesh_grid.CompressedQuadNode) | this._saveNodes();
+  depthLimitEnabled   : bool;
+  depthLimit          : int;
+  normalQuad          : array(vec3);
+  loopEid             : int;
+  nodeFieldSize       : int;
+}`)
+
   leafPoints: Set<number>
   leafNodes: number[]
   depthLimit: number
@@ -3922,14 +3932,3 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this._rebuildHash()
   }
 }
-
-QuadTreeGrid.STRUCT =
-  nstructjs.inherit(QuadTreeGrid, GridBase, 'mesh.QuadTreeGrid') +
-  `
-  nodes               : array(mesh_grid.CompressedQuadNode) | this._saveNodes();
-  depthLimitEnabled   : bool;
-  depthLimit          : int;
-  normalQuad          : array(vec3);
-  loopEid             : int;
-  nodeFieldSize       : int;
-}`

@@ -250,6 +250,11 @@ export function onAddonCreate(api) {
   let Editor = api.editor.Editor
 
   class CodeEditor extends api.editor.Editor {
+    static STRUCT = api.nstructjs.inlineRegister(this, `
+code_editor.CodeEditor {
+  }
+  `)
+
     constructor() {
       super()
 
@@ -303,12 +308,6 @@ export function onAddonCreate(api) {
       }
     }
   }
-  CodeEditor.STRUCT =
-    api.nstructjs.inherit(CodeEditor, Editor) +
-    `
-  }
-  `
-  api.nstructjs.register(CodeEditor)
   api.register(CodeEditor)
   _CodeEditor = CodeEditor
 }

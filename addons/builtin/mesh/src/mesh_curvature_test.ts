@@ -53,6 +53,13 @@ export const WeightModes = {
 }
 
 export class CurvVert2Settings extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.CurvVert2Settings {
+  updateGen      : int;
+  smoothTangents : bool;
+  weightMode     : int;
+}`)
+
   declare updateGen: number
   declare smoothTangents: boolean
   declare weightMode: number
@@ -82,14 +89,6 @@ export class CurvVert2Settings extends LayerSettingsBase {
   }
 }
 
-CurvVert2Settings.STRUCT =
-  nstructjs.inherit(CurvVert2Settings, LayerSettingsBase) +
-  `
-  updateGen      : int;
-  smoothTangents : bool;
-  weightMode     : int;
-}`
-
 const tmp = new Vector3()
 const itmp1 = new Vector3()
 const itmp2 = new Vector3()
@@ -97,6 +96,22 @@ const itmp3 = new Vector3()
 const itmp4 = new Vector3()
 
 export class CurvVert2 extends CustomDataElem {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  mesh.CurvVert2 {
+    no           : vec3;
+    tan          : vec3;
+    bin          : vec3;
+    k1           : double;
+    k2           : double;
+    k3           : double;
+    k            : double;
+    error        : double;
+    updateGen    : int;
+    smoothTan    : vec3;
+    wlist        : array(float);
+    totarea      : float;
+  }`)
+
   error: number
   errorvec: Vector3
   lastd2k1: Vector3
@@ -471,23 +486,6 @@ export class CurvVert2 extends CustomDataElem {
     b.d3k3.load(this.d3k3)
   }
 }
-
-CurvVert2.STRUCT =
-  nstructjs.inherit(CurvVert2, CustomDataElem) +
-  `
-    no           : vec3;
-    tan          : vec3;
-    bin          : vec3;
-    k1           : double;
-    k2           : double;
-    k3           : double;
-    k            : double;
-    error        : double;
-    updateGen    : int;
-    smoothTan    : vec3;
-    wlist        : array(float);
-    totarea      : float;
-  }`
 
 export function curvatureTest(mesh: Mesh, cd_curvt: number, shell: Face[], mode: number) {
   let ps = mesh.verts.customData.flatlist[cd_curvt].getTypeSettings() as CurvVert2Settings

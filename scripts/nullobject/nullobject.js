@@ -9,6 +9,10 @@ import {Node} from '../core/graph.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class NullObject extends SceneObjectData {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  nullobject.NullObject {
+}
+`)
   constructor() {
     super()
   }
@@ -57,13 +61,6 @@ export class NullObject extends SceneObjectData {
     }
   }
 }
-
-NullObject.STRUCT =
-  nstructjs.inherit(NullObject, SceneObjectData) +
-  `
-}
-`
-nstructjs.register(NullObject)
 
 DataBlock.register(NullObject)
 SceneObjectData.register(NullObject)
