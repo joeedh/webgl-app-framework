@@ -26,7 +26,7 @@ import '../hair/strand_selectops.js'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {resourceManager} from '../core/resource.js'
 import '../core/image.js'
-import {buildCDAPI, buildElementAPI} from '../../addons/builtin/mesh/src/customdata.js'
+import {buildCDAPI} from '../../addons/builtin/mesh/src/customdata.js'
 import {CameraData} from '../camera/camera.js'
 import {Camera} from '../webgl/webgl.js'
 
@@ -57,10 +57,6 @@ import {VelPan, VelPanFlags} from '../editors/velpan.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {ToolContext} from '../core/context.js'
 import type {ViewContext} from '../core/context.js'
-import {
-  MeshFlags,
-  MeshTypes,
-} from '../../addons/builtin/mesh/src/mesh_base.js'
 import {Mesh} from '../../addons/builtin/mesh/src/mesh.js'
 import {LiteMesh} from '../lite-mesh/litemesh.js'
 import {Vertex, Element} from '../../addons/builtin/mesh/src/mesh_types.js'
@@ -171,17 +167,11 @@ function api_define_datablock(api: DataAPI, cls: AnyClass = DataBlock): DataStru
 }
 
 export function api_define_meshelem(api: DataAPI): void {
-  let st = api.mapStruct(Element, true)
-
-  st.flags('flag', 'flag', MeshFlags)
-  st.flags('type', 'type', MeshTypes).readOnly()
-  st.int('eid', 'id', 'ID', 'ID').readOnly()
-
-  buildElementAPI(api, st)
+  Element.defineAPI(api)
 }
 
 export function api_define_meshvertex(api: DataAPI): void {
-  let st = api.inheritStruct(Vertex, Element)
+  Vertex.defineAPI(api)
 }
 
 export function api_define_sceneobject_data(api: DataAPI, cls: AnyClass): DataStruct {

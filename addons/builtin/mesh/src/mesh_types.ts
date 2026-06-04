@@ -27,7 +27,7 @@ import {
 } from './mesh_base'
 import {UVLayerElem} from './mesh_customdata'
 import {Vector3, Quat, Matrix4, util, Vector2, Number3} from '@framework/api'
-import {nstructjs} from '@framework/pathux'
+import {nstructjs, DataAPI, DataStruct} from '@framework/pathux'
 
 import {EDGE_LINKED_LISTS} from '@framework/api'
 export {EDGE_LINKED_LISTS} from '@framework/api'
@@ -348,7 +348,7 @@ for (let i = 0; i < vnistack.length; i++) {
 import {EmptyCDArray} from './mesh_base.js'
 import {KnotDataLayer} from '../../curve/src/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
-import {CDRef} from './customdata'
+import {CDRef, buildElementAPI} from './customdata'
 import type {View3D} from '@framework/api'
 import {StructReader} from '@framework/api'
 
@@ -363,6 +363,18 @@ mesh.Element {
   customData  : mesh.CDElemArray;
 }`
   )
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    let st = struct ?? api.mapStruct(this, true)
+
+    st.flags('flag', 'flag', MeshFlags)
+    st.flags('type', 'type', MeshTypes).readOnly()
+    st.int('eid', 'id', 'ID', 'ID').readOnly()
+
+    buildElementAPI(api, st)
+
+    return st
+  }
 
   v1next?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
   v1prev?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
@@ -966,6 +978,12 @@ mesh.Vertex {
 }
 `
   )
+
+  static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
+    // Vertex inherits the Element struct's members; Element.defineAPI must
+    // have populated it first (the driver enforces that ordering).
+    return api.inheritStruct(Vertex, Element)
+  }
 
   constructor(co?: Vector3 | undefined) {
     super(MeshTypes.VERTEX)
