@@ -208,6 +208,36 @@ the pre-phase copy — **0 diffs required** — plus `npx tsgo --noEmit` clean.
   structs (the import the port fixed) move onto the mesh element classes.
   Per-subsystem gate: catalog unchanged.
 
+  **Progress — self-contained tier done.** The single-class bodies that take
+  only `(api)` and own one struct are migrated (each a shim → `X.defineAPI`,
+  catalog byte-identical, tsgo clean):
+  `Material` · `Camera` · `CurveSpline` · `DynTopoSettings` · `DynTopoSettingsSC`
+  · `BVHSettings` · `RenderSettings` · `EnvLight` · `ImageUser`.
+  `registerDataAPI` wiring is intentionally **deferred to Phase 4** (the registry
+  isn't consumed until then; registering now would be dead state and the
+  Phase-4 ordering pass is where it belongs).
+
+  **Remaining Phase 3 (the entangled tier — do with the Phase 4 driver):**
+  - *Datablock/node/sceneobject-data helper-dependent* — bodies built via the
+    `api_define_datablock` / `api_define_node` / `api_define_sceneobject_data`
+    free helpers: `image`, `cameradata`, `litemesh`, `mesh`, `brush`. Moving
+    these onto their classes first needs the base helpers re-expressed as
+    `DataBlock.defineAPI` / `Node.defineAPI` / `SceneObjectData.defineAPI` that
+    subclasses chain via `super.defineAPI(api, struct)` (note `CameraData`
+    extends `SceneObjectData`, not `DataBlock`, so the helper layering ≠ the JS
+    inheritance — resolve this when designing the base-class chain).
+  - *Parent-struct assembling* — bodies that take a `parent`/`pstruct` and attach
+    a child under it (`shadernetwork`, `sceneobject`, `library`, `screen`,
+    `light`, `scene`). These mix "define my struct" with getDataAPI's tree
+    assembly; the attach-under-parent half stays in the driver, only the
+    self-struct half moves onto the class.
+  - *Order-sensitive inherits* — `api_define_meshelem` (`Element`) then
+    `api_define_meshvertex` (`api.inheritStruct(Vertex, Element)`, needs
+    `Element` populated first — the one true ordering constraint per §2).
+  - *Skipped (pathux submodule classes)* — `api_define_velpan` (`VelPan`),
+    `api_define_matrix4` (`Matrix4`) stay as free functions; we don't add
+    statics to the path.ux submodule in this refactor.
+
 - **Phase 4 — flip `getDataAPI()` to drive the registry.** Replace the explicit
   call list with iteration over `dataAPIRegistry`, calling each `defineAPI`
   once. The only ordering work is the inherit/merge sources (§2): a
