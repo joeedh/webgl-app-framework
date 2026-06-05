@@ -441,6 +441,12 @@ export class LiteMesh extends SceneObjectData {
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   private gpuUniforms?: IUniformsBlock
+  /** Per-pipeline reflected uniform bindings for the GPU draw path. Kept on the
+   * instance (not a closure WeakMap) so `setDrawShader` can dispose them when a
+   * material-graph edit swaps in new WGSL — the pipeline cache is keyed on the
+   * (stable) ShaderDef pointer, so without explicit invalidation the executor
+   * would keep the stale pipeline/bindings. */
+  private gpuBindingsCache = new Map<Pipeline, UniformBindings>()
   /** True once `setDrawShader` installed a real material WGSL on the spatial
    * tree (M6). The viewport draw then provides the material's full uniform set
    * (frame/object/lights across @group 0/1/2) instead of the basic-shader
@@ -1196,6 +1202,15 @@ export class LiteMesh extends SceneObjectData {
     }
     this.wasm.SpatialTree_setDrawShader(this.spatial, wgsl)
     this._hasMaterialDrawShader = !!wgsl && wgsl.length > 0
+
+    // The C++ ShaderDef is rebuilt in place (same `&drawShader` pointer), so the
+    // executor's pipeline cache — keyed on that stable pointer — would keep the
+    // pipeline compiled from the old WGSL. Drop both cache layers so the next
+    // dispatch rebuilds the pipeline (and its reflected bindings) from the new
+    // source. Material edits are rare, so the rebuild cost is irrelevant.
+    this.drawBatchExecutorGPU?.invalidatePipelines()
+    for (const bindings of this.gpuBindingsCache.values()) bindings.destroy()
+    this.gpuBindingsCache.clear()
   }
 
   /**
@@ -1265,6 +1280,8 @@ export class LiteMesh extends SceneObjectData {
     this.drawBatchExecutor = undefined
     this.drawBatchExecutorGPU?.dispose()
     this.drawBatchExecutorGPU = undefined
+    for (const bindings of this.gpuBindingsCache.values()) bindings.destroy()
+    this.gpuBindingsCache.clear()
 
     if (this.treeBatch) {
       this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
@@ -1424,7 +1441,7 @@ export class LiteMesh extends SceneObjectData {
 
     let exec = this.drawBatchExecutorGPU
     if (exec === undefined) {
-      const bindingsCache = new WeakMap<Pipeline, UniformBindings>()
+      const bindingsCache = this.gpuBindingsCache
       const self: LiteMesh = this
       exec = new WebGPUBatchExecutor({
         device             : ctx.device,

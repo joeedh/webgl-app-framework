@@ -965,7 +965,7 @@ export class AppState {
 
   clearStartupFile(): void {
     console.log('clearing startup file')
-    delete localStorage[cconst.APP_KEY_NAME]
+    delete window.localStorage[cconst.APP_KEY_NAME]
   }
 
   saveStartupFile(): void {
@@ -973,7 +973,7 @@ export class AppState {
     const bufStr = util.btoa(buf)
 
     try {
-      localStorage[cconst.APP_KEY_NAME] = bufStr
+      window.localStorage[cconst.APP_KEY_NAME] = bufStr
       console.log(`saved startup file; ${(bufStr.length / 1024).toFixed(2)}kb`)
       this.ctx.message('Saved startup file')
     } catch (error) {

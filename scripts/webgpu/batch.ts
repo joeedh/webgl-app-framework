@@ -142,6 +142,16 @@ export class WebGPUBatchExecutor {
     this.colorTargets = opts.colorTargets
   }
 
+  /** Drop every cached pipeline so the next dispatch rebuilds from the current
+   * `wgslForShader(sdef)`. Needed when a shader's WGSL changes under a stable
+   * `ShaderDef` identity (the cache key is the sdef pointer, not the source) —
+   * e.g. a material-graph edit re-runs `SpatialTree.setDrawShader`. The shared
+   * `PipelineCache` already keys on WGSL, so genuinely-new sources compile and
+   * unchanged ones are reused. */
+  invalidatePipelines(): void {
+    this.pipelinesByShader.clear()
+  }
+
   /** Point subsequent draws at a pass with these color attachment format(s),
    * preserving each target's blend state. No-op when the formats are
    * unchanged. */

@@ -123,6 +123,30 @@ WebGL `GPUSelectBuffer` + `FindnearestClass` registry are gone). See
   rect corners + cone endpoints cross as bound `float3`s, results as
   `Vector<int>` out-params; native uses the `makeIntVector` N-API helper).
 
+## Node editor
+
+The node-graph editor lives in `scripts/editors/node/`. See
+[documentation/node-editor.md](documentation/node-editor.md). Key conventions:
+
+- `NodeEditorBase` (`NodeEditor.ts`) is an **abstract, unregistered** pan/zoom
+  graph editor; the only registered subclass is `MaterialEditor` (the Shader
+  Editor). `NodeViewer.ts` is a separate read-only canvas viewer. It edits a
+  `Graph` located by **data-API path** (`graphPath`, default `material.graph`),
+  not a hard reference.
+- **Rendering is CSS-transform-driven, not per-node repositioning.** `_recalcUI`
+  applies `velpan.domMat` (a `DOMMatrix`) as one CSS `transform` on
+  `nodeContainer`; each `NodeUI` places itself in graph space and connection
+  lines are drawn into the container's SVG overdraw. The container and SVG are
+  `overflow: visible` so transformed-out lines aren't clipped. Per-frame work is
+  batched via the `recalcFlags` bitmask (`NodeRecalcFlags.UI | REBUILD`), drained
+  in `update()`.
+- All edits go through the `node.*` ToolOps (`node_ops.ts` /
+  `node_selectops.ts`), so they are undoable; the editor never mutates the graph
+  directly. `NodeGraphOp` locates its target via `graphPath` / `graphClass` /
+  `nodeEditorPath`. Passing `useNodeEditorGraph=1` makes the op inherit the
+  active editor's graph; passing an explicit `graphPath`/`graphClass` lets ops
+  run with no editor open (see `tests/integration/node_editor_ops.test.ts`).
+
 ## Icons
 
 UI icons come from a single hand-authored sheet, `assets/iconsheet.svg` (the

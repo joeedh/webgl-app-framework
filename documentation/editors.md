@@ -44,9 +44,9 @@ path.ux Area  (scripts/path.ux/scripts/screen/ScreenArea.js)
        ├─ View3D           — 3D viewport
        ├─ MenuBarEditor    — top menu bar
        ├─ PropsEditor      — properties panel
-       ├─ NodeEditor       — shader node graph
-       ├─ MaterialEditor   — material shader editor (extends NodeEditor)
-       ├─ NodeViewer       — scene graph viewer
+       ├─ NodeEditorBase   — abstract node-graph editor (not registered)
+       │    └─ MaterialEditor — material shader editor (the registered node editor)
+       ├─ NodeViewer       — read-only node-graph viewer
        ├─ ImageEditor      — image loader/viewer (UV editing parked; see pending-port)
        ├─ ConsoleEditor    — JS console
        ├─ SettingsEditor   — application preferences
@@ -190,7 +190,7 @@ active editor by its `apiname` or `areaname`:
 
 ```ts
 ctx.editors.view3d        // → View3D instance (or undefined)
-ctx.editors.nodeEditor    // → NodeEditor instance
+ctx.editors.nodeEditor    // → MaterialEditor instance (apiname 'nodeEditor')
 ctx.editors.imageEditor   // → ImageEditor instance
 ctx.editors.propsEditor   // → PropsEditor instance
 ```
@@ -229,9 +229,9 @@ main content area. UI widgets are added to this container.
 | View3D | `view3d-editor-x` | `view3d` | `editors/view3d/view3d.ts` | Main 3D viewport for modeling, sculpting, and scene manipulation |
 | MenuBarEditor | `menu-editor-x` | `MenuBarEditor` | `editors/menu/MainMenu.js` | Top menu bar (File, Edit, Add, Session); hidden from area switcher |
 | PropsEditor | `props-editor-x` | `props` | `editors/properties/PropsEditor.js` | Properties panel with workspace, scene, material, object, and texture tabs |
-| NodeEditor | `node-editor-x` | `NodeEditor` | `editors/node/NodeEditor.js` | Shader node graph editor with pan/zoom and node connections |
-| MaterialEditor | `material-editor-x` | `MaterialEditor` | `editors/node/MaterialEditor.js` | Material-specific node editor with material slot selection |
-| NodeViewer | `nodegraph-viewer-x` | `nodegraph_viewer` | `editors/node/NodeEditor_debug.js` | Read-only scene graph visualization |
+| NodeEditorBase | `node-editor-x` | `NodeEditor` | `editors/node/NodeEditor.ts` | Abstract pan/zoom node-graph editor (DOM widgets + SVG links). **Not registered** — subclass it. See [node-editor.md](node-editor.md). |
+| MaterialEditor | `material-editor-x` | `MaterialEditor` | `editors/node/MaterialEditor.ts` | The registered node editor; tracks the active object's material slot and points `graphPath` at that material's graph |
+| NodeViewer | `nodegraph-viewer-x` | `nodegraph_viewer` | `editors/node/NodeViewer.ts` | Read-only canvas-rendered node-graph viewer |
 | ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.ts` | Loads images into `ImageBlock`s and displays the active image (pan/zoom). The legacy UV-editing implementation is parked, unwired, under `editors/image/pending-port/` pending a new UV abstraction — see its `TODO.md`. |
 | ConsoleEditor | `console-editor-x` | `console_editor` | `editors/console/console.js` | JavaScript console with history and autocomplete |
 | SettingsEditor | `settings-editor-x` | `settings-editor` | `editors/settings/SettingsEditor.js` | Application preferences (general, theme, addons) |
@@ -244,6 +244,7 @@ main content area. UI widgets are added to this container.
 | File | Purpose |
 |------|---------|
 | `scripts/editors/editor_base.ts` | `Editor` base class, `App` (Screen), `EditorSideBar`, `EditorAccessor`, `DataBlockBrowser` |
+| `scripts/editors/node/` | Node-graph editor (`NodeEditorBase`, `MaterialEditor`, `NodeViewer`, `node.*` ToolOps) — see [node-editor.md](node-editor.md) |
 | `scripts/editors/all.js` | Re-exports all editor classes |
 | `scripts/editors/screengen.js` | Default screen layout generation |
 | `scripts/editors/icon_enum.js` | `Icons` enum used by editor definitions |

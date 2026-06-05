@@ -1,4 +1,4 @@
-import * as cconst from './const'
+import * as constants from './const'
 import type {AppState} from './appstate'
 import * as util from '../util/util'
 import {ToolOp, UndoFlags} from '../path.ux/pathux'
@@ -72,8 +72,8 @@ export class BasicFileOp extends ToolOp {
 export function genDefaultFile(appstate: AppState, dont_load_startup = 0): void {
   _appstate.saveHandle = undefined
 
-  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
-    let buf = localStorage[cconst.APP_KEY_NAME]
+  if (constants.APP_KEY_NAME in window.localStorage && !dont_load_startup) {
+    let buf = window.localStorage[constants.APP_KEY_NAME]
 
     try {
       buf = util.atob(buf)

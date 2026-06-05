@@ -37,7 +37,9 @@ See [Path.UX Architecture](../scripts/path.ux/docs_src/architecture.md)
 
 - [FrameManager](../scripts/path.ux/docs_src/FrameManager.md)
 - [Widgets](widgets.md)
+- [Editors](editors.md)
 - [View3D](view3d.md)
+- [Node Editor](node-editor.md)
 - [Rendering (WebGPU)](rendering.md)
 
 ## Controller
