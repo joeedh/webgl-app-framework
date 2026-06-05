@@ -9,10 +9,13 @@ import {Node} from '../core/graph.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class NullObject extends SceneObjectData {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   nullobject.NullObject {
 }
-`)
+`
+  )
   constructor() {
     super()
   }

@@ -98,12 +98,15 @@ tet.TetElement {
 nstructjs.register(TetElement)
 
 export class TetVertex extends Vector3 {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetVertex {
   0     : float;
   1     : float;
   2     : float;
-}`)
+}`
+  )
 
   constructor(co) {
     super(co)
@@ -243,11 +246,14 @@ for (let i = 0; i < etetiters.length; i++) {
 }
 
 export class TetEdge extends TetElement {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetEdge {
   v1 : int | this.v1.eid;
   v2 : int | this.v2.eid;
-}`)
+}`
+  )
 
   constructor() {
     super(TetTypes.EDGE)
@@ -299,12 +305,15 @@ export class TetEdge extends TetElement {
 }
 
 export class TetLoop extends TetElement {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetLoop {
   v    : int | this.v.eid;
   next : int | this.next.eid;
   prev : int | this.prev.eid;
-}`)
+}`
+  )
 
   constructor() {
     super(TetTypes.LOOP)
@@ -318,12 +327,15 @@ export class TetLoop extends TetElement {
 
 //always a triangle
 export class TetFace extends TetElement {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetFace {
   loops      : iter(l, int) | l.eid;
   no         : vec3;
   cent       : vec3;
-}`)
+}`
+  )
 
   constructor() {
     super(TetTypes.FACE)
@@ -416,13 +428,16 @@ export const CellTypes = {
 
 //planes are to faces as loops are to edges
 export class TetPlane extends TetElement {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetPlane {
   no          : vec3;
   cent        : vec3;
   f           : int | this.f.eid;
   c           : int | this.c.eid;
-}`)
+}`
+  )
 
   constructor() {
     super(TetTypes.PLANE)
@@ -442,7 +457,9 @@ export class TetPlane extends TetElement {
 }
 
 export class TetCell extends TetElement {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetCell {
   faces         : iter(f, int) | f.eid;
   verts         : iter(v, int) | v.eid;
@@ -451,7 +468,8 @@ export class TetCell extends TetElement {
   startVolume   : float;
   volume        : float;
   cent          : vec3;
-}`)
+}`
+  )
 
   constructor() {
     super(TetTypes.CELL)

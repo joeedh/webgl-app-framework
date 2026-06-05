@@ -309,7 +309,13 @@ export class LiteMesh extends SceneObjectData {
     // roles invalid for the attr's type/domain (validCategories), so offering the
     // full set here is safe; setting a role also activates the layer.
     mstruct
-      .enum('selectedAttrCategory', 'selectedAttrCategory', LiteMeshAttrCategory, 'Category', 'Attribute category / role')
+      .enum(
+        'selectedAttrCategory',
+        'selectedAttrCategory',
+        LiteMeshAttrCategory,
+        'Category',
+        'Attribute category / role'
+      )
       .uiNames({NONE: 'None', COLOR: 'Color', UV: 'UV', POLYGROUP: 'Poly Group'})
       .on('change', function () {
         window.redraw_all?.()

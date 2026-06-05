@@ -8,7 +8,7 @@ import {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
 import type {Material} from '../../core/material'
 import type {ViewContext} from '../../core/context'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
-import { SceneObjectData } from '@framework/api';
+import {SceneObjectData} from '@framework/api'
 
 /**
  * NodeEditor specialized for editing the active object's material shader graph.
@@ -119,39 +119,28 @@ export class MaterialEditor extends NodeEditorBase {
     const path = this.graphPath
     const graph = path !== '' ? this.ctx.api.resolvePath(this.ctx, path) : undefined
 
-    const dblock = this.dataBlockPath === '' ? undefined : this.ctx.api.getValue(this.ctx, this.dataBlockPath)
+    const obData = this.dataBlockPath === '' ? undefined : this.ctx.api.getValue(this.ctx, this.dataBlockPath)
 
-    if (!graph && !dblock) {
+    if (!graph || !obData || !(obData instanceof SceneObjectData)) {
       row1.label('Nothing here')
       return
     }
 
-    if (dblock instanceof Mesh) {
-      this.headerMesh(dblock, row1, row2)
-    } else {
-      this.headerNonMesh(dblock, row1, row2)
-    }
+    /*
+    row1.button('Add Material', () => {
+      const op = new MakeMaterialOp()
+
+      this.ctx.toolstack.execTool(this.ctx, op)
+      const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())
+
+      if (mat) {
+        obData.materials.push(mat)
+        mat.lib_addUser(obData)
+      }
+
+      this.rebuild()
+    })*/
   }
-
-  headerMesh(mesh: Mesh, row1: Container<ViewContext>, _row2: Container<ViewContext>): void {
-    if (mesh.materials.length === 0) {
-      row1.button('Add Material', () => {
-        const op = new MakeMaterialOp()
-
-        this.ctx.toolstack.execTool(this.ctx, op)
-        const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())
-
-        if (mat) {
-          mesh.materials.push(mat)
-          mat.lib_addUser(mesh)
-        }
-
-        this.rebuild()
-      })
-    }
-  }
-
-  headerNonMesh(_dblock: unknown, _row1: Container<ViewContext>, _row2: Container<ViewContext>): void {}
 
   rebuild(): void {
     this.doOnce(this.buildHeader)

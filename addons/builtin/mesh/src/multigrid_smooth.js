@@ -55,9 +55,12 @@ dp3z := df(triarea, p3z);
 
 */
 export class MultiGridSettings extends LayerSettingsBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.MultiGridSettings {
-}`)
+}`
+  )
 }
 
 export const SmoothVertFlags = {
@@ -72,9 +75,12 @@ let sort_list = []
 let idx_list = []
 
 export class MultiGridData extends CustomDataElem {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.MultiGridData {
-}`)
+}`
+  )
 
   constructor() {
     super()

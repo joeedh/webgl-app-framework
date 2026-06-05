@@ -1,4 +1,12 @@
-import {nstructjs, ToolProperty, EnumProperty, util, DataAPI, DataStruct, DataPathError} from '../path.ux/scripts/pathux.js'
+import {
+  nstructjs,
+  ToolProperty,
+  EnumProperty,
+  util,
+  DataAPI,
+  DataStruct,
+  DataPathError,
+} from '../path.ux/scripts/pathux.js'
 import {registerDataAPI} from '../data_api/api_define_registry.js'
 
 import {IDGen} from '../util/util.js'

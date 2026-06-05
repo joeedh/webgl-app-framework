@@ -11,7 +11,9 @@ export function makeCurvToolMode(api) {
   const {KDrawModes} = api.mesh
 
   let CurvToolMode = (exports.CurvToolMode = class CurvToolMode extends api.toolmode.MeshToolBase {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   curvetest.CurvToolMode {
     drawFlag       : int;
     drawScale      : float;
@@ -19,7 +21,8 @@ export function makeCurvToolMode(api) {
     drawTangents   : bool;
     kDrawMode      : int;
   }
-  `)
+  `
+    )
 
     constructor() {
       super()

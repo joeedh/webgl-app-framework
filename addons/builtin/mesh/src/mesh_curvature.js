@@ -96,7 +96,9 @@ let bstmp6 = new Vector4()
 let bstmp7 = new Vector4()
 
 export class CurvVert extends CustomDataElem {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.CurvVert {
   flag      : int;
   tan       : vec3;
@@ -106,7 +108,8 @@ export class CurvVert extends CustomDataElem {
   no        : vec3;
   weight    : double;
   diruv     : vec4;
-}`)
+}`
+  )
 
   constructor() {
     super()

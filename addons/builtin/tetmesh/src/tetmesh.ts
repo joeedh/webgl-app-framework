@@ -7,9 +7,12 @@ import type {ViewContext} from '@framework/api'
 import type {StructReader} from '@framework/api'
 
 export class TetMeshTool extends ToolMode {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 tetmesh.TetMeshTool {
-}`)
+}`
+  )
 
   constructor(ctx: ViewContext) {
     super(ctx)

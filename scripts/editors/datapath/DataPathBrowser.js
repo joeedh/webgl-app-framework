@@ -18,10 +18,13 @@ import {
 } from '../../path.ux/scripts/pathux.js'
 
 export class DataPathBrowser extends Editor {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 editors.DataPathBrowser {
 }
-`)
+`
+  )
 
   constructor() {
     super()

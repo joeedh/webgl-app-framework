@@ -217,8 +217,8 @@ function reinjectGraphGetters(fileSchema: FileSchema, kind: 'node' | 'socket'): 
   }
 
   for (const name of fieldNames) {
-    const baseField = base.fields.find(f => f.name === name)
-    const field = fileSchema.fields.find(f => f.name === name)
+    const baseField = base.fields.find((f) => f.name === name)
+    const field = fileSchema.fields.find((f) => f.name === name)
     if (baseField?.get !== undefined && field !== undefined) {
       field.get = baseField.get
     }
@@ -241,7 +241,7 @@ export function installMissingAddonHooks(): void {
   const manager = getManager()
 
   manager.onUnknownClass = (clsname: string, fileSchema: FileSchema) => {
-    const names = new Set((fileSchema?.fields ?? []).map(f => f.name))
+    const names = new Set((fileSchema?.fields ?? []).map((f) => f.name))
 
     // Graph socket: socketName + edges + socketType.
     if (names.has('socketName') && names.has('edges') && names.has('socketType')) {

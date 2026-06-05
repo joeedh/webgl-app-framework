@@ -492,7 +492,6 @@ export interface INodeUI {
   buildUI?: (container: Container<ViewContext>) => void
 }
 
-
 /**
  Base class for all nodes
  It's required to implement the nodedef() static

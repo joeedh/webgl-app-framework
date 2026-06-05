@@ -802,6 +802,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.image.open.dataPath` | prop | StringProperty | Data Path |  |
 | `toolDefaults.image.open.dataURL` | prop | StringProperty | Data Url |  |
 | `toolDefaults.image.open.fileName` | prop | StringProperty | File Name |  |
+| `toolDefaults.light` | struct |  |  |  |
+| `toolDefaults.light.new` | struct |  |  |  |
+| `toolDefaults.light.new.position` | prop | Vec3Socket | Vector |  |
+| `toolDefaults.light.new.type` | prop | EnumProperty | Type | enum {POINT, SUN, AREA_DISK, AREA_RECT} |
 | `toolDefaults.listbox` | struct |  |  |  |
 | `toolDefaults.listbox.set_active` | struct |  |  |  |
 | `toolDefaults.listbox.set_active.dataPath` | prop | StringProperty | Data Path |  |

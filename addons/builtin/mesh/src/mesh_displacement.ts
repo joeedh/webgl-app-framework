@@ -442,14 +442,17 @@ export function onFileLoadDispVert(mesh: Mesh) {
 }
 
 export class DispLayerSettings extends LayerSettingsBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.DispLayerSettings {
   dispSpace     : int;
   base          : int;
   flag          : int;
   updateGen     : int;
   lastUpdateGen : int;
-}`)
+}`
+  )
 
   dispSpace: DispSpace
   base: number
@@ -615,7 +618,9 @@ const disp_contexts = util.cachering.fromConstructor(DispContext, 32)
 const tmptmp = new Vector3()
 
 export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLayerSettings> {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.DispLayerVert {
   flag        : int;
   _worldco    : vec3;
@@ -631,7 +636,8 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
   parentScale : float;
 
   smoothco    : vec3;
-}`)
+}`
+  )
 
   baseco: Vector3
   _worldco: Vector3

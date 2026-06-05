@@ -53,12 +53,15 @@ export const WeightModes = {
 }
 
 export class CurvVert2Settings extends LayerSettingsBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.CurvVert2Settings {
   updateGen      : int;
   smoothTangents : bool;
   weightMode     : int;
-}`)
+}`
+  )
 
   declare updateGen: number
   declare smoothTangents: boolean
@@ -96,7 +99,9 @@ const itmp3 = new Vector3()
 const itmp4 = new Vector3()
 
 export class CurvVert2 extends CustomDataElem {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.CurvVert2 {
     no           : vec3;
     tan          : vec3;
@@ -110,7 +115,8 @@ export class CurvVert2 extends CustomDataElem {
     smoothTan    : vec3;
     wlist        : array(float);
     totarea      : float;
-  }`)
+  }`
+  )
 
   error: number
   errorvec: Vector3

@@ -6,12 +6,15 @@ import {UIBase} from '../path.ux/scripts/core/ui_base.js'
 import * as nstructjs from '../path.ux/scripts/util/struct.js'
 
 export class DrawerEditor extends Editor {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 editors.DrawerEditor {
   openWidth  : float;
   activePane : string | obj.panes.active ? obj.panes.active.id : String() ;
 ;}
-`)
+`
+  )
 
   constructor() {
     super()

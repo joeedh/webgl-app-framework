@@ -26,14 +26,17 @@ import type {View3D} from '@framework/api'
 import type {StructReader} from '@framework/api'
 
 export class MeshEditor extends MeshToolBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 mesh_edit.MeshEditor {
   mesh                : DataRef | DataRef.fromBlock(obj.mesh);
   drawflag            : int;
   drawLoops           : bool;
   drawCurvatures      : bool;
   drawNormals         : bool;
-}`)
+}`
+  )
 
   drawflag = 0
   loopMesh: SimpleMesh | undefined

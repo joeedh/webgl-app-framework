@@ -101,11 +101,21 @@ SceneObjectData {
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
     let mstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
     mstruct.list<Array<Material | undefined>, number, Material>('materials', 'materials', [
-      function getIter(api: DataAPI, list: Array<Material | undefined>) { return list },
-      function getLength(api: DataAPI, list: Array<Material | undefined>) { return list.length },
-      function get(api: DataAPI, list: Array<Material | undefined>, key: number) { return list[key] },
-      function getKey(api: DataAPI, list: Array<Material | undefined>, obj: Material) { return list.indexOf(obj) },
-      function getStruct(api: DataAPI, list: Array<Material | undefined>, key: number) { return api.mapStruct(_MaterialClass!) },
+      function getIter(api: DataAPI, list: Array<Material | undefined>) {
+        return list
+      },
+      function getLength(api: DataAPI, list: Array<Material | undefined>) {
+        return list.length
+      },
+      function get(api: DataAPI, list: Array<Material | undefined>, key: number) {
+        return list[key]
+      },
+      function getKey(api: DataAPI, list: Array<Material | undefined>, obj: Material) {
+        return list.indexOf(obj)
+      },
+      function getStruct(api: DataAPI, list: Array<Material | undefined>, key: number) {
+        return api.mapStruct(_MaterialClass!)
+      },
     ])
     mstruct.bool('usesMaterial', 'usesMaterial', 'Uses Material').readOnly()
     return mstruct

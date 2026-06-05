@@ -7043,6 +7043,38 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.light": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.light.new": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.light.new.position": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec3Socket",
+      "uiname": "Vector",
+      "description": "Vector"
+    },
+    "toolDefaults.light.new.type": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Type",
+      "description": "Type",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "POINT",
+        "SUN",
+        "AREA_DISK",
+        "AREA_RECT"
+      ]
+    },
     "toolDefaults.listbox": {
       "kind": "struct",
       "indexed": false,

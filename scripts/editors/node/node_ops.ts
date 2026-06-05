@@ -14,10 +14,11 @@ import {
 } from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import {ModalFlags} from '../../core/modalflags.js'
-import {NodeEditorBase, NodeSocketElem} from './NodeEditor.js'
+import {NodeEditorBase} from './NodeEditor.js'
 import type {ToolContext, ViewContext} from '../../core/context'
 import type {BlockLoader, DataBlock, DataRef} from '../../core/lib_api'
 import {Editor} from '../editor_base.js'
+import {NodeSocketElem} from './node_socket_ui.js'
 
 type AnyGraph = Graph<unknown>
 type AnyNode = Node
@@ -489,8 +490,8 @@ export class ConnectNodeOp extends NodeGraphOp<{
 
     this.makeTempLine(p, mpos, 'orange')
 
-    const p2 = new Vector2(mpos)
-    ned.unproject(p2, true)
+    const p2 = ned.getLocalMouse(mpos[0], mpos[1])
+    //ned.unproject(p2, true)
 
     this.inputs.sock2_id.setValue(-1)
     this.inputs.node2_id.setValue(-1)

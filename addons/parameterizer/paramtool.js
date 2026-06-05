@@ -19,7 +19,9 @@ export function makeParamToolMode(api) {
   let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh
 
   let ParamToolMode = (exports.ParamToolMode = class ParamToolMode extends api.toolmode.MeshToolBase {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   parameterizer.ParamToolMode {
     drawMode       : int;
     drawFlag       : int;
@@ -28,7 +30,8 @@ export function makeParamToolMode(api) {
     drawTangents   : bool;
     kDrawMode      : int;
   }
-  `)
+  `
+    )
 
     constructor() {
       super()

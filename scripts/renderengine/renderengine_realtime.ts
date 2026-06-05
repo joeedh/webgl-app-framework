@@ -332,21 +332,17 @@ export class RealtimeEngine extends RenderEngine {
     colorFormats: GPUTextureFormat[] = [RealtimeEngine.WEBGPU_PASS_FORMAT]
   ): RenderTarget {
     const cached = this.webgpuTargets.get(key)
-    if (
-      cached?.width === w &&
-      cached.height === h &&
-      cached.colorFormats.length === colorFormats.length
-    ) {
+    if (cached?.width === w && cached.height === h && cached.colorFormats.length === colorFormats.length) {
       return cached
     }
     cached?.destroy()
     const target = new RenderTarget({
       device,
-      width       : w,
-      height      : h,
+      width : w,
+      height: h,
       colorFormats,
-      depthFormat : RealtimeEngine.WEBGPU_DEPTH_FORMAT,
-      label       : `RealtimeEngine.${key}`,
+      depthFormat: RealtimeEngine.WEBGPU_DEPTH_FORMAT,
+      label      : `RealtimeEngine.${key}`,
     })
     this.webgpuTargets.set(key, target)
     return target
@@ -389,11 +385,7 @@ export class RealtimeEngine extends RenderEngine {
     // stays single-attachment (byte-identical to before; sculptcore's C++ tree
     // shader, which reuses the same material WGSL, also stays single-output).
     const baseFormats = this.renderSettings.sss
-      ? [
-          RealtimeEngine.WEBGPU_PASS_FORMAT,
-          RealtimeEngine.WEBGPU_PASS_FORMAT,
-          RealtimeEngine.WEBGPU_PASS_FORMAT,
-        ]
+      ? [RealtimeEngine.WEBGPU_PASS_FORMAT, RealtimeEngine.WEBGPU_PASS_FORMAT, RealtimeEngine.WEBGPU_PASS_FORMAT]
       : [RealtimeEngine.WEBGPU_PASS_FORMAT]
     nodes.push({
       passKey: 'BasePass',
@@ -1137,9 +1129,7 @@ export class RealtimeEngine extends RenderEngine {
     } else if (node.passKey === 'SSSCompositePass') {
       entries.push({binding: 4, resource: {buffer: buffers.extra!.handle}})
       // binding 5 — the diffused SSS (Y-blur output, single attachment).
-      const blurY = this.webgpuNodes!.find(
-        (n) => n.passKey === 'SSSBlurPass' && n.defines?.AXIS_Y === true
-      )
+      const blurY = this.webgpuNodes!.find((n) => n.passKey === 'SSSBlurPass' && n.defines?.AXIS_Y === true)
       if (!blurY) throw new Error('SSSCompositePass bind: no SSSBlurPass.y to source blurred SSS from')
       entries.push({binding: 5, resource: blurY.target.colors[0].view})
       // binding 6 — the original (sharp) SSS irradiance, BasePass colors[1],

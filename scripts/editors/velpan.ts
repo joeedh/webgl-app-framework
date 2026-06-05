@@ -36,6 +36,7 @@ export class VelPan {
 
   mat = new Matrix4()
   imat = new Matrix4()
+  domMat = new DOMMatrix()
 
   _last_mat = new Matrix4(this.mat)
   onchange: ((velpan?: VelPan) => void) | null = null
@@ -121,19 +122,47 @@ export class VelPan {
     this.last_update_time = util.time_ms()
   }
 
+  /**
+   * Scale the zoom by `fac` while keeping the world/graph-space point `pos`
+   * fixed on screen. With `screen = scale * (graph + pan)`, holding `pos`
+   * invariant gives `newPan = (pos + pan)/fac - pos`.
+   */
+  zoomAround(pos: Vector2, fac: number): this {
+    this.pos
+      .add(pos)
+      .mulScalar(1.0 / fac)
+      .sub(pos)
+    this.scale.mulScalar(fac)
+    this.update()
+    return this
+  }
+
   updateMatrix(): this {
     const s = this.scale
-    const min = new Vector2(this.bounds[0]).mul(s)
-    const max = new Vector2(this.bounds[1]).mul(s)
+    const min = new Vector2(this.bounds[0]).div(s)
+    const max = new Vector2(this.bounds[1]).div(s)
 
     this.pos.max(min)
     this.pos.min(max)
 
+    const msmat = new Matrix4().scale(this.scale[0], this.scale[1], 1.0)
+    const mtmat = new Matrix4().translate(this.pos[0], this.pos[1], 0.0)
+
     this.mat.makeIdentity()
-    this.mat.scale(this.scale[0], this.scale[1], 1.0)
-    this.mat.translate(this.pos[0], this.pos[1], 0.0)
+    this.mat.multiply(msmat)
+    this.mat.multiply(mtmat)
 
     this.imat.load(this.mat).invert()
+
+    const smat = new DOMMatrix()
+    const tmat = new DOMMatrix()
+
+    smat.scaleSelf(this.scale[0], this.scale[1])
+    tmat.translateSelf(this.pos[0], this.pos[1])
+
+    this.domMat = new DOMMatrix()
+    this.domMat.multiplySelf(smat)
+    this.domMat.multiplySelf(tmat)
 
     return this
   }
@@ -161,6 +190,7 @@ export class VelPan {
 
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
+    this.updateMatrix()
   }
 
   static STRUCT = `

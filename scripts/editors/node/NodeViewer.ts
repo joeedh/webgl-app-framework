@@ -1,5 +1,5 @@
 import {layoutNode, sortGraphSpatially} from '../../core/graph_spatial.js'
-import {Editor} from '../editor_base'
+import {Editor} from '../editor_base.js'
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js'
 import {nstructjs} from '../../path.ux/scripts/pathux.js'
 import {VelPan, VelPanPanOp} from '../velpan.js'
@@ -8,8 +8,8 @@ import {UIBase, color2css} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import {Graph, type Node} from '../../core/graph.js'
 import type {DataAPI, DataStruct, IAreaDef} from '../../path.ux/scripts/pathux.js'
-import type {ViewContext} from '../../core/context'
-import type {Screen} from '../../path.ux/scripts/screen/FrameManager'
+import type {ViewContext} from '../../core/context.js'
+import type {Screen} from '../../path.ux/scripts/screen/FrameManager.js'
 
 type AnyGraph = Graph<unknown>
 
@@ -35,12 +35,15 @@ interface ViewerLayout {
  * `hashNode`) and blitted, so large graphs stay cheap to pan/zoom.
  */
 export class NodeViewer extends Editor {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 node.NodeViewer {
   graphPath  : string;
   graphClass : string;
   velpan     : VelPan;
-}`)
+}`
+  )
 
   graphPath = 'graph'
   graphClass: string | undefined = ''

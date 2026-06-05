@@ -50,7 +50,7 @@ import {View3D} from '../editors/view3d/view3d.js'
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js'
 import {App, buildEditorsAPI} from '../editors/editor_base.js'
 import {NodeEditorBase} from '../editors/node/NodeEditor.js'
-import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
+import {NodeViewer} from '../editors/node/NodeViewer.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../core/graphsockets.js'
 import {VelPan, VelPanFlags} from '../editors/velpan.js'
@@ -337,7 +337,7 @@ export function getDataAPI(): DataAPI {
   const meshStruct = api.getStructByName('mesh.Mesh')
   if (meshStruct === undefined) {
     throw new Error(
-      "api_define: struct 'mesh.Mesh' not found — the addons/builtin/builtin_data_api.ts bridge must be imported before getDataAPI() runs",
+      "api_define: struct 'mesh.Mesh' not found — the addons/builtin/builtin_data_api.ts bridge must be imported before getDataAPI() runs"
     )
   }
   cstruct.struct('mesh', 'mesh', 'Mesh', meshStruct)

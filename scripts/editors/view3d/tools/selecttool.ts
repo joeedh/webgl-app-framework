@@ -17,9 +17,12 @@ import type {ViewContext} from '../../../core/context.js'
 const _shift_temp: number[] = [0, 0]
 
 export class ObjectEditor extends ToolMode {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 view3d.ObjectEditor {
-}`)
+}`
+  )
 
   start_mpos: Vector2
   transformWidget: number

@@ -68,7 +68,10 @@ for (let i = 0; i < argv.length; i++) {
   else if (name === null) name = a
   else die(`unexpected argument ${a}`)
 }
-if (!name) die('usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--submodules require-pushed|remote-master] [--no-emsdk]')
+if (!name)
+  die(
+    'usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--submodules require-pushed|remote-master] [--no-emsdk]'
+  )
 if (submodMode !== 'require-pushed' && submodMode !== 'remote-master') {
   die(`--submodules must be 'require-pushed' or 'remote-master', got '${submodMode}'`)
 }
@@ -113,12 +116,14 @@ function syncSubmodulesRequirePushed() {
   }
   process.stderr.write(r.out)
   const m = r.out.match(/submodule path '([^']+)'.*?([0-9a-f]{40})/s)
-  const which = m ? `submodule '${m[1]}' is pinned to ${m[2].slice(0, 10)}, which isn't on its remote` : 'a submodule pinned commit could not be fetched from its remote'
+  const which = m
+    ? `submodule '${m[1]}' is pinned to ${m[2].slice(0, 10)}, which isn't on its remote`
+    : 'a submodule pinned commit could not be fetched from its remote'
   die(
     `${which}.\n` +
       `Push the missing submodule commit(s) to their remotes, then retry; or re-run with\n` +
       `  --submodules remote-master\n` +
-      `to branch each submodule from its remote master instead of the pinned commit.`,
+      `to branch each submodule from its remote master instead of the pinned commit.`
   )
 }
 
@@ -128,7 +133,14 @@ function branchSubmodulesFromRemoteMaster() {
   // branch tip instead of the recorded (possibly unpushed) SHA.
   runOrDie('git', ['-C', DEST, 'submodule', 'update', '--init', '--recursive', '--remote'])
   // Turn the detached remote-tip checkout into a working branch in each submodule.
-  runOrDie('git', ['-C', DEST, 'submodule', 'foreach', '--recursive', `git switch -c ${branch} 2>/dev/null || git switch ${branch}`])
+  runOrDie('git', [
+    '-C',
+    DEST,
+    'submodule',
+    'foreach',
+    '--recursive',
+    `git switch -c ${branch} 2>/dev/null || git switch ${branch}`,
+  ])
   console.log(`submodules: each on new branch '${branch}' at its remote master tip`)
 }
 

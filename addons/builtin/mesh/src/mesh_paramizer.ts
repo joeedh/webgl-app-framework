@@ -123,12 +123,15 @@ export const WeightModes = {
 }
 
 export class ParamVertSettings extends LayerSettingsBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.ParamVertSettings {
   updateGen      : int;
   smoothTangents : bool;
   weightMode     : int;
-}`)
+}`
+  )
 
   declare updateGen: number
   declare smoothTangents: boolean
@@ -162,14 +165,17 @@ export class ParamVertSettings extends LayerSettingsBase {
 const tmp = new Vector3()
 
 export class ParamVert extends CustomDataElem {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.ParamVert {
     disUV        : vec4;
     updateGen    : int;
     smoothTan    : vec3;
     wlist        : array(float);
     totarea      : float;
-  }`)
+  }`
+  )
 
   updateGen: number
   needsSmooth: boolean

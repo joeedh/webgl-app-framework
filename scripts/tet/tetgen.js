@@ -38,12 +38,15 @@ import {getArrayTemp} from '../../addons/builtin/mesh/src/mesh_base.js'
 */
 
 export class TetMesh extends SceneObjectData {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   tet.TetMesh {
   eidgen : IDGen;
   elists : iterkeys(tet.TetElementList);
 }
-`)
+`
+  )
 
   symflag = 0
 
@@ -137,7 +140,7 @@ export class TetMesh extends SceneObjectData {
     queue.submit({pipeline: program, mesh: smeshes.faces})
     queue.submit({
       pipeline: Shaders.ObjectLineShader,
-      mesh    : {
+      mesh: {
         draw: (gl, u, p) => smeshes.edges.drawLines(gl, u, p),
       },
     })

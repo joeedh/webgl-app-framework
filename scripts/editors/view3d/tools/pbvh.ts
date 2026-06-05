@@ -70,7 +70,9 @@ import type {View3D} from '../view3d'
 import type {ViewContext} from '../../../core/context'
 
 export class BVHToolMode extends PaintToolModeBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 view3d.BVHToolMode {
   drawBVH                : bool;
   drawCavityMap          : bool;
@@ -90,7 +92,8 @@ view3d.BVHToolMode {
   sharedBrushRadius      : float;
   dynTopo                : DynTopoSettings;
   reprojectCustomData    : bool;
-}`)
+}`
+  )
 
   _apiDynTopo: DynTopoSettings
 

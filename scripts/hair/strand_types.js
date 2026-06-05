@@ -34,11 +34,14 @@ AttachPoint {
 nstructjs.register(AttachPoint)
 
 export class Strand extends CurveSpline {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   hair.Strand {
   id          : int;
   attachPoint : AttachPoint;
-}`)
+}`
+  )
   constructor() {
     super()
 

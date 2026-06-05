@@ -1,6 +1,6 @@
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe'
 import '../path.ux/scripts/util/struct.js'
-import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
+import {NodeViewer} from '../editors/node/NodeViewer.js'
 import {Editor, editorAccessor, getContextArea, IEditorConstructor} from '../editors/editor_base'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'

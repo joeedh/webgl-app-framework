@@ -16,12 +16,15 @@ export function makeGraphItToolMode(api) {
   let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh
 
   let GraphItToolMode = (exports.GraphItToolMode = class GraphItToolMode extends api.toolmode.MeshToolBase {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   graphit.GraphItToolMode {
     drawTangents : bool;
     drawVerts    : bool;
   }
-  `)
+  `
+    )
 
     constructor() {
       super()

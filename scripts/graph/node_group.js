@@ -4,14 +4,17 @@ import {Graph, Node, NodeFlags} from '../core/graph.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class NodeGroup extends DataBlock {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   graph.NodeGroup {
   category     : string;
   graph        : graph.Graph;
   groupInputs  : abstract(graph.NodeSocketType);
   groupOutputs : abstract(graph.NodeSocketType);
 }
-`)
+`
+  )
   constructor() {
     super()
 
@@ -59,28 +62,37 @@ export class NodeGroup extends DataBlock {
 DataBlock.register(NodeGroup)
 
 export class NodeGroupInputs extends Node {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   graph.NodeGroupInputs {
-}`)
+}`
+  )
   constructor() {
     super()
   }
 }
 
 export class NodeGroupOutputs extends Node {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   graph.NodeGroupOutputs {
-}`)
+}`
+  )
   constructor() {
     super()
   }
 }
 
 export class NodeGroupInst extends Node {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   graph.NodeGroupInst {
   group : DataRef | DataRef.fromBlock(this.group);
-}`)
+}`
+  )
   constructor() {
     super()
 

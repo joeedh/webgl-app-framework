@@ -3,9 +3,12 @@ export function registerToolMode(api) {
   const {util, nstructjs, KeyMap, Icons, SelMask} = api
 
   class StrandTool extends ToolMode {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
 strand.StrandTool {
-}`)
+}`
+    )
 
     constructor() {
       super()

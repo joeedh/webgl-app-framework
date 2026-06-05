@@ -26,11 +26,14 @@ declare global {
   }
 }
 export class CurveToolBase extends MeshToolBase {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 curve.CurveToolBase {
   curve    : DataRef | DataRef.fromBlock(obj.curve);
   drawflag : int;
-}`)
+}`
+  )
 
   _isCurveTool: boolean
   sceneObject: any | undefined

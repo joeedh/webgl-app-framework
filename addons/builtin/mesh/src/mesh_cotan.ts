@@ -67,7 +67,9 @@ export function tri_voronoi_area(p: Vector3Like, q: Vector3Like, r: Vector3Like)
 }
 
 export class CotanVert extends CustomDataElem {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
   mesh.CotanVert {
   ws           : array(float);
   cot1         : array(float);
@@ -76,7 +78,8 @@ export class CotanVert extends CustomDataElem {
   totarea      : float;
   flag         : int;
   _last_hash   : int;
-}`)
+}`
+  )
 
   ws: number[]
   cot1: number[]

@@ -5,9 +5,12 @@ import {SelMask} from '../selectmode.js'
 import {nstructjs} from '../../../path.ux/scripts/pathux.js'
 
 export class PanToolMode extends ToolMode {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 view3d.PanToolMode {
-}`)
+}`
+  )
 
   constructor(manager: any) {
     super(manager)

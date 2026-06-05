@@ -27,12 +27,15 @@ export function registerToolMode(api) {
   let _digest = new util.HashDigest()
 
   class PVert extends CustomDataElem {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   subsurf_tester.PVert {
   flag  : int;
   tanco : vec3;
   uv    : vec3;
-}`)
+}`
+    )
 
     constructor() {
       super()
@@ -84,9 +87,12 @@ export function registerToolMode(api) {
   CustomDataElem.register(PVert)
 
   class PFace extends CustomDataElem {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   subsurf_tester.PFace {
-}`)
+}`
+    )
 
     static define() {
       return {
@@ -104,11 +110,14 @@ export function registerToolMode(api) {
   CustomDataElem.register(PFace)
 
   class PatchTester extends Mesh {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   subsurf_tester.PatchTester {
   patch : array(array(int)) | this._save_patch();
   steps : int;
-}`)
+}`
+    )
 
     constructor() {
       super()
@@ -593,9 +602,12 @@ export function registerToolMode(api) {
   ToolOp.register(MakeTangentTester)
 
   class SubsurfTangentTester extends MeshToolBase {
-    static STRUCT = nstructjs.inlineRegister(this, `
+    static STRUCT = nstructjs.inlineRegister(
+      this,
+      `
   subsurf_tester.SubsurfTangentTester {
-}`)
+}`
+    )
 
     constructor() {
       super()
