@@ -1308,6 +1308,15 @@ export class RealtimeEngine extends RenderEngine {
     const view3d = this.view3d
     for (const ob of scene.objects.renderable) {
       if (!ob.data.usesMaterial) continue
+      // Sculptcore-tree objects (LiteMesh) draw via their own installed
+      // material shader and ignore the NormalPassShader handed in here, so
+      // they can't emit a correct view-normal pass. Skip them — they render
+      // only in the BasePass. Drawing them here would also run their
+      // once-per-frame batch rebuild a second time, freeing GPU buffers the
+      // BasePass's encoded commands still reference. (Cost: no SSAO
+      // contribution from LiteMeshes yet.) Duck-typed to keep the
+      // renderengine decoupled from the lite-mesh layer.
+      if (typeof (ob.data as unknown as {setDrawShader?: unknown}).setDrawShader === 'function') continue
       const obMat = ob.outputs.matrix.getValue() as Matrix4
       uniforms.objectMatrix = obMat
       uniforms.normalMatrix = obMat.copy().makeRotationOnly()

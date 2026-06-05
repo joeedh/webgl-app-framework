@@ -124,6 +124,11 @@ export class WebGPUBatchExecutor {
   private readonly bufferCache = new Map<number, CachedGpuBuffer>()
   private readonly pipelinesByShader = new Map<string, Pipeline>()
   private readonly opts: WebGPUBatchExecutorOptions
+  // Mutable color-target state — the same executor can draw into passes of
+  // different attachment formats (offscreen rgba16float vs the canvas
+  // surface format), so the format is settable per-frame and folded into
+  // the pipeline cache key. Buffer uploads stay shared across formats.
+  private colorTargets: GPUColorTargetState[]
   // Shaders we've already logged a build/dispatch failure for, so a persistently
   // broken command warns once instead of every frame.
   private readonly warnedShaders = new Set<string>()
@@ -134,6 +139,24 @@ export class WebGPUBatchExecutor {
     this.wasm = opts.wasm
     this.pipelineCache = opts.pipelineCache ?? new PipelineCache(opts.device)
     this.opts = opts
+    this.colorTargets = opts.colorTargets
+  }
+
+  /** Point subsequent draws at a pass with these color attachment format(s),
+   * preserving each target's blend state. No-op when the formats are
+   * unchanged. */
+  setColorFormats(formats: GPUTextureFormat[]): void {
+    let changed = formats.length !== this.colorTargets.length
+    if (!changed) {
+      for (let i = 0; i < formats.length; i++) {
+        if (this.colorTargets[i].format !== formats[i]) {
+          changed = true
+          break
+        }
+      }
+    }
+    if (!changed) return
+    this.colorTargets = this.colorTargets.map((t, i) => ({...t, format: formats[i] ?? t.format}))
   }
 
   // --- backend-agnostic seams (see TODO.md "native-electron: de-numbering") ---
@@ -241,7 +264,8 @@ export class WebGPUBatchExecutor {
     })
 
     const shapeKey = slotShape.map((s) => (s ? `${s.format}@${s.stride}` : '_')).join(',')
-    const cacheKey = `${sdefPtr}|${topology}|${shapeKey}`
+    const targetKey = this.colorTargets.map((t) => t.format).join('+')
+    const cacheKey = `${sdefPtr}|${topology}|${shapeKey}|${targetKey}`
 
     let pipeline = this.pipelinesByShader.get(cacheKey)
     if (pipeline) return pipeline
@@ -258,7 +282,7 @@ export class WebGPUBatchExecutor {
       label: `WebGPUBatch.pipeline[${sdefPtr}]`,
       wgsl : this.opts.wgslForShader(sdef),
       vertexBuffers,
-      colorTargets: this.opts.colorTargets,
+      colorTargets: this.colorTargets,
       depthStencil: this.opts.depthStencil,
       primitive   : {topology, cullMode: 'none'},
     }

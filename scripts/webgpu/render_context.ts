@@ -58,6 +58,12 @@ export class WebGpuRenderContext {
   // `createDrawQueue` can pick it up without the call site threading
   // the encoder through.
   currentPass: GPURenderPassEncoder | undefined
+  // Color attachment format(s) of the pass currently in flight, so a draw
+  // path that builds its own pipelines (the sculptcore LiteMesh batch
+  // executor) can match the pass instead of assuming the swap-chain format.
+  // Set alongside `currentPass`; offscreen passes are `rgba16float`, the
+  // canvas pass is `surfaceFormat`.
+  currentColorFormats: GPUTextureFormat[] | undefined
   // Bridge from a GLSL ShaderProgram identity to its WGSL `Pipeline`;
   // mirrors `pipelineBindings` in `WebGPUFrameContext`.
   readonly pipelineBindings: Map<unknown, Pipeline>
@@ -75,6 +81,7 @@ export class WebGpuRenderContext {
     this.size = [opts.size[0], opts.size[1]]
     this.surfaceFormat = opts.surfaceFormat ?? 'bgra8unorm'
     this.currentPass = undefined
+    this.currentColorFormats = undefined
     this.fullscreenQuad = new GpuBuffer(opts.device, {
       label: 'WebGpuRenderContext.fullscreenQuad',
       size : FULLSCREEN_QUAD_DATA.byteLength,
@@ -106,10 +113,12 @@ export class WebGpuRenderContext {
       this.encoder,
       (pass) => {
         this.currentPass = pass
+        this.currentColorFormats = target.colorFormats
         try {
           drawCb(pass)
         } finally {
           this.currentPass = undefined
+          this.currentColorFormats = undefined
         }
       },
       opts
@@ -125,10 +134,14 @@ export class WebGpuRenderContext {
     }
     const pass = this.encoder.beginRenderPass(desc)
     this.currentPass = pass
+    // renderStageDesc backs the canvas/swap-chain pass — its color
+    // attachment is the surface format.
+    this.currentColorFormats = [this.surfaceFormat]
     try {
       drawCb(pass)
     } finally {
       this.currentPass = undefined
+      this.currentColorFormats = undefined
       pass.end()
     }
   }

@@ -24,7 +24,7 @@ import {ShaderNodeTypes} from '../../shadernodes/shader_nodes.js'
 
 import {VelPanPanOp} from '../velpan.js'
 import {SelOneToolModes} from '../view3d/selectmode.js'
-import {Node, NodeFlags, SocketTypes, Graph, type NodeSocketType} from '../../core/graph.js'
+import {Node, NodeFlags, SocketTypes, Graph, type NodeSocketType, INodeUI} from '../../core/graph.js'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
 import {layoutNode} from '../../core/graph_spatial.js'
 import {ModalFlags} from '../../core/modalflags.js'
@@ -50,8 +50,7 @@ interface NodeLayout {
   outputs: {[k: string]: number[]}
 }
 
-/* some node subclasses (e.g. ShaderNode) add these; the base graph Node does not */
-type UINode = Node & {uiname?: string; buildUI?: (container: Container<ViewContext>) => void}
+type UINode = Node & INodeUI
 
 /**
  * One input/output socket: the little colored connection dot (drawn on its own

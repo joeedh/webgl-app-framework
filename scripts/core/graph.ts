@@ -486,6 +486,13 @@ export interface INodeSocketSet {
   [k: string]: NodeSocketType
 }
 
+/** Some node subclasses (e.g. ShaderNode) add these; the base graph Node does not. */
+export interface INodeUI {
+  uiname?: string
+  buildUI?: (container: Container<ViewContext>) => void
+}
+
+
 /**
  Base class for all nodes
  It's required to implement the nodedef() static

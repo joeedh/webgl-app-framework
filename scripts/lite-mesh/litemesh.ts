@@ -448,6 +448,12 @@ export class LiteMesh extends SceneObjectData {
    * SpatialTree.displayColorMode (which TS can't read back). */
   _displayColorMode: number = LiteMeshDisplayMode.VERTEX_COLOR
 
+  // Renderable through the material pipeline: in SHOW_RENDER mode the
+  // RealtimeEngine BasePass only pushes setRequestedAttrs/setDrawShader to
+  // objects whose usesMaterial is set, and drawObjects() only defers to the
+  // engine for them. Without this the LiteMesh renders with the basic shader.
+  usesMaterial = true
+
   constructor(wasmMesh?: WasmMesh, deferInit = false) {
     super()
 
@@ -1330,6 +1336,13 @@ export class LiteMesh extends SceneObjectData {
       const scene = view3d.ctx?.scene as unknown as
         | {lights?: Iterable<unknown>; envlight?: {color?: unknown; power?: number}}
         | undefined
+      // The material's per-node uniforms (diffuse color, roughness — the
+      // MaterialUniforms @group(1) block) are set by the engine onto
+      // `frame.program.uniforms`, not the frame-wide block. Merge them in so
+      // UniformBindings can write them; without this the material renders with
+      // a default-filled (wrong) color.
+      const matUniforms = (frame.program as {uniforms?: Record<string, unknown>} | undefined)?.uniforms
+      if (matUniforms) Object.assign(uniforms2, matUniforms)
       // ObjectUniforms.normalMatrix is the object's world rotation (the material
       // lights in world space) — NOT the proj*object rotation the basic shader
       // wants. Overwrite the basic value computed above.
@@ -1453,6 +1466,11 @@ export class LiteMesh extends SceneObjectData {
       })
       this.drawBatchExecutorGPU = exec
     }
+
+    // Match the active pass's color attachment format — in SHOW_RENDER the
+    // engine draws us into the offscreen rgba16float Normal/Base passes, in
+    // solid mode into the bgra8unorm canvas pass.
+    exec.setColorFormats(ctx.currentColorFormats ?? [surfaceFormat])
 
     if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
     if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
