@@ -301,21 +301,22 @@ export class NodeSocketElem extends RowFrame<ViewContext> {
   }
 
   updatePos(): void {
-    const r = this.getClientRects()
-
-    if (r.length === 0) {
-      //console.warn("failed to update socket position");
-      return
-    }
-
-    const rect = r[0]
-
-    const key = '' + rect.width + ':' + this.type
+    const key =
+      '' +
+      this.pos[0] +
+      ':' +
+      this.pos[1] +
+      ':' +
+      this.size +
+      ':' +
+      this.ned?.velpan?.scale[0] +
+      ':' +
+      this.ned?.velpan?.scale[1] +
+      UIBase.getDPI()
     if (key === this._last_update_key) {
       return
     }
     this._last_update_key = key
-
     this.setCSS()
   }
 
@@ -426,7 +427,7 @@ export class NodeUI extends Container<ViewContext> {
       case 0: // normal
         this.background = this.getDefault('background-color') as string
         break
-      case 1: // highlight 
+      case 1: // highlight
         this.background = this.getDefault('highlight-color') as string
         break
       case 2: // select
@@ -485,7 +486,8 @@ export class NodeUI extends Container<ViewContext> {
     let y = 35
 
     const layout = layoutNode(node, {
-      socksize: 20,
+      // socket spacing
+      socksize: 40,
     }) as NodeLayout
 
     this.size.load(layout.size)

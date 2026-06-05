@@ -8,6 +8,7 @@ import {Mesh} from '../../../addons/builtin/mesh/src/mesh.js'
 import type {Material} from '../../core/material'
 import type {ViewContext} from '../../core/context'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import { SceneObjectData } from '@framework/api';
 
 /**
  * NodeEditor specialized for editing the active object's material shader graph.
@@ -29,7 +30,7 @@ export class MaterialEditor extends NodeEditorBase {
   _last_update_key: string | undefined = undefined
   /** data path to the datablock owning the material (a mesh or object data) */
   dataBlockPath = ''
-  /** per-mesh (keyed by lib_id) index of the material slot currently shown */
+  /** per-obdata (keyed by lib_id) index of the material slot currently shown */
   activeMatMap: {[lib_id: number]: number} = {}
   headerRow?: Container<ViewContext>
 
@@ -61,12 +62,7 @@ export class MaterialEditor extends NodeEditorBase {
       return
     }
 
-    if (ob.data instanceof Mesh) {
-      this.dataBlockPath = `library.mesh[${ob.data.lib_id}]`
-    } else {
-      this.dataBlockPath = `library.object[${ob.data.lib_id}].data`
-    }
-
+    this.dataBlockPath = `library.object[${ob.lib_id}].data`
     const block = this.ctx.api.getValue(this.ctx, this.dataBlockPath)
 
     if (!block) {
@@ -74,7 +70,7 @@ export class MaterialEditor extends NodeEditorBase {
       return
     }
 
-    if (block instanceof Mesh) {
+    if (block instanceof SceneObjectData) {
       if (!(block.lib_id in this.activeMatMap)) {
         this.activeMatMap[block.lib_id] = 0
       }
@@ -97,9 +93,8 @@ export class MaterialEditor extends NodeEditorBase {
 
     const materialTab = sidebar.tabpanel.tab('Materials')
 
-    // is a MeshMaterialPanel
     const panel = UIBase.createElement('material-panel-x')
-    panel.setAttribute('datapath', 'mesh')
+    panel.setAttribute('datapath', 'object.data')
     materialTab.add(panel as unknown as UIBase<ViewContext>)
   }
 
@@ -176,7 +171,7 @@ export class MaterialEditor extends NodeEditorBase {
 
     if (updateKey !== this._last_update_key) {
       this._last_update_key = updateKey
-
+      this.updatePath()
       this.rebuild()
     }
 
