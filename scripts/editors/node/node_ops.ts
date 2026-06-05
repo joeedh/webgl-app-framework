@@ -149,9 +149,8 @@ export class NodeGraphOp<
   updateAllEditors(ctx: ToolContext): void {
     for (const sarea of ctx.screen.sareas) {
       if (sarea.area instanceof NodeEditorBase) {
+        sarea.area.flagUIUpdate()
         sarea.area.flushUpdate()
-        sarea.area._recalcLines()
-        sarea.area._recalcUI()
       }
     }
   }
@@ -187,7 +186,6 @@ export class NodeGraphOp<
     if (this._undo && this._undo.data) {
       return this._undo.data.byteLength
     }
-
     return 0
   }
 
@@ -390,8 +388,6 @@ export class AddNodeOp extends NodeGraphOp<{nodeClass: StringProperty; pos: Vec2
 
     graph.add(node)
     this.outputs.graph_id.setValue(node.graph_id)
-
-    console.log(graph.nodes)
   }
 }
 

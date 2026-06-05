@@ -32,16 +32,18 @@ export const theme = {
     'background-color': 'rgba(72,72,72, 1)',
   },
 
-  'NodeEditor.Node': {
-    BoxHighlight      : 'rgba(203,203,203, 1)',
-    'background-color': 'rgba(121,121,121, 1)',
-    'border-color'    : 'rgba(203,202,202, 1)',
-    'border-radius'   : 12,
-    'border-style'    : 'solid',
-    'border-width'    : 2,
-    borderSelect      : 'rgba(255,140,63, 1)',
-    margin            : 1,
-    padding           : 5,
+  NodeEditorNode: {
+    'background-color'      : 'rgba(121,121,121, 1)',
+    'highlight-color'       : 'rgba(136.8931, 175.5876, 200.8599, 1.0000)',
+    'select-color'          : 'rgba(102.8650, 112.0762, 120.0092, 1.0000)',
+    'highlight-select-color': 'rgba(101.5470, 149.9250, 191.5900, 1.0000)',
+    'border-color'          : 'rgba(203,202,202, 1)',
+    'border-radius'         : 12,
+    'border-style'          : 'solid',
+    'border-width'          : 2,
+    borderSelect            : 'rgba(255,140,63, 1)',
+    margin                  : 1,
+    padding                 : 5,
   },
 
   base: {

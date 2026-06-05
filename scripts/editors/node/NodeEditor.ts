@@ -410,17 +410,38 @@ export class NodeUI extends Container<ViewContext> {
 
   set isHighlight(val: boolean) {
     this._isHighlight = val
-    if (val) {
-      this.background = this.getDefault('BoxHighlight') as string
-    } else {
-      this.background = this.getDefault('background-color') as string
+    this.updateColor()
+  }
+
+  updateColor() {
+    let mask = 0
+    if (this.isHighlight) {
+      mask |= 1
+    }
+    if (this.getNode().graph_flag & NodeFlags.SELECT) {
+      mask |= 2
+    }
+
+    switch (mask) {
+      case 0: // normal
+        this.background = this.getDefault('background-color') as string
+        break
+      case 1: // highlight 
+        this.background = this.getDefault('highlight-color') as string
+        break
+      case 2: // select
+        this.background = this.getDefault('select-color') as string
+        break
+      case 3: // highlight + select
+        this.background = this.getDefault('highlight-select-color') as string
+        break
     }
   }
 
   static define() {
     return {
       tagname: 'nodeui-x',
-      style  : 'NodeEditor.Node',
+      style  : 'NodeEditorNode',
     }
   }
 
@@ -493,8 +514,8 @@ export class NodeUI extends Container<ViewContext> {
           uisock.pos[0] += layout.socksize
         }
 
-        uisock.ned = this.ned
         uisock.ctx = this.ctx
+        uisock.ned = this.ned
         uisock.socket = sock
         uisock.uinode = this
         uisock.setAttribute('datapath', this.getAttribute('datapath') + '.' + key + "['" + k + "']")
@@ -575,6 +596,8 @@ export class NodeUI extends Container<ViewContext> {
       scale.load(node.graph_ui_size) //.mul(ned.velpan.scale);
     }
 
+    this.updateColor()
+
     const ned = this.ned
 
     if (ned === undefined && this.parentNode !== undefined) {
@@ -598,8 +621,6 @@ export class NodeUI extends Container<ViewContext> {
     this.style['position'] = 'absolute'
     this.style['width'] = ~~scale[0] + 'px'
     this.style['height'] = ~~scale[1] + 'px'
-
-    this.saneStyle['background-color'] = this.getDefault('background-color') as string
 
     let color
     if (node.graph_flag & NodeFlags.SELECT) {
@@ -703,6 +724,7 @@ NodeEditor {
 
   /** >0 while a transform is suppressing reactions to graph update signals */
   ignoreGraphUpdates = 0
+  _lastVelPanScale = ''
   _last_zoom = new Vector2()
   _last_script: string | undefined = undefined
   _last_compile_test = util.time_ms()
@@ -818,7 +840,13 @@ NodeEditor {
       return
     }
 
-    this._recalcUI()
+    this.flagUIUpdate()
+    let key = this.velpan.scale[0] + ':' + this.velpan.scale[1]
+    if (key !== this._lastVelPanScale) {
+      this._lastVelPanScale = key
+      this.flagRebuild()
+    }
+    this.update()
   }
 
   /** Remove all node/socket widgets and reset the overdraw layer. */
@@ -853,6 +881,7 @@ NodeEditor {
 
   /** Tear down and recreate a NodeUI for every node in the current graph. */
   rebuildAll(): void {
+    console.warn('rebuildAll')
     if (this.ctx === undefined) return
 
     this.recalcFlags &= ~NodeRecalcFlags.REBUILD
@@ -891,9 +920,14 @@ NodeEditor {
 
       this.nodes.push(node2)
       this.nodeContainer.shadow.appendChild(node2 as unknown as HTMLElement)
+      node2.parentWidget = this.nodeContainer
+      // check that node2 initialized
+      if (this.ctx !== undefined) {
+        node2.flushUpdate()
+      }
     }
 
-    this.recalcFlags |= NodeRecalcFlags.UI
+    this.flagUIUpdate()
     this.flushUpdate()
   }
 
@@ -925,6 +959,7 @@ NodeEditor {
     }
 
     this.shadow.prepend(this.nodeContainer as unknown as HTMLElement)
+    this.nodeContainer.ctx = this.ctx
     this.nodeContainer.parentWidget = this
 
     //create svg overdraw element
@@ -969,8 +1004,7 @@ NodeEditor {
     this.background = bgcolor
     this.saneStyle['background-color'] = bgcolor
 
-    this.recalcFlags |= NodeRecalcFlags.REBUILD
-
+    this.flagRebuild()
     this.buildSidebar()
   }
 
@@ -1118,7 +1152,7 @@ NodeEditor {
     super.on_resize(newsize)
 
     if (!this.header || !this.ctx) {
-      this.recalcFlags |= NodeRecalcFlags.REBUILD
+      this.flagRebuild()
       return
     }
 
@@ -1142,7 +1176,8 @@ NodeEditor {
     this.nodeContainer.createOverdraw(this.ctx.screen)
 
     this.setCSS()
-    this.recalcFlags |= NodeRecalcFlags.UI | NodeRecalcFlags.REBUILD
+    this.flagRebuild()
+    this.flagUIUpdate()
   }
 
   onFileLoad(is_active: boolean): void {
@@ -1151,7 +1186,8 @@ NodeEditor {
     }
 
     this.overdraw?.clear()
-    this.recalcFlags |= NodeRecalcFlags.UI | NodeRecalcFlags.REBUILD
+    this.flagRebuild()
+    this.flagUIUpdate()
   }
 
   /** Nearest socket widget to a graph-space point, within `limit` px, or undefined. */
@@ -1202,6 +1238,18 @@ NodeEditor {
     const elem = this.pickElement(e.pageX, e.pageY)
     if (elem instanceof NodeUI) {
       actnode = elem
+    } else {
+      let n = elem as UIBase | undefined
+      while (n) {
+        if (n instanceof NodeUI) {
+          actnode = n
+          break
+        } else if (n instanceof NodeSocketElem) {
+          actnode = n.uinode
+          break
+        }
+        n = n.parentWidget
+      }
     }
 
     const sock = this.findSocket(mpos[0], mpos[1])
@@ -1241,7 +1289,8 @@ NodeEditor {
       this._last_dpi = dpi
 
       console.log('dpi update')
-      this.recalcFlags |= NodeRecalcFlags.REBUILD
+      this.flagRebuild()
+      this.flagUIUpdate()
     }
   }
 
@@ -1304,6 +1353,8 @@ NodeEditor {
       return
     }
 
+    super.update()
+
     if (this.checkThemeUpdate()) {
       this.loadThemeOverrides()
 
@@ -1311,8 +1362,6 @@ NodeEditor {
       this.flushUpdate()
       this.flushUpdate()
     }
-
-    super.update()
 
     this.checkCompile()
     this.updateZoom()
@@ -1328,7 +1377,6 @@ NodeEditor {
 
     let regen = graph && graph.nodes.length !== this.nodes.length
     regen = regen || this._last_graphpath !== this.graphPath
-
     regen = regen || !!(this.recalcFlags & NodeRecalcFlags.REBUILD)
 
     if (regen) {
@@ -1340,17 +1388,16 @@ NodeEditor {
       ok = ok && !(this.ctx.modalFlag & ModalFlags.TRANSFORMING)
 
       if (ok) {
-        console.log('node editor got graph update signal')
-        this.recalcFlags |= NodeRecalcFlags.UI
+        this.flagUIUpdate()
       }
     }
 
     if (this.recalcFlags & NodeRecalcFlags.UI) {
-      this.recalcFlags &= ~NodeRecalcFlags.UI
-
-      window.setTimeout(() => {
+      try {
         this._recalcUI()
-      })
+      } catch (error) {
+        util.print_stack(error as Error)
+      }
     }
   }
 
@@ -1580,10 +1627,19 @@ NodeEditor {
     }
   }
 
+  flagUIUpdate() {
+    this.recalcFlags |= NodeRecalcFlags.UI
+    return this
+  }
+
+  flagRebuild() {
+    this.recalcFlags |= NodeRecalcFlags.REBUILD
+    return this
+  }
+
   /** Re-sync every socket's cached ref + node CSS, then redraw lines; rebuilds if sockets drifted. */
   _recalcUI(): void {
     let totsock = 0
-    this.recalcFlags &= ~NodeRecalcFlags.UI
 
     for (const node of this.nodes) {
       for (const sock of node.allsockets) {
@@ -1594,9 +1650,7 @@ NodeEditor {
       node.setCSS()
     }
 
-    if (this.overdraw !== undefined) {
-      this.overdraw.clear()
-    }
+    this._recalcLines()
 
     //why does this happen? sometimes sockets get duplicated
     //in weird ways
@@ -1606,7 +1660,7 @@ NodeEditor {
       return
     }
 
-    this._recalcLines()
+    this.recalcFlags &= ~NodeRecalcFlags.UI
   }
 
   loadSTRUCT(reader: StructReader<this>): void {
