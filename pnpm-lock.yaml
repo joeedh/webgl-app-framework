@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  nstructjs: workspace:*
+
 patchedDependencies:
   eslint-plugin-prettier:
     hash: 9ce220dd1367e6b5d8e2e70426fdb58d1240710f73d1ebcfd63ab7c2e9f5662c
@@ -269,8 +272,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       nstructjs:
-        specifier: ^0.8.5
-        version: 0.8.5
+        specifier: workspace:*
+        version: link:../../vendor/nstructjs
       parse5:
         specifier: 6.0.0
         version: 6.0.0
@@ -3648,9 +3651,6 @@ packages:
   npm-run-path@4.0.1:
     resolution: {integrity: sha512-S48WzZW777zhNIrn7gxOlISNAqi9ZC/uQFnRdbeIHhZhCA6UqpkOT8T1G7BvfdgP4Er8gF4sUbaS0i7QvIfCWw==}
     engines: {node: '>=8'}
-
-  nstructjs@0.8.5:
-    resolution: {integrity: sha512-Jy27MXRWAD0xIbvCzhRd3S9RGcDnhZ3m07oxOvBlrmYJd2o9u1XQOuWJB93anUY7nM4U21z97aYSjiPb4c7k7g==}
 
   nwsapi@2.2.23:
     resolution: {integrity: sha512-7wfH4sLbt4M0gCDzGE6vzQBo0bfTKjU7Sfpqy/7gs1qBfYz2vEJH6vXcBKpO3+6Yu1telwd0t9HpyOoLEQQbIQ==}
@@ -7938,12 +7938,6 @@ snapshots:
   npm-run-path@4.0.1:
     dependencies:
       path-key: 3.1.1
-
-  nstructjs@0.8.5:
-    dependencies:
-      acorn: 7.4.1
-      acorn-walk: 7.2.0
-      almond: 0.3.3
 
   nwsapi@2.2.23: {}
 

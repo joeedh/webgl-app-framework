@@ -26,6 +26,7 @@
 import {DataBlock} from './lib_api.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js'
+import {MissingNode, MissingNodeSocket} from './graph.js'
 
 // Constructor for the mesh-addon's `OpaqueCustomDataElem` placeholder.
 // Registered at addon-load time via `registerOpaqueCustomDataElem` so this
@@ -138,42 +139,133 @@ MissingToolMode {
 // nstructjs hooks
 // ----------------------------------------------------------------------------
 
+// nstructjs schema (NStruct) and manager shapes — the public typings don't
+// expose these internals; cast to permissive local shapes.
+interface SchemaField {
+  name: string
+  get?: string
+}
+interface FileSchema {
+  name: string
+  id: number
+  fields: SchemaField[]
+}
+interface NStructManager {
+  idgen: number
+  structs: Record<string, FileSchema>
+  struct_cls: Record<string, unknown>
+  struct_ids: Record<number, FileSchema>
+  null_natives?: Record<string, number>
+  onUnknownClass?: (clsname: string, schema: FileSchema) => unknown
+  onSerializeUnknown?: (obj: unknown) => string | undefined
+}
+
+function getManager(): NStructManager {
+  return nstructjs.manager as unknown as NStructManager
+}
+
 /**
- * Installs the onUnknownClass + onSerializeUnknown hooks on nstructjs's
- * global manager so that unknown ToolMode / CustomDataElem subclasses are
- * preserved instead of crashing the load. Must be called once at app start,
- * before any file is loaded.
- *
- * The choice of which placeholder is keyed by the missing class's NAMESPACE
- * (parent module) embedded in the struct name — nstructjs stores names with
- * dotted prefixes (e.g. "mesh.CustomDataElem"). We sniff the schema's parent
- * declaration to pick the right placeholder; if we can't determine the kind,
- * we don't return a placeholder and the original error fires (better to fail
- * loud than silently corrupt unrelated data).
+ * Register an unknown class's *file* schema into the global nstructjs manager so
+ * the save path's `get_struct(_origClsname)` and `write_scripts()` can find it.
+ * Idempotent. Mirrors what `parse_structs` does for an unknown struct: assigns a
+ * fresh global id and stores the schema + a dummy class. Fixes the save-side
+ * blocker for every placeholder kind (graph node/socket, toolmode, customdata).
  */
-export function installMissingAddonHooks(): void {
-  // The nstructjs typings don't expose the manager's hook fields publicly;
-  // cast to a permissive shape locally. The hook fields were added by the
-  // vendored-source patch in vendor/nstructjs (see plan §4).
-  const manager = nstructjs.manager as unknown as {
-    onUnknownClass?: (clsname: string, schema: unknown) => unknown
-    onSerializeUnknown?: (obj: unknown) => string | undefined
+function registerMissingStructGlobally(clsname: string, fileSchema: FileSchema): void {
+  const manager = getManager()
+  if (clsname in manager.structs) {
+    return
   }
 
-  manager.onUnknownClass = (clsname: string) => {
-    // CustomDataElem subclasses live under the `mesh.*` namespace in their
-    // schema names; ToolMode subclasses are flat names. We pick
-    // OpaqueCustomDataElem for anything under the mesh.* namespace that
-    // mentions CustomData, MissingToolMode for everything else that
-    // reaches this hook. (Real DataBlock subclasses go through appstate's
-    // explicit MissingDataBlock path, not this hook.)
-    if (clsname.startsWith('mesh.') && clsname.includes('CustomData')) {
-      // Falls through to MissingToolMode if the mesh addon hasn't registered
-      // its placeholder yet (e.g. mesh disabled before any file load).
-      if (opaqueCustomDataElemCls) {
-        return opaqueCustomDataElemCls
-      }
+  // Fresh global id (the file's id belongs to the per-file istruct's id space).
+  fileSchema.id = manager.idgen++
+
+  const dummy = function (this: unknown) {} as unknown as {
+    structName: string
+    newSTRUCT: () => unknown
+    prototype: Record<string, unknown>
+  }
+  dummy.structName = clsname
+  dummy.prototype.structName = clsname
+  dummy.prototype.loadSTRUCT = function (this: unknown, reader: (obj: unknown) => void) {
+    reader(this)
+  }
+  dummy.newSTRUCT = function (this: new () => unknown) {
+    return new this()
+  }
+
+  manager.structs[clsname] = fileSchema
+  manager.struct_cls[clsname] = dummy
+  manager.struct_ids[fileSchema.id] = fileSchema
+}
+
+/**
+ * Re-attach the base graph save-getters that `write_scripts(include_code=false)`
+ * stripped from the embedded file schema. Without them the writer packs live
+ * objects where ints/arrays are expected (see plan "Why getter re-injection is
+ * needed"). Getter strings are copied by field name from the live base schema
+ * (`graph.Node` / `graph.NodeSocketType`), which retains them.
+ */
+function reinjectGraphGetters(fileSchema: FileSchema, kind: 'node' | 'socket'): void {
+  const manager = getManager()
+  const baseName = kind === 'node' ? 'graph.Node' : 'graph.NodeSocketType'
+  const fieldNames = kind === 'node' ? ['inputs', 'outputs'] : ['node', 'edges']
+
+  const base = manager.structs[baseName]
+  if (!base) {
+    return
+  }
+
+  for (const name of fieldNames) {
+    const baseField = base.fields.find(f => f.name === name)
+    const field = fileSchema.fields.find(f => f.name === name)
+    if (baseField?.get !== undefined && field !== undefined) {
+      field.get = baseField.get
     }
+  }
+}
+
+/**
+ * Installs the onUnknownClass + onSerializeUnknown hooks on nstructjs's
+ * global manager so that unknown Node / NodeSocketType / ToolMode /
+ * CustomDataElem subclasses are preserved instead of crashing the load. Must be
+ * called once at app start, before any file is loaded.
+ *
+ * The placeholder kind is chosen by sniffing the file schema's field names (the
+ * dotted namespace prefix is unreliable across the many subclasses; nstructjs's
+ * `inlineRegister` flattens base fields into every subclass schema, so base
+ * field names are always present). Every branch also registers the schema into
+ * the global manager so the next save can round-trip it.
+ */
+export function installMissingAddonHooks(): void {
+  const manager = getManager()
+
+  manager.onUnknownClass = (clsname: string, fileSchema: FileSchema) => {
+    const names = new Set((fileSchema?.fields ?? []).map(f => f.name))
+
+    // Graph socket: socketName + edges + socketType.
+    if (names.has('socketName') && names.has('edges') && names.has('socketType')) {
+      registerMissingStructGlobally(clsname, fileSchema)
+      reinjectGraphGetters(fileSchema, 'socket')
+      return MissingNodeSocket
+    }
+
+    // Graph node: inputs + outputs + graph_ui_pos.
+    if (names.has('inputs') && names.has('outputs') && names.has('graph_ui_pos')) {
+      registerMissingStructGlobally(clsname, fileSchema)
+      reinjectGraphGetters(fileSchema, 'node')
+      return MissingNode
+    }
+
+    // Mesh CustomDataElem subclass (mesh.* + CustomData), if the placeholder
+    // has been published by the mesh addon.
+    if (clsname.startsWith('mesh.') && clsname.includes('CustomData') && opaqueCustomDataElemCls) {
+      registerMissingStructGlobally(clsname, fileSchema)
+      return opaqueCustomDataElemCls
+    }
+
+    // Fallback: treat as a ToolMode placeholder.
+    registerMissingStructGlobally(clsname, fileSchema)
     return MissingToolMode
   }
 
@@ -181,4 +273,24 @@ export function installMissingAddonHooks(): void {
     const placeholder = obj as {_origClsname?: string} | null
     return placeholder?._origClsname || undefined
   }
+}
+
+/**
+ * Wire a per-file `STRUCT` instance so unknown classes route to the placeholder
+ * hooks. Copies the global manager's onUnknownClass / onSerializeUnknown onto the
+ * per-file `istruct` — the read path resolves the hook off the manager instance
+ * that owns the read (plan blocker A). Call after `parse_structs` and after
+ * `installMissingAddonHooks()` has populated the global hooks.
+ *
+ * The `parse_structs` dummy classes no longer need scrubbing here: vendor
+ * nstructjs flags them (`isParseStructsDummy`) and the read path now treats a
+ * flagged dummy as unknown whenever an `onUnknownClass` hook is installed, so the
+ * placeholder / `_origClsname` machinery engages for genuinely-unknown classes
+ * while real registered classes are untouched.
+ */
+export function applyMissingAddonHooks(struct: unknown): void {
+  const src = getManager()
+  const dst = struct as unknown as NStructManager
+  dst.onUnknownClass = src.onUnknownClass
+  dst.onSerializeUnknown = src.onSerializeUnknown
 }

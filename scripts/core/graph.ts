@@ -1075,6 +1075,90 @@ graph.ProxyNode {
   }
 }
 
+/**
+ * Placeholder for a Node subclass whose addon isn't loaded (its class isn't
+ * registered with nstructjs). The nstructjs `onUnknownClass` hook returns this
+ * class and walks the *file* schema, so the node's data + live links survive in
+ * the graph; `onSerializeUnknown` re-emits it under `_origClsname` on the next
+ * save. Intentionally has NO `static STRUCT` and is NOT in any node registry —
+ * see scripts/core/missing_addon.ts and documentation/plans/fixGraphMissingNodes.md.
+ */
+export class MissingNode extends Node<any, any> {
+  /** Original struct name; also set dynamically by nstructjs on read. */
+  _origClsname: string = ''
+
+  static nodedef(): INodeDef<{}, {}> {
+    return {name: 'MissingNode', uiname: 'Missing (Addon Disabled)', flag: 0, inputs: {}, outputs: {}}
+  }
+
+  /**
+   * Only the inputs/outputs array→map conversion that base Node.loadSTRUCT does;
+   * skips the version-patching block (it calls getFinalNodeDef() against a def
+   * that doesn't exist here). Keeping the conversion is essential so `allsockets`
+   * yields the loaded sockets into `sock_idmap` during Graph.loadSTRUCT.
+   */
+  loadSTRUCT(reader: StructReader<this>): void {
+    reader(this)
+
+    if (Array.isArray(this.inputs)) {
+      const ins = {} as any
+      for (const pair of this.inputs as unknown as KeyValPair<NodeSocketType>[]) {
+        ins[pair.key] = pair.val
+        pair.val.socketType = SocketTypes.INPUT
+        pair.val.socketName = pair.key
+        pair.val.node = this as unknown as GenericNode<any>
+      }
+      ;(this.inputs as unknown as {}) = ins
+    }
+
+    if (Array.isArray(this.outputs)) {
+      const outs = {} as any
+      for (const pair of this.outputs as unknown as KeyValPair<NodeSocketType>[]) {
+        outs[pair.key] = pair.val
+        pair.val.socketType = SocketTypes.OUTPUT
+        pair.val.socketName = pair.key
+        pair.val.node = this as unknown as GenericNode<any>
+      }
+      ;(this.outputs as unknown as {}) = outs
+    }
+  }
+}
+
+/**
+ * Placeholder for a NodeSocketType subclass whose addon isn't loaded. Stores the
+ * socket's loaded value opaquely so edges to/from known nodes relink. See
+ * MissingNode and scripts/core/missing_addon.ts.
+ */
+export class MissingNodeSocket extends NodeSocketType<any> {
+  _origClsname: string = ''
+  _value: any = undefined
+
+  static nodedef(): INodeSocketDef {
+    return {name: 'MissingNodeSocket', uiname: 'Missing (Addon Disabled)', flag: 0}
+  }
+
+  getValue(): any {
+    return this._value
+  }
+
+  setValue(value: any): void {
+    this._value = value
+  }
+
+  // Inert to the cyclic solver: never compares unequal, never reports a diff.
+  copyValue(): any {
+    return this._value
+  }
+
+  cmpValue(_b: any): number {
+    return 0
+  }
+
+  diffValue(_b: any): number {
+    return 0
+  }
+}
+
 export class CallbackNode<
   InputSet extends INodeSocketSet = any,
   OutputSet extends INodeSocketSet = any,

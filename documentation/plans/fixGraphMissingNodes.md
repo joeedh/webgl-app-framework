@@ -33,6 +33,29 @@ also make the *current* ToolMode/CustomData placeholder path latently inert:
   `installMissingAddonHooks()` only sets the hooks on the **global**
   `nstructjs.manager` (`missing_addon.ts:163,180`). So `onUnknownClass` never
   fires during load.
+
+  **Update (discovered during implementation):** copying the hook onto `istruct`
+  is *necessary but not sufficient*. `parse_structs` auto-registers a **dummy
+  class** in `istruct.struct_cls` for every struct missing from the class list
+  (`struct_intern.ts:526-533`), and the read path only consults `onUnknownClass`
+  when `struct_cls[name] === undefined` (`struct_intern.ts:992-999`). The dummy
+  therefore *preempts* the hook — verified empirically.
+
+  **Fixed in the engine (vendor/nstructjs).** Rather than an app-side scrub of
+  `istruct.struct_cls`, the fix lives in the nstructjs engine: `parse_structs`
+  now **flags** each dummy it synthesizes (`PARSE_STRUCTS_DUMMY` /
+  `isParseStructsDummy` in `struct_util.ts`), and the read path
+  (`read_object` + the tstruct `unpack`/`unpackInto` in `struct_intern2.ts`)
+  treats a flagged dummy as "unknown" **whenever an `onUnknownClass` hook is
+  installed** — so the placeholder/`_origClsname` machinery engages for
+  genuinely-unknown classes while registered classes and `null_natives` dummies
+  are untouched. With no hook installed, behavior is unchanged (the dummy is
+  read into as before). `applyMissingAddonHooks` therefore now only copies the
+  two hooks onto `istruct`; the scrub is gone. The app consumes this via the
+  `nstructjs: workspace:*` override added to `pnpm-workspace.yaml`, which forces
+  the path.ux submodule's `^0.8.5` specifier onto `vendor/nstructjs` (pnpm 10
+  defaults `link-workspace-packages=false`, so without the override path.ux
+  pulls the published registry copy and never sees engine fixes).
 - **Save can't find the schema.** Save writes via the global
   `nstructjs.manager` (`appstate.ts:299,340`); `onSerializeUnknown` then does
   `manager.get_struct(_origClsname)` (`struct_intern2.ts:742`), which throws
@@ -172,4 +195,12 @@ save-side change beyond that is needed.)
 - `scripts/core/graph.ts` — `MissingNode` / `MissingNodeSocket`; reference at relink/load (1654-1746), getters (518-519, ~146-147), abstract socket methods (307-318, 382-384), ctor (168-199, 561-566).
 - `scripts/core/missing_addon.ts` — hook dispatch by field-sniffing, `applyMissingAddonHooks`, `registerMissingStructGlobally`, `reinjectGraphGetters`.
 - `scripts/core/appstate.ts` — `applyMissingAddonHooks(istruct)` after line 655.
-- Reference only (runtime nstructjs is the `scripts/path.ux/dist/pathux.js` bundle; no nstructjs source change is required for this plan): `vendor/nstructjs/src/struct_intern.ts` (993, 760, 816-849), `struct_intern2.ts` (739-746, 1005-1034).
+- `vendor/nstructjs` (submodule) — engine fix so a `parse_structs` dummy routes
+  through `onUnknownClass`: `struct_util.ts` (`PARSE_STRUCTS_DUMMY` /
+  `isParseStructsDummy`), `struct_intern.ts` (flag the dummy in `parse_structs`;
+  dummy-aware branch in `read_object`), `struct_intern2.ts` (dummy-aware tstruct
+  `unpack`/`unpackInto`), `types.ts` (`onUnknownClass` on `StructManager`).
+  Rebuild with `bash tools/build.sh`. The app resolves `nstructjs` to this
+  folder via the `pnpm-workspace.yaml` `overrides: { nstructjs: workspace:* }`
+  entry; the app's own esbuild inlines it (path.ux uses source `pathux.ts`, not
+  the prebuilt `dist/pathux.js`).
