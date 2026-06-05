@@ -1166,7 +1166,7 @@ PropsEditor {
 
   materialPanel(tab: TabItemContainer<ViewContext>) {
     const panel = UIBase.createElement('material-panel-x') as MaterialPanel
-    panel.setAttribute('datapath', 'mesh')
+    panel.setAttribute('datapath', 'object.data')
     tab.add(panel)
   }
 

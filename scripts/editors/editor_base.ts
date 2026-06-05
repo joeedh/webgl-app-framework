@@ -1487,9 +1487,10 @@ export class MaterialChooser extends Container<ViewContext> {
     }
 
     this.button('Add Material', () => {
-      const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
-      if (mesh === undefined) {
-        this.ctx.error('Invalid mesh at ' + this.getAttribute('datapath'))
+      const obData = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+      if (obData === undefined) {
+        console.log('Invalid sceneobject data at ' + this.getAttribute('datapath'))
+        this.ctx.error('Invalid sceneobject data at ' + this.getAttribute('datapath'))
         return
       }
       const op = new MakeMaterialOp()
@@ -1497,11 +1498,11 @@ export class MaterialChooser extends Container<ViewContext> {
       this.ctx.toolstack.execTool(this.ctx, op)
       const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())!
 
-      mesh.materials.push(mat)
-      mat.lib_addUser(mesh)
+      obData.materials.push(mat)
+      mat.lib_addUser(obData)
 
       if (this.on_change) {
-        ;(this.on_change as unknown as (change: any) => void)(mesh.materials.length - 1)
+        ;(this.on_change as unknown as (change: any) => void)(obData.materials.length - 1)
       }
     })
 
