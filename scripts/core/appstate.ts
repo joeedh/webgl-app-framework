@@ -50,7 +50,7 @@ import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp} from './gen_default_file'
-import {installMissingAddonHooks, MissingDataBlock} from './missing_addon'
+import {applyMissingAddonHooks, installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
 
@@ -653,6 +653,11 @@ export class AppState {
     // form) to their new module-qualified names before parsing the embedded
     // schema, so renamed classes still resolve. No-op for post-migration files.
     istruct.parse_structs(remapLegacyStructSchema(structs))
+
+    // The read-time onUnknownClass hook is resolved off this per-file STRUCT
+    // instance, not the global manager — wire it so unknown nodes/sockets/
+    // toolmodes/customdata are preserved instead of dropped. See plan blocker A.
+    applyMissingAddonHooks(istruct)
 
     filectx.lastscreens_active = lastscreens_active
     filectx.lastscreens = lastscreens
