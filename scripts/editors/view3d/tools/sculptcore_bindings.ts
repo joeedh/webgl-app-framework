@@ -43,13 +43,32 @@ const DYNAMIC_CHANNEL_TO_PROP: Record<string, number> = {
 const DYN_CURVE_SAMPLES = 32
 
 /**
+ * Fixed common float props — driven by the int-keyed loop in
+ * configureBrushDynamics, so the per-kernel manifest pass skips any uniform that
+ * shares one of these names (a kernel can redeclare `radius`, etc.).
+ */
+const COMMON_PROP_NAMES = new Set(['strength', 'radius', 'spacing', 'planeoff', 'autosmooth'])
+
+/**
  * Configure the brush's pen-dynamics stack from the TS BrushDynamics channels
  * (called once per stroke). Each channel with `useDynamics` adds a PRESSURE
  * device whose response curve is the channel's `Curve1D` baked into a 32-entry
  * table, applied multiplicatively — this is the C++-side replacement for the
  * old TS `getchannel()` curve eval.
+ *
+ * Two prop families are bridged: the fixed common props (strength/radius/...,
+ * int-keyed) and — when `wasmExec`/`brushType` are supplied — the active
+ * kernel's scalar `uniform`s, enumerated from the C++ manifest (Wave 5). The
+ * binding runtime can't pass a JS string into a `util::string` arg, so per-kernel
+ * uniforms are addressed by their 0-based manifest index; C++ resolves the index
+ * to the uniform name and routes through the same by-name dynamics API.
  */
-export function configureBrushDynamics(wasmBrush: WasmBrush, brush: SculptBrush): void {
+export function configureBrushDynamics(
+  wasmBrush: WasmBrush,
+  brush: SculptBrush,
+  wasmExec?: CommandExecutor,
+  brushType?: SculptBrushes
+): void {
   for (const propId of Object.values(DYNAMIC_CHANNEL_TO_PROP)) {
     wasmBrush.clearPropDynamics(propId)
   }
@@ -64,6 +83,30 @@ export function configureBrushDynamics(wasmBrush: WasmBrush, brush: SculptBrush)
       const x = i / (DYN_CURVE_SAMPLES - 1)
       const y = ch.curve.evaluate(x)
       wasmBrush.setPropDynamicSample(propId, DeviceType.PRESSURE, i, DYN_CURVE_SAMPLES, y)
+    }
+  }
+
+  // Per-kernel scalar uniforms (Wave 5): drive any dynamic-capable uniform of the
+  // active brush that has a matching BrushDynamics channel. Skipped when the tool
+  // has no sculptcore kernel (brushType === undefined).
+  if (wasmExec === undefined || brushType === undefined) {
+    return
+  }
+  const count = wasmExec.queryUniformManifest(brushType)
+  for (let idx = 0; idx < count; idx++) {
+    const entry = wasmExec.queriedUniformEntry(idx)
+    if (!entry || !entry.dynamic || COMMON_PROP_NAMES.has(entry.name)) {
+      continue
+    }
+    wasmExec.clearUniformDynamics(idx)
+    const ch = brush.dynamics.getChannel(entry.name, false)
+    if (!ch || !ch.useDynamics) {
+      continue
+    }
+    wasmExec.addUniformDynamic(idx, DeviceType.PRESSURE, BasicMix.MULTIPLY, 1.0)
+    for (let i = 0; i < DYN_CURVE_SAMPLES; i++) {
+      const x = i / (DYN_CURVE_SAMPLES - 1)
+      wasmExec.setUniformDynamicSample(idx, DeviceType.PRESSURE, i, DYN_CURVE_SAMPLES, ch.curve.evaluate(x))
     }
   }
 }
@@ -270,12 +313,6 @@ export function builSculptcoreBrush({
   // writeProps() so props-backed scalars round-trip through loadProps).
   configureToolUniforms(wasmBrush, brush)
 
-  // Pen-dynamics stack only needs (re)building when the brush is fresh — its
-  // channels/curves are fixed for the stroke.
-  if (freshBrush) {
-    configureBrushDynamics(wasmBrush, brush)
-  }
-
   if (wasmExec === undefined) {
     const st = wasm.manager.get('sculptcore::brush::CommandExecutor') as StructType
     const ctor = st.findConstructor('main')!
@@ -284,6 +321,13 @@ export function builSculptcoreBrush({
     // live disk — a freshly built LiteMesh doesn't maintain live disk links, so
     // LiveDisk smooth would find no neighbors and no-op. (1 = NeighborMode::Csr)
     wasmExec.setNeighborMode(1)
+  }
+
+  // Pen-dynamics stack only needs (re)building when the brush is fresh — its
+  // channels/curves are fixed for the stroke. Runs after the executor exists so
+  // the per-kernel uniform pass can enumerate the active brush's manifest.
+  if (freshBrush) {
+    configureBrushDynamics(wasmBrush, brush, wasmExec, toolToSculptBrush(brush.tool))
   }
 
   return {wasmExec, wasmBrush}

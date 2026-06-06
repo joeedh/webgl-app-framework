@@ -44,6 +44,7 @@ PaintSample {
   esize          : float;
   curve          : optional(Bezier);
   pressure       : float;
+  hit            : bool;
 }`
   )
 
@@ -103,6 +104,9 @@ PaintSample {
   mirrored: boolean
   // a slice of the stroke curve
   curve: Bezier | undefined
+  /** false when this sample came from a ray that missed the scene and was
+   * projected onto the camera-facing plane through the last surface hit */
+  hit = true
   /** @deprecated */
   mpos = new Vector2()
 
@@ -218,6 +222,7 @@ PaintSample {
     b.color.load(this.color)
     b.isInterp = this.isInterp
     b.mirrored = this.mirrored
+    b.hit = this.hit
 
     b.rendermat.load(this.rendermat)
 

@@ -1,9 +1,9 @@
 import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
 import type {ToolContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
-import {AttrRef, Vector3LayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
 import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
-import {ISampleViewRet, PaintOpBase, PathPoint} from './pbvh_base'
+import {StrokeDriverOp} from './stroke_paint_op'
+import {IStrokeHit, StrokeRayCast} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import type {SculptBrush} from '../../../brush/index'
@@ -45,7 +45,7 @@ function syncDisplayModeToBrush(mesh: LiteMesh, tool: SculptTools): void {
   }
 }
 
-export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
+export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   wasmBrush?: WasmBrush
   executor?: CommandExecutor
   brushProgram?: BrushProgram
@@ -112,19 +112,6 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return 1
   }
 
-  getSampler() {
-    return this.modal_ctx!.object!.data as LiteMesh
-  }
-
-  initOrigData(mesh: LiteMesh) {
-    return new AttrRef<Vector3LayerElem>(-1)
-  }
-
-  getSymflag() {
-    // TODO: Implement
-    return 0
-  }
-
   getBrush(e: PointerEvent): IGetBrushRet {
     const brush = this.inputs.brush.getValue()
     const result = builSculptcoreBrush({
@@ -162,28 +149,40 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return this.dynTopoParams
   }
 
-  rayCast = (ctx: ToolContext, origin: Vector3, viewvec: Vector3) => {
-    const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
-    imatrix.invert()
-
-    viewvec = viewvec.copy()
-    origin = origin.copy()
-    viewvec.multVecMatrix(imatrix)
-    origin.multVecMatrix(imatrix)
-
+  /** World-space ray cast for the stroke driver's control points: world
+   * origin/dir -> object-local -> mesh.rayCast -> hit back in world space. */
+  makeRayCast(): StrokeRayCast {
+    const ctx = this.modal_ctx!
     const mesh = ctx.object!.data as LiteMesh
-    return mesh.rayCast(viewvec, origin)
-  }
-  /** note: this runs in a special async loop */
-  onBrushDab(
-    //
-    e: PointerEvent,
-    ps: PaintSample,
-    in_timer?: boolean,
-    isInterp?: boolean
-  ): undefined | ISampleViewRet {
-    const result = super.onBrushDab(e, ps, in_timer, isInterp)
 
+    return (origin: Vector3, dir: Vector3): IStrokeHit | undefined => {
+      const obmat = new Matrix4(ctx.object!.outputs.matrix.getValue())
+      const imatrix = new Matrix4(obmat)
+      imatrix.invert()
+
+      const o = origin.copy()
+      const d = dir.copy()
+      o.multVecMatrix(imatrix)
+      d.multVecMatrix(imatrix)
+
+      const isect = mesh.rayCast(o, d)
+      if (!isect) {
+        return undefined
+      }
+
+      const p = new Vector3(isect.p)
+      p.multVecMatrix(obmat)
+      const normal = new Vector3(isect.normal)
+      normal.multVecMatrix(obmat)
+
+      return {p, normal, dist: isect.dis}
+    }
+  }
+
+  /** Apply one evenly-spaced driver dab: re-raycast at the sample's screen
+   * point to snap to the surface (object-local space), then run the sculptcore
+   * brush pipeline + optional dyntopo over the filtered nodes. */
+  applyDab(ps: PaintSample, e: PointerEvent): void {
     if (!this.inStep) {
       return
     }
@@ -313,11 +312,10 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
     mesh.regenTreeBatch()
     window.redraw_viewport()
-    return result
   }
 
   modalEnd(was_cancelled: boolean): void {
-    const result = super.modalEnd(was_cancelled)
+    super.modalEnd(was_cancelled)
     // Release the stroke-long topology thaw the dyntopo path held (no-op if the
     // executor never ran a dyntopo dab).
     this.executor?.endDynTopoStroke()
@@ -339,7 +337,6 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       mesh.markSeamsDirty()
     }
     window.redraw_viewport()
-    return result
   }
 
   exec() {
