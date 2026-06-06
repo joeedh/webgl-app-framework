@@ -101,6 +101,7 @@ PaintSample {
   esize: number
   planeoff: number
   mirrored: boolean
+  // a slice of the stroke curve
   curve: Bezier | undefined
   /** @deprecated */
   mpos = new Vector2()

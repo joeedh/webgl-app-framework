@@ -801,7 +801,8 @@ export class PaintOp extends PaintOpMesh<
     return super.sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp)
   }
 
-  feedTask(e: PointerEvent, p: PaintSample, pi: any): Generator<void, void, unknown> | void {
+  /* XXX unported
+  feedTask(e: PointerEvent, p: PathPoint, pi: any): Generator<void, void, unknown> | void {
     const result = this.onBrushDab(e, p, true, pi !== this.path.length - 1)
     if (result === undefined) {
       return undefined
@@ -812,6 +813,7 @@ export class PaintOp extends PaintOpMesh<
     const invert = this.getInvertFromEvent(e)
     return this.processSample(view3d.activeCamera.rendermat, mpos, result.view, result.origin, p.pressure, invert, true)
   }
+  */
 
   processSample(
     rendermat: Matrix4,
