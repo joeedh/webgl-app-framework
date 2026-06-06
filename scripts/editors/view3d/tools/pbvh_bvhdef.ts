@@ -13,11 +13,12 @@ import {
 import {AttrRef} from '../../../../addons/builtin/mesh/src/customdata.js'
 import {Mesh, MeshFlags, Vector3LayerElem, Vertex} from '../../../../addons/builtin/mesh/src/mesh.js'
 import {BVH, BVHFlags, BVHNodeVertex, CDNodeInfo, IsectRet} from '../../../../addons/builtin/mesh/src/bvh.js'
-import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSample, PaintSampleProperty} from './pbvh_base'
+import {BrushProperty, PaintOpBase, PaintOpMesh, PathPoint, PaintSampleProperty} from './pbvh_base'
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
 import type {ViewContext} from '../../../core/context.js'
 import {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
-;(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
+;import { PaintSample } from './pbvh_paintsample.js';
+(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
   let boxverts: any[] = [
     [-d, -d, -d],
     [-d, d, -d],
@@ -103,13 +104,13 @@ export class BVHDeformPaintOp extends PaintOpMesh<{}, {}> {
     return 32
   }
 
-  on_pointermove_intern(e: PointerEvent, x?: number, y?: number, in_timer?: boolean, isInterp?: boolean) {
+  onBrushDab(e: PointerEvent, pt: PaintSample, in_timer?: boolean, isInterp?: boolean) {
     const ctx = this.modal_ctx!
     if (!ctx.mesh) {
       return
     }
 
-    const ret = super.on_pointermove_intern(e, x, y, in_timer)
+    const ret = super.onBrushDab(e, pt, in_timer)
 
     if (!ret) {
       return ret

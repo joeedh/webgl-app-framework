@@ -6,6 +6,7 @@ import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
 import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
+import {PaintSample} from './pbvh_paintsample.js'
 
 import {
   Curve1DProperty,
@@ -190,220 +191,6 @@ BrushProperty {
 }
 
 BRUSH_PROP_TYPE = ToolProperty.register(BrushProperty)
-
-export class PaintSample {
-  static STRUCT = nstructjs.inlineRegister(
-    this,
-    `
-PaintSample {
-  p              : vec4;
-  dp             : vec4;
-  sp             : vec4;
-  strokeS        : float;
-  dstrokeS       : float;
-  dsp            : vec4;
-  origp          : vec4;
-  isInterp       : bool;
-  sharp          : float;
-  futureAngle    : float;
-
-  vec            : vec3;
-  dvec           : vec3;
-  mirrored       : bool;
-
-  color          : vec4;
-
-  rendermat      : mat4;
-
-  viewvec        : vec3;
-  vieworigin     : vec3;
-  viewPlane      : vec3;
-  autosmoothInflate : float;
-
-  planeoff       : float;
-  rake           : float;
-  strength       : float;
-  angle          : float;
-  radius         : float;
-  w              : float;
-  pinch          : float;
-  smoothProj     : float;
-  autosmooth     : float;
-  concaveFilter  : float;
-  invert         : bool;
-  esize          : float;
-  curve          : optional(Bezier);
-  pressure       : float;
-}`
-  )
-
-  pressure = 1.0
-  origp: Vector4
-  p: Vector4
-  dp: Vector4
-  viewPlane: Vector3
-  rendermat: Matrix4
-  strokeS: number
-  dstrokeS: number
-  smoothProj: number
-  pinch: number
-  sharp: number
-  sp: Vector4
-  dsp: Vector4
-  futureAngle: number
-  invert: boolean
-  w: number
-  color: Vector4
-  angle: number
-  viewvec: Vector3
-  vieworigin: Vector3
-  isInterp: boolean
-  vec: Vector3
-  dvec: Vector3
-  autosmoothInflate: number
-  concaveFilter: number
-  strength: number
-  radius: number
-  rake: number
-  autosmooth: number
-  esize: number
-  planeoff: number
-  mirrored: boolean
-  curve: Bezier | undefined
-  mpos = new Vector2()
-
-  constructor() {
-    this.origp = new Vector4()
-    this.p = new Vector4()
-    this.dp = new Vector4()
-    this.viewPlane = new Vector3()
-
-    this.rendermat = new Matrix4()
-
-    this.strokeS = 0.0
-    this.dstrokeS = 0.0
-
-    this.smoothProj = 0.0
-
-    this.pinch = 0.0
-    this.sharp = 0.0
-
-    //screen coordinates
-    this.sp = new Vector4()
-    this.dsp = new Vector4()
-
-    this.futureAngle = 0
-
-    this.invert = false
-
-    this.w = 0.0
-
-    this.color = new Vector4()
-    this.angle = 0
-
-    this.viewvec = new Vector3()
-    this.vieworigin = new Vector3()
-
-    this.isInterp = false
-
-    this.vec = new Vector3()
-    this.dvec = new Vector3()
-
-    this.autosmoothInflate = 0.0
-    this.concaveFilter = 0.0
-    this.strength = 0.0
-    this.radius = 0.0
-    this.rake = 0.0
-    this.autosmooth = 0.0
-    this.esize = 0.0
-    this.planeoff = 0.0
-
-    this.mirrored = false
-  }
-
-  static getMemSize(): number {
-    let tot = 13 * 8
-    tot += 5 * 3 * 8 + 8 * 5
-    tot += 5 * 4 * 8 + 8 * 5 + 16 * 8
-
-    return tot
-  }
-
-  mirror(mul: Vector4 = new Vector4([1, 1, 1, 1])): this {
-    this.p.mul(mul)
-    this.dp.mul(mul)
-    this.origp.mul(mul)
-
-    //this.sp.mulScalar(mul);
-    this.dsp.mul(mul)
-    this.viewvec.mul(mul)
-    this.viewPlane.mul(mul)
-
-    this.vec.mul(mul)
-    this.dvec.mul(mul)
-
-    this.angle *= mul[0] * mul[1] * mul[2]
-    this.futureAngle *= mul[0] * mul[1] * mul[2]
-
-    this.mirrored = !this.mirrored
-
-    return this
-  }
-
-  copyTo(b: PaintSample): void {
-    b.smoothProj = this.smoothProj
-    b.futureAngle = this.futureAngle
-    b.curve = this.curve?.clone()
-    b.pressure = this.pressure
-
-    b.strokeS = this.strokeS
-    b.dstrokeS = this.dstrokeS
-    b.sharp = this.sharp
-
-    b.viewPlane.load(this.viewPlane)
-    b.viewvec.load(this.viewvec)
-    b.vieworigin.load(this.vieworigin)
-    b.angle = this.angle
-    b.invert = this.invert
-
-    b.origp.load(this.origp)
-
-    b.sp.load(this.sp)
-    b.dsp.load(this.dsp)
-
-    b.vec.load(this.vec)
-    b.dvec.load(this.dvec)
-
-    b.p.load(this.p)
-    b.dp.load(this.dp)
-    b.autosmoothInflate = this.autosmoothInflate
-
-    b.w = this.w
-    b.esize = this.esize
-
-    b.color.load(this.color)
-    b.isInterp = this.isInterp
-    b.mirrored = this.mirrored
-
-    b.rendermat.load(this.rendermat)
-
-    b.pinch = this.pinch
-    b.rake = this.rake
-    b.strength = this.strength
-    b.radius = this.radius
-    b.autosmooth = this.autosmooth
-    b.planeoff = this.planeoff
-    b.concaveFilter = this.concaveFilter
-  }
-
-  copy(): PaintSample {
-    const ret = new PaintSample()
-
-    this.copyTo(ret)
-
-    return ret
-  }
-}
 
 export let PAINT_SAMPLE_TYPE: any
 
@@ -870,6 +657,9 @@ export abstract class PaintOpBase<
   last_draw: number
   lastps1: PaintSample | undefined
   lastps2: PaintSample | undefined
+  lastps3: PaintSample | undefined
+  lastDabS = 0
+  sumDabS = 0
   last_radius: number
   last_vec: Vector3
   rand: util.MersenneRandom
@@ -1167,8 +957,155 @@ export abstract class PaintOpBase<
     }
   }
 
+  rayCast?: (
+    ctx: ToolContext,
+    origin: Vector3,
+    dir: Vector3
+  ) => {p: Vector3; uv: Vector2; dis: number; normal: Vector3} | undefined
+
   feedTask(e: PointerEvent, p: PathPoint, pi: number): Generator<void, void, unknown> | void {
-    this.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this.path.length - 1)
+    const ps = new PaintSample()
+    const ctx = this.modal_ctx!
+    const view3d = ctx.view3d
+
+    const local = view3d.getLocalMouse(e.x, e.y)
+    const viewvec = view3d.getViewVec(local[0], local[1])
+    const origin = view3d.activeCamera.pos.copy()
+    const brush = this.inputs.brush.getValue()
+    const isGrabTool = brush.tool === SculptTools.GRAB || brush.tool === SculptTools.SNAKE
+
+    ps.screenP.load(view3d.getLocalMouse(p.co[0], p.co[1]))
+    ps.viewPlane.load(viewvec).normalize()
+    ps.invert = e.ctrlKey && !isGrabTool
+
+    if (this.rayCast) {
+      const r = this.rayCast(ctx, origin, viewvec)
+      if (r) {
+        ps.p.load3(r.p)
+        ps.p[3] = 1.0
+      }
+    }
+
+    let pressure = 1.0
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      pressure = e.pressure
+    }
+    const getchannel = (key: string, val: number): number => {
+      const ch = brush.dynamics.getChannel(key)
+      if (ch?.useDynamics) {
+        return val * ch.curve.evaluate(pressure)
+      } else {
+        return val
+      }
+    }
+
+    ps.pressure = pressure
+    ps.strength = getchannel('strength', brush.strength)
+    ps.radius = getchannel('radius', brush.radius)
+    ps.color = brush.color
+
+    const spacing = getchannel('spacing', brush.spacing)
+
+    // TODO: find where this setting is
+    const spacingMode: 'world' | 'screen' = 'screen'
+
+    // grab tools get raw events
+    if (isGrabTool) {
+      ps.isInterp = false
+      this.onBrushDab(e, ps, true, false)
+      return
+    }
+
+    // interpolate stroke
+
+    if (!this.lastps1) {
+      ps.isInterp = false
+      this.onBrushDab(e, ps, true, false)
+    } else {
+      const lastps1 = this.lastps1
+      const lastps2 = this.lastps2
+      const lastps3 = this.lastps3
+
+      function interpScalar(t: number, key: keyof PaintSample, subkey?: number) {
+        /** TODO: smoothly interpolate using ps, lastps1, lastps2, lastps3*/
+        let a = (subkey !== undefined ? (lastps1![key] as any)[subkey] : lastps1[key]) as number
+        let b = (subkey !== undefined ? (ps![key] as any)[subkey] : ps[key]) as number
+
+        return a + (b - a) * t
+      }
+      function interp(t: number, key: keyof PaintSample) {
+        const val = ps[key]
+        if (typeof val === 'number') {
+          return interpScalar(t, key)
+        } else if (val instanceof Vector2 || val instanceof Vector3 || val instanceof Vector4) {
+          const result = val.copy()
+          for (let i = 0; i < val.length; i++) {
+            result[i] = interpScalar(t, key, i)
+          }
+          return result
+        }
+        console.warn(key, val)
+        throw new Error('invalid type for key ' + key)
+      }
+      function arcLength() {
+        // TODO implement this to for whatever curve interpolation we end up using
+        if (spacingMode === 'world') {
+          return lastps1.p.vectorDistance(ps.p)
+        } else {
+          return lastps1.screenP.vectorDistance(ps.screenP)
+        }
+      }
+
+      ps.dp.load(ps.p).sub(lastps1.p)
+      ps.dScreenP.load(ps.screenP).sub(lastps1.screenP)
+
+      this.sumDabS += arcLength() / (ps.radius * 2.0)
+      ps.strokeS = this.sumDabS
+
+      // enforce minimum spacing
+      if (ps.strokeS - this.lastDabS < spacing) {
+        return
+      }
+
+      ps.dstrokeS = ps.strokeS - this.lastDabS
+
+      const steps = Math.floor(ps.dstrokeS / spacing)
+      let prevps: PaintSample | undefined
+
+      for (let i = 0; i < steps; i++) {
+        const t = (i + i) / steps
+
+        const ps2 = new PaintSample()
+        ps.copyTo(ps2)
+
+        // manual interpolation here
+        ps2.strokeS = this.lastDabS + (ps.strokeS - this.lastDabS) * t
+
+        ps2.p = interp(t, 'p') as Vector4
+        ps2.screenP = interp(t, 'screenP') as Vector2
+        // deltas
+        ps2.dp = prevps ? ps2.p.copy().sub(prevps.p) : lastps1.dp.copy()
+        ps2.dScreenP = prevps ? ps2.screenP.copy().sub(prevps.screenP) : lastps1.dScreenP.copy()
+
+        // interpolate properties
+        for (const key of PaintSample.interpKeys) {
+          const val = ps2[key]
+          if (val instanceof Vector2 || val instanceof Vector3 || val instanceof Vector4) {
+            val.load(interp(t, key) as unknown as number[])
+          } else if (typeof val === 'number') {
+            ;(ps2[key] as number) = interp(t, key) as number
+          }
+        }
+
+        this.onBrushDab(e, ps2, true, true)
+        prevps = ps2
+      }
+      this.lastDabS = ps.strokeS
+    }
+
+    this.lastps3 = this.lastps2
+    this.lastps2 = this.lastps1
+    this.lastps1 = ps
   }
 
   makeTask(): Generator<void, void, unknown> {
@@ -1204,15 +1141,14 @@ export abstract class PaintOpBase<
     }
   }
 
-  on_pointermove_intern(
+  onBrushDab(
     e: PointerEvent,
-    x: number = e.x,
-    y: number = e.y,
+    p: PaintSample,
     in_timer: boolean = false,
     isInterp: boolean = false
   ): undefined | ISampleViewRet {
-    //this.makeTempLine()
-
+    let x = p.screenP[0]
+    let y = p.screenP[1]
     const ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
@@ -1221,11 +1157,10 @@ export abstract class PaintOpBase<
 
     const toolmode = ctx.toolmode
     const view3d = ctx.view3d
-    const brush = this.inputs.brush.getValue()
 
     if (toolmode instanceof PaintToolModeBase) {
-      //the pbvh toolmode is responsible for drawing brush circle,
-      //make sure it has up to date info for that
+      // the pbvh toolmode is responsible for drawing brush circle,
+      // make sure it has up to date info for that
       toolmode.mpos[0] = x
       toolmode.mpos[1] = y
     }
@@ -1247,6 +1182,7 @@ export abstract class PaintOpBase<
 
     this.inputs.viewportSize.setValue(view3d.size)
 
+    // return useful information for child class implementations
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
   }
 
@@ -1292,8 +1228,6 @@ export abstract class PaintOpBase<
     strengthMul = Math.abs(strengthMul !== 0.0 ? 1.0 / strengthMul : strengthMul);
     */
 
-    let radius = brush.radius
-
     const getchannel = (key: string, val: number): number => {
       const ch = brush.dynamics.getChannel(key)
       if (ch?.useDynamics) {
@@ -1303,7 +1237,7 @@ export abstract class PaintOpBase<
       }
     }
 
-    radius = getchannel('radius', radius)
+    let radius = getchannel('radius', brush.radius)
 
     const toolmode = ctx.toolmode
     const view3d = ctx.view3d

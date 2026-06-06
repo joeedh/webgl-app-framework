@@ -11,11 +11,12 @@ import {
   Vertex,
 } from '../../../../addons/builtin/mesh/src/mesh.js'
 import {BVH, BVHFlags, BVHTriFlags, IsectRet} from '../../../../addons/builtin/mesh/src/bvh.js'
-import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSample, PaintSampleProperty} from './pbvh_base'
+import {BrushProperty, PaintOpBase, PaintOpMesh, PaintSampleProperty, PathPoint} from './pbvh_base'
 import {applyTriangulation} from '../../../../addons/builtin/mesh/src/mesh_tess.js'
 import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
 import type {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
 import type {ViewContext} from '../../../core/context.js'
+import { PaintSample } from './pbvh_paintsample.js';
 
 export function fillHoleFromVert(
   mesh: Mesh,
@@ -222,10 +223,10 @@ export class HoleFillPaintOp extends PaintOpMesh<{}, {}> {
     window.redraw_viewport(true)
   }
 
-  on_pointermove_intern(
+  onBrushDab(
+    //
     e: PointerEvent,
-    x: number = e.x,
-    y: number = e.y,
+    pt: PaintSample,
     in_timer: boolean = false,
     isInterp: boolean = false
   ) {
@@ -234,7 +235,7 @@ export class HoleFillPaintOp extends PaintOpMesh<{}, {}> {
       return
     }
 
-    const ret = super.on_pointermove_intern(e, x, y, in_timer)
+    const ret = super.onBrushDab(e, pt, in_timer)
 
     if (!ret) {
       return undefined

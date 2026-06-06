@@ -3,7 +3,7 @@ import type {ToolContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {AttrRef, Vector3LayerElem} from '../../../../addons/builtin/mesh/src/mesh_customdata'
 import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
-import {ISampleViewRet, PaintOpBase} from './pbvh_base'
+import {ISampleViewRet, PaintOpBase, PathPoint} from './pbvh_base'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import type {SculptBrush} from '../../../brush/index'
@@ -15,6 +15,7 @@ import {
   configureDynTopoParams,
 } from './sculptcore_bindings'
 import {SculptTools} from '../../../brush/brush_base'
+import {PaintSample} from './pbvh_paintsample'
 
 export interface IGetBrushRet {
   brush: SculptBrush
@@ -130,7 +131,7 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
       wasm: getWasmImmediate()!,
       brush,
       mesh     : this.modal_ctx!.object!.data as LiteMesh,
-      radius   : this.calcRadius(),
+      radius   : this.calcRadius(brush.radius),
       invert   : this.getInvertFromEvent(e),
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
@@ -141,8 +142,8 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return {brush, ...result}
   }
 
-  calcRadius() {
-    return this.inputs.brush.getValue().radius
+  calcRadius(screenRadius: number): number {
+    return screenRadius
   }
 
   /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
@@ -161,15 +162,27 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
     return this.dynTopoParams
   }
 
+  rayCast = (ctx: ToolContext, origin: Vector3, viewvec: Vector3) => {
+    const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
+    imatrix.invert()
+
+    viewvec = viewvec.copy()
+    origin = origin.copy()
+    viewvec.multVecMatrix(imatrix)
+    origin.multVecMatrix(imatrix)
+
+    const mesh = ctx.object!.data as LiteMesh
+    return mesh.rayCast(viewvec, origin)
+  }
   /** note: this runs in a special async loop */
-  on_pointermove_intern(
+  onBrushDab(
+    //
     e: PointerEvent,
-    x?: number,
-    y?: number,
+    ps: PaintSample,
     in_timer?: boolean,
     isInterp?: boolean
   ): undefined | ISampleViewRet {
-    const result = super.on_pointermove_intern(e, x, y, in_timer, isInterp)
+    const result = super.onBrushDab(e, ps, in_timer, isInterp)
 
     if (!this.inStep) {
       return
@@ -181,21 +194,19 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
     view3d.resetDrawLines()
 
-    toolmode.mpos[0] = e.x
-    toolmode.mpos[1] = e.y
-    toolmode.drawBrush(view3d, true, e.x, e.y)
+    toolmode.mpos[0] = ps.screenP[0] + view3d.pos![0]
+    toolmode.mpos[1] = ps.screenP[1] + view3d.pos![1]
+    toolmode.drawBrush(view3d, true, ps.screenP[0] + view3d.pos![0], ps.screenP[1] + view3d.pos![1])
 
     const {brush, wasmExec, wasmBrush} = this.getBrush(e)
     const wasm = getWasmImmediate()!
 
-    const local = view3d.getLocalMouse(e.x, e.y)
+    const local = ps.screenP.copy()
     const viewvec = view3d.getViewVec(local[0], local[1])
     const origin = view3d.activeCamera.pos.copy()
     const mesh = ctx.object!.data as LiteMesh
 
-    const r = this.sampleViewRay(view3d.activeCamera.rendermat, toolmode.mpos, viewvec, origin, 0.5, true, true)
     const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
-
     imatrix.invert()
 
     viewvec.multVecMatrix(imatrix)
@@ -203,99 +214,101 @@ export class SculptPaintOp extends PaintOpBase<LiteMesh, {}, {}> {
 
     const isect = mesh.rayCast(origin, viewvec)
 
-    let radius = this.calcRadius()
+    let radius = this.calcRadius(ps.radius)
 
-    if (isect !== undefined) {
-      const {p, uv, normal} = isect
+    if (isect === undefined) {
+      return
+    }
 
-      const p4 = new Vector4().load3(p)
-      p4[3] = 1.0
-      p4.multVecMatrix(view3d.activeCamera.rendermat)
-      const w = p4[3]
+    const {p, normal} = isect
 
-      const m1 = new Vector3(p)
-      view3d.project(m1)
-      const m2 = new Vector3(m1)
-      m2[0] += 1
+    const p4 = new Vector4().load3(p)
+    p4[3] = 1.0
+    p4.multVecMatrix(view3d.activeCamera.rendermat)
 
-      view3d.unproject(m2)
+    const m1 = new Vector3(p)
+    view3d.project(m1)
+    const m2 = new Vector3(m1)
+    m2[0] += 1
 
-      const dist = m2.vectorDistance(p)
+    view3d.unproject(m2)
 
-      radius *= dist
+    const dist = m2.vectorDistance(p)
 
-      // @ts-expect-error
-      const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
-      const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
+    radius *= dist
 
-      mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
+    // XXX binding system generator error, the type catalog is missing this
+    // @ts-expect-error
+    const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
+    const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
 
-      const brushType = toolToSculptBrush(brush.tool)
-      if (brushType === undefined) {
-        // TS tool with no sculptcore equivalent (e.g. Grab, Snake, Paint).
-        // Skip the dab rather than silently running a Draw.
-        console.warn(`sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`)
-      } else {
-        // Make the painted attribute visible (color/polygroup) without a manual
-        // display-mode toggle.
-        syncDisplayModeToBrush(mesh, brush.tool)
+    mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
 
-        // Poly-group paint: choose the stroke's group id once, on the first dab.
-        // Default = a fresh incremented id (max existing + 1); holding shift
-        // samples the group under the cursor and extends it (falling back to a
-        // new id when that face has no group yet).
-        if (brush.tool === SculptTools.POLYGROUP) {
-          if (this.strokeGroupId === undefined) {
-            if (e.shiftKey && isect.face >= 0) {
-              const sampled = mesh.mesh.faceGroup(isect.face)
-              this.strokeGroupId = sampled > 0 ? sampled : mesh.mesh.maxFaceGroup() + 1
-            } else {
-              this.strokeGroupId = mesh.mesh.maxFaceGroup() + 1
-            }
+    const brushType = toolToSculptBrush(brush.tool)
+    if (brushType === undefined) {
+      // TS tool with no sculptcore equivalent (e.g. Grab, Snake, Paint).
+      // Skip the dab rather than silently running a Draw.
+      console.warn(`sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`)
+    } else {
+      // Make the painted attribute visible (color/polygroup) without a manual
+      // display-mode toggle.
+      syncDisplayModeToBrush(mesh, brush.tool)
+
+      // Poly-group paint: choose the stroke's group id once, on the first dab.
+      // Default = a fresh incremented id (max existing + 1); holding shift
+      // samples the group under the cursor and extends it (falling back to a
+      // new id when that face has no group yet).
+      if (brush.tool === SculptTools.POLYGROUP) {
+        if (this.strokeGroupId === undefined) {
+          if (e.shiftKey && isect.face >= 0) {
+            const sampled = mesh.mesh.faceGroup(isect.face)
+            this.strokeGroupId = sampled > 0 ? sampled : mesh.mesh.maxFaceGroup() + 1
+          } else {
+            this.strokeGroupId = mesh.mesh.maxFaceGroup() + 1
           }
-          wasmBrush.activeGroup = this.strokeGroupId!
         }
-
-        wasmBrush.strength = brush.strength
-        wasmBrush.radius = radius
-        wasmBrush.writeProps()
-        wasmExec.meshLog = SculptPaintOp.meshLog
-
-        // Dynamic topology: remesh under the dab BEFORE the brush deform so the
-        // brush moves the freshly-refined geometry. Runs over the same world
-        // center/radius; the executor reuses the existing meshLog step + spatial
-        // callbacks and grows the already-filtered `nodes` in place (incremental
-        // ownership). `dist` is world-units-per-pixel at the dab (computed above).
-        const dt = brush.dynTopoSC
-        if (dt.enabled) {
-          const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
-          const params = this.getDynTopoParams()
-          configureDynTopoParams(params, dt, l_max, l_min)
-          wasmExec.applyDynTopoDab(wasm.float3(p), radius, params, this.dabSeed++)
-          // Accumulate stats for the debug HUD (wasmExec.lastDynTopoStats holds
-          // this dab's counts).
-          const st = wasmExec.lastDynTopoStats
-          const acc = toolmode.dynTopoStats
-          acc.splits += st.splits
-          acc.collapses += st.collapses
-          acc.flips += st.flips
-          acc.rounds = st.rounds
-          acc.budgetHit = acc.budgetHit || st.budget_hit
-        }
-
-        // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
-        // stack that loadProps applies inside execProgram.
-        pushBrushDeviceInputs(wasmBrush, e)
-
-        // Build the per-dab command list (main brush + optional autosmooth) and
-        // run it over the filtered node set.
-        const prog = this.getProgram()
-        buildBrushProgram(prog, brushType, brush, radius, mesh)
-        // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
-        // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
-        // which `nodes` (the constructWith result) is on both backends.
-        wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(normal))
+        wasmBrush.activeGroup = this.strokeGroupId!
       }
+
+      wasmBrush.strength = ps.strength
+      wasmBrush.radius = radius
+      wasmBrush.writeProps()
+      wasmExec.meshLog = SculptPaintOp.meshLog
+
+      // Dynamic topology: remesh under the dab BEFORE the brush deform so the
+      // brush moves the freshly-refined geometry. Runs over the same world
+      // center/radius; the executor reuses the existing meshLog step + spatial
+      // callbacks and grows the already-filtered `nodes` in place (incremental
+      // ownership). `dist` is world-units-per-pixel at the dab (computed above).
+      const dt = brush.dynTopoSC
+      if (dt.enabled) {
+        const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
+        const params = this.getDynTopoParams()
+        configureDynTopoParams(params, dt, l_max, l_min)
+        wasmExec.applyDynTopoDab(wasm.float3(p), radius, params, this.dabSeed++)
+        // Accumulate stats for the debug HUD (wasmExec.lastDynTopoStats holds
+        // this dab's counts).
+        const st = wasmExec.lastDynTopoStats
+        const acc = toolmode.dynTopoStats
+        acc.splits += st.splits
+        acc.collapses += st.collapses
+        acc.flips += st.flips
+        acc.rounds = st.rounds
+        acc.budgetHit = acc.budgetHit || st.budget_hit
+      }
+
+      // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
+      // stack that loadProps applies inside execProgram.
+      pushBrushDeviceInputs(wasmBrush, e)
+
+      // Build the per-dab command list (main brush + optional autosmooth) and
+      // run it over the filtered node set.
+      const prog = this.getProgram()
+      buildBrushProgram(prog, brushType, brush, radius, mesh)
+      // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
+      // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
+      // which `nodes` (the constructWith result) is on both backends.
+      wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(normal))
     }
 
     mesh.regenTreeBatch()

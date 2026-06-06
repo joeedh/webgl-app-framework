@@ -64,7 +64,7 @@ import {
   VMapFields,
 } from '../../../../addons/builtin/mesh/src/mesh_grids_kdtree.js'
 import {splitEdgesSimple2, splitEdgesSmart2} from '../../../../addons/builtin/mesh/src/mesh_subdivide.js'
-import {calcConcave, PaintOpBase, PaintSample, SymAxisMap, PathPoint, PaintOpMesh} from './pbvh_base'
+import {calcConcave, PaintOpBase, SymAxisMap, PathPoint, PaintOpMesh} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../../addons/builtin/mesh/src/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../../addons/builtin/mesh/src/mesh_tess.js'
 import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
@@ -83,6 +83,7 @@ import {
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
 import type {ViewContext} from '../../../core/context.js'
+import { PaintSample } from './pbvh_paintsample.js';
 
 //grab data field definition
 const GEID = 0
@@ -800,14 +801,14 @@ export class PaintOp extends PaintOpMesh<
     return super.sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp)
   }
 
-  feedTask(e: PointerEvent, p: PathPoint, pi: any): Generator<void, void, unknown> | void {
-    const result = this.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this.path.length - 1)
+  feedTask(e: PointerEvent, p: PaintSample, pi: any): Generator<void, void, unknown> | void {
+    const result = this.onBrushDab(e, p, true, pi !== this.path.length - 1)
     if (result === undefined) {
       return undefined
     }
 
     const view3d = this.modal_ctx!.view3d
-    const mpos = view3d.getLocalMouse(p.co[0], p.co[1])
+    const mpos = p.screenP
     const invert = this.getInvertFromEvent(e)
     return this.processSample(view3d.activeCamera.rendermat, mpos, result.view, result.origin, p.pressure, invert, true)
   }
@@ -1140,7 +1141,7 @@ export class PaintOp extends PaintOpMesh<
         ps.smoothProj = smoothProj
         ps.pinch = pinch
         ps.sharp = sharp
-        ps.sp.load(sco)
+        ps.screenP.load(sco)
         ps.rake = rake
         ps.invert = invert
         ps.origp.load(op2)
@@ -1171,8 +1172,8 @@ export class PaintOp extends PaintOpMesh<
 
           ps.strokeS = lastps.strokeS + spacing
 
-          ps.dsp.load(ps.sp).sub(lastps.sp)
-          ps.angle = Math.atan2(ps.dsp[1], ps.dsp[0])
+          ps.dScreenP.load(ps.screenP).sub(lastps.sp)
+          ps.angle = Math.atan2(ps.dScreenP[1], ps.dScreenP[0])
 
           lastps.futureAngle = ps.angle
 
