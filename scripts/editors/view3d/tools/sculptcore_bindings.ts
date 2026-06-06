@@ -283,6 +283,8 @@ export function builSculptcoreBrush({
   invert,
   wasmExec,
   mesh,
+  nonAccum = false,
+  strokeGen = 0,
 }: {
   wasm: IWasmInterface
   brush: SculptBrush
@@ -291,6 +293,11 @@ export function builSculptcoreBrush({
   invert: boolean
   wasmExec?: CommandExecutor
   mesh: LiteMesh
+  /** Non-accumulate mode for this stroke + its monotonic generation stamp (see
+   * nonAccumMode.md). The executor ignores nonAccum for non-deform (paint /
+   * global) brushes, which are never accumulable. */
+  nonAccum?: boolean
+  strokeGen?: number
 }) {
   let freshBrush = false
   if (wasmBrush === undefined) {
@@ -322,6 +329,12 @@ export function builSculptcoreBrush({
     // LiveDisk smooth would find no neighbors and no-op. (1 = NeighborMode::Csr)
     wasmExec.setNeighborMode(1)
   }
+
+  // Non-accumulate stroke state (deform brushes measure from the stroke-start
+  // position; the executor stamps `.brush.orig.*` under strokeGen). Pushed each
+  // dab — cheap, and keeps a reused executor in sync with the active stroke.
+  wasmExec.setNonAccum(nonAccum)
+  wasmExec.setStrokeGen(strokeGen)
 
   // Pen-dynamics stack only needs (re)building when the brush is fresh — its
   // channels/curves are fixed for the stroke. Runs after the executor exists so

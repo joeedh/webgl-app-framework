@@ -450,7 +450,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.dynamics.strength.useDynamics` | prop | BoolProperty | Use Dynamics |  |
 | `scene.tools.sculpt.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculpt.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculpt.brush.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE} |
+| `scene.tools.sculpt.brush.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE} |
 | `scene.tools.sculpt.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `scene.tools.sculpt.brush.graph_id` | prop | IntProperty | Graph ID |  |
 | `scene.tools.sculpt.brush.inputs` | list |  |  |  |
@@ -586,7 +586,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynamics.strength.useDynamics` | prop | BoolProperty | Use Dynamics |  |
 | `scene.tools.sculptcore.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculptcore.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE} |
+| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE} |
 | `scene.tools.sculptcore.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `scene.tools.sculptcore.brush.graph_id` | prop | IntProperty | Graph ID |  |
 | `scene.tools.sculptcore.brush.inputs` | list |  |  |  |

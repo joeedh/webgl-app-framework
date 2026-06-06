@@ -14,7 +14,7 @@ import {
   pushBrushDeviceInputs,
   configureDynTopoParams,
 } from './sculptcore_bindings'
-import {SculptTools} from '../../../brush/brush_base'
+import {BrushFlags, SculptTools} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 
 export interface IGetBrushRet {
@@ -60,6 +60,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   static meshLog: MeshLog | undefined
   inStep = false
 
+  /** Monotonic, process-global non-accumulate generation stamp; pre-incremented
+   * once per stroke (so the first stroke gets 1, never 0 = "not stamped"). The
+   * executor + dyntopo key each vert's `.brush.orig.*` snapshot on it. */
+  static nextStrokeGen = 0
+  /** This stroke's generation stamp (set in undoPre). */
+  curStrokeGen = 0
+
   static tooldef() {
     return {
       toolpath: 'sculptcore.paint',
@@ -80,6 +87,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   undoPre(ctx: ToolContext) {
     this.strokeGroupId = undefined
     this.dabSeed = 1
+    this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
@@ -114,6 +122,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   getBrush(e: PointerEvent): IGetBrushRet {
     const brush = this.inputs.brush.getValue()
+    // Non-accumulate is the default (ACCUMULATE bit CLEAR). The executor ignores
+    // it for non-deform brushes, so it's safe to pass unconditionally.
+    const nonAccum = !(brush.flag & BrushFlags.ACCUMULATE)
     const result = builSculptcoreBrush({
       wasm: getWasmImmediate()!,
       brush,
@@ -122,6 +133,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       invert   : this.getInvertFromEvent(e),
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
+      nonAccum,
+      strokeGen: this.curStrokeGen,
     })
 
     this.wasmBrush = result.wasmBrush
@@ -392,9 +405,14 @@ export function runSculptcoreStroke(opts: {
   // Mouse-equivalent device sample (full pressure).
   const ev = {pointerType: 'mouse', pressure: 1.0, tiltX: 0, tiltY: 0} as unknown as PointerEvent
 
+  // Mirror the interactive op's non-accumulate handling (default = on; ACCUMULATE
+  // bit re-enables accumulate) with one stroke-generation stamp for this stroke.
+  const nonAccum = !(brush.flag & BrushFlags.ACCUMULATE)
+  const strokeGen = ++SculptPaintOp.nextStrokeGen
+
   let dabIdx = 0
   for (const dab of opts.dabs) {
-    const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec})
+    const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec, nonAccum, strokeGen})
     wasmBrush = r.wasmBrush
     wasmExec = r.wasmExec
 

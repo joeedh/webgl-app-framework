@@ -3191,7 +3191,7 @@
       "indexed": false,
       "propType": "IntProperty",
       "uiname": "Split Budget",
-      "description": "Max splits per dab (0 = unlimited)",
+      "description": "Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)",
       "range": [
         0,
         200000
@@ -3496,6 +3496,7 @@
         "256",
         "512",
         "1024",
+        "2048",
         "SELECT",
         "SHARED_SIZE",
         "DYNTOPO",
@@ -3506,7 +3507,8 @@
         "INVERT",
         "LINE_FALLOFF",
         "SQUARE",
-        "USE_LINE_CURVE"
+        "USE_LINE_CURVE",
+        "ACCUMULATE"
       ]
     },
     "scene.tools.sculpt.brush.graph_flag": {
@@ -4844,7 +4846,7 @@
       "indexed": false,
       "propType": "IntProperty",
       "uiname": "Split Budget",
-      "description": "Max splits per dab (0 = unlimited)",
+      "description": "Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)",
       "range": [
         0,
         200000
@@ -5149,6 +5151,7 @@
         "256",
         "512",
         "1024",
+        "2048",
         "SELECT",
         "SHARED_SIZE",
         "DYNTOPO",
@@ -5159,7 +5162,8 @@
         "INVERT",
         "LINE_FALLOFF",
         "SQUARE",
-        "USE_LINE_CURVE"
+        "USE_LINE_CURVE",
+        "ACCUMULATE"
       ]
     },
     "scene.tools.sculptcore.brush.graph_flag": {
@@ -5836,7 +5840,7 @@
       "indexed": false,
       "propType": "IntProperty",
       "uiname": "Split Budget",
-      "description": "Max splits per dab (0 = unlimited)",
+      "description": "Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)",
       "range": [
         0,
         200000

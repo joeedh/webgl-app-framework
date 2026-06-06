@@ -38,6 +38,11 @@ export enum BrushFlags {
   LINE_FALLOFF = 256,
   SQUARE = 512,
   USE_LINE_CURVE = 1024,
+  /* Accumulate deformation across passes within a stroke (Blender "Accumulate
+   * on"). CLEAR (the default) = non-accumulate: each pass measures from the
+   * vertex's stroke-start position so repeated passes converge. See
+   * sculptcore/documentation/plans/nonAccumMode.md. Deform brushes only. */
+  ACCUMULATE = 2048,
 }
 
 export enum DynTopoModes {

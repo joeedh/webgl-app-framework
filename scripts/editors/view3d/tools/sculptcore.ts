@@ -207,6 +207,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     doChannel('sharp')
 
     col.prop(path + '.brush.flag[INVERT]')
+    col.prop(path + '.brush.flag[ACCUMULATE]')
     col.prop(path + '.brush.spacing')
     col.prop(path + '.brush.color')
     col.prop(path + '.brush.bgcolor')
