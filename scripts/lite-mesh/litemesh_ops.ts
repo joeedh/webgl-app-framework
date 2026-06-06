@@ -531,3 +531,52 @@ export class GenerateUVOp extends LiteMeshAttrOp<{
   }
 }
 ToolOp.register(GenerateUVOp)
+
+/**
+ * Fan-triangulate every n-gon of the active LiteMesh and rebuild its spatial tree
+ * cleanly (a balanced, all-triangle BVH — dyntopo is much faster on it; see the
+ * "faster if triangulated" tip overlay). Whole-mesh topology change, so undo uses
+ * a serialize snapshot of the pre-triangulate mesh (captured in undoPre only when
+ * there is work to do); undo restores it via `_replaceMesh`, redo re-runs exec.
+ */
+export class TriangulateLiteMeshOp extends LiteMeshAttrOp {
+  /** Pre-triangulate mesh blob, or undefined when the mesh was already all-tris. */
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.triangulate',
+      uiname  : 'Triangulate',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    // Snapshot only when there's an n-gon to triangulate; an already-triangle
+    // mesh makes exec a no-op, so undo has nothing to restore.
+    this._undoBlob = mesh && mesh.hasNgons() ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    mesh.triangulate()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(TriangulateLiteMeshOp)

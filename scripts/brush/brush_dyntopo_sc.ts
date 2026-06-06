@@ -67,7 +67,10 @@ export class DynTopoSettingsSC {
   grade = 0.0
   mode = DynTopoSCMode.BOTH
   smoothLambda = 0.5
-  maxSplits = 0
+  // Per-dab split budget = the defer strategy. A cap keeps a large/dense dab
+  // single-round (~25fps+ on a ~5M-tri mesh); excess splits defer to later
+  // dabs. 0 = unlimited triggers the round-2 cascade (~110ms/dab at 5M).
+  maxSplits = 1024
   maxRounds = 50
 
   constructor() {}
@@ -254,7 +257,7 @@ export class DynTopoSettingsSC {
     st.float('smoothLambda', 'smoothLambda', 'Smooth Amount', 'Tangential smoothing step (0..1)')
       .range(0.0, 1.0)
       .noUnits()
-    st.int('maxSplits', 'maxSplits', 'Split Budget', 'Max splits per dab (0 = unlimited)').range(0, 200000).noUnits()
+    st.int('maxSplits', 'maxSplits', 'Split Budget', 'Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)').range(0, 200000).noUnits()
     st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
 
     return st

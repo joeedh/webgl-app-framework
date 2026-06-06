@@ -306,6 +306,13 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.tool('mesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.generate_uv()')
+    strip.tool('litemesh.triangulate()')
+    // TODO: draw a small "large mesh would be faster if triangulated" footer tip
+    // overlay in the viewport when the active object is a LiteMesh that is both
+    // large (mesh.triCount over a threshold, ~1M) and still has n-gons
+    // (LiteMesh.hasNgons()), pointing the user at the Triangulate button above.
+    // dyntopo on a quad mesh pays a per-dab triangulate prepass + scans an
+    // unbalanced BVH; one-time triangulating fixes both.
     strip.prop(`scene.tools.${name}.symmetryAxes`)
 
     row = addHeaderRow()

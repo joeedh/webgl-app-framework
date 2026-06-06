@@ -497,6 +497,74 @@ export class LiteMesh extends SceneObjectData {
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
   }
 
+  /** True once the mesh has at least one n-gon (>3-sided) face — the triangulate
+   * button uses it to gate itself, and the viewport tip overlay to decide whether
+   * to suggest triangulating a large mesh. Routes through the backend-agnostic
+   * `Mesh_ngonFaceCount` helper (an exact live counter; 0 == all-triangles) so it
+   * works on WASM, whose `.ptr` handle exposes no struct methods. */
+  hasNgons(): boolean {
+    return this.wasm.Mesh_ngonFaceCount(this.mesh) > 0
+  }
+
+  /** Fan-triangulate every n-gon in place and rebuild the spatial tree cleanly.
+   * Returns false (nothing to do) when the mesh is already all-triangles. The
+   * clean rebuild matters: incrementally triangulating leaves the quad-built BVH
+   * unbalanced, which is what made dyntopo slow on quad meshes. */
+  triangulate(): boolean {
+    if (!this.hasNgons()) {
+      return false
+    }
+    this.wasm.Mesh_triangulate(this.mesh)
+    this._rebuildSpatial()
+    return true
+  }
+
+  /** Tear down the spatial tree + tree-derived GPU batches and rebuild cleanly
+   * over the current `this.mesh` (after a wholesale topology change). Keeps the
+   * mesh + batch executors; forces the renderengine to re-push the material draw
+   * shader so the rebuilt tree renders with the material, not the fallback. */
+  private _rebuildSpatial(): void {
+    if (this.treeBatch) {
+      this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+      this.treeBatch = undefined
+    }
+    if (this.seamBatch) {
+      this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
+      this.seamBatch = undefined
+    }
+    // drawBatch is owned by the spatial tree; freeing the tree releases it.
+    this.drawBatch = undefined
+    if (this.spatial) {
+      this.wasm.SpatialTree_free(this.spatial)
+      this.spatial = undefined as unknown as SpatialTree
+    }
+    this._initSpatial()
+
+    // Drop the GPU pipeline/binding caches: the rebuilt tree has a fresh
+    // drawShader ShaderDef, and the allocator may hand back the old address, so a
+    // pipeline cached on the stale pointer would be wrong. Then clear the engine
+    // push-cache so the BasePass re-pushes setRequestedAttrs/setDrawShader.
+    this.drawBatchExecutorGPU?.invalidatePipelines()
+    for (const bindings of this.gpuBindingsCache.values()) bindings.destroy()
+    this.gpuBindingsCache.clear()
+    this._hasMaterialDrawShader = false
+    const eng = this as unknown as {_engineDrawShaderHash?: number; _engineAttrLayersSig?: number}
+    eng._engineDrawShaderHash = undefined
+    eng._engineAttrLayersSig = undefined
+    this.markSeamsDirty()
+  }
+
+  /** Swap in a different mesh handle (undo restoring a pre-triangulate snapshot):
+   * adopt `newMesh`, rebuild the tree over it, then free the old mesh. */
+  _replaceMesh(newMesh: WasmMesh): void {
+    const old = this.mesh
+    this.mesh = newMesh
+    this._rebuildSpatial()
+    if (old) {
+      this.wasm.Mesh_free(old)
+    }
+  }
+
   /** Serialize the mesh to a versioned, compressed blob for the STRUCT getter. */
   serialize(): Uint8Array {
     return this.wasm.Mesh_serialize(this.mesh)
