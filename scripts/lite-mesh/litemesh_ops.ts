@@ -1,4 +1,4 @@
-import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
+import {FloatProperty, IntProperty, BoolProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
@@ -580,3 +580,87 @@ export class TriangulateLiteMeshOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(TriangulateLiteMeshOp)
+
+/**
+ * Feature-aligned global quad remesh of the active LiteMesh (cross-field →
+ * seamless param → integer quantization → quad extraction → reprojection). A
+ * whole-mesh topology change, so undo snapshots the pre-remesh mesh (serialize)
+ * and restores it via `_replaceMesh`; redo re-runs exec. A clean failure
+ * (infeasible field / too many folds) leaves the mesh untouched and drops the
+ * snapshot. Input defaults mirror C++ `remesh_params.h` — keep them in sync, as
+ * exec always passes every field, overriding the bound struct's own defaults.
+ */
+export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
+  targetEdgeLength: FloatProperty
+  useCurvature: BoolProperty
+  useSharpFeatures: BoolProperty
+  sharpAngle: FloatProperty
+  useDensity: BoolProperty
+  reproject: BoolProperty
+  smoothIterations: IntProperty
+  smoothStrength: FloatProperty
+  seed: IntProperty
+}> {
+  /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.quad_remesh',
+      uiname  : 'Quad Remesh',
+      inputs  : {
+        targetEdgeLength: new FloatProperty(0.1).setRange(0.001, 10.0),
+        useCurvature    : new BoolProperty(true),
+        useSharpFeatures: new BoolProperty(true),
+        sharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
+        useDensity      : new BoolProperty(false),
+        reproject       : new BoolProperty(true),
+        smoothIterations: new IntProperty(2).setRange(0, 20).noUnits(),
+        smoothStrength  : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        seed            : new IntProperty(1).setRange(0, 1 << 30).noUnits(),
+      },
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const i = this.getInputs()
+    const changed = mesh.quadRemesh({
+      targetEdgeLength: i.targetEdgeLength,
+      useCurvature    : i.useCurvature,
+      useSharpFeatures: i.useSharpFeatures,
+      sharpAngle      : i.sharpAngle,
+      useDensity      : i.useDensity,
+      reproject       : i.reproject,
+      smoothIterations: i.smoothIterations,
+      smoothStrength  : i.smoothStrength,
+      seed            : i.seed,
+    })
+    // Clean failure leaves the mesh untouched, so there's nothing to undo.
+    if (!changed) {
+      this._undoBlob = undefined
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(QuadRemeshLiteMeshOp)

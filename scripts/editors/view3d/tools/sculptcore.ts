@@ -308,6 +308,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
+    strip.tool('litemesh.quad_remesh()')
     // TODO: draw a small "large mesh would be faster if triangulated" footer tip
     // overlay in the viewport when the active object is a LiteMesh that is both
     // large (mesh.triCount over a threshold, ~1M) and still has n-gons

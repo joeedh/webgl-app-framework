@@ -241,6 +241,33 @@ export class FaceData extends AttrSet {
   }
 }
 
+/**
+ * Knobs for {@link LiteMesh.quadRemesh}. Every field is optional — omitted ones
+ * keep the C++ `RemeshParams` defaults (the bound struct is default-constructed
+ * first, so C++ stays the single source of truth). Field names mirror the C++
+ * struct (camelCase here → snake_case there).
+ */
+export interface QuadRemeshOptions {
+  /** Target quad edge length (world units); drives the output face count. */
+  targetEdgeLength?: number
+  /** Align the cross field to principal-curvature directions. */
+  useCurvature?: boolean
+  /** Pin the field to sharp edges + open boundaries (creases stay on loops). */
+  useSharpFeatures?: boolean
+  /** Dihedral threshold (radians) above which an edge is tagged sharp. */
+  sharpAngle?: number
+  /** Scale quad spacing by 1/`.remesh.v.density` (host must paint the layer). */
+  useDensity?: boolean
+  /** Snap each output vertex back onto the input surface (off = debug). */
+  reproject?: boolean
+  /** Laplacian-smoothing passes interleaved with reprojection. */
+  smoothIterations?: number
+  /** Per-iteration smoothing step (0..1). */
+  smoothStrength?: number
+  /** Determinism seed (fixed input + seed → byte-identical output). */
+  seed?: number
+}
+
 export class LiteMesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -517,6 +544,36 @@ export class LiteMesh extends SceneObjectData {
     this.wasm.Mesh_triangulate(this.mesh)
     this._rebuildSpatial()
     return true
+  }
+
+  /** Feature-aligned global quad remesh (cross-field → seamless param → integer
+   * quantization → quad extraction → reprojection). Builds a fresh all-quad mesh
+   * and swaps it in; the input is deep-copied in C++ so it is never mutated here.
+   * `opts` overrides only the fields it sets — the rest keep the C++ defaults.
+   * Returns false on a clean failure (Gauss-Bonnet-infeasible field / too many
+   * folded faces), leaving the mesh untouched. */
+  quadRemesh(opts: QuadRemeshOptions = {}): boolean {
+    const params = this.wasm.manager.construct('sculptcore::remesh::RemeshParams')
+    try {
+      if (opts.targetEdgeLength !== undefined) params.target_edge_length = opts.targetEdgeLength
+      if (opts.useCurvature !== undefined) params.use_curvature = opts.useCurvature
+      if (opts.useSharpFeatures !== undefined) params.use_sharp_features = opts.useSharpFeatures
+      if (opts.sharpAngle !== undefined) params.sharp_angle = opts.sharpAngle
+      if (opts.useDensity !== undefined) params.use_density = opts.useDensity
+      if (opts.reproject !== undefined) params.reproject = opts.reproject
+      if (opts.smoothIterations !== undefined) params.smooth_iterations = opts.smoothIterations
+      if (opts.smoothStrength !== undefined) params.smooth_strength = opts.smoothStrength
+      if (opts.seed !== undefined) params.seed = opts.seed
+      const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
+      if (!out) {
+        return false // clean failure: infeasible field / too many folds
+      }
+      this._replaceMesh(out)
+      return true
+    } finally {
+      // WASM exposes an explicit disposer; native GC-finalizes the wrapper.
+      ;(params as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
   }
 
   /** Tear down the spatial tree + tree-derived GPU batches and rebuild cleanly
