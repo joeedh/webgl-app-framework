@@ -273,6 +273,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     dfield(panel2, 'maxSplits')
     dfield(panel2, 'maxRounds')
 
+    col.toolPanel('litemesh.quad_remesh')
+    
     //panel
     container.flushUpdate()
   }

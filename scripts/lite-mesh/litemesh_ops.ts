@@ -592,6 +592,7 @@ ToolOp.register(TriangulateLiteMeshOp)
  */
 export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   targetEdgeLength: FloatProperty
+  solveEdgeLength: FloatProperty
   useCurvature: BoolProperty
   useSharpFeatures: BoolProperty
   sharpAngle: FloatProperty
@@ -610,11 +611,12 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       uiname  : 'Quad Remesh',
       inputs  : {
         targetEdgeLength: new FloatProperty(0.1).setRange(0.001, 10.0),
+        solveEdgeLength : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
         useCurvature    : new BoolProperty(true),
-        useSharpFeatures: new BoolProperty(true),
+        useSharpFeatures: new BoolProperty(false),
         sharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
         useDensity      : new BoolProperty(false),
-        reproject       : new BoolProperty(true),
+        reproject       : new BoolProperty(false),
         smoothIterations: new IntProperty(2).setRange(0, 20).noUnits(),
         smoothStrength  : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
         seed            : new IntProperty(1).setRange(0, 1 << 30).noUnits(),
@@ -638,6 +640,7 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     const i = this.getInputs()
     const changed = mesh.quadRemesh({
       targetEdgeLength: i.targetEdgeLength,
+      solveEdgeLength : i.solveEdgeLength,
       useCurvature    : i.useCurvature,
       useSharpFeatures: i.useSharpFeatures,
       sharpAngle      : i.sharpAngle,

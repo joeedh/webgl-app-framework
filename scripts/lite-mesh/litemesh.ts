@@ -250,6 +250,10 @@ export class FaceData extends AttrSet {
 export interface QuadRemeshOptions {
   /** Target quad edge length (world units); drives the output face count. */
   targetEdgeLength?: number
+  /** Solve-mesh edge length (world units); 0 = solve on the raw input. When > 0,
+   * a dyntopo pre-pass coarsens the working copy to ~this length so dense inputs
+   * stay tractable; the final reprojection still targets the full-res original. */
+  solveEdgeLength?: number
   /** Align the cross field to principal-curvature directions. */
   useCurvature?: boolean
   /** Pin the field to sharp edges + open boundaries (creases stay on loops). */
@@ -556,6 +560,7 @@ export class LiteMesh extends SceneObjectData {
     const params = this.wasm.manager.construct('sculptcore::remesh::RemeshParams')
     try {
       if (opts.targetEdgeLength !== undefined) params.target_edge_length = opts.targetEdgeLength
+      if (opts.solveEdgeLength !== undefined) params.solve_edge_length = opts.solveEdgeLength
       if (opts.useCurvature !== undefined) params.use_curvature = opts.useCurvature
       if (opts.useSharpFeatures !== undefined) params.use_sharp_features = opts.useSharpFeatures
       if (opts.sharpAngle !== undefined) params.sharp_angle = opts.sharpAngle
