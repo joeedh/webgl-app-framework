@@ -270,6 +270,15 @@ export interface QuadRemeshOptions {
   smoothStrength?: number
   /** Determinism seed (fixed input + seed → byte-identical output). */
   seed?: number
+  /** Run input triage before the solve (weld near-coincident verts, drop
+   * degenerate faces / tiny components, detect non-manifold). No-op on clean
+   * input; defaults on. */
+  triage?: boolean
+  /** Triage weld tolerance as a fraction of the mesh bbox diagonal. */
+  triageWeldRel?: number
+  /** Triage: drop disconnected components below this fraction of total verts
+   * (0 = keep all). */
+  triageMinComponentFrac?: number
 }
 
 export class LiteMesh extends SceneObjectData {
@@ -569,6 +578,10 @@ export class LiteMesh extends SceneObjectData {
       if (opts.smoothIterations !== undefined) params.smooth_iterations = opts.smoothIterations
       if (opts.smoothStrength !== undefined) params.smooth_strength = opts.smoothStrength
       if (opts.seed !== undefined) params.seed = opts.seed
+      if (opts.triage !== undefined) params.triage = opts.triage
+      if (opts.triageWeldRel !== undefined) params.triage_weld_rel = opts.triageWeldRel
+      if (opts.triageMinComponentFrac !== undefined)
+        params.triage_min_component_frac = opts.triageMinComponentFrac
       const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
       if (!out) {
         return false // clean failure: infeasible field / too many folds
