@@ -606,6 +606,11 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   triageMinComponentFrac: FloatProperty
   curvatureSmoothIters: IntProperty
   curvatureSmoothLambda: FloatProperty
+  autoDensity: BoolProperty
+  densityMin: FloatProperty
+  densityMax: FloatProperty
+  densityGradation: FloatProperty
+  densityGradationIters: IntProperty
 }> {
   /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
   _undoBlob?: Uint8Array
@@ -630,6 +635,11 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         triageMinComponentFrac: new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
         curvatureSmoothIters: new IntProperty(0).setRange(0, 20).noUnits(),
         curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        autoDensity     : new BoolProperty(false),
+        densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
+        densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
+        densityGradation: new FloatProperty(0.0).setRange(0.0, 2.0).noUnits(),
+        densityGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
       },
     }
   }
@@ -664,6 +674,11 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       triageMinComponentFrac: i.triageMinComponentFrac,
       curvatureSmoothIters: i.curvatureSmoothIters,
       curvatureSmoothLambda: i.curvatureSmoothLambda,
+      autoDensity     : i.autoDensity,
+      densityMin      : i.densityMin,
+      densityMax      : i.densityMax,
+      densityGradation: i.densityGradation,
+      densityGradationIters: i.densityGradationIters,
     })
     // Clean failure leaves the mesh untouched, so there's nothing to undo.
     if (!changed) {

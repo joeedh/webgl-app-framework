@@ -285,6 +285,17 @@ export interface QuadRemeshOptions {
   curvatureSmoothIters?: number
   /** Tier 2a: per-sweep blend in [0,1] for the curvature tensor diffusion. */
   curvatureSmoothLambda?: number
+  /** Tier 3a: generate the per-vertex sizing field from curvature (small quads at
+   * high curvature). Implies density consumption. false = no auto field. */
+  autoDensity?: boolean
+  /** Tier 3a: clamp on the generated density (size range). */
+  densityMin?: number
+  densityMax?: number
+  /** Tier 3b: bound the size-field growth rate so quads don't shear across a
+   * steep density step. 0 = off. Typical 0.3–1.0. */
+  densityGradation?: number
+  /** Tier 3b: gradation-limiter relaxation sweep cap. */
+  densityGradationIters?: number
 }
 
 export class LiteMesh extends SceneObjectData {
@@ -592,6 +603,13 @@ export class LiteMesh extends SceneObjectData {
         params.curvature_smooth_iters = opts.curvatureSmoothIters
       if (opts.curvatureSmoothLambda !== undefined)
         params.curvature_smooth_lambda = opts.curvatureSmoothLambda
+      if (opts.autoDensity !== undefined) params.auto_density = opts.autoDensity
+      if (opts.densityMin !== undefined) params.density_min = opts.densityMin
+      if (opts.densityMax !== undefined) params.density_max = opts.densityMax
+      if (opts.densityGradation !== undefined)
+        params.density_gradation = opts.densityGradation
+      if (opts.densityGradationIters !== undefined)
+        params.density_gradation_iters = opts.densityGradationIters
       const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
       if (!out) {
         return false // clean failure: infeasible field / too many folds
