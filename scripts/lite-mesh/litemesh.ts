@@ -279,6 +279,12 @@ export interface QuadRemeshOptions {
   /** Triage: drop disconnected components below this fraction of total verts
    * (0 = keep all). */
   triageMinComponentFrac?: number
+  /** Tier 2a: Jacobi-diffuse the per-vertex curvature tensor over the one-ring
+   * before eigendecomposition, denoising the field without touching geometry.
+   * 0 = today's raw 1-ring estimate (no smoothing). */
+  curvatureSmoothIters?: number
+  /** Tier 2a: per-sweep blend in [0,1] for the curvature tensor diffusion. */
+  curvatureSmoothLambda?: number
 }
 
 export class LiteMesh extends SceneObjectData {
@@ -582,6 +588,10 @@ export class LiteMesh extends SceneObjectData {
       if (opts.triageWeldRel !== undefined) params.triage_weld_rel = opts.triageWeldRel
       if (opts.triageMinComponentFrac !== undefined)
         params.triage_min_component_frac = opts.triageMinComponentFrac
+      if (opts.curvatureSmoothIters !== undefined)
+        params.curvature_smooth_iters = opts.curvatureSmoothIters
+      if (opts.curvatureSmoothLambda !== undefined)
+        params.curvature_smooth_lambda = opts.curvatureSmoothLambda
       const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
       if (!out) {
         return false // clean failure: infeasible field / too many folds

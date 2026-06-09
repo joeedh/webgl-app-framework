@@ -604,6 +604,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   triage: BoolProperty
   triageWeldRel: FloatProperty
   triageMinComponentFrac: FloatProperty
+  curvatureSmoothIters: IntProperty
+  curvatureSmoothLambda: FloatProperty
 }> {
   /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
   _undoBlob?: Uint8Array
@@ -626,6 +628,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         triage          : new BoolProperty(true),
         triageWeldRel   : new FloatProperty(1e-5).setRange(0.0, 1e-3).noUnits(),
         triageMinComponentFrac: new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
+        curvatureSmoothIters: new IntProperty(0).setRange(0, 20).noUnits(),
+        curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
       },
     }
   }
@@ -658,6 +662,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       triage          : i.triage,
       triageWeldRel   : i.triageWeldRel,
       triageMinComponentFrac: i.triageMinComponentFrac,
+      curvatureSmoothIters: i.curvatureSmoothIters,
+      curvatureSmoothLambda: i.curvatureSmoothLambda,
     })
     // Clean failure leaves the mesh untouched, so there's nothing to undo.
     if (!changed) {
