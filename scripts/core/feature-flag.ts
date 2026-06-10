@@ -116,15 +116,15 @@ export class FeatureFlagManager {
     this.merge()
   }
 }
-export const featureFlagManager = new FeatureFlagManager()
+export const FeatureFlags = new FeatureFlagManager()
 
 // each entry must satisfy FeatureFlag
-export const featureFlags = [
+const featureFlags = [
   {
     key        : 'sculptcore.quad_remesher',
     description: 'Enable quad remesher',
     type       : 'bool',
-    value      : false,
+    value      : true,
   },
 ] as const
 
