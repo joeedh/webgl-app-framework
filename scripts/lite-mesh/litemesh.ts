@@ -249,7 +249,7 @@ export class FaceData extends AttrSet {
  */
 export interface QuadRemeshOptions {
   /** Target output quad count; the edge length is derived from it (count mode,
-   * with a corrective re-quantize). Ignored when targetEdgeLength > 0. */
+   * best-effort). Ignored when targetEdgeLength > 0. */
   targetQuadCount?: number
   /** Explicit quad edge length (world units); 0 = derive from targetQuadCount. */
   targetEdgeLength?: number
