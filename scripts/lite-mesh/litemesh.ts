@@ -248,7 +248,10 @@ export class FaceData extends AttrSet {
  * struct (camelCase here → snake_case there).
  */
 export interface QuadRemeshOptions {
-  /** Target quad edge length (world units); drives the output face count. */
+  /** Target output quad count; the edge length is derived from it (count mode,
+   * with a corrective re-quantize). Ignored when targetEdgeLength > 0. */
+  targetQuadCount?: number
+  /** Explicit quad edge length (world units); 0 = derive from targetQuadCount. */
   targetEdgeLength?: number
   /** Solve-mesh edge length (world units); 0 = solve on the raw input. When > 0,
    * a dyntopo pre-pass coarsens the working copy to ~this length so dense inputs
@@ -285,6 +288,12 @@ export interface QuadRemeshOptions {
   curvatureSmoothIters?: number
   /** Tier 2a: per-sweep blend in [0,1] for the curvature tensor diffusion. */
   curvatureSmoothLambda?: number
+  /** Tier 4: per-edge smoothness weight of the cross-field solve. Higher =
+   * smoother field, fewer noise-born singularities, weaker curvature tracking. */
+  fieldSmoothness?: number
+  /** Tier 4: soft curvature-alignment scale (× local anisotropy) — the other
+   * half of the smoothness/alignment tradeoff. */
+  curvatureWeight?: number
   /** Tier 3a: generate the per-vertex sizing field from curvature (small quads at
    * high curvature). Implies density consumption. false = no auto field. */
   autoDensity?: boolean
@@ -296,6 +305,36 @@ export interface QuadRemeshOptions {
   densityGradation?: number
   /** Tier 3b: gradation-limiter relaxation sweep cap. */
   densityGradationIters?: number
+  /** Tier 9d: field-aligned input pre-remesh — clean the working triangulation's
+   * flow before the field solve. Geometry only; reprojection still targets the
+   * full-res original. false = pipeline unchanged. */
+  preRemesh?: boolean
+  /** Pre-pass edge length. 0 = auto (solveEdgeLength if set, else from the
+   * resolved quad edge length). */
+  preRemeshTarget?: number
+  /** Outer convergence iterations. 0 = auto from the measured input. */
+  preRemeshIters?: number
+  /** Drive the pre-pass band from the curvature size field (regenerating it
+   * overwrites a painted density map on the working copy). */
+  preRemeshDensity?: boolean
+  /** Growth cap on the pre-pass size field; 0 = off. */
+  preRemeshGradation?: number
+  preRemeshGradationIters?: number
+  /** Pre-pass smooth blend: 0 isotropic ↔ 1 field-aligned. */
+  preRemeshAlign?: number
+  /** Recompute the rough cross field every N outer iters. */
+  preRemeshFieldCadence?: number
+  /** Isotropic denoise sweeps before the field is trusted; -1 = auto from input
+   * noise, 0 = none. */
+  preRemeshBootstrapIters?: number
+  /** Inner field-aligned smooth sweeps per outer iter + relaxation factor. */
+  preRemeshSmoothIters?: number
+  preRemeshSmoothLambda?: number
+  /** Early-out once an outer iter moves every vertex < eps·target; 0 = off. */
+  preRemeshConvergeEps?: number
+  /** Pin boundary loops + dihedral-sharp creases through the pre-pass. */
+  preRemeshPreserveFeatures?: boolean
+  preRemeshSharpAngle?: number
 }
 
 export class LiteMesh extends SceneObjectData {
@@ -585,6 +624,7 @@ export class LiteMesh extends SceneObjectData {
   quadRemesh(opts: QuadRemeshOptions = {}): boolean {
     const params = this.wasm.manager.construct('sculptcore::remesh::RemeshParams')
     try {
+      if (opts.targetQuadCount !== undefined) params.target_quad_count = opts.targetQuadCount
       if (opts.targetEdgeLength !== undefined) params.target_edge_length = opts.targetEdgeLength
       if (opts.solveEdgeLength !== undefined) params.solve_edge_length = opts.solveEdgeLength
       if (opts.useCurvature !== undefined) params.use_curvature = opts.useCurvature
@@ -603,6 +643,8 @@ export class LiteMesh extends SceneObjectData {
         params.curvature_smooth_iters = opts.curvatureSmoothIters
       if (opts.curvatureSmoothLambda !== undefined)
         params.curvature_smooth_lambda = opts.curvatureSmoothLambda
+      if (opts.fieldSmoothness !== undefined) params.field_smoothness = opts.fieldSmoothness
+      if (opts.curvatureWeight !== undefined) params.curvature_weight = opts.curvatureWeight
       if (opts.autoDensity !== undefined) params.auto_density = opts.autoDensity
       if (opts.densityMin !== undefined) params.density_min = opts.densityMin
       if (opts.densityMax !== undefined) params.density_max = opts.densityMax
@@ -610,6 +652,33 @@ export class LiteMesh extends SceneObjectData {
         params.density_gradation = opts.densityGradation
       if (opts.densityGradationIters !== undefined)
         params.density_gradation_iters = opts.densityGradationIters
+      if (opts.preRemesh !== undefined) params.pre_remesh = opts.preRemesh
+      if (opts.preRemeshTarget !== undefined)
+        params.pre_remesh_target = opts.preRemeshTarget
+      if (opts.preRemeshIters !== undefined)
+        params.pre_remesh_iters = opts.preRemeshIters
+      if (opts.preRemeshDensity !== undefined)
+        params.pre_remesh_density = opts.preRemeshDensity
+      if (opts.preRemeshGradation !== undefined)
+        params.pre_remesh_gradation = opts.preRemeshGradation
+      if (opts.preRemeshGradationIters !== undefined)
+        params.pre_remesh_gradation_iters = opts.preRemeshGradationIters
+      if (opts.preRemeshAlign !== undefined)
+        params.pre_remesh_align = opts.preRemeshAlign
+      if (opts.preRemeshFieldCadence !== undefined)
+        params.pre_remesh_field_cadence = opts.preRemeshFieldCadence
+      if (opts.preRemeshBootstrapIters !== undefined)
+        params.pre_remesh_bootstrap_iters = opts.preRemeshBootstrapIters
+      if (opts.preRemeshSmoothIters !== undefined)
+        params.pre_remesh_smooth_iters = opts.preRemeshSmoothIters
+      if (opts.preRemeshSmoothLambda !== undefined)
+        params.pre_remesh_smooth_lambda = opts.preRemeshSmoothLambda
+      if (opts.preRemeshConvergeEps !== undefined)
+        params.pre_remesh_converge_eps = opts.preRemeshConvergeEps
+      if (opts.preRemeshPreserveFeatures !== undefined)
+        params.pre_remesh_preserve_features = opts.preRemeshPreserveFeatures
+      if (opts.preRemeshSharpAngle !== undefined)
+        params.pre_remesh_sharp_angle = opts.preRemeshSharpAngle
       const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
       if (!out) {
         return false // clean failure: infeasible field / too many folds

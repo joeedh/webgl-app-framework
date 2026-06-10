@@ -591,6 +591,7 @@ ToolOp.register(TriangulateLiteMeshOp)
  * exec always passes every field, overriding the bound struct's own defaults.
  */
 export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
+  targetQuadCount: IntProperty
   targetEdgeLength: FloatProperty
   solveEdgeLength: FloatProperty
   useCurvature: BoolProperty
@@ -606,11 +607,27 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   triageMinComponentFrac: FloatProperty
   curvatureSmoothIters: IntProperty
   curvatureSmoothLambda: FloatProperty
+  fieldSmoothness: FloatProperty
+  curvatureWeight: FloatProperty
   autoDensity: BoolProperty
   densityMin: FloatProperty
   densityMax: FloatProperty
   densityGradation: FloatProperty
   densityGradationIters: IntProperty
+  preRemesh: BoolProperty
+  preRemeshTarget: FloatProperty
+  preRemeshIters: IntProperty
+  preRemeshDensity: BoolProperty
+  preRemeshGradation: FloatProperty
+  preRemeshGradationIters: IntProperty
+  preRemeshAlign: FloatProperty
+  preRemeshFieldCadence: IntProperty
+  preRemeshBootstrapIters: IntProperty
+  preRemeshSmoothIters: IntProperty
+  preRemeshSmoothLambda: FloatProperty
+  preRemeshConvergeEps: FloatProperty
+  preRemeshPreserveFeatures: BoolProperty
+  preRemeshSharpAngle: FloatProperty
 }> {
   /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
   _undoBlob?: Uint8Array
@@ -620,7 +637,9 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       toolpath: 'litemesh.quad_remesh',
       uiname  : 'Quad Remesh',
       inputs  : {
-        targetEdgeLength: new FloatProperty(0.1).setRange(0.001, 10.0),
+        targetQuadCount : new IntProperty(15000).setRange(1, 1000000).noUnits(),
+        // 0 = derive the edge length from targetQuadCount (count mode).
+        targetEdgeLength: new FloatProperty(0.0).setRange(0.0, 10.0),
         solveEdgeLength : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
         useCurvature    : new BoolProperty(true),
         useSharpFeatures: new BoolProperty(false),
@@ -635,11 +654,27 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         triageMinComponentFrac: new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
         curvatureSmoothIters: new IntProperty(0).setRange(0, 20).noUnits(),
         curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        fieldSmoothness : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
+        curvatureWeight : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
         autoDensity     : new BoolProperty(false),
         densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
         densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
         densityGradation: new FloatProperty(0.0).setRange(0.0, 2.0).noUnits(),
         densityGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemesh       : new BoolProperty(false),
+        preRemeshTarget : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
+        preRemeshIters  : new IntProperty(0).setRange(0, 20).noUnits(),
+        preRemeshDensity: new BoolProperty(true),
+        preRemeshGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
+        preRemeshGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemeshAlign  : new FloatProperty(1.0).setRange(0.0, 1.0).noUnits(),
+        preRemeshFieldCadence: new IntProperty(2).setRange(1, 8).noUnits(),
+        preRemeshBootstrapIters: new IntProperty(-1).setRange(-1, 8).noUnits(),
+        preRemeshSmoothIters: new IntProperty(5).setRange(0, 20).noUnits(),
+        preRemeshSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        preRemeshConvergeEps: new FloatProperty(0.05).setRange(0.0, 0.2).noUnits(),
+        preRemeshPreserveFeatures: new BoolProperty(true),
+        preRemeshSharpAngle: new FloatProperty(0.7853982).setRange(0.0, Math.PI),
       },
     }
   }
@@ -659,6 +694,7 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     }
     const i = this.getInputs()
     const changed = mesh.quadRemesh({
+      targetQuadCount : i.targetQuadCount,
       targetEdgeLength: i.targetEdgeLength,
       solveEdgeLength : i.solveEdgeLength,
       useCurvature    : i.useCurvature,
@@ -674,11 +710,27 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       triageMinComponentFrac: i.triageMinComponentFrac,
       curvatureSmoothIters: i.curvatureSmoothIters,
       curvatureSmoothLambda: i.curvatureSmoothLambda,
+      fieldSmoothness : i.fieldSmoothness,
+      curvatureWeight : i.curvatureWeight,
       autoDensity     : i.autoDensity,
       densityMin      : i.densityMin,
       densityMax      : i.densityMax,
       densityGradation: i.densityGradation,
       densityGradationIters: i.densityGradationIters,
+      preRemesh       : i.preRemesh,
+      preRemeshTarget : i.preRemeshTarget,
+      preRemeshIters  : i.preRemeshIters,
+      preRemeshDensity: i.preRemeshDensity,
+      preRemeshGradation: i.preRemeshGradation,
+      preRemeshGradationIters: i.preRemeshGradationIters,
+      preRemeshAlign  : i.preRemeshAlign,
+      preRemeshFieldCadence: i.preRemeshFieldCadence,
+      preRemeshBootstrapIters: i.preRemeshBootstrapIters,
+      preRemeshSmoothIters: i.preRemeshSmoothIters,
+      preRemeshSmoothLambda: i.preRemeshSmoothLambda,
+      preRemeshConvergeEps: i.preRemeshConvergeEps,
+      preRemeshPreserveFeatures: i.preRemeshPreserveFeatures,
+      preRemeshSharpAngle: i.preRemeshSharpAngle,
     })
     // Clean failure leaves the mesh untouched, so there's nothing to undo.
     if (!changed) {

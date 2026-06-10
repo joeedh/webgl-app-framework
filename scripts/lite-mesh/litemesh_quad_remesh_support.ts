@@ -73,9 +73,10 @@ function topoSig(lite: LiteMesh): TopoSig {
 }
 
 /**
- * Run `litemesh.quad_remesh()` (all defaults — matching the C++ synthetic
- * suite's known-good `makeUVSphere` + default `RemeshParams` case) on the active
- * LiteMesh, then undo and redo, recording the topology fingerprint at each stage.
+ * Run `litemesh.quad_remesh(targetEdgeLength=0.1)` — matching the C++ synthetic
+ * suite's known-good `makeUVSphere` + explicit-0.1 case (the default is now
+ * count mode) — on the active LiteMesh, then undo and redo, recording the
+ * topology fingerprint at each stage.
  */
 function runQuadRemeshTest(): QuadRemeshTestResult {
   const backend = (globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND ?? 'wasm'
@@ -105,9 +106,9 @@ function runQuadRemeshTest(): QuadRemeshTestResult {
 
     result.before = topoSig(lite)
 
-    // The real user path: a registered, undoable ToolOp (input defaults match the
-    // C++ `RemeshParams` defaults), driven by data-API tool path.
-    ctx.api?.execTool(ctx, 'litemesh.quad_remesh()')
+    // The real user path: a registered, undoable ToolOp driven by data-API tool
+    // path. Explicit 0.1 pins the validated parity band (default = count mode).
+    ctx.api?.execTool(ctx, 'litemesh.quad_remesh(targetEdgeLength=0.1)')
     result.after = topoSig(lite)
     result.success = result.after.ngon !== result.before.ngon || result.after.leaf !== result.before.leaf
 
