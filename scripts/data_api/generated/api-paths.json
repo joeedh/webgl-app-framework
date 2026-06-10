@@ -7243,6 +7243,456 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.litemesh.quad_remesh": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.quad_remesh.autoDensity": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Auto Density",
+      "description": "Auto Density",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.curvatureSmoothIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Curvature Smooth Iters",
+      "description": "Curvature Smooth Iters",
+      "range": [
+        0,
+        20
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.curvatureSmoothLambda": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Curvature Smooth Lambda",
+      "description": "Curvature Smooth Lambda",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.curvatureWeight": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Curvature Weight",
+      "description": "Curvature Weight",
+      "range": [
+        0,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.densityGradation": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Density Gradation",
+      "description": "Density Gradation",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.densityGradationIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Density Gradation Iters",
+      "description": "Density Gradation Iters",
+      "range": [
+        1,
+        30
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.densityMax": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Density Max",
+      "description": "Density Max",
+      "range": [
+        1,
+        16
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.densityMin": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Density Min",
+      "description": "Density Min",
+      "range": [
+        0.05,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.fieldSmoothness": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Field Smoothness",
+      "description": "Field Smoothness",
+      "range": [
+        0.1,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemesh": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Pre Remesh",
+      "description": "Pre Remesh",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshAlign": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Align",
+      "description": "Pre Remesh Align",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshBootstrapIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Pre Remesh Bootstrap Iters",
+      "description": "Pre Remesh Bootstrap Iters",
+      "range": [
+        -1,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshConvergeEps": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Converge Eps",
+      "description": "Pre Remesh Converge Eps",
+      "range": [
+        0,
+        0.2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshDensity": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Pre Remesh Density",
+      "description": "Pre Remesh Density",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshFieldCadence": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Pre Remesh Field Cadence",
+      "description": "Pre Remesh Field Cadence",
+      "range": [
+        1,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshGradation": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Gradation",
+      "description": "Pre Remesh Gradation",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshGradationIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Pre Remesh Gradation Iters",
+      "description": "Pre Remesh Gradation Iters",
+      "range": [
+        1,
+        30
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Pre Remesh Iters",
+      "description": "Pre Remesh Iters",
+      "range": [
+        0,
+        20
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshPreserveFeatures": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Pre Remesh Preserve Features",
+      "description": "Pre Remesh Preserve Features",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshSharpAngle": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Sharp Angle",
+      "description": "Pre Remesh Sharp Angle",
+      "range": [
+        0,
+        3.141592653589793
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshSmoothIters": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Pre Remesh Smooth Iters",
+      "description": "Pre Remesh Smooth Iters",
+      "range": [
+        0,
+        20
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshSmoothLambda": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Smooth Lambda",
+      "description": "Pre Remesh Smooth Lambda",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.preRemeshTarget": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Pre Remesh Target",
+      "description": "Pre Remesh Target",
+      "range": [
+        0,
+        10
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.reproject": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Reproject",
+      "description": "Reproject",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.seed": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Seed",
+      "description": "Seed",
+      "range": [
+        0,
+        1073741824
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.sharpAngle": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Sharp Angle",
+      "description": "Sharp Angle",
+      "range": [
+        0,
+        3.141592653589793
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.smoothIterations": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Smooth Iterations",
+      "description": "Smooth Iterations",
+      "range": [
+        0,
+        20
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.smoothStrength": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Smooth Strength",
+      "description": "Smooth Strength",
+      "range": [
+        0,
+        1
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.solveEdgeLength": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Solve Edge Length",
+      "description": "Solve Edge Length",
+      "range": [
+        0,
+        10
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.targetEdgeLength": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Target Edge Length",
+      "description": "Target Edge Length",
+      "range": [
+        0,
+        10
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.targetQuadCount": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Target Quad Count",
+      "description": "Target Quad Count",
+      "range": [
+        1,
+        1000000
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.triage": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Triage",
+      "description": "Triage",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.triageMinComponentFrac": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Triage Min Component Frac",
+      "description": "Triage Min Component Frac",
+      "range": [
+        0,
+        0.5
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.triageWeldRel": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Triage Weld Rel",
+      "description": "Triage Weld Rel",
+      "range": [
+        0,
+        0.001
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.quad_remesh.useCurvature": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Curvature",
+      "description": "Use Curvature",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.useDensity": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Density",
+      "description": "Use Density",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.useSharpFeatures": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Sharp Features",
+      "description": "Use Sharp Features",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.material": {
       "kind": "struct",
       "indexed": false,

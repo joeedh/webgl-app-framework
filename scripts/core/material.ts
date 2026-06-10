@@ -215,9 +215,10 @@ Material {
 
     st.dynamicStruct('', 'shader', 'Shading Node')
     //dynamicStruct return a struct, not the owning datapath
-    def = st.pathmap.shader
 
-    def.customGetSet(function (this: {dataref: any}) {
+    // XXX properly type this
+    const shaderDef = st.pathmap.shader
+    shaderDef.customGetSet(function (this: {dataref: any}) {
       return getShaderNode(this.dataref)
     }, undefined)
 

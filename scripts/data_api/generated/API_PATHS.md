@@ -826,6 +826,44 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.mark_seam` | struct |  |  |  |
 | `toolDefaults.litemesh.mark_seam.vEnd` | prop | IntProperty | V End |  |
 | `toolDefaults.litemesh.mark_seam.vStart` | prop | IntProperty | V Start |  |
+| `toolDefaults.litemesh.quad_remesh` | struct |  |  |  |
+| `toolDefaults.litemesh.quad_remesh.autoDensity` | prop | BoolProperty | Auto Density |  |
+| `toolDefaults.litemesh.quad_remesh.curvatureSmoothIters` | prop | IntProperty | Curvature Smooth Iters | range 0..20 |
+| `toolDefaults.litemesh.quad_remesh.curvatureSmoothLambda` | prop | FloatProperty | Curvature Smooth Lambda | range 0..1 |
+| `toolDefaults.litemesh.quad_remesh.curvatureWeight` | prop | FloatProperty | Curvature Weight | range 0..8 |
+| `toolDefaults.litemesh.quad_remesh.densityGradation` | prop | FloatProperty | Density Gradation | range 0..2 |
+| `toolDefaults.litemesh.quad_remesh.densityGradationIters` | prop | IntProperty | Density Gradation Iters | range 1..30 |
+| `toolDefaults.litemesh.quad_remesh.densityMax` | prop | FloatProperty | Density Max | range 1..16 |
+| `toolDefaults.litemesh.quad_remesh.densityMin` | prop | FloatProperty | Density Min | range 0.05..1 |
+| `toolDefaults.litemesh.quad_remesh.fieldSmoothness` | prop | FloatProperty | Field Smoothness | range 0.1..8 |
+| `toolDefaults.litemesh.quad_remesh.preRemesh` | prop | BoolProperty | Pre Remesh |  |
+| `toolDefaults.litemesh.quad_remesh.preRemeshAlign` | prop | FloatProperty | Pre Remesh Align | range 0..1 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshBootstrapIters` | prop | IntProperty | Pre Remesh Bootstrap Iters | range -1..8 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshConvergeEps` | prop | FloatProperty | Pre Remesh Converge Eps | range 0..0.2 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshDensity` | prop | BoolProperty | Pre Remesh Density |  |
+| `toolDefaults.litemesh.quad_remesh.preRemeshFieldCadence` | prop | IntProperty | Pre Remesh Field Cadence | range 1..8 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshGradation` | prop | FloatProperty | Pre Remesh Gradation | range 0..2 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshGradationIters` | prop | IntProperty | Pre Remesh Gradation Iters | range 1..30 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshIters` | prop | IntProperty | Pre Remesh Iters | range 0..20 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshPreserveFeatures` | prop | BoolProperty | Pre Remesh Preserve Features |  |
+| `toolDefaults.litemesh.quad_remesh.preRemeshSharpAngle` | prop | FloatProperty | Pre Remesh Sharp Angle | range 0..3.141592653589793 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshSmoothIters` | prop | IntProperty | Pre Remesh Smooth Iters | range 0..20 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshSmoothLambda` | prop | FloatProperty | Pre Remesh Smooth Lambda | range 0..1 |
+| `toolDefaults.litemesh.quad_remesh.preRemeshTarget` | prop | FloatProperty | Pre Remesh Target | range 0..10 |
+| `toolDefaults.litemesh.quad_remesh.reproject` | prop | BoolProperty | Reproject |  |
+| `toolDefaults.litemesh.quad_remesh.seed` | prop | IntProperty | Seed | range 0..1073741824 |
+| `toolDefaults.litemesh.quad_remesh.sharpAngle` | prop | FloatProperty | Sharp Angle | range 0..3.141592653589793 |
+| `toolDefaults.litemesh.quad_remesh.smoothIterations` | prop | IntProperty | Smooth Iterations | range 0..20 |
+| `toolDefaults.litemesh.quad_remesh.smoothStrength` | prop | FloatProperty | Smooth Strength | range 0..1 |
+| `toolDefaults.litemesh.quad_remesh.solveEdgeLength` | prop | FloatProperty | Solve Edge Length | range 0..10 |
+| `toolDefaults.litemesh.quad_remesh.targetEdgeLength` | prop | FloatProperty | Target Edge Length | range 0..10 |
+| `toolDefaults.litemesh.quad_remesh.targetQuadCount` | prop | IntProperty | Target Quad Count | range 1..1000000 |
+| `toolDefaults.litemesh.quad_remesh.triage` | prop | BoolProperty | Triage |  |
+| `toolDefaults.litemesh.quad_remesh.triageMinComponentFrac` | prop | FloatProperty | Triage Min Component Frac | range 0..0.5 |
+| `toolDefaults.litemesh.quad_remesh.triageWeldRel` | prop | FloatProperty | Triage Weld Rel | range 0..0.001 |
+| `toolDefaults.litemesh.quad_remesh.useCurvature` | prop | BoolProperty | Use Curvature |  |
+| `toolDefaults.litemesh.quad_remesh.useDensity` | prop | BoolProperty | Use Density |  |
+| `toolDefaults.litemesh.quad_remesh.useSharpFeatures` | prop | BoolProperty | Use Sharp Features |  |
 | `toolDefaults.material` | struct |  |  |  |
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |

@@ -1,5 +1,6 @@
 'use strict'
 
+import './feature-flag'
 import {ViewContext} from './context'
 import {AppToolStack} from './toolstack'
 import '../editors/node/MaterialEditor'
