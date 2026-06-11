@@ -658,7 +658,7 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
         fieldSmoothness : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
         curvatureWeight : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
-        singularityCancel: new BoolProperty(false),
+        singularityCancel: new BoolProperty(true),
         singularityCancelMaxSep: new FloatProperty(1.5).setRange(0.5, 4.0).noUnits(),
         autoDensity     : new BoolProperty(false),
         densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
