@@ -294,6 +294,11 @@ export interface QuadRemeshOptions {
   /** Tier 4: soft curvature-alignment scale (× local anisotropy) — the other
    * half of the smoothness/alignment tradeoff. */
   curvatureWeight?: number
+  /** Tier 5: cancel +1/−1 singularity pairs closer than the gate by flipping
+   * edge periods along the geodesic path between them, then re-solving. */
+  singularityCancel?: boolean
+  /** Tier 5: pair-separation gate in quad-edge-length units. */
+  singularityCancelMaxSep?: number
   /** Tier 3a: generate the per-vertex sizing field from curvature (small quads at
    * high curvature). Implies density consumption. false = no auto field. */
   autoDensity?: boolean
@@ -645,6 +650,10 @@ export class LiteMesh extends SceneObjectData {
         params.curvature_smooth_lambda = opts.curvatureSmoothLambda
       if (opts.fieldSmoothness !== undefined) params.field_smoothness = opts.fieldSmoothness
       if (opts.curvatureWeight !== undefined) params.curvature_weight = opts.curvatureWeight
+      if (opts.singularityCancel !== undefined)
+        params.singularity_cancel = opts.singularityCancel
+      if (opts.singularityCancelMaxSep !== undefined)
+        params.singularity_cancel_max_sep = opts.singularityCancelMaxSep
       if (opts.autoDensity !== undefined) params.auto_density = opts.autoDensity
       if (opts.densityMin !== undefined) params.density_min = opts.densityMin
       if (opts.densityMax !== undefined) params.density_max = opts.densityMax

@@ -609,6 +609,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   curvatureSmoothLambda: FloatProperty
   fieldSmoothness: FloatProperty
   curvatureWeight: FloatProperty
+  singularityCancel: BoolProperty
+  singularityCancelMaxSep: FloatProperty
   autoDensity: BoolProperty
   densityMin: FloatProperty
   densityMax: FloatProperty
@@ -656,6 +658,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
         fieldSmoothness : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
         curvatureWeight : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
+        singularityCancel: new BoolProperty(false),
+        singularityCancelMaxSep: new FloatProperty(1.5).setRange(0.5, 4.0).noUnits(),
         autoDensity     : new BoolProperty(false),
         densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
         densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
@@ -712,6 +716,8 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
       curvatureSmoothLambda: i.curvatureSmoothLambda,
       fieldSmoothness : i.fieldSmoothness,
       curvatureWeight : i.curvatureWeight,
+      singularityCancel: i.singularityCancel,
+      singularityCancelMaxSep: i.singularityCancelMaxSep,
       autoDensity     : i.autoDensity,
       densityMin      : i.densityMin,
       densityMax      : i.densityMax,
