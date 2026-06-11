@@ -663,7 +663,7 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         autoDensity     : new BoolProperty(false),
         densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
         densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
-        densityGradation: new FloatProperty(0.0).setRange(0.0, 2.0).noUnits(),
+        densityGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
         densityGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
         preRemesh       : new BoolProperty(false),
         preRemeshTarget : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
