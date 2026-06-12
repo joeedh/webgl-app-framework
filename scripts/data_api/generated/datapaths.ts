@@ -487,6 +487,8 @@ export type GeneratedDataPath =
   | "settings"
   | "settings.addons"
   | "settings.brushSet"
+  | "settings.featureFlags"
+  | "settings.featureFlags.sculptcore_quad_remesher"
   | "settings.limitUndoMem"
   | "settings.undoMemLimit"
   | "settings_editor"
@@ -1277,6 +1279,8 @@ declare module "@framework/pathux" {
     "settings": true;
     "settings.addons": true;
     "settings.brushSet": true;
+    "settings.featureFlags": true;
+    "settings.featureFlags.sculptcore_quad_remesher": true;
     "settings.limitUndoMem": true;
     "settings.undoMemLimit": true;
     "settings_editor": true;

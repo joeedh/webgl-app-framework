@@ -13,7 +13,11 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [x]: Create 'pnpm build-all':
    - in sculptcore: node make.mjs codegen && node make.mjs build && node make.mjs build native && node make.mjs node
    - in main repo: pnpm build
-[ ]: port SettingsEditor.js to typescript then implement a feature flags UI as a tab in it.
+[x]: port SettingsEditor.js to typescript then implement a feature flags UI as a tab in it.
+     (SettingsEditor.ts; FeatureFlagManager wired into the datapath tree at
+     settings.featureFlags.* — dotted flag keys mangled via featureFlagApiName —
+     and the new tab lists every flag from FeatureFlags.definitions; guarded by
+     tests/e2e/settings_editor.e2e.ts)
 [ ]: implement the undo memory size calculation for sculptcore's toolops, then make sure the maximum undo memory limit works and is exposed in the settings editor.
 [ ]: plane brushes should give you the option of projecting to the center surface normal or the view normal,
      default to the view normal.

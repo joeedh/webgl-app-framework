@@ -81,10 +81,24 @@ the entry — no other registration is needed.
 ## Data API / UI binding
 
 `FeatureFlagManager.defineAPI` registers each flag as a bool property on the
-manager's `DataStruct`, so flags are reachable via the standard data-path
-binding system (e.g. a `check` widget with a path rooted at a
-`FeatureFlagManager` instance). This is set up automatically for every entry in
-`featureFlags`.
+manager's `DataStruct`, and the manager is rooted in the context tree at
+`settings.featureFlags` (via an `AppSettings` getter — flag storage stays
+separate from AppSettings persistence). Flag keys contain dots, which datapath
+member names cannot, so each property's apiname is the mangled
+`featureFlagApiName(key)` (non-word characters → `_`):
+
+```
+settings.featureFlags.sculptcore_quad_remesher
+```
+
+This is set up automatically for every entry in `featureFlags` — after adding
+a flag, run `pnpm gen:paths` to add its path to the generated catalog.
+
+The Settings editor (`scripts/editors/settings/SettingsEditor.ts`) lists every
+flag as a checkbox in its **Feature Flags** tab, built from
+`FeatureFlags.definitions` + `featureFlagApiName`, so new flags appear there
+with no editor changes. `tests/e2e/settings_editor.e2e.ts` guards the tab and
+the path round-trip.
 
 ## Persistence and merge semantics
 

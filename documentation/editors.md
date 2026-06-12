@@ -234,7 +234,7 @@ main content area. UI widgets are added to this container.
 | NodeViewer | `nodegraph-viewer-x` | `nodegraph_viewer` | `editors/node/NodeViewer.ts` | Read-only canvas-rendered node-graph viewer |
 | ImageEditor | `uv-image-editor-x` | `ImageEditor` | `editors/image/ImageEditor.ts` | Loads images into `ImageBlock`s and displays the active image (pan/zoom). The legacy UV-editing implementation is parked, unwired, under `editors/image/pending-port/` pending a new UV abstraction — see its `TODO.md`. |
 | ConsoleEditor | `console-editor-x` | `console_editor` | `editors/console/console.js` | JavaScript console with history and autocomplete |
-| SettingsEditor | `settings-editor-x` | `settings-editor` | `editors/settings/SettingsEditor.js` | Application preferences (general, theme, addons) |
+| SettingsEditor | `settings-editor-x` | `settings-editor` | `editors/settings/SettingsEditor.ts` | Application preferences (general, theme, addons, feature flags) |
 | DebugEditor | `debug-editor-x` | `DebugEditor` | `editors/debug/DebugEditor.js` | GPU debug viewer for inspecting framebuffers and textures |
 | DataPathBrowser | `data-path-browser-editor-x` | `dataPathBrowser` | `editors/datapath/DataPathBrowser.js` | Hierarchical browser of the data API structure |
 | ResourceBrowser | `resource-browser-x` | `resbrowser` | `editors/resbrowser/resbrowser.js` | Asset browser (hidden from switcher) |

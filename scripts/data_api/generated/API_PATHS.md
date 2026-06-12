@@ -676,6 +676,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.addons[n].enabled` | prop | BoolProperty | Enabled |  |
 | `settings.addons[n].name` | prop | StringProperty | Name |  |
 | `settings.brushSet` | prop | EnumProperty | Brush Set | enum {0, 1, HIGH_RES, MEDIUM_RES, DEFAULT} |
+| `settings.featureFlags` | struct |  |  |  |
+| `settings.featureFlags.sculptcore_quad_remesher` | prop | BoolProperty | sculptcore.quad_remesher |  |
 | `settings.limitUndoMem` | prop | BoolProperty | Limit Undo Memory |  |
 | `settings.undoMemLimit` | prop | IntProperty | Mem Limit |  |
 
