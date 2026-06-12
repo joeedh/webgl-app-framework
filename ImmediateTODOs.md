@@ -3,7 +3,7 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [ ]: Only show SculptTools enum icons that are implemented by sculptcore in the header ui (in sculptcore toolmode).
 [ ]: Write electron app integration tests for the boundary constraint system.  we need a way to
      compute the connected polyline graph of the boundary constraints on a mesh do a few brush strokes with and
-     without dyntopo on and then check if the polyline graph has changed by counting the number of non-2-valence vertices.
+     without dyntopo on and then check if the polyline graph has changed by counting the number of non-2-valence vertices.  also test undo/redo.
 [ ]: Pipe brush.color to the paint brush
 [ ]: Create 'pnpm configure-all':
    - in sculptcore: node make.mjs configure && node make.mjs.configure native
@@ -36,4 +36,3 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      at the mouse cursor during preview when a snap is happening.
 [ ]: need an overlay mode for uv seams and marked sharp.
 [ ]: uv marking tool should be refactored into a base class, which can also be used to mark edge sharp flag.
-
