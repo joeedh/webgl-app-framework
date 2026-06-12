@@ -184,6 +184,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     let p: Container<ViewContext> | PanelContents<ViewContext>
 
+    col.useIcons(false)
+
     doChannel('radius')
     doChannel('strength')
 
@@ -205,7 +207,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     p.prop(path + '.brush.flag[INVERT_CONCAVE_FILTER]')
 
     doChannel('sharp')
-
+    
+    col.useIcons(false);
     col.prop(path + '.brush.flag[INVERT]')
     col.prop(path + '.brush.flag[ACCUMULATE]')
     col.prop(path + '.brush.spacing')

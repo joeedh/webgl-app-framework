@@ -212,6 +212,11 @@ small reflection / test-automation surface on the app context. Reach it from any
 renderer-JS eval context as **`CTX.debug`** (the `CTX` window global is
 `_appstate.ctx`, defined in `entry_point.js`), or as `ctx.debug` in app code.
 
+For the full map of window globals, `CTX`/`CTX.api`/`CTX.debug` surfaces, and
+`window.DEBUG` toggles reachable from `evaluate_script` (chrome-devtools MCP /
+CDP) when live-debugging the browser or Electron build, see
+[documentation/debugSurface.md](documentation/debugSurface.md).
+
 - `CTX.debug.listEditorTypes()` — every registered editor's `define()` metadata,
   with `flag` decoded to `AreaFlags` names and `icon` resolved to its `Icons`
   key. Use it to discover valid `editorType` values.
