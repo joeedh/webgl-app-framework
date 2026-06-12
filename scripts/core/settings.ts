@@ -2,6 +2,7 @@ import {util, nstructjs, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js
 import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
+import {getAppStorage} from './app_storage'
 
 import '../util/polyfill.d.ts'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
@@ -238,7 +239,7 @@ AppSettings {
 
   save(): void {
     console.log(util.termColor('Saving settings', 'green'))
-    localStorage[SETTINGS_KEY] = JSON.stringify(this)
+    getAppStorage().setText(SETTINGS_KEY, JSON.stringify(this))
   }
 
   _loadAddons(): void {
@@ -301,10 +302,15 @@ AppSettings {
   load(): void {
     let json: AppSettingsJSON
 
+    const raw = getAppStorage().getText(SETTINGS_KEY)
+    if (raw === undefined) {
+      return
+    }
+
     try {
-      json = JSON.parse(localStorage[SETTINGS_KEY])
+      json = JSON.parse(raw)
     } catch (error) {
-      console.warn('Failed to load user settings from localStorage')
+      console.warn('Failed to load user settings')
       return
     }
 

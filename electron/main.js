@@ -185,10 +185,21 @@ ipcMain.handle('show-save-dialog', async (event, args, then, catchf) => {
     .catch(makeInvoker(event, catchf))
 })
 
+function sculptcoreDir() {
+  // Where the renderer persists the startup file + user settings (see
+  // scripts/core/app_storage.ts). From source we keep it self-contained in the
+  // repo root (<repo>/.sculptcore); packaged builds use ~/.sculptcore.
+  if (!app.isPackaged) {
+    return path.join(__dirname, '..', '.sculptcore')
+  }
+  return path.join(require('os').homedir(), '.sculptcore')
+}
+
 function createWindow() {
   // Forward the application argv into the renderer's process.argv as a base64
   // token (decoded by scripts/core/app_argv.ts). base64 avoids quoting issues.
   const argvToken = '--apptest-argv=' + Buffer.from(JSON.stringify(APP_ARGV)).toString('base64')
+  const storageDirToken = '--sculptcore-dir=' + sculptcoreDir()
 
   // Create the browser window.
   win = new BrowserWindow({
@@ -203,7 +214,7 @@ function createWindow() {
       enableRemoteModule         : true,
       experimentalFeatures       : true,
       allowRunningInsecureContent: true,
-      additionalArguments        : [argvToken],
+      additionalArguments        : [argvToken, storageDirToken],
     },
   })
 

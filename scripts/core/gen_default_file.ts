@@ -10,6 +10,7 @@ import type {ToolContext} from './context'
 import {Library} from './lib_api'
 import {genDefaultScreen} from '../editors/screengen'
 import {buildDefaultSceneContents} from './default_file'
+import {getAppStorage} from './app_storage'
 
 /*root operator for when loading files*/
 export class RootFileOp extends ToolOp {
@@ -72,12 +73,10 @@ export class BasicFileOp extends ToolOp {
 export function genDefaultFile(appstate: AppState, dont_load_startup = 0): void {
   _appstate.saveHandle = undefined
 
-  if (constants.APP_KEY_NAME in window.localStorage && !dont_load_startup) {
-    let buf = window.localStorage[constants.APP_KEY_NAME]
-
+  const startup = dont_load_startup ? undefined : getAppStorage().getBlob(constants.APP_KEY_NAME)
+  if (startup) {
     try {
-      buf = util.atob(buf)
-      appstate.loadFile(buf.buffer)
+      appstate.loadFile(startup.buffer as ArrayBuffer)
       return
     } catch (error) {
       util.print_stack(error as Error)

@@ -39,6 +39,7 @@ import {BinaryReader, BinaryWriter} from '../util/binarylib'
 import {remapLegacyStructSchema} from './legacy_struct_migration'
 import * as cconst from './const'
 import {AppSettings} from './settings'
+import {getAppStorage} from './app_storage'
 
 export class FileLoadError extends Error {}
 
@@ -965,16 +966,15 @@ export class AppState {
 
   clearStartupFile(): void {
     console.log('clearing startup file')
-    delete window.localStorage[cconst.APP_KEY_NAME]
+    getAppStorage().remove(cconst.APP_KEY_NAME)
   }
 
   saveStartupFile(): void {
     const buf = this.createFile({save_settings: false, compress: true})
-    const bufStr = util.btoa(buf)
 
     try {
-      window.localStorage[cconst.APP_KEY_NAME] = bufStr
-      console.log(`saved startup file; ${(bufStr.length / 1024).toFixed(2)}kb`)
+      getAppStorage().setBlob(cconst.APP_KEY_NAME, buf)
+      console.log(`saved startup file; ${(buf.byteLength / 1024).toFixed(2)}kb`)
       this.ctx.message('Saved startup file')
     } catch (error) {
       console.warn((error as Error).stack)
