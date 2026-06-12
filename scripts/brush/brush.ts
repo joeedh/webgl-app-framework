@@ -355,6 +355,15 @@ SculptBrush {
 }
 DataBlock.register(SculptBrush)
 
+/** Tools whose default brushes ship with ACCUMULATE set. */
+const ACCUMULATE_DEFAULT_TOOLS = [
+  SculptTools.SMOOTH,
+  SculptTools.BSMOOTH,
+  SculptTools.PAINT_SMOOTH,
+  SculptTools.INFLATE,
+  SculptTools.CLAY,
+]
+
 export function makeDefaultBrushes() {
   const brushes = {} as {[k: string]: SculptBrush}
   const bmap = {} as {[k: string]: SculptBrush}
@@ -372,6 +381,11 @@ export function makeDefaultBrushes() {
     brush.tool = SculptTools[k] as unknown as SculptTools
 
     bmap[SculptTools[k]] = brush
+  }
+
+  // Smoothing, inflate and clay brushes accumulate by default.
+  for (const tool of ACCUMULATE_DEFAULT_TOOLS) {
+    bmap[tool].flag |= BrushFlags.ACCUMULATE
   }
 
   let brush
@@ -565,6 +579,11 @@ export function makeDefaultBrushes_MediumRes() {
     brush.tool = SculptTools[k] as unknown as SculptTools
 
     bmap[SculptTools[k]] = brush
+  }
+
+  // Smoothing, inflate and clay brushes accumulate by default.
+  for (const tool of ACCUMULATE_DEFAULT_TOOLS) {
+    bmap[tool].flag |= BrushFlags.ACCUMULATE
   }
 
   let brush

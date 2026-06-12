@@ -159,6 +159,11 @@ export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined 
   return TOOL_TO_SCULPTBRUSH[tool]
 }
 
+/** Smooth-family tools ignore invert (inverted Laplacian smoothing diverges). */
+export function isSmoothTool(tool: SculptTools): boolean {
+  return tool === SculptTools.SMOOTH || tool === SculptTools.BSMOOTH || tool === SculptTools.PAINT_SMOOTH
+}
+
 /**
  * (Re)build a composite brush program for one dab: the main brush command,
  * plus a chained SMOOTH command (autosmooth) when `brush.autosmooth > 0`.
@@ -204,6 +209,8 @@ export function buildBrushProgram(
     const smoothStrength = brush.autosmooth
     const i = prog.addCommand(SculptBrushes.SMOOTH)
     prog.setCommandFloat(i, BrushProp.STRENGTH, smoothStrength)
+    // Autosmooth always smooths forward, even when the main command is inverted.
+    prog.setCommandInvert(i, false)
   }
 }
 
@@ -243,6 +250,14 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
       // Half-angle of the two stroke-following wing planes.
       wasmBrush.wingAngle = 0.3
       break
+    case SculptTools.COLOR: {
+      // Paint color — a bound float4, written elementwise through its `vec` view.
+      const vec = (wasmBrush.brushColor as unknown as {vec: number[]}).vec
+      for (let i = 0; i < 4; i++) {
+        vec[i] = brush.color[i] ?? 0
+      }
+      break
+    }
   }
 
   // SQUARE brushes get the stroke-aligned oriented cuboid falloff.
@@ -310,15 +325,32 @@ export function builSculptcoreBrush({
   }
 
   // sync properties
+  const planeFamily =
+    brush.tool === SculptTools.CLAY || brush.tool === SculptTools.SCRAPE || brush.tool === SculptTools.FILL
+  const effInvert = invert && !isSmoothTool(brush.tool)
   wasmBrush.strength = brush.strength
   wasmBrush.radius = radius
-  wasmBrush.invert = invert
+  // Plane brushes invert by flipping the plane (below), not by negating
+  // strength — negative strength would push verts away from the plane.
+  // Color paint inverts by painting the secondary color (below) instead.
+  wasmBrush.invert = effInvert && !planeFamily && brush.tool !== SculptTools.COLOR
   wasmBrush.spacing = brush.spacing
   wasmBrush.autosmooth = brush.autosmooth
 
   // Per-tool plane / wing / falloff uniforms (runs before the caller's
   // writeProps() so props-backed scalars round-trip through loadProps).
   configureToolUniforms(wasmBrush, brush)
+  if (effInvert && planeFamily) {
+    // Inverted clay digs, inverted scrape builds: mirror the plane setup.
+    wasmBrush.planeoff = -wasmBrush.planeoff
+    wasmBrush.planeSide = -wasmBrush.planeSide
+  }
+  if (effInvert && brush.tool === SculptTools.COLOR) {
+    const vec = (wasmBrush.brushColor as unknown as {vec: number[]}).vec
+    for (let i = 0; i < 4; i++) {
+      vec[i] = brush.bgcolor[i] ?? 0
+    }
+  }
 
   if (wasmExec === undefined) {
     const st = wasm.manager.get('sculptcore::brush::CommandExecutor') as StructType

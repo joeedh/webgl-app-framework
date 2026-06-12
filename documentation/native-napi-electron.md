@@ -316,6 +316,13 @@ min, max, sample[32]}`), read through the bulk-data seam off the LiteMesh's own
 The test **self-skips with a logged reason** when the app bundle or the native
 `.node` is absent, so CI without the clang/cmake-js toolchain stays green.
 
+`tests/integration/sculptcore_brushes.test.ts` reuses the same boot path for
+**behavior** (not parity): `--eval "__brushTest()"` runs the scripted stroke
+driver (`scripts/lite-mesh/litemesh_brushtest_support.ts`), whose result is
+reflected into the dump as `brushtest`. It asserts invert direction, mask
+gating, brush.color piping, draw-sharp boundedness, and accumulate defaults,
+per backend. Same self-skip rules.
+
 ---
 
 ## Known watch-items

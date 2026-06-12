@@ -314,6 +314,10 @@ function dumpScene(): unknown {
     // proving nstructjs JSON is an adequate test-fixture format for
     // AttributeNode-carrying materials (M7 "test format" decision).
     attrRoundtrip: (globalThis as {__attrtestRoundtripResult?: unknown}).__attrtestRoundtripResult,
+    // Reflect the brush-behavior driver (`__brushTest`): scripted strokes at
+    // the sphere poles, diffing GPU position/color buffers to assert invert,
+    // draw-sharp boundedness, mask gating, brush.color, and accumulate flags.
+    brushtest    : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
   }
 }
 

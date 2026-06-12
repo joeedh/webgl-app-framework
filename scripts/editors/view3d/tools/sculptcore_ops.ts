@@ -374,6 +374,8 @@ export function runSculptcoreStroke(opts: {
   radius?: number
   /** world-units-per-pixel at the dab; only needed for PIXELS edge mode. */
   dist?: number
+  /** Stroke-level invert (the interactive op's ctrl modifier). */
+  invert?: boolean
 }): {dabs: number; skipped: boolean} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
@@ -412,7 +414,17 @@ export function runSculptcoreStroke(opts: {
 
   let dabIdx = 0
   for (const dab of opts.dabs) {
-    const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec, nonAccum, strokeGen})
+    const r = builSculptcoreBrush({
+      wasm,
+      brush,
+      mesh,
+      radius,
+      invert: opts.invert ?? false,
+      wasmBrush,
+      wasmExec,
+      nonAccum,
+      strokeGen,
+    })
     wasmBrush = r.wasmBrush
     wasmExec = r.wasmExec
 

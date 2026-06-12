@@ -35,8 +35,6 @@ export function register(api: AddonAPI<IAddon>) {
     'mesh.make_sphere()',
     'mesh.make_ico_sphere()',
     'mesh.make_cylinder()',
-    SEP,
-    'smesh.make_cube()',
   ])
 }
 

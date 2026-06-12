@@ -50,12 +50,33 @@ intentional.
 ## Tool dispatch
 
 `TOOL_TO_SCULPTBRUSH` maps the TS `SculptTools` enum → `SculptBrushes` kernel.
-Wired: DRAW, SMOOTH, INFLATE, SHARP, PINCH, MASK_PAINT, and the plane family
-CLAY/SCRAPE/FILL/WING_SCRAPE. Tools with no equivalent (Grab, Snake, Paint, …)
-are absent → the op warns and skips the dab. The base kernels read `strength`
-(via the `strength` intrinsic) and, where the displacement should scale with
-brush size, the `radius` uniform directly (`draw`/`inflate`/`pinch`; `smooth`/
-`sharp`/`mask` don't); plane/wing read extra uniforms (below).
+Wired: DRAW, SMOOTH, BSMOOTH, INFLATE, SHARP, PINCH, MASK_PAINT, COLOR,
+POLYGROUP, and the plane family CLAY/SCRAPE/FILL/WING_SCRAPE. Tools with no
+equivalent (Grab, Snake, Paint, …) are absent → the op warns and skips the dab.
+The base kernels read `strength` (via the `strength` intrinsic) and, where the
+displacement should scale with brush size, the `radius` uniform directly
+(`draw`/`inflate`/`pinch`; `smooth`/`sharp`/`mask` don't); plane/wing read
+extra uniforms (below).
+
+## Invert, mask gating, color
+
+- **Invert** flows TS → C++ as the `invert` bool prop: `getInvertFromEvent`
+  (stroke_paint_op.ts) XORs ctrl with `BrushFlags.INVERT`, the bridge sets
+  `wasmBrush.invert`, `writeProps()` stores it, and the executor's per-command
+  `loadCommonProps` re-reads it (unless a command sets `overrideInvert`, as
+  autosmooth's SMOOTH entry does to pin `false`). Bool props go through
+  `prop_coerce.h`, which dispatches `Prop::BOOL`/`BoolProp` like the numeric
+  types — it didn't originally, which silently reset `invert` to its default
+  before every dab. Smooth-family tools ignore invert (`isSmoothTool`).
+- **Mask** gates vertex displacement: every displacing kernel scales by
+  `(1.0 - v.mask)`. With no mask painted this is an exact `×1.0`, so unmasked
+  results are bit-identical. MASK_PAINT paints the mask; inverted MASK_PAINT
+  erases it.
+- **Color** paint reads the `brushColor` uniform (piped from TS `brush.color`),
+  not a hardcoded value.
+
+Default-on `ACCUMULATE` brushes: smooth, bsmooth, paint-smooth, inflate, clay
+(see `accumulable` in the kernels / brush defaults in `scripts/brush/brush.ts`).
 
 ## Composite brushes / autosmooth (`BrushProgram`)
 
@@ -147,6 +168,19 @@ layer is a hook, not yet wired.
 - Native N-API addon: `node make.mjs node`. App bundle: `pnpm build` (repo root).
 - Typecheck: `npx tsgo --noEmit` (baseline 106 errors).
 - Cross-backend: `node make.mjs sbrush-validate wgsl` (each kernel compiles to
-  valid WGSL) and `node make.mjs sbrush-verify` (CPU vs GPU bit-identical; the
-  `/spatial/leaf_count` golden mismatches are pre-existing, unrelated to brushes).
+  valid WGSL) and `node make.mjs sbrush-verify` (CPU vs GPU bit-identical;
+  `--regen` rewrites `sculptcore/tests/golden/` after a deliberate behavior
+  change). On Windows the verify reconfigure needs `tint` — `configureEnv.mjs`
+  rebuilds PATH from vcvars, so point `SBRUSH_TOOL_PATH` at the tint dir (e.g.
+  `SBRUSH_TOOL_PATH='C:\dev\tint'`). The `smooth`/`smooth_csr`
+  `/spatial/leaf_count` cpp-vs-wgsl mismatch (7 vs 8) is pre-existing,
+  unrelated to brushes.
+- Behavior (end-to-end, both backends): `tests/integration/sculptcore_brushes.test.ts`
+  boots the Electron harness with `--eval "__brushTest()"`
+  (`scripts/lite-mesh/litemesh_brushtest_support.ts`) and asserts invert
+  direction, draw-sharp boundedness, mask gating + inverted-mask erase,
+  brush.color piping, accumulate defaults, and no NaN/Inf. The driver reads
+  GPU buffers by concatenating **all** same-named per-batch buffers, and runs
+  a zero-strength warmup stroke first (the first stroke re-batches and changes
+  buffer totals).
 - A C++ binding change requires rebuilding **both** WASM (for genTS) and native.

@@ -21,6 +21,7 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
   static tooldef() {
     return {
       toolpath: 'litemesh.add_cube',
+      uiname  : 'Add Cube',
       inputs: {
         sphere: new FloatProperty(0.0).setRange(0.0, 1.0).noUnits(),
         dimen : new IntProperty(50).setRange(1, 1024).noUnits(),
