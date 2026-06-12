@@ -241,6 +241,102 @@ export class FaceData extends AttrSet {
   }
 }
 
+/**
+ * Knobs for {@link LiteMesh.quadRemesh}. Every field is optional — omitted ones
+ * keep the C++ `RemeshParams` defaults (the bound struct is default-constructed
+ * first, so C++ stays the single source of truth). Field names mirror the C++
+ * struct (camelCase here → snake_case there).
+ */
+export interface QuadRemeshOptions {
+  /** Target output quad count; the edge length is derived from it (count mode,
+   * best-effort). Ignored when targetEdgeLength > 0. */
+  targetQuadCount?: number
+  /** Explicit quad edge length (world units); 0 = derive from targetQuadCount. */
+  targetEdgeLength?: number
+  /** Align the cross field to principal-curvature directions. */
+  useCurvature?: boolean
+  /** Pin the field to sharp edges + open boundaries (creases stay on loops). */
+  useSharpFeatures?: boolean
+  /** Dihedral threshold (radians) above which an edge is tagged sharp. */
+  sharpAngle?: number
+  /** Scale quad spacing by 1/`.remesh.v.density` (host must paint the layer). */
+  useDensity?: boolean
+  /** Snap each output vertex back onto the input surface (off = debug). */
+  reproject?: boolean
+  /** Laplacian-smoothing passes interleaved with reprojection. */
+  smoothIterations?: number
+  /** Per-iteration smoothing step (0..1). */
+  smoothStrength?: number
+  /** Determinism seed (fixed input + seed → byte-identical output). */
+  seed?: number
+  /** Run input triage before the solve (weld near-coincident verts, drop
+   * degenerate faces / tiny components, detect non-manifold). No-op on clean
+   * input; defaults on. */
+  triage?: boolean
+  /** Triage weld tolerance as a fraction of the mesh bbox diagonal. */
+  triageWeldRel?: number
+  /** Triage: drop disconnected components below this fraction of total verts
+   * (0 = keep all). */
+  triageMinComponentFrac?: number
+  /** Tier 2a: Jacobi-diffuse the per-vertex curvature tensor over the one-ring
+   * before eigendecomposition, denoising the field without touching geometry.
+   * 0 = today's raw 1-ring estimate (no smoothing). */
+  curvatureSmoothIters?: number
+  /** Tier 2a: per-sweep blend in [0,1] for the curvature tensor diffusion. */
+  curvatureSmoothLambda?: number
+  /** Tier 4: per-edge smoothness weight of the cross-field solve. Higher =
+   * smoother field, fewer noise-born singularities, weaker curvature tracking. */
+  fieldSmoothness?: number
+  /** Tier 4: soft curvature-alignment scale (× local anisotropy) — the other
+   * half of the smoothness/alignment tradeoff. */
+  curvatureWeight?: number
+  /** Tier 5: cancel +1/−1 singularity pairs closer than the gate by flipping
+   * edge periods along the geodesic path between them, then re-solving. */
+  singularityCancel?: boolean
+  /** Tier 5: pair-separation gate in quad-edge-length units. */
+  singularityCancelMaxSep?: number
+  /** Tier 3a: generate the per-vertex sizing field from curvature (small quads at
+   * high curvature). Implies density consumption. false = no auto field. */
+  autoDensity?: boolean
+  /** Tier 3a: clamp on the generated density (size range). */
+  densityMin?: number
+  densityMax?: number
+  /** Tier 3b: bound the size-field growth rate so quads don't shear across a
+   * steep density step. 0 = off. Typical 0.3–1.0. */
+  densityGradation?: number
+  /** Tier 3b: gradation-limiter relaxation sweep cap. */
+  densityGradationIters?: number
+  /** Tier 9d: field-aligned input pre-remesh — clean the working triangulation's
+   * flow before the field solve. Geometry only; reprojection still targets the
+   * full-res original. false = pipeline unchanged. */
+  preRemesh?: boolean
+  /** Pre-pass edge length. 0 = auto (from the resolved quad edge length). */
+  preRemeshTarget?: number
+  /** Outer convergence iterations. 0 = auto from the measured input. */
+  preRemeshIters?: number
+  /** Drive the pre-pass band from the curvature size field (regenerating it
+   * overwrites a painted density map on the working copy). */
+  preRemeshDensity?: boolean
+  /** Growth cap on the pre-pass size field; 0 = off. */
+  preRemeshGradation?: number
+  preRemeshGradationIters?: number
+  /** Pre-pass smooth blend: 0 isotropic ↔ 1 field-aligned. */
+  preRemeshAlign?: number
+  /** Recompute the rough cross field every N outer iters. */
+  preRemeshFieldCadence?: number
+  /** Isotropic denoise sweeps before the field is trusted; -1 = auto from input
+   * noise, 0 = none. */
+  preRemeshBootstrapIters?: number
+  /** Inner field-aligned smooth sweeps per outer iter + relaxation factor. */
+  preRemeshSmoothIters?: number
+  preRemeshSmoothLambda?: number
+  /** Early-out once an outer iter moves every vertex < eps·target; 0 = off. */
+  preRemeshConvergeEps?: number
+  /** Pin boundary loops + dihedral-sharp creases through the pre-pass. */
+  preRemeshPreserveFeatures?: boolean
+  preRemeshSharpAngle?: number
+}
+
 export class LiteMesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -517,6 +613,85 @@ export class LiteMesh extends SceneObjectData {
     this.wasm.Mesh_triangulate(this.mesh)
     this._rebuildSpatial()
     return true
+  }
+
+  /** Feature-aligned global quad remesh (cross-field → seamless param → integer
+   * quantization → quad extraction → reprojection). Builds a fresh all-quad mesh
+   * and swaps it in; the input is deep-copied in C++ so it is never mutated here.
+   * `opts` overrides only the fields it sets — the rest keep the C++ defaults.
+   * Returns false on a clean failure (Gauss-Bonnet-infeasible field / too many
+   * folded faces), leaving the mesh untouched. */
+  quadRemesh(opts: QuadRemeshOptions = {}): boolean {
+    const params = this.wasm.manager.construct('sculptcore::remesh::RemeshParams')
+    try {
+      if (opts.targetQuadCount !== undefined) params.target_quad_count = opts.targetQuadCount
+      if (opts.targetEdgeLength !== undefined) params.target_edge_length = opts.targetEdgeLength
+      if (opts.useCurvature !== undefined) params.use_curvature = opts.useCurvature
+      if (opts.useSharpFeatures !== undefined) params.use_sharp_features = opts.useSharpFeatures
+      if (opts.sharpAngle !== undefined) params.sharp_angle = opts.sharpAngle
+      if (opts.useDensity !== undefined) params.use_density = opts.useDensity
+      if (opts.reproject !== undefined) params.reproject = opts.reproject
+      if (opts.smoothIterations !== undefined) params.smooth_iterations = opts.smoothIterations
+      if (opts.smoothStrength !== undefined) params.smooth_strength = opts.smoothStrength
+      if (opts.seed !== undefined) params.seed = opts.seed
+      if (opts.triage !== undefined) params.triage = opts.triage
+      if (opts.triageWeldRel !== undefined) params.triage_weld_rel = opts.triageWeldRel
+      if (opts.triageMinComponentFrac !== undefined)
+        params.triage_min_component_frac = opts.triageMinComponentFrac
+      if (opts.curvatureSmoothIters !== undefined)
+        params.curvature_smooth_iters = opts.curvatureSmoothIters
+      if (opts.curvatureSmoothLambda !== undefined)
+        params.curvature_smooth_lambda = opts.curvatureSmoothLambda
+      if (opts.fieldSmoothness !== undefined) params.field_smoothness = opts.fieldSmoothness
+      if (opts.curvatureWeight !== undefined) params.curvature_weight = opts.curvatureWeight
+      if (opts.singularityCancel !== undefined)
+        params.singularity_cancel = opts.singularityCancel
+      if (opts.singularityCancelMaxSep !== undefined)
+        params.singularity_cancel_max_sep = opts.singularityCancelMaxSep
+      if (opts.autoDensity !== undefined) params.auto_density = opts.autoDensity
+      if (opts.densityMin !== undefined) params.density_min = opts.densityMin
+      if (opts.densityMax !== undefined) params.density_max = opts.densityMax
+      if (opts.densityGradation !== undefined)
+        params.density_gradation = opts.densityGradation
+      if (opts.densityGradationIters !== undefined)
+        params.density_gradation_iters = opts.densityGradationIters
+      if (opts.preRemesh !== undefined) params.pre_remesh = opts.preRemesh
+      if (opts.preRemeshTarget !== undefined)
+        params.pre_remesh_target = opts.preRemeshTarget
+      if (opts.preRemeshIters !== undefined)
+        params.pre_remesh_iters = opts.preRemeshIters
+      if (opts.preRemeshDensity !== undefined)
+        params.pre_remesh_density = opts.preRemeshDensity
+      if (opts.preRemeshGradation !== undefined)
+        params.pre_remesh_gradation = opts.preRemeshGradation
+      if (opts.preRemeshGradationIters !== undefined)
+        params.pre_remesh_gradation_iters = opts.preRemeshGradationIters
+      if (opts.preRemeshAlign !== undefined)
+        params.pre_remesh_align = opts.preRemeshAlign
+      if (opts.preRemeshFieldCadence !== undefined)
+        params.pre_remesh_field_cadence = opts.preRemeshFieldCadence
+      if (opts.preRemeshBootstrapIters !== undefined)
+        params.pre_remesh_bootstrap_iters = opts.preRemeshBootstrapIters
+      if (opts.preRemeshSmoothIters !== undefined)
+        params.pre_remesh_smooth_iters = opts.preRemeshSmoothIters
+      if (opts.preRemeshSmoothLambda !== undefined)
+        params.pre_remesh_smooth_lambda = opts.preRemeshSmoothLambda
+      if (opts.preRemeshConvergeEps !== undefined)
+        params.pre_remesh_converge_eps = opts.preRemeshConvergeEps
+      if (opts.preRemeshPreserveFeatures !== undefined)
+        params.pre_remesh_preserve_features = opts.preRemeshPreserveFeatures
+      if (opts.preRemeshSharpAngle !== undefined)
+        params.pre_remesh_sharp_angle = opts.preRemeshSharpAngle
+      const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
+      if (!out) {
+        return false // clean failure: infeasible field / too many folds
+      }
+      this._replaceMesh(out)
+      return true
+    } finally {
+      // WASM exposes an explicit disposer; native GC-finalizes the wrapper.
+      ;(params as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
   }
 
   /** Tear down the spatial tree + tree-derived GPU batches and rebuild cleanly

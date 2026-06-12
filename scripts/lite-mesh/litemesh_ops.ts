@@ -1,4 +1,4 @@
-import {FloatProperty, IntProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
+import {FloatProperty, IntProperty, BoolProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
@@ -580,3 +580,175 @@ export class TriangulateLiteMeshOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(TriangulateLiteMeshOp)
+
+/**
+ * Feature-aligned global quad remesh of the active LiteMesh (cross-field →
+ * seamless param → integer quantization → quad extraction → reprojection). A
+ * whole-mesh topology change, so undo snapshots the pre-remesh mesh (serialize)
+ * and restores it via `_replaceMesh`; redo re-runs exec. A clean failure
+ * (infeasible field / too many folds) leaves the mesh untouched and drops the
+ * snapshot. Input defaults mirror C++ `remesh_params.h` — keep them in sync, as
+ * exec always passes every field, overriding the bound struct's own defaults.
+ */
+export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
+  targetQuadCount: IntProperty
+  targetEdgeLength: FloatProperty
+  useCurvature: BoolProperty
+  useSharpFeatures: BoolProperty
+  sharpAngle: FloatProperty
+  useDensity: BoolProperty
+  reproject: BoolProperty
+  smoothIterations: IntProperty
+  smoothStrength: FloatProperty
+  seed: IntProperty
+  triage: BoolProperty
+  triageWeldRel: FloatProperty
+  triageMinComponentFrac: FloatProperty
+  curvatureSmoothIters: IntProperty
+  curvatureSmoothLambda: FloatProperty
+  fieldSmoothness: FloatProperty
+  curvatureWeight: FloatProperty
+  singularityCancel: BoolProperty
+  singularityCancelMaxSep: FloatProperty
+  autoDensity: BoolProperty
+  densityMin: FloatProperty
+  densityMax: FloatProperty
+  densityGradation: FloatProperty
+  densityGradationIters: IntProperty
+  preRemesh: BoolProperty
+  preRemeshTarget: FloatProperty
+  preRemeshIters: IntProperty
+  preRemeshDensity: BoolProperty
+  preRemeshGradation: FloatProperty
+  preRemeshGradationIters: IntProperty
+  preRemeshAlign: FloatProperty
+  preRemeshFieldCadence: IntProperty
+  preRemeshBootstrapIters: IntProperty
+  preRemeshSmoothIters: IntProperty
+  preRemeshSmoothLambda: FloatProperty
+  preRemeshConvergeEps: FloatProperty
+  preRemeshPreserveFeatures: BoolProperty
+  preRemeshSharpAngle: FloatProperty
+}> {
+  /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.quad_remesh',
+      uiname  : 'Quad Remesh',
+      inputs  : {
+        targetQuadCount : new IntProperty(15000).setRange(1, 1000000).noUnits(),
+        // 0 = derive the edge length from targetQuadCount (count mode).
+        targetEdgeLength: new FloatProperty(0.0).setRange(0.0, 10.0),
+        useCurvature    : new BoolProperty(true),
+        useSharpFeatures: new BoolProperty(false),
+        sharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
+        useDensity      : new BoolProperty(false),
+        reproject       : new BoolProperty(false),
+        smoothIterations: new IntProperty(2).setRange(0, 20).noUnits(),
+        smoothStrength  : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        seed            : new IntProperty(1).setRange(0, 1 << 30).noUnits(),
+        triage          : new BoolProperty(true),
+        triageWeldRel   : new FloatProperty(1e-5).setRange(0.0, 1e-3).noUnits(),
+        triageMinComponentFrac: new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
+        curvatureSmoothIters: new IntProperty(0).setRange(0, 20).noUnits(),
+        curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        fieldSmoothness : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
+        curvatureWeight : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
+        singularityCancel: new BoolProperty(true),
+        singularityCancelMaxSep: new FloatProperty(1.5).setRange(0.5, 4.0).noUnits(),
+        autoDensity     : new BoolProperty(false),
+        densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
+        densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
+        densityGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
+        densityGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemesh       : new BoolProperty(false),
+        preRemeshTarget : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
+        preRemeshIters  : new IntProperty(0).setRange(0, 20).noUnits(),
+        preRemeshDensity: new BoolProperty(true),
+        preRemeshGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
+        preRemeshGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemeshAlign  : new FloatProperty(1.0).setRange(0.0, 1.0).noUnits(),
+        preRemeshFieldCadence: new IntProperty(2).setRange(1, 8).noUnits(),
+        preRemeshBootstrapIters: new IntProperty(-1).setRange(-1, 8).noUnits(),
+        preRemeshSmoothIters: new IntProperty(5).setRange(0, 20).noUnits(),
+        preRemeshSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        preRemeshConvergeEps: new FloatProperty(0.05).setRange(0.0, 0.2).noUnits(),
+        preRemeshPreserveFeatures: new BoolProperty(true),
+        preRemeshSharpAngle: new FloatProperty(0.7853982).setRange(0.0, Math.PI),
+      },
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const i = this.getInputs()
+    const changed = mesh.quadRemesh({
+      targetQuadCount : i.targetQuadCount,
+      targetEdgeLength: i.targetEdgeLength,
+      useCurvature    : i.useCurvature,
+      useSharpFeatures: i.useSharpFeatures,
+      sharpAngle      : i.sharpAngle,
+      useDensity      : i.useDensity,
+      reproject       : i.reproject,
+      smoothIterations: i.smoothIterations,
+      smoothStrength  : i.smoothStrength,
+      seed            : i.seed,
+      triage          : i.triage,
+      triageWeldRel   : i.triageWeldRel,
+      triageMinComponentFrac: i.triageMinComponentFrac,
+      curvatureSmoothIters: i.curvatureSmoothIters,
+      curvatureSmoothLambda: i.curvatureSmoothLambda,
+      fieldSmoothness : i.fieldSmoothness,
+      curvatureWeight : i.curvatureWeight,
+      singularityCancel: i.singularityCancel,
+      singularityCancelMaxSep: i.singularityCancelMaxSep,
+      autoDensity     : i.autoDensity,
+      densityMin      : i.densityMin,
+      densityMax      : i.densityMax,
+      densityGradation: i.densityGradation,
+      densityGradationIters: i.densityGradationIters,
+      preRemesh       : i.preRemesh,
+      preRemeshTarget : i.preRemeshTarget,
+      preRemeshIters  : i.preRemeshIters,
+      preRemeshDensity: i.preRemeshDensity,
+      preRemeshGradation: i.preRemeshGradation,
+      preRemeshGradationIters: i.preRemeshGradationIters,
+      preRemeshAlign  : i.preRemeshAlign,
+      preRemeshFieldCadence: i.preRemeshFieldCadence,
+      preRemeshBootstrapIters: i.preRemeshBootstrapIters,
+      preRemeshSmoothIters: i.preRemeshSmoothIters,
+      preRemeshSmoothLambda: i.preRemeshSmoothLambda,
+      preRemeshConvergeEps: i.preRemeshConvergeEps,
+      preRemeshPreserveFeatures: i.preRemeshPreserveFeatures,
+      preRemeshSharpAngle: i.preRemeshSharpAngle,
+    })
+    // Clean failure leaves the mesh untouched, so there's nothing to undo.
+    if (!changed) {
+      this._undoBlob = undefined
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(QuadRemeshLiteMeshOp)

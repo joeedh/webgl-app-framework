@@ -13,6 +13,7 @@ import {
   util,
   Vector3,
 } from '../../../path.ux/pathux'
+import {FeatureFlags} from '../../../core/feature-flag'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {PaintToolModeBase} from './pbvh_base'
 import {Icons} from '../../icon_enum.js'
@@ -276,6 +277,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     dfield(panel2, 'maxSplits')
     dfield(panel2, 'maxRounds')
 
+    col.toolPanel('litemesh.quad_remesh')
+
     //panel
     container.flushUpdate()
   }
@@ -311,6 +314,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
+    if (FeatureFlags.get('sculptcore.quad_remesher')) {
+      strip.tool('litemesh.quad_remesh()')
+    }
     // TODO: draw a small "large mesh would be faster if triangulated" footer tip
     // overlay in the viewport when the active object is a LiteMesh that is both
     // large (mesh.triCount over a threshold, ~1M) and still has n-gons

@@ -16,6 +16,7 @@ import {
   DataStruct,
   IVector3,
   Container,
+  CallbackThis,
 } from '../path.ux/scripts/pathux.js'
 import {DataBlock} from '../core/lib_api'
 import {NodeFlags} from '../core/graph'
@@ -1631,12 +1632,15 @@ export class ProceduralTexUser {
   }
 }
 
-export function buildProcTextureAPI(api: DataAPI, api_define_datablock: (api: DataAPI, cls: any) => DataStruct) {
+export function buildProcTextureAPI(
+  api: DataAPI,
+  api_define_datablock: <T extends DataBlock>(api: DataAPI<ViewContext>, cls: any) => DataStruct<any, T>
+) {
   for (const cls of Patterns) {
     cls.defineAPI(api)
   }
 
-  const st = api_define_datablock(api, ProceduralTex)
+  const st = api_define_datablock<ProceduralTex>(api, ProceduralTex)
 
   const onchange = function (this: {dataref: ProceduralTex}) {
     this.dataref.updateGen++
@@ -1650,12 +1654,12 @@ export function buildProcTextureAPI(api: DataAPI, api_define_datablock: (api: Da
       tex.recalcFlag |= PatternRecalcFlags.PREVIEW
     })
     .customGetSet(
-      function (this: {dataref: ProceduralTex}) {
+      function () {
         const tex = this.dataref
 
-        return tex.generator.constructor.patternDefine().typeName
+        return prop.values[tex.generator.constructor.patternDefine().typeName] as number
       },
-      function (this: {dataref: ProceduralTex}, val) {
+      function (val) {
         const tex = this.dataref
 
         let cls

@@ -306,6 +306,10 @@ function dumpScene(): unknown {
     // the attr-render integration test assert the requested-attr contract +
     // missing-slot advisory alongside the GPU-buffer evidence in `objects`.
     attrtest     : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
+    // Reflect the quad-remesh ToolOp driver (`__quadRemeshTest`): before/after/
+    // undone/redone topology fingerprints, so the parity test asserts success +
+    // undo/redo round-trip per backend alongside the remeshed GPU-buffer parity.
+    quadRemesh   : (globalThis as {__quadRemeshResult?: unknown}).__quadRemeshResult,
     // Reflect the shader-graph JSON round-trip driver (`__attrtestRoundtrip`),
     // proving nstructjs JSON is an adequate test-fixture format for
     // AttributeNode-carrying materials (M7 "test format" decision).

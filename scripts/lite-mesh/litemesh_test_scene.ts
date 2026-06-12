@@ -29,6 +29,8 @@ import {AttrDomain, AttrUseFlags, LiteMesh} from './litemesh'
 import {AttrType} from './litemesh_base'
 // Side-effect: registers globalThis.__attrtestApply for the attr-render test.
 import './litemesh_attrtest_support'
+// Side-effect: registers globalThis.__quadRemeshTest for the quad-remesh test.
+import './litemesh_quad_remesh_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
@@ -136,3 +138,52 @@ function buildLiteMeshAttrTest(_ctx: ToolContext, lib: Library, scene: Scene, ar
 }
 
 registerTestScene('litemesh-attrtest', buildLiteMeshAttrTest)
+
+/**
+ * Builds a single all-quad UV-sphere LiteMesh (plus a light) — the
+ * remesh-friendly primitive for the quad-remesh parity / round-trip test
+ * (`tests/integration/litemesh_quad_remesh.test.ts`). The spherified cube of
+ * `litemesh-cube` has eight valence-3 corner singularities that the global MIQ
+ * field can't satisfy, so it clean-fails; a UV sphere (poles its only
+ * singularities) is the smallest mesh that drives a *successful* remesh, mirroring
+ * the synthetic C++ suite's `makeUVSphere`. Construction is deterministic, so the
+ * native and WASM backends build byte-identical geometry for parity diffing.
+ *
+ * Scene args:
+ *   rings=<n>    latitudinal bands (default 24)
+ *   segs=<n>     longitudinal segments (default 32)
+ *   radius=<f>   sphere radius (default 2)
+ *   light=0      omit the light
+ */
+function buildLiteMeshUVSphere(_ctx: ToolContext, lib: Library, scene: Scene, args: TestSceneArgs): void {
+  const rings = args.rings && Number.isFinite(parseInt(args.rings, 10)) ? parseInt(args.rings, 10) : 24
+  const segs = args.segs && Number.isFinite(parseInt(args.segs, 10)) ? parseInt(args.segs, 10) : 32
+  const radius = args.radius !== undefined && Number.isFinite(parseFloat(args.radius)) ? parseFloat(args.radius) : 2.0
+
+  const wasm = getWasmImmediate()!
+  const lm = new LiteMesh(wasm.Mesh_makeUVSphere(rings, segs, radius))
+  lib.add(lm)
+
+  const sob = new SceneObject()
+  lib.add(sob)
+  sob.data = lm
+  lm.lib_addUser(sob)
+
+  scene.add(sob)
+  scene.objects.setSelect(sob, true)
+  scene.objects.setActive(sob)
+
+  if (args.light !== '0') {
+    const light = new Light()
+    lib.add(light)
+    const lightOb = new SceneObject(light)
+    lib.add(lightOb)
+    lightOb.location[2] = 7.0
+    scene.add(lightOb)
+  }
+
+  sob.graphUpdate()
+  lm.graphUpdate()
+}
+
+registerTestScene('litemesh-uvsphere', buildLiteMeshUVSphere)
