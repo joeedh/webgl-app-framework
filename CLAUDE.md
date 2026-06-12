@@ -301,6 +301,10 @@ for status. Key conventions:
 - Parity is guarded by `tests/integration/sculptcore_parity.test.ts` (under
   `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
   signatures + leaf counts; self-skips when the bundle or `.node` is absent.
+  `sculptcore_brushes.test.ts` / `sculptcore_boundary.test.ts` reuse the boot
+  path for behavior: scripted stroke drivers (`__brushTest()` /
+  `__boundaryTest()`) run via `--eval` and assert per backend (brush semantics;
+  boundary polyline-graph invariance under dyntopo + both undo stacks).
 
 ## Dynamic topology
 

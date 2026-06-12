@@ -165,6 +165,15 @@ by-value struct → an owning wrapper).
   `filterNodes` out-param / `execBrush` nodes arg). That specialization can't be
   looked up by element type, so the addon **recovers it from
   `SpatialTree::leaves()`'s return descriptor**.
+- `makeIntVector()` / `makeFloatVector()` — fresh owning, empty `Vector<int>` /
+  `Vector<float>` (the screen-pick faces/verts, `boundaryGraphStats` and
+  `edgePathCoords` out-params), recovered the same way from
+  `SpatialTree::castScreenCircle`'s / `Mesh::edgePathCoords`'s param
+  descriptors (no method returns either by value). The TS shim
+  (`nativeManager.findVectorClass`) maps element names `int`/`int32` and
+  `float`/`float32` to these; **anything else falls through to
+  `makeNodeVector`** — add a factory before requesting a new element type, or
+  element reads silently come back as opaque handles.
 
 Owned-object destruction goes through napi finalizers and must match the WASM
 `[Symbol.dispose]` path so it doesn't trip litestl's leak-tracking allocator.
@@ -322,6 +331,18 @@ driver (`scripts/lite-mesh/litemesh_brushtest_support.ts`), whose result is
 reflected into the dump as `brushtest`. It asserts invert direction, mask
 gating, brush.color piping, draw-sharp boundedness, and accumulate defaults,
 per backend. Same self-skip rules.
+
+`tests/integration/sculptcore_boundary.test.ts` does the same for the
+**boundary constraint system**: `--eval "__boundaryTest()"`
+(`scripts/lite-mesh/litemesh_boundarytest_support.ts`) marks three seam paths
+with the real `litemesh.mark_seam` ToolOp, then watches the connected polyline
+graph of all boundary-flagged edges through `Mesh::boundaryGraphStats`
+(`[flaggedEdges, graphVerts, non2ValenceVerts, components]`). Non-2-valence
+vertex count and component count are invariant under feature-preserving
+remeshing, so the test asserts they survive a dyntopo stroke over the seams
+(while `flaggedEdges` growth proves the remesher split seam edges), that a
+non-dyntopo stroke changes nothing, and that toolstack undo/redo (marking) and
+MeshLog undo/redo (strokes) restore the stats exactly, per backend.
 
 ---
 

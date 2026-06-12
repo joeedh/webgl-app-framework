@@ -867,6 +867,21 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {edgeSeam(e: number): number}).edgeSeam(e)
   }
 
+  /** Boundary polyline-graph stats over the union of all boundary edge flags.
+   * non2ValenceVerts/components are invariant under feature-preserving
+   * remeshing, so they detect constraint-network damage (integration tests). */
+  boundaryGraphStats(): {flaggedEdges: number; graphVerts: number; non2ValenceVerts: number; components: number} {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {boundaryGraphStats(o: never): void}).boundaryGraphStats(out.vec as never)
+    const arr = out.read()
+    return {
+      flaggedEdges    : (arr[0] as number) | 0,
+      graphVerts      : (arr[1] as number) | 0,
+      non2ValenceVerts: (arr[2] as number) | 0,
+      components      : (arr[3] as number) | 0,
+    }
+  }
+
   /** Restore a batch of edge seam bits (parallel arrays) then recompute derived
    * boundary state once — the true inverse used by seam-marking undo, instead of
    * blanket-clearing the path (which would unset pre-existing overlapping seams). */
@@ -930,11 +945,12 @@ export class LiteMesh extends SceneObjectData {
    * Elements are mesh face/vertex indices, so `ScreenPickResult.elements` holds
    * numbers (consistent with the `unknown[]` contract). */
 
-  /** Construct two empty bound Vector<int> out-params + an array-like reader. */
+  /** Construct two empty bound Vector<int> out-params + an array-like reader.
+   * 'int32' is the WASM manager's registry key for int (native accepts both). */
   private _intVecOut() {
     const cls = (
       this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
-    ).findVectorClass('int')
+    ).findVectorClass('int32')
     const ctor = cls.findDefaultConstructor()
     const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
     const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>

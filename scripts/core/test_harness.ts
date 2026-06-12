@@ -318,6 +318,10 @@ function dumpScene(): unknown {
     // the sphere poles, diffing GPU position/color buffers to assert invert,
     // draw-sharp boundedness, mask gating, brush.color, and accumulate flags.
     brushtest    : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
+    // Reflect the boundary-constraint driver (`__boundaryTest`): seam-marking
+    // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
+    // invariants (non-2-valence verts, components) and both undo stacks.
+    boundarytest : (globalThis as {__boundaryTestResult?: unknown}).__boundaryTestResult,
   }
 }
 

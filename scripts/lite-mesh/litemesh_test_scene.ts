@@ -33,6 +33,8 @@ import './litemesh_attrtest_support'
 import './litemesh_quad_remesh_support'
 // Side-effect: registers globalThis.__brushTest for the brush-behavior test.
 import './litemesh_brushtest_support'
+// Side-effect: registers globalThis.__boundaryTest for the boundary-constraint test.
+import './litemesh_boundarytest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
