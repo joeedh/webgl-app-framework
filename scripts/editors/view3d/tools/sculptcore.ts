@@ -36,7 +36,7 @@ import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../../../brush/in
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
-import {builSculptcoreBrush} from './sculptcore_bindings'
+import {TOOL_TO_SCULPTBRUSH} from './sculptcore_bindings'
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -399,7 +399,15 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         window.redraw_viewport(true)
       })
     st.string('dynTopoStatsLabel', 'dynTopoStatsLabel', 'DynTopo Stats').readOnly()
-    st.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
+    /* Only tools sculptcore implements (TOOL_TO_SCULPTBRUSH) are selectable
+     * in this tool mode; the legacy pbvh mode keeps the full enum. */
+    const sculptcoreTools = {} as Record<string, number>
+    for (const [k, v] of Object.entries(deleteTsEnumIntegers(SculptTools))) {
+      if ((v as number) in TOOL_TO_SCULPTBRUSH) {
+        sculptcoreTools[k] = v as number
+      }
+    }
+    st.enum('tool', 'tool', sculptcoreTools).icons(SculptIcons)
 
     st.struct('_apiBrushHelper', 'brush', 'Brush', api.mapStruct(SculptBrush))
 

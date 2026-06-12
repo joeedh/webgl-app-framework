@@ -650,7 +650,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculptcore.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
-| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, BSMOOTH} |
 | `scene.tools.sculptcore.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
 | `scene.tools.sculptcore.type` | prop | StringProperty | Type |  |
 

@@ -1,6 +1,8 @@
 Make sure to keep CLAUDE.md and documentation up to date as you implement each item.
 
-[ ]: Only show SculptTools enum icons that are implemented by sculptcore in the header ui (in sculptcore toolmode).
+[x]: Only show SculptTools enum icons that are implemented by sculptcore in the header ui (in sculptcore toolmode).
+     (SculptCorePaintMode.defineAPI filters the tool enum to TOOL_TO_SCULPTBRUSH's 13 keys;
+     verified live via headless --eval; legacy pbvh mode keeps the full enum)
 [x]: Write electron app integration tests for the boundary constraint system.  we need a way to
      compute the connected polyline graph of the boundary constraints on a mesh do a few brush strokes with and
      without dyntopo on and then check if the polyline graph has changed by counting the number of non-2-valence vertices.  also test undo/redo.
@@ -16,7 +18,9 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [ ]: plane brushes should give you the option of projecting to the center surface normal or the view normal,
      default to the view normal.
 [x]: make sure sculpt mask painting is implemented and works
-[ ]: make sure all sculptcore SculptTool enum entries have icons, create if necassary
+[x]: make sure all sculptcore SculptTool enum entries have icons, create if necassary
+     (added SCULPT_MASK_PAINT/COLOR/POLYGROUP/BSMOOTH/HOLE_FILLER/DIRECTIONAL_FAIR, indices
+     120-125 in iconsheet.svg row 7; guarded by tests/unit/sculpt_tool_icons.test.ts)
 [x]: smoothing brushes should have accumulate on by default
 [ ]: all smoothing (dyntopo tangential smoothing, the smoothing brush, etc) must be boundary-aware; 
      the bsmooth brush should replace the smooth brush.

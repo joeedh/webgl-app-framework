@@ -5979,24 +5979,12 @@
         "DRAW",
         "SHARP",
         "INFLATE",
-        "SNAKE",
-        "TOPOLOGY",
-        "GRAB",
-        "HOLE_FILLER",
         "MASK_PAINT",
         "WING_SCRAPE",
         "PINCH",
-        "DIRECTIONAL_FAIR",
-        "SLIDE_RELAX",
-        "BVH_DEFORM",
         "COLOR",
         "POLYGROUP",
-        "BSMOOTH",
-        "PAINT",
-        "PAINT_SMOOTH",
-        "COLOR_BOUNDARY",
-        "TEXTURE_PAINT",
-        "FACE_SET_DRAW"
+        "BSMOOTH"
       ]
     },
     "scene.tools.sculptcore.transformWidget": {
