@@ -593,7 +593,6 @@ ToolOp.register(TriangulateLiteMeshOp)
 export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
   targetQuadCount: IntProperty
   targetEdgeLength: FloatProperty
-  solveEdgeLength: FloatProperty
   useCurvature: BoolProperty
   useSharpFeatures: BoolProperty
   sharpAngle: FloatProperty
@@ -642,7 +641,6 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
         targetQuadCount : new IntProperty(15000).setRange(1, 1000000).noUnits(),
         // 0 = derive the edge length from targetQuadCount (count mode).
         targetEdgeLength: new FloatProperty(0.0).setRange(0.0, 10.0),
-        solveEdgeLength : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
         useCurvature    : new BoolProperty(true),
         useSharpFeatures: new BoolProperty(false),
         sharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
@@ -700,7 +698,6 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     const changed = mesh.quadRemesh({
       targetQuadCount : i.targetQuadCount,
       targetEdgeLength: i.targetEdgeLength,
-      solveEdgeLength : i.solveEdgeLength,
       useCurvature    : i.useCurvature,
       useSharpFeatures: i.useSharpFeatures,
       sharpAngle      : i.sharpAngle,

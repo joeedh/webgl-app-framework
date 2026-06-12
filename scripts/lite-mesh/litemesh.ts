@@ -253,10 +253,6 @@ export interface QuadRemeshOptions {
   targetQuadCount?: number
   /** Explicit quad edge length (world units); 0 = derive from targetQuadCount. */
   targetEdgeLength?: number
-  /** Solve-mesh edge length (world units); 0 = solve on the raw input. When > 0,
-   * a dyntopo pre-pass coarsens the working copy to ~this length so dense inputs
-   * stay tractable; the final reprojection still targets the full-res original. */
-  solveEdgeLength?: number
   /** Align the cross field to principal-curvature directions. */
   useCurvature?: boolean
   /** Pin the field to sharp edges + open boundaries (creases stay on loops). */
@@ -314,8 +310,7 @@ export interface QuadRemeshOptions {
    * flow before the field solve. Geometry only; reprojection still targets the
    * full-res original. false = pipeline unchanged. */
   preRemesh?: boolean
-  /** Pre-pass edge length. 0 = auto (solveEdgeLength if set, else from the
-   * resolved quad edge length). */
+  /** Pre-pass edge length. 0 = auto (from the resolved quad edge length). */
   preRemeshTarget?: number
   /** Outer convergence iterations. 0 = auto from the measured input. */
   preRemeshIters?: number
@@ -631,7 +626,6 @@ export class LiteMesh extends SceneObjectData {
     try {
       if (opts.targetQuadCount !== undefined) params.target_quad_count = opts.targetQuadCount
       if (opts.targetEdgeLength !== undefined) params.target_edge_length = opts.targetEdgeLength
-      if (opts.solveEdgeLength !== undefined) params.solve_edge_length = opts.solveEdgeLength
       if (opts.useCurvature !== undefined) params.use_curvature = opts.useCurvature
       if (opts.useSharpFeatures !== undefined) params.use_sharp_features = opts.useSharpFeatures
       if (opts.sharpAngle !== undefined) params.sharp_angle = opts.sharpAngle
