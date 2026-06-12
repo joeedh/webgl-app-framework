@@ -147,3 +147,14 @@ const typecheckFeatureFlags = featureFlags as Readonly<Readonly<FeatureFlag>[]>
 type FeatureFlagKeys = (typeof featureFlags)[number]['key']
 
 export const FeatureFlags = new FeatureFlagManager()
+
+declare global {
+  interface Window {
+    FeatureFlags: FeatureFlagManager
+  }
+}
+/* Debug-surface global (documentation/debugSurface.md): lets CDP / --eval
+ * probes flip flags at runtime. */
+if (typeof window !== 'undefined') {
+  window.FeatureFlags = FeatureFlags
+}

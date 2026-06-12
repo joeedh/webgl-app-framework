@@ -4,6 +4,7 @@ import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {LiteMesh, AttrDomain} from './litemesh'
 import {makeDefaultMaterial} from '../core/material'
+import {FeatureFlags} from '../core/feature-flag'
 
 export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   Inputs,
@@ -633,6 +634,12 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
 }> {
   /** Pre-remesh mesh blob, or undefined when the remesh cleanly failed (no-op). */
   _undoBlob?: Uint8Array
+
+  /* Feature-flagged: hidden from the op search menu (and blocked) when the
+   * quad-remesher flag is off; the toolmode UI gates its panels the same way. */
+  static canRun(_ctx: ToolContext): boolean {
+    return FeatureFlags.get('sculptcore.quad_remesher')
+  }
 
   static tooldef() {
     return {

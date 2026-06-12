@@ -45,7 +45,10 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [x]: clay brush should have accumulate on by default
 [ ]: make sure autosmoothing works.  it should use the brush command pipeline; fix any issues in the pipeline so it can work for both cpu and gpu backends.
 [x]: the add menu in the electron/web apps shows `litemesh.add_cube(dimen=100)` instead of the toolop's ui name.  fix it.
-[ ]: ui related to quad remeshing should be hidden if the quad remeshing feature flag is disabled.
+[x]: ui related to quad remeshing should be hidden if the quad remeshing feature flag is disabled.
+     (header button was already gated; gated the settings toolPanel + QuadRemeshLiteMeshOp.canRun
+     hides it from op search; FeatureFlags now a debug-surface window global; verified headlessly
+     on/off/restored)
 [ ]: uv marking tool should clear it's drawlines after finishing/cancelling.  it should preview the
      current path and should snap to existing vertices with seams (with 10 pixel radius) showing a circle
      at the mouse cursor during preview when a snap is happening.

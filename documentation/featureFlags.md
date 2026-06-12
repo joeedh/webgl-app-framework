@@ -22,6 +22,18 @@ if (FeatureFlags.get('sculptcore.quad_remesher')) {
 `get` returns the stored override if one exists, otherwise the flag's default
 value defined in the `featureFlags` array.
 
+To gate a whole feature's UI, cover every surface:
+
+- widgets/panels — wrap the `buildHeader`/`buildSettings` calls in
+  `if (FeatureFlags.get(...))` (see `SculptCorePaintMode` for
+  `litemesh.quad_remesh`);
+- the op-search menu — override the ToolOp's `static canRun(ctx)` to return the
+  flag (`searchBoxOk` consults it, and it also blocks execution).
+
+The singleton is also exposed as the `window.FeatureFlags` debug-surface global
+(see [debugSurface.md](debugSurface.md)) for CDP / `--eval` probes; `set`
+persists immediately, so probes should restore the prior value.
+
 ## Setting / resetting a flag
 
 ```ts
