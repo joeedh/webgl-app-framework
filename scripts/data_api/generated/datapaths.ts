@@ -649,9 +649,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.quad_remesh.reproject"
   | "toolDefaults.litemesh.quad_remesh.seed"
   | "toolDefaults.litemesh.quad_remesh.sharpAngle"
+  | "toolDefaults.litemesh.quad_remesh.singularityCancel"
+  | "toolDefaults.litemesh.quad_remesh.singularityCancelMaxSep"
   | "toolDefaults.litemesh.quad_remesh.smoothIterations"
   | "toolDefaults.litemesh.quad_remesh.smoothStrength"
-  | "toolDefaults.litemesh.quad_remesh.solveEdgeLength"
   | "toolDefaults.litemesh.quad_remesh.targetEdgeLength"
   | "toolDefaults.litemesh.quad_remesh.targetQuadCount"
   | "toolDefaults.litemesh.quad_remesh.triage"
@@ -1438,9 +1439,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.quad_remesh.reproject": true;
     "toolDefaults.litemesh.quad_remesh.seed": true;
     "toolDefaults.litemesh.quad_remesh.sharpAngle": true;
+    "toolDefaults.litemesh.quad_remesh.singularityCancel": true;
+    "toolDefaults.litemesh.quad_remesh.singularityCancelMaxSep": true;
     "toolDefaults.litemesh.quad_remesh.smoothIterations": true;
     "toolDefaults.litemesh.quad_remesh.smoothStrength": true;
-    "toolDefaults.litemesh.quad_remesh.solveEdgeLength": true;
     "toolDefaults.litemesh.quad_remesh.targetEdgeLength": true;
     "toolDefaults.litemesh.quad_remesh.targetQuadCount": true;
     "toolDefaults.litemesh.quad_remesh.triage": true;

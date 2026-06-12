@@ -853,9 +853,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.quad_remesh.reproject` | prop | BoolProperty | Reproject |  |
 | `toolDefaults.litemesh.quad_remesh.seed` | prop | IntProperty | Seed | range 0..1073741824 |
 | `toolDefaults.litemesh.quad_remesh.sharpAngle` | prop | FloatProperty | Sharp Angle | range 0..3.141592653589793 |
+| `toolDefaults.litemesh.quad_remesh.singularityCancel` | prop | BoolProperty | Singularity Cancel |  |
+| `toolDefaults.litemesh.quad_remesh.singularityCancelMaxSep` | prop | FloatProperty | Singularity Cancel Max Sep | range 0.5..4 |
 | `toolDefaults.litemesh.quad_remesh.smoothIterations` | prop | IntProperty | Smooth Iterations | range 0..20 |
 | `toolDefaults.litemesh.quad_remesh.smoothStrength` | prop | FloatProperty | Smooth Strength | range 0..1 |
-| `toolDefaults.litemesh.quad_remesh.solveEdgeLength` | prop | FloatProperty | Solve Edge Length | range 0..10 |
 | `toolDefaults.litemesh.quad_remesh.targetEdgeLength` | prop | FloatProperty | Target Edge Length | range 0..10 |
 | `toolDefaults.litemesh.quad_remesh.targetQuadCount` | prop | IntProperty | Target Quad Count | range 1..1000000 |
 | `toolDefaults.litemesh.quad_remesh.triage` | prop | BoolProperty | Triage |  |

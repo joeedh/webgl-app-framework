@@ -7566,6 +7566,28 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.litemesh.quad_remesh.singularityCancel": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Singularity Cancel",
+      "description": "Singularity Cancel",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.quad_remesh.singularityCancelMaxSep": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Singularity Cancel Max Sep",
+      "description": "Singularity Cancel Max Sep",
+      "range": [
+        0.5,
+        4
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.litemesh.quad_remesh.smoothIterations": {
       "kind": "prop",
       "indexed": false,
@@ -7588,19 +7610,6 @@
       "range": [
         0,
         1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "toolDefaults.litemesh.quad_remesh.solveEdgeLength": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Solve Edge Length",
-      "description": "Solve Edge Length",
-      "range": [
-        0,
-        10
       ],
       "decimalPlaces": 4,
       "step": 0.1
