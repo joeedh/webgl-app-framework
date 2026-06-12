@@ -490,3 +490,7 @@ export function runSculptcoreStroke(opts: {
   brush.tool = toolInt
   return runSculptcoreStroke({mesh, brush, dabs: dabs ?? [{p: [0, 0, 0], normal: [0, 0, 1]}], radius})
 }
+
+// Headless/CDP access to the sculpt undo log (created lazily by the first
+// stroke); lets --eval probes drive MeshLog.undo/redo directly.
+;(globalThis as unknown as any)._testSculptcoreMeshLog = () => SculptPaintOp.meshLog

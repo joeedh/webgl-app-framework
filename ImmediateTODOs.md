@@ -25,7 +25,12 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [ ]: using the bsmooth brush with dyntopo on a mesh with polygroups crashes after a few strokes
 [ ]: expose the kelvinlet brush to the user as a SculptTool (make sure it has an icon)
 [ ]: write 'snake hook' and 'grab' brushes and expose to the user.
-[ ]: meshlog undo/redo sometimes crashes
+[x]: meshlog undo/redo sometimes crashes
+     (root cause: the TS app path never called MeshLog::setActiveMesh, so topo callbacks
+     no-op'd — undo restored positions but never topology; dyntopo undo/redo was replaying
+     position chunks against drifted topology. Fixed in CommandExecutor::applyDynTopoDab;
+     stress-verified 10 dyntopo strokes + 46 mixed undo/redos incl. redo-branch truncation,
+     both backends, identical final stats.)
 [x]: the draw sharp brush is far too strong and explodes geometry
 [x]: inflate brush should have accumulate on by default
 [x]: clay brush should have accumulate on by default
