@@ -22,7 +22,12 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      the bsmooth brush should replace the smooth brush.
 [x]: the brush invert flag isn't respected.  it should invert strength for most brushes (except for smooth brushes).
 [ ]: there is a longstanding bug where faces randomly don't draw, could be a gpu spatial node isn't being batched properly.  hard to reproduce.
-[ ]: using the bsmooth brush with dyntopo on a mesh with polygroups crashes after a few strokes
+[x]: using the bsmooth brush with dyntopo on a mesh with polygroups crashes after a few strokes
+     (same root cause as the meshlog item below — MeshLog::setActiveMesh was never called on the
+     app path, so dyntopo topology changes went unlogged and undo/redo replayed against drifted
+     topology. Fixed in CommandExecutor::applyDynTopoDab (sculptcore d5fdab5); stress-verified
+     4 polygroup patches + 8 bsmooth dyntopo strokes with interleaved undo/redo over group
+     boundaries, both backends, group count stable. CPU command path; GPU dab path untested here.)
 [ ]: expose the kelvinlet brush to the user as a SculptTool (make sure it has an icon)
 [ ]: write 'snake hook' and 'grab' brushes and expose to the user.
 [x]: meshlog undo/redo sometimes crashes
