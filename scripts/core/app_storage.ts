@@ -63,6 +63,7 @@ class BrowserAppStorage implements AppStorage {
 const FILE_NAMES: Record<string, string> = {
   'webgl-app-framework'         : 'startup.bin',
   'webgl-app-framework-settings': 'settings.json',
+  'feature-flags-app'           : 'feature-flags.json',
 }
 
 interface NodeFsSync {

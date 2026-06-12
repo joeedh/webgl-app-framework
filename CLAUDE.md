@@ -361,6 +361,13 @@ the registry loop. The on-disk catalog is **canonically sorted**
 (lexicographic by normalized path in `tools/gen-datapaths.mjs`), so the committed
 `generated/` files are stable regardless of population/traversal order.
 
+## Feature flags
+
+Runtime boolean knobs for opt-in / experimental features, persisted in
+`localStorage` and wired into the Data API. See
+[documentation/featureFlags.md](documentation/featureFlags.md) for usage,
+how to add a flag, and persistence semantics.
+
 ## Cross-layer follow-ups
 
 `TODO.md` (repo root) tracks non-addon consumers of addon files and

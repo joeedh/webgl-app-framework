@@ -1,5 +1,6 @@
-import {LocalStorage} from '../mathl/index'
 import {DataAPI, DataStruct, ToolProperty} from '../path.ux/scripts/pathux'
+import {default as messageBus, IBusEmitterClass, IBusEmitter, BusTriggers} from './bus'
+import {getAppStorage} from './app_storage'
 
 export interface FeatureFlag {
   key: string
@@ -16,13 +17,21 @@ type StoredFeatureFlag = Omit<FeatureFlag, 'value'> & {
   mtime: number
 }
 
-export class FeatureFlagManager {
+export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager> {
+  static busDefine() {
+    return {
+      events  : ['FLAG_SET'],
+      triggers: [],
+    } as const
+  }
+
   flags: StoredFeatureFlag[] = []
-  localStorage = LocalStorage.mathlLocalStorage
   private LSKEY = 'feature-flags-app'
 
   constructor() {
     this.load()
+    messageBus.addEmitter(this, FeatureFlagManager)
+
     for (const flag of featureFlags) {
       if (!this.has(flag.key)) {
         this.flags.push({
@@ -32,6 +41,10 @@ export class FeatureFlagManager {
         })
       }
     }
+  }
+
+  onTrigger(type: BusTriggers<typeof FeatureFlagManager>, data: any) {
+    //
   }
 
   has(key: FeatureFlagKeys) {
@@ -52,6 +65,7 @@ export class FeatureFlagManager {
       flag.value = value
       flag.mtime = Date.now()
       this.save()
+      messageBus.emit(this, FeatureFlagManager, 'FLAG_SET', {key, value})
     }
   }
 
@@ -65,19 +79,19 @@ export class FeatureFlagManager {
   }
 
   load() {
-    const json = this.localStorage.getItem(this.LSKEY) as string | undefined
+    const json = getAppStorage().getText(this.LSKEY)
     this.flags = json ? (JSON.parse(json) as StoredFeatureFlag[]) : this.flags
   }
 
   private merge() {
     const flags = this.flags.map((f) => ({...f}))
 
-    if (!this.localStorage.has(this.LSKEY)) {
-      this.localStorage.setItem(this.LSKEY, JSON.stringify(flags, undefined, 2))
+    const existing = getAppStorage().getText(this.LSKEY)
+    if (existing === undefined) {
+      getAppStorage().setText(this.LSKEY, JSON.stringify(flags, undefined, 2))
       return
     }
 
-    const existing = this.localStorage.getItem(this.LSKEY) as string
     const existingFlags = JSON.parse(existing) as StoredFeatureFlag[]
 
     for (const flag of existingFlags) {
@@ -91,7 +105,7 @@ export class FeatureFlagManager {
     }
 
     this.flags = flags
-    this.localStorage.setItem(this.LSKEY, JSON.stringify(flags, undefined, 2))
+    getAppStorage().setText(this.LSKEY, JSON.stringify(flags, undefined, 2))
   }
 
   static defineAPI(api: DataAPI, st?: DataStruct) {
@@ -116,7 +130,6 @@ export class FeatureFlagManager {
     this.merge()
   }
 }
-export const FeatureFlags = new FeatureFlagManager()
 
 // each entry must satisfy FeatureFlag
 const featureFlags = [
@@ -132,3 +145,5 @@ const featureFlags = [
 const typecheckFeatureFlags = featureFlags as Readonly<Readonly<FeatureFlag>[]>
 
 type FeatureFlagKeys = (typeof featureFlags)[number]['key']
+
+export const FeatureFlags = new FeatureFlagManager()
