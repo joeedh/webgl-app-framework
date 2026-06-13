@@ -49,7 +49,21 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      byte-for-byte unchanged, both backends) plus the existing smooth/autosmooth/invert cases in
      sculptcore_brushes.test.ts. See documentation/brush-notes.md "Boundary-aware smoothing".)
 [x]: the brush invert flag isn't respected.  it should invert strength for most brushes (except for smooth brushes).
-[ ]: there is a longstanding bug where faces randomly don't draw, could be a gpu spatial node isn't being batched properly.  hard to reproduce.
+[x]: there is a longstanding bug where faces randomly don't draw, could be a gpu spatial node isn't being batched properly.  hard to reproduce.
+     (root cause: SpatialTree::update_gpu_node_slice was called from a parallel_for, and its
+     fallback paths (attr-version / slice-not-found / vcount mismatch) called regen_gpu_node —
+     which disposes+reallocates the node's shared GpuData (pos/nor/attrBufs/cmd/slices). Two
+     worker threads regenning the same GPU owner concurrently could leave it with a null pos
+     buffer, which the draw-batch rebuild silently skips (if (!gpu_data->pos) continue) → that
+     node's faces vanish for the frame. Rare triggers = "random / hard to reproduce". Fix
+     (sculptcore source/spatial/spatial_gpu.cc + spatial.cc): update_gpu_node_slice is now pure
+     — it writes only its own disjoint slice + its own leaf flag, never regens and never touches
+     the owner-level update_buffer flags, returning false when an in-place update isn't possible.
+     The serial pass after the parallel_for flags each touched owner's buffers for re-upload and
+     regen_gpu_node's (deduped per owner) any owner whose slice update returned false. Verified:
+     native+node+wasm rebuilt; sculptcore_parity (both backends), sculptcore_boundary +
+     sculptcore_brushes (56), and native test_spatial_gpu_partition/_dyntopo/_merge/test_live_stroke
+     all pass. See sculptcore/documentation/spatial.md "Update lifecycle".)
 [x]: using the bsmooth brush with dyntopo on a mesh with polygroups crashes after a few strokes
      (same root cause as the meshlog item below — MeshLog::setActiveMesh was never called on the
      app path, so dyntopo topology changes went unlogged and undo/redo replayed against drifted
