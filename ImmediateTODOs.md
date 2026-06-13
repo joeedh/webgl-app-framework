@@ -48,7 +48,13 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      topology. Fixed in CommandExecutor::applyDynTopoDab (sculptcore d5fdab5); stress-verified
      4 polygroup patches + 8 bsmooth dyntopo strokes with interleaved undo/redo over group
      boundaries, both backends, group count stable. CPU command path; GPU dab path untested here.)
-[ ]: expose the kelvinlet brush to the user as a SculptTool (make sure it has an icon)
+[x]: expose the kelvinlet brush to the user as a SculptTool (make sure it has an icon)
+     (TS-only: SculptTools.KELVINLET → SculptBrushes.KELVINLET in TOOL_TO_SCULPTBRUSH;
+     hand-authored SCULPT_KELVINLET glyph (icon 126) in assets/iconsheet.svg. Grab-style:
+     applyGrabDabState writes bound grabFrom/grabTo (force point + per-dab displacement)
+     before execProgram, shared by the interactive op and runSculptcoreStroke. Verified on
+     both backends by the new kelvinlet case in sculptcore_brushes.test.ts. See
+     documentation/brush-notes.md "Grab brushes (kelvinlet)".)
 [ ]: write 'snake hook' and 'grab' brushes and expose to the user.
 [x]: meshlog undo/redo sometimes crashes
      (root cause: the TS app path never called MeshLog::setActiveMesh, so topo callbacks

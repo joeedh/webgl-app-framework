@@ -13,6 +13,7 @@ import {
   buildBrushProgram,
   pushBrushDeviceInputs,
   configureDynTopoParams,
+  isGrabTool,
 } from './sculptcore_bindings'
 import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
@@ -56,6 +57,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
+  /** Previous dab's object-local surface center, for grab brushes (kelvinlet):
+   * grabTo = thisDab − prevDab. Undefined until the first dab of the stroke. */
+  prevDabLocal?: Vector3
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -89,6 +93,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   undoPre(ctx: ToolContext) {
     this.strokeGroupId = undefined
+    this.prevDabLocal = undefined
     this.dabSeed = 1
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
@@ -336,6 +341,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // view vector instead of the center surface normal; viewvec is already
       // object-local here (same vector the dab raycast used).
       const dabNormal = resolvePlaneDabNormal(brush.tool, brush.planeNormalMode, normal, viewvec)
+
+      // Grab-style brushes (kelvinlet): pull the region under the dab in the
+      // stroke-movement direction (see applyGrabDabState).
+      if (isGrabTool(brush.tool)) {
+        this.prevDabLocal = applyGrabDabState(wasmBrush, p, this.prevDabLocal)
+      }
       // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
       // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
       // which `nodes` (the constructWith result) is on both backends.
@@ -376,6 +387,24 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   }
 }
 ToolOp.register(SculptPaintOp)
+
+/**
+ * Set the kelvinlet grab vectors for one dab and return the new previous-dab
+ * point. grabFrom = force application point (this dab center, object-local);
+ * grabTo = the per-dab displacement vector (zero on the first dab, so the
+ * kelvinlet is a no-op until the brush moves). Both are bound Brush members the
+ * kernel reads from ctx.brush. Shared by the interactive op and the test driver.
+ */
+function applyGrabDabState(wasmBrush: WasmBrush, p: number[] | Vector3, prev: Vector3 | undefined): Vector3 {
+  const gf = wasmBrush.grabFrom.vec
+  const gt = wasmBrush.grabTo.vec
+  for (let i = 0; i < 3; i++) {
+    const cur = p[i] ?? 0
+    gf[i] = cur
+    gt[i] = prev ? cur - (prev[i] ?? 0) : 0
+  }
+  return new Vector3(p)
+}
 
 /**
  * Dev/test driver: run a sculptcore brush stroke programmatically over a list of
@@ -432,6 +461,7 @@ export function runSculptcoreStroke(opts: {
   const strokeGen = ++SculptPaintOp.nextStrokeGen
 
   let dabIdx = 0
+  let prevDabLocal: Vector3 | undefined = undefined
   for (const dab of opts.dabs) {
     const r = builSculptcoreBrush({
       wasm,
@@ -470,6 +500,12 @@ export function runSculptcoreStroke(opts: {
       }
       configureDynTopoParams(dynParams, dt, l_max, l_min)
       wasmExec.applyDynTopoDab(wasm.float3(new Vector3(dab.p)), radius, dynParams, dabIdx + 1)
+    }
+
+    // Grab-style brushes (kelvinlet) need per-dab grabFrom/grabTo, same as the
+    // interactive op's applyDab.
+    if (isGrabTool(brush.tool)) {
+      prevDabLocal = applyGrabDabState(wasmBrush, dab.p, prevDabLocal)
     }
 
     const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram

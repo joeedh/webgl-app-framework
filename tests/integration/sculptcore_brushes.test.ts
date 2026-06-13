@@ -42,6 +42,7 @@ interface BrushTestResult {
   drawMasked?: StrokeMetrics
   drawMaskErased?: StrokeMetrics
   smoothInverted?: StrokeMetrics
+  kelvinlet?: StrokeMetrics
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   accumulateDefaults?: Record<string, boolean>
   nonFiniteCount?: number
@@ -178,6 +179,14 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
   test('smooth ignores invert and stays bounded', () => {
     expect(r.smoothInverted?.invalid).toBeUndefined()
     expect(r.smoothInverted!.maxDisp).toBeLessThan(r.radius!)
+  })
+
+  test('kelvinlet grab pulls the surface in the stroke direction, bounded', () => {
+    expect(r.kelvinlet?.invalid).toBeUndefined()
+    expect(r.kelvinlet!.movedCount).toBeGreaterThan(0)
+    // Verts follow the +X march (grab direction); elastic field stays bounded.
+    expect(r.kelvinlet!.meanAlongNormal).toBeGreaterThan(0)
+    expect(r.kelvinlet!.maxDisp).toBeLessThan(r.radius! * 2)
   })
 
   test('brush.color reaches the color kernel', () => {

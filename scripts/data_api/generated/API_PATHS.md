@@ -490,7 +490,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.texUser.texture.outputs` | list |  |  |  |
 | `scene.tools.sculpt.brush.texUser.texture.power` | prop | FloatProperty | Exp | range 0.001..100 |
 | `scene.tools.sculpt.brush.texUser.texture.scale` | prop | FloatProperty | Scale | range 0.001..2000 |
-| `scene.tools.sculpt.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculpt.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculpt.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
 | `scene.tools.sculpt.drawBVH` | prop | BoolProperty | Draw BVH |  |
 | `scene.tools.sculpt.drawCavityMap` | prop | BoolProperty | Cavity Map |  |
@@ -522,7 +522,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.tools.sculpt.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculpt.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
-| `scene.tools.sculpt.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculpt.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculpt.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
 | `scene.tools.sculpt.type` | prop | StringProperty | Type |  |
 | `scene.tools.sculptcore` | struct |  |  |  |
@@ -627,7 +627,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.texUser.texture.outputs` | list |  |  |  |
 | `scene.tools.sculptcore.brush.texUser.texture.power` | prop | FloatProperty | Exp | range 0.001..100 |
 | `scene.tools.sculptcore.brush.texUser.texture.scale` | prop | FloatProperty | Scale | range 0.001..2000 |
-| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 128, 129, 130, 150, 151, CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
 | `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |
 | `scene.tools.sculptcore.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
@@ -652,7 +652,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculptcore.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
-| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, BSMOOTH} |
+| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, BSMOOTH, KELVINLET} |
 | `scene.tools.sculptcore.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
 | `scene.tools.sculptcore.type` | prop | StringProperty | Type |  |
 

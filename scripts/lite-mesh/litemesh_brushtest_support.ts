@@ -52,6 +52,8 @@ interface BrushTestResult {
   drawMaskErased?: StrokeMetrics
   /** Inverted SMOOTH at -Y: invert is ignored, must stay bounded. */
   smoothInverted?: StrokeMetrics
+  /** KELVINLET grab at +Z with dabs moving +X: pulls verts along +X, bounded. */
+  kelvinlet?: StrokeMetrics
   /** Color paint at +Z (after the draw): per-channel means over painted verts. */
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   /** ACCUMULATE default flag per tool (smooth/bsmooth/paint-smooth/inflate/clay). */
@@ -264,6 +266,31 @@ function brushTest(): BrushTestResult {
       radius,
       {strength: 1, dabs: 3, invert: true}
     )
+
+    // KELVINLET grab at +Z: a grab brush pulls the region under the dab in the
+    // stroke-movement direction, so it needs *moving* dabs (grabTo is the
+    // per-dab displacement, zero until the brush moves). March three dabs along
+    // +X near the pole and verify the surface follows (+X mean displacement),
+    // and that the elastic field stays bounded (no blow-up).
+    {
+      const kelvinlet = need(SculptTools.KELVINLET)
+      const step = radius * 0.3
+      const kdabs = [
+        {p: [0, 0, R], normal: [0, 0, 1]},
+        {p: [step, 0, R], normal: [0, 0, 1]},
+        {p: [step * 2, 0, R], normal: [0, 0, 1]},
+      ]
+      const saved = {tool: kelvinlet.tool, strength: kelvinlet.strength}
+      kelvinlet.tool = SculptTools.KELVINLET
+      kelvinlet.strength = 1
+      const before = readGpuBuffer(mesh, 'position')
+      runSculptcoreStroke({mesh, brush: kelvinlet, dabs: kdabs, radius})
+      const after = readGpuBuffer(mesh, 'position')
+      kelvinlet.tool = saved.tool
+      kelvinlet.strength = saved.strength
+      // Project displacement onto +X (the stroke direction).
+      result.kelvinlet = diffMetrics(before, after, [1, 0, 0])
+    }
 
     // Color paint back at +Z (deform-independent): paint a green-dominant color
     // and read the legacy composited `color` stream. The old kernel hardcoded

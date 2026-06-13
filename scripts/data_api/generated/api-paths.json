@@ -4002,6 +4002,7 @@
         "17",
         "18",
         "19",
+        "20",
         "128",
         "129",
         "130",
@@ -4027,6 +4028,7 @@
         "COLOR",
         "POLYGROUP",
         "BSMOOTH",
+        "KELVINLET",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -4441,6 +4443,7 @@
         "COLOR",
         "POLYGROUP",
         "BSMOOTH",
+        "KELVINLET",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -5671,6 +5674,7 @@
         "17",
         "18",
         "19",
+        "20",
         "128",
         "129",
         "130",
@@ -5696,6 +5700,7 @@
         "COLOR",
         "POLYGROUP",
         "BSMOOTH",
+        "KELVINLET",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -6012,7 +6017,8 @@
         "PINCH",
         "COLOR",
         "POLYGROUP",
-        "BSMOOTH"
+        "BSMOOTH",
+        "KELVINLET"
       ]
     },
     "scene.tools.sculptcore.transformWidget": {

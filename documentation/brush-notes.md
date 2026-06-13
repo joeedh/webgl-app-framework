@@ -126,6 +126,21 @@ from `surfaceNo` rotated ±`wingAngle` about `strokeDir`; the vertex stage picks
 a wing by the lateral side of the stroke. `strokeDir` is set host-side by the
 executor from the previous dab center (needs ≥2 dabs).
 
+## Grab brushes (kelvinlet)
+
+`kelvinlet.sbrush` is an elastic-field grab (de Goes & James 2017): the region
+under the dab is displaced by a regularized Kelvinlet centered at `grabFrom`
+with force vector `grabTo`. Both are bound `Brush` members the kernel reads from
+`ctx.brush` — TS sets them per dab before `execProgram` (the kernel takes **no**
+TS-passed normal for the force). `isGrabTool` (`sculptcore_bindings.ts`) gates
+this; `applyGrabDabState` (`sculptcore_ops.ts`) writes `grabFrom = dab center`
+and `grabTo = dab − prevDab` (zero on the first dab, so the brush is a no-op
+until it moves). The interactive op (`applyDab`) and the headless driver
+(`runSculptcoreStroke`) share that helper, so a scripted moving stroke deforms
+identically (guarded by the `kelvinlet` case in
+`tests/integration/sculptcore_brushes.test.ts`, both backends). The user-facing
+tool is `SculptTools.KELVINLET` (icon `SCULPT_KELVINLET`).
+
 ## Device (pen) dynamics
 
 Every float prop carries a `Dynamics` stack (`prop_dynamics.h`). Per stroke,
