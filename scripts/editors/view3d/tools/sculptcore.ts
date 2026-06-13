@@ -208,8 +208,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     p.prop(path + '.brush.flag[INVERT_CONCAVE_FILTER]')
 
     doChannel('sharp')
-    
-    col.useIcons(false);
+
+    col.useIcons(false)
     col.prop(path + '.brush.flag[INVERT]')
     col.prop(path + '.brush.flag[ACCUMULATE]')
     col.prop(path + '.brush.spacing')
@@ -339,7 +339,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
 
     strip = row.strip()
-    strip.pathlabel('mesh.triCount', 'Triangles')
+    strip.pathlabel('object.data.faceCount', 'Faces')
 
     strip.prop(path + '.spacing')
 

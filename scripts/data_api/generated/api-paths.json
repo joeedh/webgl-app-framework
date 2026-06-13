@@ -2909,8 +2909,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SCREEN",
         "WORLD"
       ]
@@ -2936,14 +2934,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -2975,27 +2965,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777216",
-        "33554432",
-        "67108864",
-        "130023423",
-        "134217728",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -3064,8 +3033,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SIMPLE",
         "SMART"
       ]
@@ -3110,7 +3077,7 @@
         0.05,
         0.95
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 3,
       "step": 0.1
     },
     "scene.tools.sculpt.brush.dynTopoSC.edgeMode": {
@@ -3121,9 +3088,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "WORLD",
         "PERCENT",
         "PIXELS"
@@ -3136,7 +3100,7 @@
       "uiname": "Detail Size",
       "description": "Target edge length (units depend on Detail Mode)",
       "range": [
-        0.01,
+        0.0001,
         200
       ],
       "decimalPlaces": 4,
@@ -3150,10 +3114,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -3170,7 +3130,7 @@
         0,
         8
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 0.1
     },
     "scene.tools.sculpt.brush.dynTopoSC.maxRounds": {
@@ -3207,9 +3167,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "SUBDIVIDE",
         "COLLAPSE",
         "BOTH"
@@ -3223,20 +3180,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777215",
-        "16777216",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -3485,18 +3428,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "512",
-        "1024",
-        "2048",
         "SELECT",
         "SHARED_SIZE",
         "DYNTOPO",
@@ -3625,8 +3556,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "VIEW",
         "SURFACE"
       ]
@@ -3982,32 +3911,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "11",
-        "12",
-        "13",
-        "14",
-        "15",
-        "16",
-        "17",
-        "18",
-        "19",
-        "20",
-        "128",
-        "129",
-        "130",
-        "150",
-        "151",
         "CLAY",
         "FILL",
         "SCRAPE",
@@ -4159,8 +4062,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SCREEN",
         "WORLD"
       ]
@@ -4186,14 +4087,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -4225,27 +4118,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777216",
-        "33554432",
-        "67108864",
-        "130023423",
-        "134217728",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -4314,8 +4186,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SIMPLE",
         "SMART"
       ]
@@ -4581,8 +4451,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SCREEN",
         "WORLD"
       ]
@@ -4608,14 +4476,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -4647,27 +4507,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777216",
-        "33554432",
-        "67108864",
-        "130023423",
-        "134217728",
         "SUBDIVIDE",
         "COLLAPSE",
         "ENABLED",
@@ -4736,8 +4575,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "SIMPLE",
         "SMART"
       ]
@@ -4782,7 +4619,7 @@
         0.05,
         0.95
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 3,
       "step": 0.1
     },
     "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": {
@@ -4793,9 +4630,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "WORLD",
         "PERCENT",
         "PIXELS"
@@ -4808,7 +4642,7 @@
       "uiname": "Detail Size",
       "description": "Target edge length (units depend on Detail Mode)",
       "range": [
-        0.01,
+        0.0001,
         200
       ],
       "decimalPlaces": 4,
@@ -4822,10 +4656,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -4842,7 +4672,7 @@
         0,
         8
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 0.1
     },
     "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": {
@@ -4879,9 +4709,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "SUBDIVIDE",
         "COLLAPSE",
         "BOTH"
@@ -4895,20 +4722,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777215",
-        "16777216",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -5157,18 +4970,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "512",
-        "1024",
-        "2048",
         "SELECT",
         "SHARED_SIZE",
         "DYNTOPO",
@@ -5297,8 +5098,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
         "VIEW",
         "SURFACE"
       ]
@@ -5654,32 +5453,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "11",
-        "12",
-        "13",
-        "14",
-        "15",
-        "16",
-        "17",
-        "18",
-        "19",
-        "20",
-        "128",
-        "129",
-        "130",
-        "150",
-        "151",
         "CLAY",
         "FILL",
         "SCRAPE",
@@ -5792,7 +5565,7 @@
         0.05,
         0.95
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 3,
       "step": 0.1
     },
     "scene.tools.sculptcore.dynTopo.edgeMode": {
@@ -5803,9 +5576,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "WORLD",
         "PERCENT",
         "PIXELS"
@@ -5818,7 +5588,7 @@
       "uiname": "Detail Size",
       "description": "Target edge length (units depend on Detail Mode)",
       "range": [
-        0.01,
+        0.0001,
         200
       ],
       "decimalPlaces": 4,
@@ -5832,10 +5602,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -5852,7 +5618,7 @@
         0,
         8
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 0.1
     },
     "scene.tools.sculptcore.dynTopo.maxRounds": {
@@ -5889,9 +5655,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "0",
-        "1",
-        "2",
         "SUBDIVIDE",
         "COLLAPSE",
         "BOTH"
@@ -5905,20 +5668,6 @@
       "decimalPlaces": 4,
       "step": 0.05,
       "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "65536",
-        "131072",
-        "262144",
-        "524288",
-        "1048576",
-        "2097152",
-        "4194304",
-        "8388608",
-        "16777215",
-        "16777216",
         "ENABLED",
         "DO_FLIPS",
         "DO_SMOOTH",
@@ -6019,7 +5768,6 @@
         "PINCH",
         "COLOR",
         "POLYGROUP",
-        "BSMOOTH",
         "KELVINLET"
       ]
     },

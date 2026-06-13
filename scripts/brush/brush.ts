@@ -140,7 +140,7 @@ SculptBrush {
     DynTopoSettings.defineAPI(api)
     DynTopoSettingsSC.defineAPI(api)
 
-    bst.flags('flag', 'flag', BrushFlags, 'Flag').icons({
+    bst.flags('flag', 'flag', deleteTsEnumIntegers(BrushFlags), 'Flag').icons({
       SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
     })
 
@@ -152,7 +152,7 @@ SculptBrush {
 
     bst.float('rakeCurvatureFactor', 'rakeCurvatureFactor', 'Curvature Factor').noUnits().range(0.0, 1.0)
 
-    bst.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
+    bst.enum('spacingMode', 'spacingMode', deleteTsEnumIntegers(BrushSpacingModes), 'Spacing Mode').descriptions({
       EVEN: 'Fixed distance between brush points',
       NONE: 'Use raw brush points',
     })
@@ -161,16 +161,18 @@ SculptBrush {
 
     bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
     bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(1.0)
-    bst.enum('tool', 'tool', SculptTools).icons(SculptIcons)
+    bst.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
     bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
 
     bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
-    bst.enum('planeNormalMode', 'planeNormalMode', PlaneNormalModes, 'Plane Normal').descriptions({
-      VIEW   : 'Project onto a plane facing the viewport camera',
-      SURFACE: 'Project onto the surface-normal plane at the brush center',
-    })
+    bst
+      .enum('planeNormalMode', 'planeNormalMode', deleteTsEnumIntegers(PlaneNormalModes), 'Plane Normal')
+      .descriptions({
+        VIEW   : 'Project onto a plane facing the viewport camera',
+        SURFACE: 'Project onto the surface-normal plane at the brush center',
+      })
     bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
