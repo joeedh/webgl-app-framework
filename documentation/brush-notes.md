@@ -92,7 +92,9 @@ kernel.
 `bsmooth` reads `.boundary.vert.class` per vertex: a boundary vertex averages
 only neighbors that share a boundary type (`(vc & nb.vclass) == 0` → weight 0)
 and projects its displacement into the tangent plane, so marked seams / sharp
-edges / polygroup borders are preserved instead of being pulled across. With no
+edges / polygroup borders are preserved instead of being pulled across. (Seams
+and sharp edges are flagged with the interactive marking tools — see
+[feature-marking.md](feature-marking.md).) With no
 boundaries marked it reduces to a plain Laplacian, so it's a transparent drop-in
 for the old smooth brush. Consumers must run `boundary::recomputeDirty` first;
 the executor's `refreshBoundaryClassForBSmooth` does this on the first command of

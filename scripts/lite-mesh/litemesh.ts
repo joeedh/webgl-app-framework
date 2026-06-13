@@ -798,11 +798,16 @@ export class LiteMesh extends SceneObjectData {
   /** Mark (state=1) or clear (state=0) the shortest edge-path between two verts
    * as a seam (EDGE_SEAM). Returns the edge count, or -1 if no path. */
   markSeamPath(vStart: number, vEnd: number, state: number): number {
-    const n = (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
-      vStart,
-      vEnd,
-      state
-    )
+    return this.markEdgePath(vStart, vEnd, 0, state)
+  }
+
+  /** Mark/clear the shortest edge-path as a feature of `kind` (0 = seam, 1 =
+   * sharp). The seam tool and the sharp tool share this path; markSeamPath is the
+   * kind=0 alias. Returns the edge count, or -1 if no path. */
+  markEdgePath(vStart: number, vEnd: number, kind: number, state: number): number {
+    const n = (
+      this.mesh as unknown as {markEdgePath(a: number, b: number, k: number, s: number): number}
+    ).markEdgePath(vStart, vEnd, kind, state)
     this._seamsDirty = true // the persistent overlay rebuilds on next draw
     return n
   }
@@ -867,6 +872,36 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {edgeSeam(e: number): number}).edgeSeam(e)
   }
 
+  /** Read a single edge's feature bit of `kind` (0 = seam, 1 = sharp). */
+  edgeFlagKind(e: number, kind: number): number {
+    return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
+  }
+
+  /** Indices + xyz (object-local) of every vertex incident to a `kind`-flagged
+   * edge (0 = seam, 1 = sharp), index-aligned. The marking tool projects these
+   * to screen to snap the path endpoint onto an existing feature vertex. */
+  featureVerts(kind: number): {idx: number[]; co: number[]} {
+    const idxOut = this._intVecOut()
+    const cls = (
+      this.wasm.manager as {
+        findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown} | undefined
+      }
+    ).findVectorClass('float')
+    if (!cls) return {idx: [], co: []}
+    const ctor = cls.findDefaultConstructor()
+    const coVec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    ;(
+      this.mesh as unknown as {featureVerts(k: number, oi: never, oc: never): void}
+    ).featureVerts(kind, idxOut.vec as never, coVec as never)
+    const idxArr = idxOut.read()
+    const coArr = this.wasm.getBoundVector(cls.buildFullName(), coVec as never) as ArrayLike<number>
+    const idx: number[] = []
+    const co: number[] = []
+    for (let i = 0; i < idxArr.length; i++) idx.push(idxArr[i])
+    for (let i = 0; i < coArr.length; i++) co.push(coArr[i])
+    return {idx, co}
+  }
+
   /** Boundary polyline-graph stats over the union of all boundary edge flags.
    * non2ValenceVerts/components are invariant under feature-preserving
    * remeshing, so they detect constraint-network damage (integration tests). */
@@ -886,11 +921,17 @@ export class LiteMesh extends SceneObjectData {
    * boundary state once — the true inverse used by seam-marking undo, instead of
    * blanket-clearing the path (which would unset pre-existing overlapping seams). */
   restoreSeamEdges(edges: number[], states: number[]): void {
+    this.restoreEdgeFlags(edges, states, 0)
+  }
+
+  /** restoreSeamEdges generalized to a feature `kind` (0 = seam, 1 = sharp): the
+   * true inverse used by the marking tool's undo for either flag. */
+  restoreEdgeFlags(edges: number[], states: number[], kind: number): void {
     const m = this.mesh as unknown as {
-      setEdgeSeam(e: number, s: number): void
+      setEdgeFlagKind(e: number, k: number, s: number): void
       recomputeBoundary(): void
     }
-    for (let i = 0; i < edges.length; i++) m.setEdgeSeam(edges[i], states[i])
+    for (let i = 0; i < edges.length; i++) m.setEdgeFlagKind(edges[i], kind, states[i])
     m.recomputeBoundary()
     this._seamsDirty = true
   }

@@ -48,6 +48,20 @@ interface BoundaryTestResult {
   /** After a SMOOTH-tool stroke (now the boundary-aware bsmooth kernel) over the
    * seam junction with dyntopo OFF — frozen topology, so must equal strokeRedo. */
   strokeSmooth?: GraphStats
+  /** Sharp-edge marking (the sharp tool's engine path, kind=1). Edge count the
+   * markEdgePath(kind=1) call flagged, and the kind=1/kind=0 bits read back on
+   * the first edge of that path (must be 1 / 0 — sharp set, seam untouched). */
+  sharpPathEdges?: number
+  sharpEdgeFlagSharp?: number
+  sharpEdgeFlagSeam?: number
+  /** featureVerts(kind) sizes after the sharp mark: the seam set is unchanged by
+   * the sharp mark, the sharp set is non-empty, and the two are distinct flags. */
+  seamFeatureVerts?: number
+  sharpFeatureVerts?: number
+  seamVertsUnchanged?: boolean
+  /** boundaryGraphStats (the union of all boundary flags) grew by the sharp
+   * edges — proves the union graph counts sharp edges alongside seams. */
+  unionGrewBy?: number
   /** The picked pole verts + per-path marked edge counts (diagnostics). */
   poleVerts?: number[]
   pathEdgeCounts?: number[]
@@ -220,6 +234,26 @@ function boundaryTest(): BoundaryTestResult {
       draw.strength = savedSmooth.strength
       draw.dynTopoSC.flag = savedSmooth.dtFlag
     }
+    mesh.regenTreeBatch()
+
+    // Sharp-edge marking — the engine path the interactive sharp tool drives
+    // (kind=1). EDGE_SHARP is a separate attribute from EDGE_SEAM, so marking
+    // sharp must leave the seam set untouched, featureVerts(kind) must return
+    // per-kind vertex sets, and the union graph must grow by the sharp edges.
+    // Re-pick verts on the current (post-stroke) topology; the original pole
+    // indices may be stale after the dyntopo stroke restructured the mesh.
+    const seamVertsBefore = mesh.featureVerts(0).idx.length
+    const unionBefore = mesh.boundaryGraphStats().flaggedEdges
+    const sVa = pick([0, 1, 0])
+    const sVb = pick([0, 0, -1])
+    result.sharpPathEdges = mesh.markEdgePath(sVa, sVb, 1, 1)
+    const sharpPathEdgeIdx = mesh.edgePathEdges(sVa, sVb)
+    result.sharpEdgeFlagSharp = sharpPathEdgeIdx.length ? mesh.edgeFlagKind(sharpPathEdgeIdx[0], 1) : -1
+    result.sharpEdgeFlagSeam = sharpPathEdgeIdx.length ? mesh.edgeFlagKind(sharpPathEdgeIdx[0], 0) : -1
+    result.seamFeatureVerts = mesh.featureVerts(0).idx.length
+    result.sharpFeatureVerts = mesh.featureVerts(1).idx.length
+    result.seamVertsUnchanged = mesh.featureVerts(0).idx.length === seamVertsBefore
+    result.unionGrewBy = mesh.boundaryGraphStats().flaggedEdges - unionBefore
     mesh.regenTreeBatch()
 
     result.ok = true

@@ -130,5 +130,7 @@ export let Icons = {
   SCULPT_HOLE_FILLER   : 124,
   SCULPT_DIRECTIONAL_FAIR : 125,
   SCULPT_KELVINLET        : 126,
+  MARK_SEAM               : 127,
+  MARK_SHARP              : 128,
 }
 setIconMap(Icons)

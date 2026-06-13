@@ -94,8 +94,23 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      (header button was already gated; gated the settings toolPanel + QuadRemeshLiteMeshOp.canRun
      hides it from op search; FeatureFlags now a debug-surface window global; verified headlessly
      on/off/restored)
-[ ]: uv marking tool should clear it's drawlines after finishing/cancelling.  it should preview the
+[x]: uv marking tool should clear it's drawlines after finishing/cancelling.  it should preview the
      current path and should snap to existing vertices with seams (with 10 pixel radius) showing a circle
      at the mouse cursor during preview when a snap is happening.
-[ ]: need an overlay mode for uv seams and marked sharp.
-[ ]: uv marking tool should be refactored into a base class, which can also be used to mark edge sharp flag.
+     (MarkEdgePathBaseOp.modalEnd calls view3d.resetDrawLines on both finish and cancel; on_pointermove
+     previews the next shortest-path segment; _snapVert snaps the endpoint to a featureVerts(kind) vertex
+     within SNAP_PX=10, and _snapRingLines draws a billboarded white view-plane ring at the cursor while
+     a snap is active. See documentation/feature-marking.md.)
+[x]: need an overlay mode for uv seams and marked sharp.
+     (already present and now documented: SpatialTree::buildSeamBatch draws every boundary-flagged edge
+     in a distinct color — seam orange, sharp cyan, projected green, polygroup magenta, uvchart yellow —
+     gated by the sculptcore toolmode's drawFeatureOverlay property (default on, "Feature Overlay"
+     checkbox in the header; change handler calls markSeamsDirty). See documentation/feature-marking.md.)
+[x]: uv marking tool should be refactored into a base class, which can also be used to mark edge sharp flag.
+     (abstract MarkEdgePathBaseOp holds all interaction/snap/undo; concrete MarkSeamInteractiveOp (kind 0,
+     EDGE_SEAM, orange, Icons.MARK_SEAM, hotkey K) and MarkSharpInteractiveOp (kind 1, EDGE_SHARP, cyan,
+     Icons.MARK_SHARP, hotkey Shift+K) supply only _kind() + colors. One kind-parameterized C++/TS engine
+     path: Mesh::markEdgePath/edgeFlagKind/setEdgeFlagKind/featureVerts + LiteMesh wrappers + restoreEdgeFlags.
+     New MARK_SEAM(127)/MARK_SHARP(128) icons in iconsheet.svg. Sharp tool added to the sculptcore header +
+     keymap. Guarded by new sharp-marking cases in sculptcore_boundary.test.ts (both backends, 28 pass).
+     See documentation/feature-marking.md.)

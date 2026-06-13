@@ -315,6 +315,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.useIcons(true)
     strip.tool('mesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
+    strip.tool('litemesh.mark_sharp_interactive()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
     if (FeatureFlags.get('sculptcore.quad_remesher')) {
@@ -430,6 +431,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       new HotKey('.', [], 'view3d.view_selected()'),
       new HotKey('M', ['alt'], 'paint.clear_mask()'),
       new HotKey('K', [], 'litemesh.mark_seam_interactive()'),
+      new HotKey('K', ['shift'], 'litemesh.mark_sharp_interactive()'),
     ])
   }
 

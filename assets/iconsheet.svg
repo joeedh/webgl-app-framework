@@ -4483,5 +4483,21 @@
          d="M 27.5,5 26,11.5 20.5,7.5 Z"
          style="fill:#ffffff;fill-opacity:1;stroke:none" />
     </g>
+    <g id="icon-mark-seam">
+      <path
+         id="mark-seam-line"
+         d="M 485,791 507,769"
+         style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:round;stroke-opacity:1" />
+      <circle id="mark-seam-v0" cx="485" cy="791" r="2.4" style="fill:#ffffff;stroke:none" />
+      <circle id="mark-seam-v1" cx="496" cy="780" r="2.4" style="fill:#ffffff;stroke:none" />
+      <circle id="mark-seam-v2" cx="507" cy="769" r="2.4" style="fill:#ffffff;stroke:none" />
+    </g>
+    <g id="icon-mark-sharp">
+      <path
+         id="mark-sharp-crease"
+         d="M 5,824 16,799 27,824"
+         style="fill:none;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:6;stroke-opacity:1" />
+      <circle id="mark-sharp-apex" cx="16" cy="799" r="2.4" style="fill:#ffffff;stroke:none" />
+    </g>
   </g>
 </svg>

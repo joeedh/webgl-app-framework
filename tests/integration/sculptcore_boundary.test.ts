@@ -47,6 +47,13 @@ interface BoundaryTestResult {
   strokeUndo?: GraphStats
   strokeRedo?: GraphStats
   strokeSmooth?: GraphStats
+  sharpPathEdges?: number
+  sharpEdgeFlagSharp?: number
+  sharpEdgeFlagSeam?: number
+  seamFeatureVerts?: number
+  sharpFeatureVerts?: number
+  seamVertsUnchanged?: boolean
+  unionGrewBy?: number
   poleVerts?: number[]
   pathEdgeCounts?: number[]
   junction?: number[]
@@ -195,5 +202,30 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore boundary constraints (
     // topology is frozen, so smoothing the seam junction must not add, drop, or
     // re-flag any boundary edge — the constraint graph is byte-for-byte equal.
     expect(r.strokeSmooth).toEqual(r.strokeRedo)
+  })
+
+  test('marking a sharp-edge path (the sharp tool path) flags EDGE_SHARP only', () => {
+    // The sharp tool drives markEdgePath(kind=1). EDGE_SHARP is a separate
+    // attribute from EDGE_SEAM, so the marked path reads sharp=1 / seam=0.
+    expect(r.sharpPathEdges!).toBeGreaterThan(0)
+    expect(r.sharpEdgeFlagSharp).toBe(1)
+    expect(r.sharpEdgeFlagSeam).toBe(0)
+  })
+
+  test('featureVerts(kind) returns per-kind vertex sets; seam set is untouched', () => {
+    // featureVerts(1) (sharp) is non-empty after the mark; featureVerts(0)
+    // (seam) is unchanged by the sharp mark — the two flags are independent.
+    expect(r.sharpFeatureVerts!).toBeGreaterThan(0)
+    expect(r.seamFeatureVerts!).toBeGreaterThan(0)
+    expect(r.seamVertsUnchanged).toBe(true)
+  })
+
+  test('the union boundary graph counts sharp edges alongside seams', () => {
+    // boundaryGraphStats unions all boundary flags. The sharp path shares the
+    // pole verts with the seam network, so some of its edges were already
+    // seam-flagged (already in the union); the union grows by the sharp-only
+    // edges — positive (sharp edges ARE counted) but ≤ the total sharp count.
+    expect(r.unionGrewBy!).toBeGreaterThan(0)
+    expect(r.unionGrewBy!).toBeLessThanOrEqual(r.sharpPathEdges!)
   })
 })

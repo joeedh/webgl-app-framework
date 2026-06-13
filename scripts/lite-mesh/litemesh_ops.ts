@@ -5,6 +5,7 @@ import {getWasmImmediate} from '@sculptcore/api/api'
 import {LiteMesh, AttrDomain} from './litemesh'
 import {makeDefaultMaterial} from '../core/material'
 import {FeatureFlags} from '../core/feature-flag'
+import {Icons} from '../editors/icon_enum.js'
 
 export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   Inputs,
@@ -262,31 +263,43 @@ ToolOp.register(MarkSeamOp)
 
 /* Minimal structural views of the View3D/SceneObject bits the modal needs, so we
  * don't pull the whole View3D type into the lite-mesh layer. */
-interface SeamView3D {
+interface MarkPathView3D {
   getLocalMouse(x: number, y: number): {0: number; 1: number}
-  activeCamera: {rendermat: Matrix4}
+  activeCamera: {rendermat: Matrix4; pos: Vector3}
   unproject(p: Vector4, mat: Matrix4): void
+  project(co: Vector3): number
+  getViewVec(localX: number, localY: number): Vector3
   makeDrawLine(a: Vector3, b: Vector3, color: number[]): unknown
   resetDrawLines(): void
 }
-interface SeamCtx {
-  view3d?: SeamView3D
+interface MarkPathCtx {
+  view3d?: MarkPathView3D
   object?: {outputs: {matrix: {getValue(): Matrix4}}}
   scene?: {objects?: {active?: {data?: unknown}}}
 }
 
+/** Snap radius (px) for connecting the path to an existing feature vertex, and
+ * the segment count of the snap-indicator ring drawn at the cursor. */
+const SNAP_PX = 10
+const RING_SEG = 16
+
 /**
- * Wave 5: interactive chain (knife-style) seam marking. Modal tool — click
- * vertices in sequence; each click marks the shortest-path seam from the
- * previous vertex (live), with a hover preview of the next segment. Enter or
- * right-click finishes (a single undo step for the whole chain); Esc cancels.
+ * Wave 5: interactive chain (knife-style) feature-edge marking. Modal base class
+ * — click vertices in sequence; each click marks the shortest-path feature edge
+ * (of `_kind()`: seam or sharp) from the previous vertex (live), with a hover
+ * preview of the next segment. Enter or right-click finishes (a single undo step
+ * for the whole chain); Esc cancels. During preview the endpoint snaps to an
+ * existing feature vertex of the same kind within {@link SNAP_PX}, drawing a ring
+ * at the cursor while a snap is active.
  *
  * Vertex picking, path-finding and flag-writing are all engine-side
- * (`pickVert` / `markSeamPath` / `edgePathCoords`); this op is just the
- * interaction shell + overlay. Invoke without a pointer event (keymap/button)
- * so the modal receives pointer move/down events, not only key events.
+ * (`pickVert` / `markEdgePath` / `edgePathCoords` / `featureVerts`); this op is
+ * just the interaction shell + overlay. The concrete seam / sharp subclasses only
+ * supply `_kind()` and the overlay colors. Invoke without a pointer event
+ * (keymap/button) so the modal receives pointer move/down events, not only key
+ * events.
  */
-export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
+export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
   /** Committed picked verts (the confirmed chain nodes). */
   _chain: number[] = []
   /** Cached world-space endpoint pairs for the committed segments (so a
@@ -294,19 +307,22 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   _committed: [Vector3, Vector3][] = []
   _hoverVert = -1
   _hoverLines: [Vector3, Vector3][] = []
-  /** Prior seam bit of every edge the chain touched, recorded the first time
+  /** Snap-indicator ring (world-space line pairs), non-empty while snapping. */
+  _snapRing: [Vector3, Vector3][] = []
+  /** Cached feature-vert indices + object-local coords for snapping, refreshed on
+   * start and after each click (when new edges may have been flagged). */
+  _featIdx: number[] = []
+  _featCo: number[] = []
+  /** Prior feature bit of every edge the chain touched, recorded the first time
    * each edge is seen (before it's live-marked), so undo restores the exact
-   * pre-chain state instead of clearing pre-existing overlapping seams. */
+   * pre-chain state instead of clearing pre-existing overlapping features. */
   _priorByEdge: Map<number, number> = new Map()
 
-  static tooldef() {
-    return {
-      toolpath: 'litemesh.mark_seam_interactive',
-      uiname  : 'Mark Seam',
-      inputs  : {},
-      is_modal: true,
-    }
-  }
+  /** 0 = seam (EDGE_SEAM), 1 = sharp (EDGE_SHARP). */
+  abstract _kind(): number
+  /** RGBA for committed segments / the hover preview. */
+  protected abstract _committedColor(): number[]
+  protected abstract _hoverColor(): number[]
 
   undoPre(_ctx: ToolContext): void {}
   calcUndoMem(): number {
@@ -317,18 +333,33 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     this._chain = []
     this._committed = []
     this._hoverLines = []
+    this._snapRing = []
     this._hoverVert = -1
     this._priorByEdge = new Map()
+    this._refreshFeatureCache()
     return super.modalStart(ctx as never)
   }
 
-  private _mctx(): SeamCtx | undefined {
-    return this.modal_ctx as unknown as SeamCtx | undefined
+  protected _mctx(): MarkPathCtx | undefined {
+    return this.modal_ctx as unknown as MarkPathCtx | undefined
+  }
+
+  private _refreshFeatureCache(): void {
+    const ctx = this._mctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    if (!mesh) {
+      this._featIdx = []
+      this._featCo = []
+      return
+    }
+    const {idx, co} = mesh.featureVerts(this._kind())
+    this._featIdx = idx
+    this._featCo = co
   }
 
   /** Build the object-local ray through screen pixel (lx, ly) — same unproject
    * the BVH picking path uses. */
-  private _localRay(view3d: SeamView3D, obmatrix: Matrix4, lx: number, ly: number) {
+  private _localRay(view3d: MarkPathView3D, obmatrix: Matrix4, lx: number, ly: number) {
     const imat = new Matrix4(obmatrix)
     imat.multiply(view3d.activeCamera.rendermat)
     imat.invert()
@@ -358,16 +389,77 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     return lines
   }
 
-  private _pick(e: PointerEvent): number {
+  /** Project the cached feature verts to screen; if one lands within SNAP_PX of
+   * the cursor, return its index + world position (object-space already applied).
+   * Returns vert -1 when nothing snaps. */
+  private _snapVert(view3d: MarkPathView3D, obmatrix: Matrix4, mx: number, my: number): {vert: number; world?: Vector3} {
+    let best = -1
+    let bestD = SNAP_PX
+    let bestWorld: Vector3 | undefined
+    const tmp = new Vector3()
+    for (let i = 0; i < this._featIdx.length; i++) {
+      tmp[0] = this._featCo[i * 3]
+      tmp[1] = this._featCo[i * 3 + 1]
+      tmp[2] = this._featCo[i * 3 + 2]
+      tmp.multVecMatrix(obmatrix)
+      const world = new Vector3(tmp)
+      const w = view3d.project(tmp) // tmp now holds pixel x/y
+      if (w <= 0) continue // behind the camera
+      const d = Math.hypot(tmp[0] - mx, tmp[1] - my)
+      if (d < bestD) {
+        bestD = d
+        best = this._featIdx[i]
+        bestWorld = world
+      }
+    }
+    return {vert: best, world: bestWorld}
+  }
+
+  /** Billboarded SNAP_PX-radius ring (view-plane) at `world`, as line pairs. */
+  private _snapRingLines(view3d: MarkPathView3D, world: Vector3, mx: number, my: number): [Vector3, Vector3][] {
+    const cam = view3d.activeCamera
+    const dir0 = new Vector3(view3d.getViewVec(mx, my))
+    const right = new Vector3(view3d.getViewVec(mx + SNAP_PX, my)).sub(dir0)
+    const up = new Vector3(view3d.getViewVec(mx, my + SNAP_PX)).sub(dir0)
+    const dist = Math.hypot(world[0] - cam.pos[0], world[1] - cam.pos[1], world[2] - cam.pos[2])
+    right.mulScalar(dist)
+    up.mulScalar(dist)
+    const pts: Vector3[] = []
+    for (let k = 0; k < RING_SEG; k++) {
+      const a = (2 * Math.PI * k) / RING_SEG
+      const c = Math.cos(a)
+      const s = Math.sin(a)
+      pts.push(
+        new Vector3([
+          world[0] + c * right[0] + s * up[0],
+          world[1] + c * right[1] + s * up[1],
+          world[2] + c * right[2] + s * up[2],
+        ])
+      )
+    }
+    const lines: [Vector3, Vector3][] = []
+    for (let k = 0; k < RING_SEG; k++) lines.push([pts[k], pts[(k + 1) % RING_SEG]])
+    return lines
+  }
+
+  /** Ray-pick the vert under the cursor, then snap to a nearby feature vert if
+   * one is within SNAP_PX. Returns the resolved vert plus the snap ring (empty if
+   * no snap). */
+  private _pick(e: PointerEvent): {vert: number; ring: [Vector3, Vector3][]} {
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
     if (!ctx || !ctx.view3d || !ctx.object || !mesh) {
-      return -1
+      return {vert: -1, ring: []}
     }
     const m = ctx.view3d.getLocalMouse(e.x, e.y)
     const obmatrix = ctx.object.outputs.matrix.getValue()
     const {origin, dir} = this._localRay(ctx.view3d, obmatrix, m[0], m[1])
-    return mesh.pickVert(origin, dir)
+    const picked = mesh.pickVert(origin, dir)
+    const snap = this._snapVert(ctx.view3d, obmatrix, m[0], m[1])
+    if (snap.vert >= 0 && snap.world) {
+      return {vert: snap.vert, ring: this._snapRingLines(ctx.view3d, snap.world, m[0], m[1])}
+    }
+    return {vert: picked, ring: []}
   }
 
   private _redraw() {
@@ -378,19 +470,20 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     const v3d = ctx.view3d
     v3d.resetDrawLines()
     for (const [a, b] of this._committed) {
-      v3d.makeDrawLine(a, b, [1.0, 0.4, 0.0, 1.0])
+      v3d.makeDrawLine(a, b, this._committedColor())
     }
     for (const [a, b] of this._hoverLines) {
-      v3d.makeDrawLine(a, b, [1.0, 0.7, 0.2, 0.7])
+      v3d.makeDrawLine(a, b, this._hoverColor())
+    }
+    for (const [a, b] of this._snapRing) {
+      v3d.makeDrawLine(a, b, [1.0, 1.0, 1.0, 1.0])
     }
     window.redraw_viewport?.()
   }
 
   on_pointermove(e: PointerEvent): void {
-    const v = this._pick(e)
-    if (v === this._hoverVert) {
-      return
-    }
+    const {vert: v, ring} = this._pick(e)
+    this._snapRing = ring
     this._hoverVert = v
     this._hoverLines = []
     const ctx = this._mctx()
@@ -410,7 +503,7 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     if (e.button !== 0) {
       return
     }
-    const v = this._pick(e)
+    const {vert: v} = this._pick(e)
     if (v < 0) {
       return
     }
@@ -420,19 +513,22 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     }
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    const kind = this._kind()
     if (anchor >= 0 && ctx && ctx.object && mesh) {
-      // Snapshot each path edge's prior seam bit (first sighting only) before
+      // Snapshot each path edge's prior feature bit (first sighting only) before
       // marking live, so undo can restore the exact pre-chain state.
       for (const e of mesh.edgePathEdges(anchor, v)) {
-        if (!this._priorByEdge.has(e)) this._priorByEdge.set(e, mesh.edgeSeam(e))
+        if (!this._priorByEdge.has(e)) this._priorByEdge.set(e, mesh.edgeFlagKind(e, kind))
       }
       // mark live for immediate feedback; exec() re-marks the whole chain on redo
-      mesh.markSeamPath(anchor, v, 1)
+      mesh.markEdgePath(anchor, v, kind, 1)
       this._committed.push(...this._segmentLines(mesh, ctx.object.outputs.matrix.getValue(), anchor, v))
     }
     this._chain.push(v)
     this._hoverLines = []
     this._hoverVert = -1
+    this._snapRing = []
+    this._refreshFeatureCache() // new feature verts are now snap targets
     this._redraw()
   }
 
@@ -445,10 +541,10 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   }
 
   modalEnd(wasCancelled: boolean) {
-    // Clear the transient preview lines on *both* paths: on finish the
-    // persistent seamBatch (rebuilt by exec's markSeamPath) carries the committed
-    // seams, so the temp _committed/_hover lines would otherwise double-draw on
-    // top until the next resetDrawLines.
+    // Clear the transient preview lines on *both* paths: on finish the persistent
+    // seamBatch (rebuilt by exec's markEdgePath) carries the committed features,
+    // so the temp _committed/_hover/_snap lines would otherwise double-draw on top
+    // until the next resetDrawLines.
     this._mctx()?.view3d?.resetDrawLines()
     return super.modalEnd(wasCancelled)
   }
@@ -458,8 +554,9 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
     if (!mesh) {
       return
     }
+    const kind = this._kind()
     for (let i = 0; i + 1 < this._chain.length; i++) {
-      mesh.markSeamPath(this._chain[i], this._chain[i + 1], 1)
+      mesh.markEdgePath(this._chain[i], this._chain[i + 1], kind, 1)
     }
     window.redraw_all?.()
   }
@@ -467,18 +564,66 @@ export class MarkSeamInteractiveOp extends LiteMeshAttrOp {
   undo(ctx: ToolContext) {
     const mesh = this._getMesh(ctx)
     if (mesh) {
-      // Restore the snapshotted pre-chain seam bits (true inverse) rather than
-      // blanket-clearing the chain, which would unset pre-existing seams the
+      // Restore the snapshotted pre-chain feature bits (true inverse) rather than
+      // blanket-clearing the chain, which would unset pre-existing features the
       // chain overlapped.
       const edges = [...this._priorByEdge.keys()]
       const states = edges.map((e) => this._priorByEdge.get(e) ?? 0)
-      mesh.restoreSeamEdges(edges, states)
+      mesh.restoreEdgeFlags(edges, states, this._kind())
     }
     ;(ctx as unknown as {view3d?: {resetDrawLines?: () => void}}).view3d?.resetDrawLines?.()
     window.redraw_all?.()
   }
 }
+
+/** Interactive seam marking (EDGE_SEAM). Orange overlay. */
+export class MarkSeamInteractiveOp extends MarkEdgePathBaseOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.mark_seam_interactive',
+      uiname  : 'Mark Seam',
+      icon    : Icons.MARK_SEAM,
+      inputs  : {},
+      is_modal: true,
+    }
+  }
+
+  _kind(): number {
+    return 0
+  }
+  protected _committedColor(): number[] {
+    return [1.0, 0.4, 0.0, 1.0]
+  }
+  protected _hoverColor(): number[] {
+    return [1.0, 0.7, 0.2, 0.7]
+  }
+}
 ToolOp.register(MarkSeamInteractiveOp)
+
+/** Interactive sharp-edge marking (EDGE_SHARP). Cyan overlay, matching the
+ * feature overlay's sharp color. */
+export class MarkSharpInteractiveOp extends MarkEdgePathBaseOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.mark_sharp_interactive',
+      uiname  : 'Mark Sharp',
+      icon    : Icons.MARK_SHARP,
+      inputs  : {},
+      is_modal: true,
+    }
+  }
+
+  _kind(): number {
+    return 1
+  }
+  protected _committedColor(): number[] {
+    return [0.0, 0.8, 1.0, 1.0]
+  }
+  protected _hoverColor(): number[] {
+    return [0.4, 0.9, 1.0, 0.7]
+  }
+}
+ToolOp.register(MarkSharpInteractiveOp)
 
 /**
  * Wave 7: generate a per-corner UV map from the marked seams (EDGE_SEAM). Calls
