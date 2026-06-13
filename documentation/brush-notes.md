@@ -111,6 +111,16 @@ plane point `P = surfacePos + surfaceNo·(planeoff·radius)`, height
 - **Scrape** — plane below (`planeoff<0`), `planeSide=−1` → pull verts above down (cut).
 - **Fill** — plane at surface (`planeoff≈0`), `planeSide=+1` → fill cavities.
 
+`surfaceNo` is whatever normal TS passes to `execProgram` — the kernel doesn't
+care where it came from. `brush.planeNormalMode` (`PlaneNormalModes`, default
+`VIEW`) selects it per dab via `resolvePlaneDabNormal`
+(`scripts/brush/brush_enums.ts`, unit-tested in
+`tests/unit/plane_normal.test.ts`): `VIEW` projects onto a viewport-facing
+plane (`-viewvec` normalized, object-local — same vector the dab raycast used,
+negated so `planeSide` semantics match the surface convention); `SURFACE` uses
+the raycast hit normal. Clay/Scrape/Fill only — WING_SCRAPE's wings stay
+anchored to the surface frame.
+
 `wingscrape.sbrush` has a `host` stage (Rodrigues) computing two wing normals
 from `surfaceNo` rotated ±`wingAngle` about `strokeDir`; the vertex stage picks
 a wing by the lateral side of the stroke. `strokeDir` is set host-side by the

@@ -460,6 +460,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.normalfac` | prop | FloatProperty | Normal Fac | range 0..1 |
 | `scene.tools.sculpt.brush.outputs` | list |  |  |  |
 | `scene.tools.sculpt.brush.pinch` | prop | FloatProperty | Pinch | range 0..1 |
+| `scene.tools.sculpt.brush.planeNormalMode` | prop | EnumProperty | Plane Normal | enum {0, 1, VIEW, SURFACE} |
 | `scene.tools.sculpt.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
 | `scene.tools.sculpt.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
 | `scene.tools.sculpt.brush.rake` | prop | FloatProperty | Rake | range 0..1 |
@@ -596,6 +597,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.normalfac` | prop | FloatProperty | Normal Fac | range 0..1 |
 | `scene.tools.sculptcore.brush.outputs` | list |  |  |  |
 | `scene.tools.sculptcore.brush.pinch` | prop | FloatProperty | Pinch | range 0..1 |
+| `scene.tools.sculptcore.brush.planeNormalMode` | prop | EnumProperty | Plane Normal | enum {0, 1, VIEW, SURFACE} |
 | `scene.tools.sculptcore.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
 | `scene.tools.sculptcore.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
 | `scene.tools.sculptcore.brush.rake` | prop | FloatProperty | Rake | range 0..1 |

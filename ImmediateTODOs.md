@@ -26,8 +26,13 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      natively / hung on wasm (regression test sculptcore/tests/test_dyntopo_undo_nonnewest.cc).
      Guarded by tests/integration/sculptcore_undomem.test.ts, both backends; see
      documentation/undo-memory.md)
-[ ]: plane brushes should give you the option of projecting to the center surface normal or the view normal,
+[x]: plane brushes should give you the option of projecting to the center surface normal or the view normal,
      default to the view normal.
+     (brush.planeNormalMode enum, default VIEW; resolvePlaneDabNormal in
+     scripts/brush/brush_enums.ts swaps the normal handed to execProgram for
+     Clay/Scrape/Fill — TS-only, the plane.sbrush kernel just reads ctx.surfaceNo.
+     Exposed in the sculptcore tool panel; guarded by tests/unit/plane_normal.test.ts;
+     see documentation/brush-notes.md "Plane brushes")
 [x]: make sure sculpt mask painting is implemented and works
 [x]: make sure all sculptcore SculptTool enum entries have icons, create if necassary
      (added SCULPT_MASK_PAINT/COLOR/POLYGROUP/BSMOOTH/HOLE_FILLER/DIRECTIONAL_FAIR, indices

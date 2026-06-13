@@ -4,7 +4,7 @@ import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/ind
 import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
-import {SculptTools, BrushFlags} from '../../../brush/brush_base'
+import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
 
 /** Mirror of the C++ enum FalloffShape (brush.h); passed to setFalloffShape. */
 const FalloffShape = {Spherical: 0, Cube: 1, Linear: 2, Box: 3} as const
@@ -325,8 +325,7 @@ export function builSculptcoreBrush({
   }
 
   // sync properties
-  const planeFamily =
-    brush.tool === SculptTools.CLAY || brush.tool === SculptTools.SCRAPE || brush.tool === SculptTools.FILL
+  const planeFamily = isPlaneFamilyTool(brush.tool)
   const effInvert = invert && !isSmoothTool(brush.tool)
   wasmBrush.strength = brush.strength
   wasmBrush.radius = radius

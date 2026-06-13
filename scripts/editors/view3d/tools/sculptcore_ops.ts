@@ -14,7 +14,7 @@ import {
   pushBrushDeviceInputs,
   configureDynTopoParams,
 } from './sculptcore_bindings'
-import {BrushFlags, SculptTools} from '../../../brush/brush_base'
+import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 
 export interface IGetBrushRet {
@@ -332,10 +332,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // run it over the filtered node set.
       const prog = this.getProgram()
       buildBrushProgram(prog, brushType, brush, radius, mesh)
+      // Plane brushes (Clay/Scrape/Fill) optionally project along the viewport
+      // view vector instead of the center surface normal; viewvec is already
+      // object-local here (same vector the dab raycast used).
+      const dabNormal = resolvePlaneDabNormal(brush.tool, brush.planeNormalMode, normal, viewvec)
       // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
       // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
       // which `nodes` (the constructWith result) is on both backends.
-      wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(normal))
+      wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(dabNormal))
     }
 
     mesh.regenTreeBatch()

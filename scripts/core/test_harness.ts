@@ -326,6 +326,11 @@ function dumpScene(): unknown {
     // accounting, calcUndoMem parity, redo-branch truncation, and the
     // toolstack limitMemory trim freeing C++ steps via onUndoDestroy/freeStep.
     undomemtest  : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
+    // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
+    // stores on globalThis.__evalTestResult lands in the dump (renderer
+    // console output never reaches the harness stdout, so the dump is the
+    // only way an eval can report back without a bespoke support module).
+    evalResult   : (globalThis as {__evalTestResult?: unknown}).__evalTestResult,
   }
 }
 

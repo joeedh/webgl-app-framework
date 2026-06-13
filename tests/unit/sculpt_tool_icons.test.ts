@@ -1,22 +1,18 @@
 /**
  * Guards ImmediateTODOs "all SculptTools enum entries have icons": every key of
  * the SculptTools enum must have a SCULPT_<KEY> entry in the Icons map (that is
- * how brush_base.ts builds SculptIcons). Parses both sources as text — both
- * modules drag in path.ux, which the jsdom harness can't load.
+ * how brush_base.ts builds SculptIcons). The Icons side is parsed as text —
+ * icon_enum.js drags in path.ux, which the jsdom harness can't load.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {SculptTools} from '../../scripts/brush/brush_enums'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 function sculptToolKeys(): string[] {
-  const src = fs.readFileSync(path.join(ROOT, 'scripts', 'brush', 'brush_base.ts'), 'utf-8')
-  const m = src.match(/export enum SculptTools \{([^}]+)\}/)
-  if (!m) {
-    throw new Error('SculptTools enum not found in brush_base.ts')
-  }
-  return [...m[1].matchAll(/^\s*([A-Z_][A-Z0-9_]*)\s*=/gm)].map(k => k[1])
+  return Object.keys(SculptTools).filter(k => isNaN(Number(k)))
 }
 
 function iconKeys(): Set<string> {

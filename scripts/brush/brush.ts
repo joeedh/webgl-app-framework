@@ -18,7 +18,15 @@ import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {BrushDynamics, BrushDynChannel} from './brush_dynamics'
 export {BrushDynamics} from './brush_dynamics'
 
-import {SculptTools, SculptIcons, BrushFlags, DynTopoFlags, DynTopoOverrides, BrushSpacingModes} from './brush_base'
+import {
+  SculptTools,
+  SculptIcons,
+  BrushFlags,
+  DynTopoFlags,
+  DynTopoOverrides,
+  BrushSpacingModes,
+  PlaneNormalModes,
+} from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
 
@@ -39,6 +47,7 @@ SculptBrush {
   tool       : int;
   radius     : float;
   planeoff   : float;
+  planeNormalMode : int;
   concaveFilter : float;
   rake       : float;    
   spacing    : float;
@@ -86,6 +95,7 @@ SculptBrush {
   autosmooth = 0.0
   autosmoothInflate = 0.0
   planeoff = 0.0
+  planeNormalMode = PlaneNormalModes.VIEW
   rake = 0.0
   pinch = 0.0
 
@@ -157,6 +167,10 @@ SculptBrush {
     bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
 
     bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
+    bst.enum('planeNormalMode', 'planeNormalMode', PlaneNormalModes, 'Plane Normal').descriptions({
+      VIEW   : 'Project onto a plane facing the viewport camera',
+      SURFACE: 'Project onto the surface-normal plane at the brush center',
+    })
     bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
@@ -269,6 +283,7 @@ SculptBrush {
     d.add(this.autosmoothInflate)
     d.add(this.pinch)
     d.add(this.planeoff)
+    d.add(this.planeNormalMode)
     d.add(this.rake)
     d.add(this.pinch)
     d.add(this.normalfac)
@@ -318,6 +333,7 @@ SculptBrush {
     b.strength = this.strength
     b.radius = this.radius
     b.planeoff = this.planeoff
+    b.planeNormalMode = this.planeNormalMode
 
     b.color.load(this.color)
     b.bgcolor.load(this.bgcolor)

@@ -217,6 +217,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     col.prop(path + '.brush.bgcolor')
 
     col.prop(path + '.brush.planeoff')
+    col.prop(path + '.brush.planeNormalMode')
     col.prop(path + '.brush.normalfac')
 
     function dfield(con: Container<ViewContext>, key: string): UIBase<ViewContext> {

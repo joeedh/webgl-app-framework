@@ -3617,6 +3617,20 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "scene.tools.sculpt.brush.planeNormalMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Plane Normal",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "VIEW",
+        "SURFACE"
+      ]
+    },
     "scene.tools.sculpt.brush.planeoff": {
       "kind": "prop",
       "indexed": false,
@@ -5271,6 +5285,20 @@
       ],
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.planeNormalMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Plane Normal",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "0",
+        "1",
+        "VIEW",
+        "SURFACE"
+      ]
     },
     "scene.tools.sculptcore.brush.planeoff": {
       "kind": "prop",
