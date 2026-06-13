@@ -73,7 +73,14 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
 [x]: the draw sharp brush is far too strong and explodes geometry
 [x]: inflate brush should have accumulate on by default
 [x]: clay brush should have accumulate on by default
-[ ]: make sure autosmoothing works.  it should use the brush command pipeline; fix any issues in the pipeline so it can work for both cpu and gpu backends.
+[x]: make sure autosmoothing works.  it should use the brush command pipeline; fix any issues in the pipeline so it can work for both cpu and gpu backends.
+     (already pipeline-driven: buildBrushProgram appends a SMOOTH command (strength=brush.autosmooth,
+     invert pinned false) when brush.autosmooth>0; execProgram re-snapshots co_prev per command so
+     SMOOTH flattens the just-deformed surface, and builSculptcoreBrush sets CSR ring-1 neighbor mode.
+     No TS-side smoothing — the shared executor means both backends (and future WGSL dispatch) run the
+     same command list. Verified end-to-end by the new autosmooth case in sculptcore_brushes.test.ts,
+     both backends bit-identical: a pure DRAW has ~0 perpendicular displacement, autosmooth drives
+     meanPerp clearly positive. See documentation/brush-notes.md "Composite brushes / autosmooth".)
 [x]: the add menu in the electron/web apps shows `litemesh.add_cube(dimen=100)` instead of the toolop's ui name.  fix it.
 [x]: ui related to quad remeshing should be hidden if the quad remeshing feature flag is disabled.
      (header button was already gated; gated the settings toolPanel + QuadRemeshLiteMeshOp.canRun

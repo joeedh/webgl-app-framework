@@ -87,8 +87,24 @@ brush. SMOOTH is a second `exec()` whose Jacobi `co_prev` snapshot is re-taken
 *after* the main pass mutated positions, so it smooths the result. A future
 dyntopo pass is just an entry prepended to `commands` — no API change.
 
+The SMOOTH entry is appended by `buildBrushProgram` whenever `brush.autosmooth >
+0 && radius > 0`, with command strength = `brush.autosmooth` and invert pinned
+`false` (autosmooth always smooths forward, even under an inverted main brush).
+`builSculptcoreBrush` calls `setNeighborMode(1)` (CSR ring-1) so the chained
+SMOOTH finds neighbors on a fresh `LiteMesh`. This is the **only** smoothing
+path — there is no TS-side smoothing — so it works identically on both backends
+(the executor is shared; WGSL dispatch will inherit the same command list).
+
 Sparse overrides (`setCommandFloat`) are keyed by an **int `BrushProp` id**, not
 a name (see gotchas).
+
+Verified by the `autosmooth` case in `tests/integration/sculptcore_brushes.test.ts`
+(both backends): the same accumulating DRAW at two symmetric octant points, once
+with `autosmooth=0` and once high. A pure DRAW moves verts only along the dab
+normal, so its **perpendicular** displacement is ~0; the chained SMOOTH moves
+verts toward neighbor averages, driving `meanPerp` clearly positive — the
+decisive proof the autosmooth command ran (`maxDisp` barely moves because a
+radial DRAW bump is already smooth).
 
 ## Falloff
 

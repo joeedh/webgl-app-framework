@@ -30,6 +30,7 @@ interface StrokeMetrics {
   maxDisp: number
   movedCount: number
   meanAlongNormal: number
+  meanPerp: number
   invalid?: string
 }
 
@@ -45,6 +46,8 @@ interface BrushTestResult {
   kelvinlet?: StrokeMetrics
   grab?: StrokeMetrics
   snakehook?: StrokeMetrics
+  autosmoothOff?: StrokeMetrics
+  autosmoothOn?: StrokeMetrics
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   accumulateDefaults?: Record<string, boolean>
   nonFiniteCount?: number
@@ -203,6 +206,22 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
     expect(r.snakehook!.movedCount).toBeGreaterThan(0)
     expect(r.snakehook!.meanAlongNormal).toBeGreaterThan(0)
     expect(r.snakehook!.maxDisp).toBeLessThan(r.radius! * 2)
+  })
+
+  test('autosmooth flattens the DRAW bump (autosmooth command pipeline)', () => {
+    expect(r.autosmoothOff?.invalid).toBeUndefined()
+    expect(r.autosmoothOn?.invalid).toBeUndefined()
+    expect(r.autosmoothOff!.movedCount).toBeGreaterThan(0)
+    expect(r.autosmoothOn!.movedCount).toBeGreaterThan(0)
+    // Both are DRAW strokes — still push outward along the dab normal.
+    expect(r.autosmoothOff!.meanAlongNormal).toBeGreaterThan(0)
+    expect(r.autosmoothOn!.meanAlongNormal).toBeGreaterThan(0)
+    // A pure DRAW moves verts only along the dab normal, so its perpendicular
+    // displacement is ~0. The chained SMOOTH command (autosmooth) moves verts
+    // toward neighbor averages, introducing a clear perpendicular component —
+    // the decisive proof the autosmooth command ran through the pipeline.
+    expect(r.autosmoothOn!.meanPerp).toBeGreaterThan(r.autosmoothOff!.meanPerp * 4)
+    expect(r.autosmoothOn!.meanPerp).toBeGreaterThan(r.radius! * 1e-3)
   })
 
   test('brush.color reaches the color kernel', () => {

@@ -33,6 +33,10 @@ interface StrokeMetrics {
   movedCount: number
   /** Mean displacement component along the dab normal, over moved verts. */
   meanAlongNormal: number
+  /** Mean displacement magnitude perpendicular to the dab normal, over moved
+   * verts. ~0 for a pure along-normal brush (DRAW); a chained SMOOTH command
+   * (autosmooth) moves verts toward neighbor averages and drives it positive. */
+  meanPerp: number
   /** Buffer length mismatch / missing buffer — metrics invalid. */
   invalid?: string
 }
@@ -58,6 +62,10 @@ interface BrushTestResult {
   grab?: StrokeMetrics
   /** SNAKEHOOK at +Z with dabs moving +X: drags + gathers along +X, bounded. */
   snakehook?: StrokeMetrics
+  /** Accumulating DRAW at an octant with autosmooth=0 — the un-smoothed bump. */
+  autosmoothOff?: StrokeMetrics
+  /** Same DRAW at the opposite octant with high autosmooth — flatter peak. */
+  autosmoothOn?: StrokeMetrics
   /** Color paint at +Z (after the draw): per-channel means over painted verts. */
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   /** ACCUMULATE default flag per tool (smooth/bsmooth/paint-smooth/inflate/clay). */
@@ -126,7 +134,7 @@ function readGpuBuffer(lm: LiteMesh, name: string): Float32Array | undefined {
 }
 
 function diffMetrics(before: Float32Array | undefined, after: Float32Array | undefined, n: number[]): StrokeMetrics {
-  const m: StrokeMetrics = {maxDisp: 0, movedCount: 0, meanAlongNormal: 0}
+  const m: StrokeMetrics = {maxDisp: 0, movedCount: 0, meanAlongNormal: 0, meanPerp: 0}
   if (!before || !after) {
     m.invalid = 'position buffer unreadable'
     return m
@@ -140,6 +148,7 @@ function diffMetrics(before: Float32Array | undefined, after: Float32Array | und
   const ny = n[1] / nl
   const nz = n[2] / nl
   let alongSum = 0
+  let perpSum = 0
   for (let i = 0; i < before.length; i += 3) {
     const dx = after[i] - before[i]
     const dy = after[i + 1] - before[i + 1]
@@ -147,11 +156,14 @@ function diffMetrics(before: Float32Array | undefined, after: Float32Array | und
     const d = Math.hypot(dx, dy, dz)
     if (d > 1e-6) {
       m.movedCount++
-      alongSum += dx * nx + dy * ny + dz * nz
+      const along = dx * nx + dy * ny + dz * nz
+      alongSum += along
+      perpSum += Math.hypot(dx - along * nx, dy - along * ny, dz - along * nz)
       if (d > m.maxDisp) m.maxDisp = d
     }
   }
   m.meanAlongNormal = m.movedCount > 0 ? alongSum / m.movedCount : 0
+  m.meanPerp = m.movedCount > 0 ? perpSum / m.movedCount : 0
   return m
 }
 
@@ -201,6 +213,38 @@ function grabStrokeAndMeasure(mesh: LiteMesh, brush: SculptBrush, tool: SculptTo
   brush.tool = saved.tool
   brush.strength = saved.strength
   return diffMetrics(before, after, [1, 0, 0])
+}
+
+/**
+ * Build a tall accumulating DRAW bump with a fixed `autosmooth` value and return
+ * its displacement metrics. Verifies the autosmooth pipeline: `buildBrushProgram`
+ * chains a SMOOTH command after the main DRAW when `brush.autosmooth > 0`, and
+ * the executor re-snapshots `co_prev` so SMOOTH flattens the just-deformed
+ * surface. ACCUMULATE + multiple dabs grow a sharp bump so the smoothing effect
+ * (lower peak) is unambiguous across both backends.
+ */
+function drawAutosmoothAndMeasure(
+  mesh: LiteMesh,
+  draw: SculptBrush,
+  p: number[],
+  normal: number[],
+  radius: number,
+  autosmooth: number
+): StrokeMetrics {
+  const saved = {tool: draw.tool, strength: draw.strength, autosmooth: draw.autosmooth, flag: draw.flag}
+  draw.tool = SculptTools.DRAW
+  draw.strength = 0.5
+  draw.autosmooth = autosmooth
+  draw.flag |= BrushFlags.ACCUMULATE // pile dabs into a tall bump for a clear signal
+  const before = readGpuBuffer(mesh, 'position')
+  const dabs = Array.from({length: 6}, () => ({p, normal}))
+  runSculptcoreStroke({mesh, brush: draw, dabs, radius})
+  const after = readGpuBuffer(mesh, 'position')
+  draw.tool = saved.tool
+  draw.strength = saved.strength
+  draw.autosmooth = saved.autosmooth
+  draw.flag = saved.flag
+  return diffMetrics(before, after, normal)
 }
 
 function brushTest(): BrushTestResult {
@@ -303,6 +347,15 @@ function brushTest(): BrushTestResult {
     result.kelvinlet = grabStrokeAndMeasure(mesh, need(SculptTools.KELVINLET), SculptTools.KELVINLET, R, radius)
     result.grab = grabStrokeAndMeasure(mesh, need(SculptTools.GRAB), SculptTools.GRAB, R, radius)
     result.snakehook = grabStrokeAndMeasure(mesh, need(SculptTools.SNAKE), SculptTools.SNAKE, R, radius)
+
+    // Autosmooth pipeline: the same accumulating DRAW at two symmetric octant
+    // centers (well clear of the six axis poles used above), once with
+    // autosmooth off and once high. The chained SMOOTH command must flatten the
+    // bump, so the high-autosmooth peak displacement is measurably lower.
+    const oct = R / Math.sqrt(3)
+    const s3 = 1 / Math.sqrt(3)
+    result.autosmoothOff = drawAutosmoothAndMeasure(mesh, draw, [oct, oct, oct], [s3, s3, s3], radius, 0)
+    result.autosmoothOn = drawAutosmoothAndMeasure(mesh, draw, [-oct, -oct, -oct], [-s3, -s3, -s3], radius, 0.9)
 
     // Color paint back at +Z (deform-independent): paint a green-dominant color
     // and read the legacy composited `color` stream. The old kernel hardcoded
