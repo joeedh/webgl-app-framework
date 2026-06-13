@@ -314,6 +314,23 @@ function dumpScene(): unknown {
     // proving nstructjs JSON is an adequate test-fixture format for
     // AttributeNode-carrying materials (M7 "test format" decision).
     attrRoundtrip: (globalThis as {__attrtestRoundtripResult?: unknown}).__attrtestRoundtripResult,
+    // Reflect the brush-behavior driver (`__brushTest`): scripted strokes at
+    // the sphere poles, diffing GPU position/color buffers to assert invert,
+    // draw-sharp boundedness, mask gating, brush.color, and accumulate flags.
+    brushtest    : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
+    // Reflect the boundary-constraint driver (`__boundaryTest`): seam-marking
+    // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
+    // invariants (non-2-valence verts, components) and both undo stacks.
+    boundarytest : (globalThis as {__boundaryTestResult?: unknown}).__boundaryTestResult,
+    // Reflect the undo-memory driver (`__undoMemTest`): per-step MeshLog byte
+    // accounting, calcUndoMem parity, redo-branch truncation, and the
+    // toolstack limitMemory trim freeing C++ steps via onUndoDestroy/freeStep.
+    undomemtest  : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
+    // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
+    // stores on globalThis.__evalTestResult lands in the dump (renderer
+    // console output never reaches the harness stdout, so the dump is the
+    // only way an eval can report back without a bespoke support module).
+    evalResult   : (globalThis as {__evalTestResult?: unknown}).__evalTestResult,
   }
 }
 

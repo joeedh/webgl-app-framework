@@ -243,28 +243,30 @@ export class DynTopoSettings {
       }
     }
 
-    st.enum('subdivMode', 'subdivMode', SubdivModes)
+    st.enum('subdivMode', 'subdivMode', deleteTsEnumIntegers(SubdivModes))
 
-    st.flags('overrideMask', 'overrides', DynTopoOverrides, 'Overrides').descriptions(tooltips).uiNames({
-      NONE: 'Inherit Everything',
-    })
+    st.flags('overrideMask', 'overrides', deleteTsEnumIntegers(DynTopoOverrides), 'Overrides')
+      .descriptions(tooltips)
+      .uiNames({
+        NONE: 'Inherit Everything',
+      })
 
     st.float('subdivideFactor', 'subdivideFactor', 'Subdivision Factor').range(0.0, 1.0).noUnits()
     st.float('decimateFactor', 'decimateFactor', 'Decimate Factor').range(0.0, 1.0).noUnits()
     st.float('edgeSize', 'edgeSize', 'Edge Length', 'Edge length (in pixels)').range(0.25, 40.0).noUnits()
-    st.flags('flag', 'flag', DynTopoFlags, 'Flag').descriptions({
+    st.flags('flag', 'flag', deleteTsEnumIntegers(DynTopoFlags), 'Flag').descriptions({
       ADAPTIVE: 'Subdivide based on curvature (Fancy Edge Weights only)  ',
     })
     st.int('maxDepth', 'maxDepth', 'Max Depth', 'Maximum quad tree grid subdivision level').range(0, 15).noUnits()
     st.int('repeat', 'repeat', 'Repeat', 'Number of times to run topology engine').range(1, 25).noUnits()
 
     st.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
-    st.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
+    st.enum('spacingMode', 'spacingMode', deleteTsEnumIntegers(BrushSpacingModes), 'Spacing Mode').descriptions({
       EVEN: 'Fixed distance between brush points',
       NONE: 'Use raw brush points',
     })
 
-    st.enum('edgeMode', 'edgeMode', DynTopoModes, 'Mode')
+    st.enum('edgeMode', 'edgeMode', deleteTsEnumIntegers(DynTopoModes), 'Mode')
 
     st.int('edgeCount', 'edgeCount', 'Edge Count')
       .range(1, 2048)

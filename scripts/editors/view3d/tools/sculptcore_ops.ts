@@ -13,8 +13,9 @@ import {
   buildBrushProgram,
   pushBrushDeviceInputs,
   configureDynTopoParams,
+  isGrabTool,
 } from './sculptcore_bindings'
-import {BrushFlags, SculptTools} from '../../../brush/brush_base'
+import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 
 export interface IGetBrushRet {
@@ -56,9 +57,15 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
+  /** Previous dab's object-local surface center, for grab brushes (kelvinlet):
+   * grabTo = thisDab − prevDab. Undefined until the first dab of the stroke. */
+  prevDabLocal?: Vector3
 
   static meshLog: MeshLog | undefined
   inStep = false
+  /** MeshLog step id owned by this op (set in undoPre); -1 = none. Keys
+   * calcUndoMem/onUndoDestroy so stack trimming frees the C++ step too. */
+  logStepId = -1
 
   /** Monotonic, process-global non-accumulate generation stamp; pre-incremented
    * once per stroke (so the first stroke gets 1, never 0 = "not stamped"). The
@@ -86,11 +93,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   undoPre(ctx: ToolContext) {
     this.strokeGroupId = undefined
+    this.prevDabLocal = undefined
     this.dabSeed = 1
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
+      this.logStepId = SculptPaintOp.meshLog.lastStepId()
       this.inStep = true
       window.redraw_viewport()
     }
@@ -112,12 +121,23 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
-  calcMemSize(ctx: ToolContext): number {
-    return 1
+  /** Undo data lives in the shared C++ MeshLog; report this op's step size so
+   * the tool stack's memory limit sees the real cost. */
+  calcUndoMem(_ctx: ToolContext): number {
+    const log = SculptPaintOp.meshLog
+    if (!log || this.logStepId < 0) {
+      return 0
+    }
+    return log.stepMemSize(this.logStepId)
   }
 
-  calcUndoMem(ctx: ToolContext): number {
-    return 1
+  /** Stack trim dropped this op — free its C++ MeshLog step too. */
+  onUndoDestroy(): void {
+    const log = SculptPaintOp.meshLog
+    if (log && this.logStepId >= 0) {
+      log.freeStep(this.logStepId)
+      this.logStepId = -1
+    }
   }
 
   getBrush(e: PointerEvent): IGetBrushRet {
@@ -317,10 +337,20 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // run it over the filtered node set.
       const prog = this.getProgram()
       buildBrushProgram(prog, brushType, brush, radius, mesh)
+      // Plane brushes (Clay/Scrape/Fill) optionally project along the viewport
+      // view vector instead of the center surface normal; viewvec is already
+      // object-local here (same vector the dab raycast used).
+      const dabNormal = resolvePlaneDabNormal(brush.tool, brush.planeNormalMode, normal, viewvec)
+
+      // Grab-style brushes (kelvinlet): pull the region under the dab in the
+      // stroke-movement direction (see applyGrabDabState).
+      if (isGrabTool(brush.tool)) {
+        this.prevDabLocal = applyGrabDabState(wasmBrush, p, this.prevDabLocal)
+      }
       // Pass the bound Vector itself (not the getBoundVector inspection proxy) —
       // execProgram's `Vector<SpatialNode*>*` param needs an unwrappable handle,
       // which `nodes` (the constructWith result) is on both backends.
-      wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(normal))
+      wasmExec.execProgram(prog, nodes, wasm.float3(p), wasm.float3(dabNormal))
     }
 
     mesh.regenTreeBatch()
@@ -359,6 +389,24 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 ToolOp.register(SculptPaintOp)
 
 /**
+ * Set the kelvinlet grab vectors for one dab and return the new previous-dab
+ * point. grabFrom = force application point (this dab center, object-local);
+ * grabTo = the per-dab displacement vector (zero on the first dab, so the
+ * kelvinlet is a no-op until the brush moves). Both are bound Brush members the
+ * kernel reads from ctx.brush. Shared by the interactive op and the test driver.
+ */
+function applyGrabDabState(wasmBrush: WasmBrush, p: number[] | Vector3, prev: Vector3 | undefined): Vector3 {
+  const gf = wasmBrush.grabFrom.vec
+  const gt = wasmBrush.grabTo.vec
+  for (let i = 0; i < 3; i++) {
+    const cur = p[i] ?? 0
+    gf[i] = cur
+    gt[i] = prev ? cur - (prev[i] ?? 0) : 0
+  }
+  return new Vector3(p)
+}
+
+/**
  * Dev/test driver: run a sculptcore brush stroke programmatically over a list of
  * world-space dabs on a LiteMesh, with undo logging — the headless/CDP
  * counterpart to interactively dragging the sculpt brush. Mirrors
@@ -374,6 +422,8 @@ export function runSculptcoreStroke(opts: {
   radius?: number
   /** world-units-per-pixel at the dab; only needed for PIXELS edge mode. */
   dist?: number
+  /** Stroke-level invert (the interactive op's ctrl modifier). */
+  invert?: boolean
 }): {dabs: number; skipped: boolean} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
@@ -411,8 +461,19 @@ export function runSculptcoreStroke(opts: {
   const strokeGen = ++SculptPaintOp.nextStrokeGen
 
   let dabIdx = 0
+  let prevDabLocal: Vector3 | undefined = undefined
   for (const dab of opts.dabs) {
-    const r = builSculptcoreBrush({wasm, brush, mesh, radius, invert: false, wasmBrush, wasmExec, nonAccum, strokeGen})
+    const r = builSculptcoreBrush({
+      wasm,
+      brush,
+      mesh,
+      radius,
+      invert: opts.invert ?? false,
+      wasmBrush,
+      wasmExec,
+      nonAccum,
+      strokeGen,
+    })
     wasmBrush = r.wasmBrush
     wasmExec = r.wasmExec
 
@@ -439,6 +500,12 @@ export function runSculptcoreStroke(opts: {
       }
       configureDynTopoParams(dynParams, dt, l_max, l_min)
       wasmExec.applyDynTopoDab(wasm.float3(new Vector3(dab.p)), radius, dynParams, dabIdx + 1)
+    }
+
+    // Grab-style brushes (kelvinlet) need per-dab grabFrom/grabTo, same as the
+    // interactive op's applyDab.
+    if (isGrabTool(brush.tool)) {
+      prevDabLocal = applyGrabDabState(wasmBrush, dab.p, prevDabLocal)
     }
 
     const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
@@ -478,3 +545,7 @@ export function runSculptcoreStroke(opts: {
   brush.tool = toolInt
   return runSculptcoreStroke({mesh, brush, dabs: dabs ?? [{p: [0, 0, 0], normal: [0, 0, 1]}], radius})
 }
+
+// Headless/CDP access to the sculpt undo log (created lazily by the first
+// stroke); lets --eval probes drive MeshLog.undo/redo directly.
+;(globalThis as unknown as any)._testSculptcoreMeshLog = () => SculptPaintOp.meshLog

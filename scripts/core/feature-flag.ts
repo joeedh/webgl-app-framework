@@ -1,6 +1,12 @@
 import {DataAPI, DataStruct, ToolProperty} from '../path.ux/scripts/pathux'
 import {default as messageBus, IBusEmitterClass, IBusEmitter, BusTriggers} from './bus'
 import {getAppStorage} from './app_storage'
+import {registerDataAPI} from '../data_api/api_define_registry'
+
+/** Flag keys contain dots; datapath member apinames cannot. */
+export function featureFlagApiName(key: string): string {
+  return key.replace(/[^\w]/g, '_')
+}
 
 export interface FeatureFlag {
   key: string
@@ -59,6 +65,11 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
     return featureFlags.find((f) => f.key === key)!
   }
 
+  /** The canonical flag definitions (defaults), not the stored overrides. */
+  get definitions(): readonly Readonly<FeatureFlag>[] {
+    return typecheckFeatureFlags
+  }
+
   set(key: FeatureFlagKeys, value: boolean) {
     const flag = this.flags.find((f) => f.key === key)!
     if (flag.value !== value) {
@@ -108,22 +119,28 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
     getAppStorage().setText(this.LSKEY, JSON.stringify(flags, undefined, 2))
   }
 
-  static defineAPI(api: DataAPI, st?: DataStruct) {
+  static defineAPI(api: DataAPI, st?: DataStruct): DataStruct {
     st = st ?? api.mapStruct(FeatureFlagManager, true)
 
-    const createKey = (flag: (typeof featureFlags)[number]) => {
-      st.bool(flag.key, flag.key, flag.description, flag.description).customGetSet<FeatureFlagManager>(
+    const createKey = (flag: Readonly<FeatureFlag>) => {
+      const key = flag.key as FeatureFlagKeys
+      /* customGetSet means the member path is never dereferenced, but path.ux
+       * still parses it — so it must be the dot-free mangled name too. */
+      const apiname = featureFlagApiName(flag.key)
+      st!.bool(apiname, apiname, flag.uiName ?? flag.key, flag.description).customGetSet<FeatureFlagManager>(
         function () {
-          return this.dataref.get(flag.key)
+          return this.dataref.get(key)
         },
         function (value: boolean) {
-          this.dataref.set(flag.key, value)
+          this.dataref.set(key, value)
         }
       )
     }
-    for (const flag of featureFlags) {
+    for (const flag of typecheckFeatureFlags) {
       createKey(flag)
     }
+
+    return st
   }
 
   save() {
@@ -142,8 +159,21 @@ const featureFlags = [
 ] as const
 
 /** exists to typecheck featureFlags above. */
-const typecheckFeatureFlags = featureFlags as Readonly<Readonly<FeatureFlag>[]>
+const typecheckFeatureFlags = featureFlags as readonly Readonly<FeatureFlag>[]
 
 type FeatureFlagKeys = (typeof featureFlags)[number]['key']
 
+registerDataAPI(FeatureFlagManager)
+
 export const FeatureFlags = new FeatureFlagManager()
+
+declare global {
+  interface Window {
+    FeatureFlags: FeatureFlagManager
+  }
+}
+/* Debug-surface global (documentation/debugSurface.md): lets CDP / --eval
+ * probes flip flags at runtime. */
+if (typeof window !== 'undefined') {
+  window.FeatureFlags = FeatureFlags
+}

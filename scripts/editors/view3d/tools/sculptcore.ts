@@ -36,7 +36,7 @@ import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../../../brush/in
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
-import {builSculptcoreBrush} from './sculptcore_bindings'
+import {TOOL_TO_SCULPTBRUSH} from './sculptcore_bindings'
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -208,8 +208,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     p.prop(path + '.brush.flag[INVERT_CONCAVE_FILTER]')
 
     doChannel('sharp')
-    
-    col.useIcons(false);
+
+    col.useIcons(false)
     col.prop(path + '.brush.flag[INVERT]')
     col.prop(path + '.brush.flag[ACCUMULATE]')
     col.prop(path + '.brush.spacing')
@@ -217,6 +217,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     col.prop(path + '.brush.bgcolor')
 
     col.prop(path + '.brush.planeoff')
+    col.prop(path + '.brush.planeNormalMode')
     col.prop(path + '.brush.normalfac')
 
     function dfield(con: Container<ViewContext>, key: string): UIBase<ViewContext> {
@@ -277,7 +278,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     dfield(panel2, 'maxSplits')
     dfield(panel2, 'maxRounds')
 
-    col.toolPanel('litemesh.quad_remesh')
+    if (FeatureFlags.get('sculptcore.quad_remesher')) {
+      col.toolPanel('litemesh.quad_remesh')
+    }
 
     //panel
     container.flushUpdate()
@@ -312,6 +315,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.useIcons(true)
     strip.tool('mesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
+    strip.tool('litemesh.mark_sharp_interactive()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
     if (FeatureFlags.get('sculptcore.quad_remesher')) {
@@ -335,7 +339,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
 
     strip = row.strip()
-    strip.pathlabel('mesh.triCount', 'Triangles')
+    strip.pathlabel('object.data.faceCount', 'Faces')
 
     strip.prop(path + '.spacing')
 
@@ -399,7 +403,15 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         window.redraw_viewport(true)
       })
     st.string('dynTopoStatsLabel', 'dynTopoStatsLabel', 'DynTopo Stats').readOnly()
-    st.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
+    /* Only tools sculptcore implements (TOOL_TO_SCULPTBRUSH) are selectable
+     * in this tool mode; the legacy pbvh mode keeps the full enum. */
+    const sculptcoreTools = {} as Record<string, number>
+    for (const [k, v] of Object.entries(deleteTsEnumIntegers(SculptTools))) {
+      if ((v as number) in TOOL_TO_SCULPTBRUSH) {
+        sculptcoreTools[k] = v as number
+      }
+    }
+    st.enum('tool', 'tool', sculptcoreTools).icons(SculptIcons)
 
     st.struct('_apiBrushHelper', 'brush', 'Brush', api.mapStruct(SculptBrush))
 
@@ -419,6 +431,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       new HotKey('.', [], 'view3d.view_selected()'),
       new HotKey('M', ['alt'], 'paint.clear_mask()'),
       new HotKey('K', [], 'litemesh.mark_seam_interactive()'),
+      new HotKey('K', ['shift'], 'litemesh.mark_sharp_interactive()'),
     ])
   }
 

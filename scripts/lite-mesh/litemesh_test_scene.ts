@@ -31,6 +31,12 @@ import {AttrType} from './litemesh_base'
 import './litemesh_attrtest_support'
 // Side-effect: registers globalThis.__quadRemeshTest for the quad-remesh test.
 import './litemesh_quad_remesh_support'
+// Side-effect: registers globalThis.__brushTest for the brush-behavior test.
+import './litemesh_brushtest_support'
+// Side-effect: registers globalThis.__boundaryTest for the boundary-constraint test.
+import './litemesh_boundarytest_support'
+// Side-effect: registers globalThis.__undoMemTest for the undo-memory test.
+import './litemesh_undomem_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

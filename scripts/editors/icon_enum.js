@@ -123,5 +123,14 @@ export let Icons = {
   SCULPT_FACE_SET_DRAW : 117,
   PERSPECTIVE          : 118,
   ORTHOGRAPHIC         : 119,
+  SCULPT_MASK_PAINT    : 120,
+  SCULPT_COLOR         : 121,
+  SCULPT_POLYGROUP     : 122,
+  SCULPT_BSMOOTH       : 123,
+  SCULPT_HOLE_FILLER   : 124,
+  SCULPT_DIRECTIONAL_FAIR : 125,
+  SCULPT_KELVINLET        : 126,
+  MARK_SEAM               : 127,
+  MARK_SHARP              : 128,
 }
 setIconMap(Icons)

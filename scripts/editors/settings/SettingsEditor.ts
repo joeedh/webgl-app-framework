@@ -1,13 +1,17 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
-import * as math from '../../util/math.js'
-import * as util from '../../util/util.js'
-import {exportTheme, loadUIData, nstructjs, saveUIData, UIBase} from '../../path.ux/scripts/pathux.js'
-import {Editor} from '../editor_base.ts'
+import {exportTheme, loadUIData, nstructjs, saveUIData, TabContainer} from '../../path.ux/scripts/pathux'
+import {UIBase} from '../../path.ux/scripts/core/ui_base'
+import {Container} from '../../path.ux/scripts/core/ui'
+import {Editor} from '../editor_base'
 import {Icons} from '../icon_enum.js'
 import addonManager from '../../addon/addon.js'
-import {pickAndInstallAddon} from '../../addon/install_ui.ts'
+import {pickAndInstallAddon} from '../../addon/install_ui'
+import {FeatureFlags, featureFlagApiName} from '../../core/feature-flag'
+import type {ViewContext} from '../../core/context'
 
 export class SettingsEditor extends Editor {
+  body!: Container<ViewContext>
+  tabs!: TabContainer<ViewContext>
+
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -16,33 +20,31 @@ SettingsEditor {
   `
   )
 
-  constructor() {
-    super()
-  }
-
-  init() {
+  init(): void {
     super.init()
     this.background = this.getDefault('DefaultPanelBG')
 
-    let header = this.header
-    let body = (this.body = this.container.col())
+    this.body = this.container.col()
 
     this.rebuild()
   }
 
-  rebuild() {
-    let container = this.body
+  rebuild(): void {
+    const container = this.body
 
-    let uidata = saveUIData(container, 'settings')
+    const uidata = saveUIData(container, 'settings')
 
     container.clear()
 
-    let tabs = (this.tabs = container.tabs('left'))
-    let tab
+    const tabs = (this.tabs = container.tabs('left'))
 
     this.style['overflow'] = 'scroll'
 
-    tab = tabs.tab('General')
+    let tab = tabs.tab('General')
+    tab.useIcons(false)
+    tab.prop('settings.limitUndoMem')
+    tab.prop('settings.undoMemLimit')
+
     tab = tabs.tab('Theme')
 
     tab.button('Export Theme', () => {
@@ -55,7 +57,7 @@ SettingsEditor {
         `
 /*
  * WARNING: AUTO-GENERATED FILE
- * 
+ *
  * Copy to scripts/editors/theme.js
  */
       `.trim() +
@@ -65,8 +67,8 @@ SettingsEditor {
 
       console.log(theme)
 
-      let blob = new Blob([theme], {mime: 'application/javascript'})
-      let url = URL.createObjectURL(blob)
+      const blob = new Blob([theme], {type: 'application/javascript'})
+      const url = URL.createObjectURL(blob)
 
       console.log('url', url)
       window.open(url)
@@ -94,27 +96,35 @@ SettingsEditor {
       })
     }
 
-    for (let addon of addonManager.addons) {
-      let k = addon.manifest?.id ?? addon.key
-      let path = `settings.addons['${k}']`
+    for (const addon of addonManager.addons) {
+      const k = addon.manifest?.id ?? addon.key
+      const path = `settings.addons['${k}']`
 
-      let row = tab.row()
+      const row = tab.row()
 
-      row.useIcons('false')
+      row.useIcons(false)
       row.prop(path + '.enabled')
       row.label(addon.name)
 
       // Third-party addons get an Uninstall button. Builtin addons stay
       // for the session — they can be disabled via the enabled checkbox.
-      if (addon.manifest && !addon.builtin) {
+      const manifest = addon.manifest
+      if (manifest && !addon.builtin) {
         row.button('Uninstall', () => {
-          if (!window.confirm?.(`Uninstall "${addon.manifest.name}"?`)) return
+          if (!window.confirm?.(`Uninstall "${manifest.name}"?`)) return
           addonManager
-            .uninstall(addon.manifest.id)
+            .uninstall(manifest.id)
             .then(() => this.doOnce(this.rebuild))
             .catch((err) => console.error('uninstall failed:', err))
         })
       }
+    }
+
+    tab = tabs.tab('Feature Flags')
+    tab.useIcons(false)
+
+    for (const flag of FeatureFlags.definitions) {
+      tab.prop(`settings.featureFlags.${featureFlagApiName(flag.key)}`)
     }
 
     loadUIData(container, uidata)
@@ -122,12 +132,8 @@ SettingsEditor {
     this.flushUpdate()
   }
 
-  setCSS() {
-    super.setCSS()
-  }
-
-  update() {
-    if (this.ctx && this.ctx.settings.syncAddonList()) {
+  update(): void {
+    if (this.ctx?.settings.syncAddonList()) {
       this.doOnce(this.rebuild)
     }
 

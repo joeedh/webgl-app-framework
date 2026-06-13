@@ -11,6 +11,7 @@
     "boxverts",
     "cachering",
     "Cholmod",
+    "csnaps",
     "cstring",
     "customdata",
     "datalib",

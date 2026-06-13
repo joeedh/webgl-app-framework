@@ -24,6 +24,7 @@ for the headless `--eval`/`--run` flags.
 | `__SCULPTCORE_BACKEND` | `'native'`/`'wasm'` backend selector (set early). | `entry_point.js:82` |
 | `__apptestResult` | Where the `--eval` harness records eval success/failure. | `test_harness.ts:451` |
 | `FILE_LOADING` | True while a `.wproj` is loading. | `appstate.ts` |
+| `FeatureFlags` | The `FeatureFlagManager` singleton — `get`/`set`/`reset` runtime feature flags (persisted; `set` saves immediately, so restore in probes). | `feature-flag.ts` |
 | `_print_evt_debug` | Set true ~100ms after init; gates verbose event logging. | `entry_point.js:131` |
 
 ## `CTX.debug` — `DebugEditorAPI` (`scripts/core/context.ts:407`)

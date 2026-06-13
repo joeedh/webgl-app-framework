@@ -377,7 +377,10 @@ export class LiteMesh extends SceneObjectData {
   }
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    let mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true))
+    let mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true)) as DataStruct<
+      ViewContext,
+      LiteMesh
+    >
 
     let def = mstruct
       .flags(
@@ -394,6 +397,20 @@ export class LiteMesh extends SceneObjectData {
     def.on('change', function () {
       window.redraw_viewport()
     })
+
+    mstruct
+      .string('', 'faceCount', 'Face Count', '')
+      .readOnly()
+      .customGet(function () {
+        let count = '' + this.dataref.mesh.f.count
+        let s = ''
+        for (let i=0; i<count.length; i++) {
+          let i2 = count.length - i
+          if (i2 % 3 === 0 && i2 > 0) s += ','
+          s += count[i]
+        }
+        return s.trim()
+      })
 
     // ObData attribute manager (Wave 2b). The attribute ListBox binds to this
     // `attrs` DataList; `showBuiltinAttrs` toggles the builtin filter.
@@ -636,52 +653,33 @@ export class LiteMesh extends SceneObjectData {
       if (opts.seed !== undefined) params.seed = opts.seed
       if (opts.triage !== undefined) params.triage = opts.triage
       if (opts.triageWeldRel !== undefined) params.triage_weld_rel = opts.triageWeldRel
-      if (opts.triageMinComponentFrac !== undefined)
-        params.triage_min_component_frac = opts.triageMinComponentFrac
-      if (opts.curvatureSmoothIters !== undefined)
-        params.curvature_smooth_iters = opts.curvatureSmoothIters
-      if (opts.curvatureSmoothLambda !== undefined)
-        params.curvature_smooth_lambda = opts.curvatureSmoothLambda
+      if (opts.triageMinComponentFrac !== undefined) params.triage_min_component_frac = opts.triageMinComponentFrac
+      if (opts.curvatureSmoothIters !== undefined) params.curvature_smooth_iters = opts.curvatureSmoothIters
+      if (opts.curvatureSmoothLambda !== undefined) params.curvature_smooth_lambda = opts.curvatureSmoothLambda
       if (opts.fieldSmoothness !== undefined) params.field_smoothness = opts.fieldSmoothness
       if (opts.curvatureWeight !== undefined) params.curvature_weight = opts.curvatureWeight
-      if (opts.singularityCancel !== undefined)
-        params.singularity_cancel = opts.singularityCancel
-      if (opts.singularityCancelMaxSep !== undefined)
-        params.singularity_cancel_max_sep = opts.singularityCancelMaxSep
+      if (opts.singularityCancel !== undefined) params.singularity_cancel = opts.singularityCancel
+      if (opts.singularityCancelMaxSep !== undefined) params.singularity_cancel_max_sep = opts.singularityCancelMaxSep
       if (opts.autoDensity !== undefined) params.auto_density = opts.autoDensity
       if (opts.densityMin !== undefined) params.density_min = opts.densityMin
       if (opts.densityMax !== undefined) params.density_max = opts.densityMax
-      if (opts.densityGradation !== undefined)
-        params.density_gradation = opts.densityGradation
-      if (opts.densityGradationIters !== undefined)
-        params.density_gradation_iters = opts.densityGradationIters
+      if (opts.densityGradation !== undefined) params.density_gradation = opts.densityGradation
+      if (opts.densityGradationIters !== undefined) params.density_gradation_iters = opts.densityGradationIters
       if (opts.preRemesh !== undefined) params.pre_remesh = opts.preRemesh
-      if (opts.preRemeshTarget !== undefined)
-        params.pre_remesh_target = opts.preRemeshTarget
-      if (opts.preRemeshIters !== undefined)
-        params.pre_remesh_iters = opts.preRemeshIters
-      if (opts.preRemeshDensity !== undefined)
-        params.pre_remesh_density = opts.preRemeshDensity
-      if (opts.preRemeshGradation !== undefined)
-        params.pre_remesh_gradation = opts.preRemeshGradation
-      if (opts.preRemeshGradationIters !== undefined)
-        params.pre_remesh_gradation_iters = opts.preRemeshGradationIters
-      if (opts.preRemeshAlign !== undefined)
-        params.pre_remesh_align = opts.preRemeshAlign
-      if (opts.preRemeshFieldCadence !== undefined)
-        params.pre_remesh_field_cadence = opts.preRemeshFieldCadence
-      if (opts.preRemeshBootstrapIters !== undefined)
-        params.pre_remesh_bootstrap_iters = opts.preRemeshBootstrapIters
-      if (opts.preRemeshSmoothIters !== undefined)
-        params.pre_remesh_smooth_iters = opts.preRemeshSmoothIters
-      if (opts.preRemeshSmoothLambda !== undefined)
-        params.pre_remesh_smooth_lambda = opts.preRemeshSmoothLambda
-      if (opts.preRemeshConvergeEps !== undefined)
-        params.pre_remesh_converge_eps = opts.preRemeshConvergeEps
+      if (opts.preRemeshTarget !== undefined) params.pre_remesh_target = opts.preRemeshTarget
+      if (opts.preRemeshIters !== undefined) params.pre_remesh_iters = opts.preRemeshIters
+      if (opts.preRemeshDensity !== undefined) params.pre_remesh_density = opts.preRemeshDensity
+      if (opts.preRemeshGradation !== undefined) params.pre_remesh_gradation = opts.preRemeshGradation
+      if (opts.preRemeshGradationIters !== undefined) params.pre_remesh_gradation_iters = opts.preRemeshGradationIters
+      if (opts.preRemeshAlign !== undefined) params.pre_remesh_align = opts.preRemeshAlign
+      if (opts.preRemeshFieldCadence !== undefined) params.pre_remesh_field_cadence = opts.preRemeshFieldCadence
+      if (opts.preRemeshBootstrapIters !== undefined) params.pre_remesh_bootstrap_iters = opts.preRemeshBootstrapIters
+      if (opts.preRemeshSmoothIters !== undefined) params.pre_remesh_smooth_iters = opts.preRemeshSmoothIters
+      if (opts.preRemeshSmoothLambda !== undefined) params.pre_remesh_smooth_lambda = opts.preRemeshSmoothLambda
+      if (opts.preRemeshConvergeEps !== undefined) params.pre_remesh_converge_eps = opts.preRemeshConvergeEps
       if (opts.preRemeshPreserveFeatures !== undefined)
         params.pre_remesh_preserve_features = opts.preRemeshPreserveFeatures
-      if (opts.preRemeshSharpAngle !== undefined)
-        params.pre_remesh_sharp_angle = opts.preRemeshSharpAngle
+      if (opts.preRemeshSharpAngle !== undefined) params.pre_remesh_sharp_angle = opts.preRemeshSharpAngle
       const out = this.wasm.Mesh_quadRemesh(this.mesh, params)
       if (!out) {
         return false // clean failure: infeasible field / too many folds
@@ -798,9 +796,17 @@ export class LiteMesh extends SceneObjectData {
   /** Mark (state=1) or clear (state=0) the shortest edge-path between two verts
    * as a seam (EDGE_SEAM). Returns the edge count, or -1 if no path. */
   markSeamPath(vStart: number, vEnd: number, state: number): number {
-    const n = (this.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}).markSeamPath(
+    return this.markEdgePath(vStart, vEnd, 0, state)
+  }
+
+  /** Mark/clear the shortest edge-path as a feature of `kind` (0 = seam, 1 =
+   * sharp). The seam tool and the sharp tool share this path; markSeamPath is the
+   * kind=0 alias. Returns the edge count, or -1 if no path. */
+  markEdgePath(vStart: number, vEnd: number, kind: number, state: number): number {
+    const n = (this.mesh as unknown as {markEdgePath(a: number, b: number, k: number, s: number): number}).markEdgePath(
       vStart,
       vEnd,
+      kind,
       state
     )
     this._seamsDirty = true // the persistent overlay rebuilds on next draw
@@ -867,15 +873,68 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {edgeSeam(e: number): number}).edgeSeam(e)
   }
 
+  /** Read a single edge's feature bit of `kind` (0 = seam, 1 = sharp). */
+  edgeFlagKind(e: number, kind: number): number {
+    return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
+  }
+
+  /** Indices + xyz (object-local) of every vertex incident to a `kind`-flagged
+   * edge (0 = seam, 1 = sharp), index-aligned. The marking tool projects these
+   * to screen to snap the path endpoint onto an existing feature vertex. */
+  featureVerts(kind: number): {idx: number[]; co: number[]} {
+    const idxOut = this._intVecOut()
+    const cls = (
+      this.wasm.manager as {
+        findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown} | undefined
+      }
+    ).findVectorClass('float')
+    if (!cls) return {idx: [], co: []}
+    const ctor = cls.findDefaultConstructor()
+    const coVec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    ;(this.mesh as unknown as {featureVerts(k: number, oi: never, oc: never): void}).featureVerts(
+      kind,
+      idxOut.vec as never,
+      coVec as never
+    )
+    const idxArr = idxOut.read()
+    const coArr = this.wasm.getBoundVector(cls.buildFullName(), coVec as never) as ArrayLike<number>
+    const idx: number[] = []
+    const co: number[] = []
+    for (let i = 0; i < idxArr.length; i++) idx.push(idxArr[i])
+    for (let i = 0; i < coArr.length; i++) co.push(coArr[i])
+    return {idx, co}
+  }
+
+  /** Boundary polyline-graph stats over the union of all boundary edge flags.
+   * non2ValenceVerts/components are invariant under feature-preserving
+   * remeshing, so they detect constraint-network damage (integration tests). */
+  boundaryGraphStats(): {flaggedEdges: number; graphVerts: number; non2ValenceVerts: number; components: number} {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {boundaryGraphStats(o: never): void}).boundaryGraphStats(out.vec as never)
+    const arr = out.read()
+    return {
+      flaggedEdges    : (arr[0] as number) | 0,
+      graphVerts      : (arr[1] as number) | 0,
+      non2ValenceVerts: (arr[2] as number) | 0,
+      components      : (arr[3] as number) | 0,
+    }
+  }
+
   /** Restore a batch of edge seam bits (parallel arrays) then recompute derived
    * boundary state once — the true inverse used by seam-marking undo, instead of
    * blanket-clearing the path (which would unset pre-existing overlapping seams). */
   restoreSeamEdges(edges: number[], states: number[]): void {
+    this.restoreEdgeFlags(edges, states, 0)
+  }
+
+  /** restoreSeamEdges generalized to a feature `kind` (0 = seam, 1 = sharp): the
+   * true inverse used by the marking tool's undo for either flag. */
+  restoreEdgeFlags(edges: number[], states: number[], kind: number): void {
     const m = this.mesh as unknown as {
-      setEdgeSeam(e: number, s: number): void
+      setEdgeFlagKind(e: number, k: number, s: number): void
       recomputeBoundary(): void
     }
-    for (let i = 0; i < edges.length; i++) m.setEdgeSeam(edges[i], states[i])
+    for (let i = 0; i < edges.length; i++) m.setEdgeFlagKind(edges[i], kind, states[i])
     m.recomputeBoundary()
     this._seamsDirty = true
   }
@@ -930,11 +989,12 @@ export class LiteMesh extends SceneObjectData {
    * Elements are mesh face/vertex indices, so `ScreenPickResult.elements` holds
    * numbers (consistent with the `unknown[]` contract). */
 
-  /** Construct two empty bound Vector<int> out-params + an array-like reader. */
+  /** Construct two empty bound Vector<int> out-params + an array-like reader.
+   * 'int32' is the WASM manager's registry key for int (native accepts both). */
   private _intVecOut() {
     const cls = (
       this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
-    ).findVectorClass('int')
+    ).findVectorClass('int32')
     const ctor = cls.findDefaultConstructor()
     const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
     const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
@@ -1263,12 +1323,8 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /** Bound `AttrGroup` for a domain (the same object attrItems enumerates). */
-  private _domainGroup(domain: number): {attrs: unknown} | undefined {
-    const m = this.mesh as unknown as {
-      v?: {attrs?: {attrs: unknown}}
-      c?: {attrs?: {attrs: unknown}}
-      f?: {attrs?: {attrs: unknown}}
-    }
+  private _domainGroup(domain: number) {
+    const m = this.mesh
     if (domain === AttrDomain.VERTEX) return m.v?.attrs
     if (domain === AttrDomain.CORNER) return m.c?.attrs
     if (domain === AttrDomain.FACE) return m.f?.attrs

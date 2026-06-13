@@ -113,6 +113,8 @@ export class AppToolStack extends ToolStack {
   }
 
   undo() {
+    this._syncSettings(this.ctx) //sync undo settings
+
     if (this.enforceMemLimit) {
       this.limitMemory(this.memLimit)
     }

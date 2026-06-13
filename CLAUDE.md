@@ -123,6 +123,19 @@ WebGL `GPUSelectBuffer` + `FindnearestClass` registry are gone). See
   rect corners + cone endpoints cross as bound `float3`s, results as
   `Vector<int>` out-params; native uses the `makeIntVector` N-API helper).
 
+## Feature-edge marking (seams & sharp)
+
+The interactive seam / sharp marking tools (`litemesh.mark_seam_interactive` /
+`mark_sharp_interactive`, hotkeys `K` / `Shift+K`) share one modal base,
+`MarkEdgePathBaseOp` (`scripts/lite-mesh/litemesh_ops.ts`): knife-style chain
+marking with shortest-path segments, snap-to-feature-vertex (10 px, white ring),
+and per-edge-snapshot undo. They flag the source-of-truth `boundary::EDGE_SEAM` /
+`EDGE_SHARP` attributes through one kind-parameterized engine path
+(`Mesh::markEdgePath` / `edgeFlagKind` / `setEdgeFlagKind` / `featureVerts`, `kind`
+0 = seam / 1 = sharp). The persistent overlay (`SpatialTree::buildSeamBatch`,
+toolmode `drawFeatureOverlay`, default on) draws all boundary-flagged edges in
+distinct colors. See [documentation/feature-marking.md](documentation/feature-marking.md).
+
 ## Node editor
 
 The node-graph editor lives in `scripts/editors/node/`. See
@@ -301,6 +314,10 @@ for status. Key conventions:
 - Parity is guarded by `tests/integration/sculptcore_parity.test.ts` (under
   `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
   signatures + leaf counts; self-skips when the bundle or `.node` is absent.
+  `sculptcore_brushes.test.ts` / `sculptcore_boundary.test.ts` reuse the boot
+  path for behavior: scripted stroke drivers (`__brushTest()` /
+  `__boundaryTest()`) run via `--eval` and assert per backend (brush semantics;
+  boundary polyline-graph invariance under dyntopo + both undo stacks).
 
 ## Dynamic topology
 

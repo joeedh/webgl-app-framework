@@ -4,7 +4,7 @@ import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/ind
 import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
-import {SculptTools, BrushFlags} from '../../../brush/brush_base'
+import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
 
 /** Mirror of the C++ enum FalloffShape (brush.h); passed to setFalloffShape. */
 const FalloffShape = {Spherical: 0, Cube: 1, Linear: 2, Box: 3} as const
@@ -137,10 +137,15 @@ export function pushBrushDeviceInputs(wasmBrush: WasmBrush, e: PointerEvent): vo
  * The plane family CLAY/SCRAPE/FILL all run the `plane` kernel; the per-tool
  * planeoff/planeSide uniforms (set in `configureToolUniforms`) select build-up
  * / cut / fill. WING_SCRAPE runs its own kernel.
+ *
+ * The SMOOTH tool routes to the boundary-aware BSMOOTH kernel — bsmooth replaces
+ * the plain smooth brush (ImmediateTODOs). bsmooth reduces to plain Laplacian
+ * smoothing when no boundaries are marked, so it's a transparent drop-in; the
+ * legacy `smooth` kernel survives only for the C++ test harness.
  */
 export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = {
   [SculptTools.DRAW]       : SculptBrushes.DRAW,
-  [SculptTools.SMOOTH]     : SculptBrushes.SMOOTH,
+  [SculptTools.SMOOTH]     : SculptBrushes.BSMOOTH,
   [SculptTools.INFLATE]    : SculptBrushes.INFLATE,
   [SculptTools.SHARP]      : SculptBrushes.SHARP,
   [SculptTools.PINCH]      : SculptBrushes.PINCH,
@@ -151,7 +156,15 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
   [SculptTools.COLOR]      : SculptBrushes.COLOR,
   [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
-  [SculptTools.BSMOOTH]    : SculptBrushes.BSMOOTH,
+  [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
+  [SculptTools.GRAB]       : SculptBrushes.GRAB,
+  [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
+}
+
+/** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
+ * (force application point + stroke-movement displacement). See applyDab. */
+export function isGrabTool(tool: SculptTools): boolean {
+  return tool === SculptTools.KELVINLET || tool === SculptTools.GRAB || tool === SculptTools.SNAKE
 }
 
 /** Resolve a TS sculpt tool to its sculptcore kernel, or undefined if none. */
@@ -159,17 +172,22 @@ export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined 
   return TOOL_TO_SCULPTBRUSH[tool]
 }
 
+/** Smooth-family tools ignore invert (inverted Laplacian smoothing diverges). */
+export function isSmoothTool(tool: SculptTools): boolean {
+  return tool === SculptTools.SMOOTH || tool === SculptTools.BSMOOTH || tool === SculptTools.PAINT_SMOOTH
+}
+
 /**
  * (Re)build a composite brush program for one dab: the main brush command,
- * plus a chained SMOOTH command (autosmooth) when `brush.autosmooth > 0`.
+ * plus a chained BSMOOTH command (autosmooth) when `brush.autosmooth > 0`.
  *
- * The SMOOTH command's strength is set so its effective smooth factor lands at
- * `autosmooth * falloff`. The `strength` intrinsic is now just `strength *
- * falloff` (radius is no longer baked in), and the smooth kernel applies it as
- * a relative Laplacian blend that doesn't scale by radius — so the command
- * strength is `autosmooth` directly. The program is run over the same node set,
- * so SMOOTH re-snapshots `co_prev` after the main pass and smooths the deformed
- * result.
+ * Autosmooth uses the boundary-aware BSMOOTH kernel (bsmooth replaces smooth),
+ * so it preserves marked seams/sharp/polygroup borders just like the smooth
+ * brush. The command strength is `autosmooth` directly: the `strength` intrinsic
+ * is `strength * falloff` and the smooth kernel applies it as a relative
+ * Laplacian blend that doesn't scale by radius. The program runs over the same
+ * node set, so BSMOOTH re-snapshots `co_prev` after the main pass and smooths
+ * the deformed result.
  */
 /** The painted attr's category for a paint tool, else 0 (no attr handle). */
 function toolAttrCategory(tool: SculptTools): number {
@@ -202,8 +220,10 @@ export function buildBrushProgram(
 
   if (brush.autosmooth > 0 && radius > 0) {
     const smoothStrength = brush.autosmooth
-    const i = prog.addCommand(SculptBrushes.SMOOTH)
+    const i = prog.addCommand(SculptBrushes.BSMOOTH)
     prog.setCommandFloat(i, BrushProp.STRENGTH, smoothStrength)
+    // Autosmooth always smooths forward, even when the main command is inverted.
+    prog.setCommandInvert(i, false)
   }
 }
 
@@ -243,6 +263,14 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
       // Half-angle of the two stroke-following wing planes.
       wasmBrush.wingAngle = 0.3
       break
+    case SculptTools.COLOR: {
+      // Paint color — a bound float4, written elementwise through its `vec` view.
+      const vec = (wasmBrush.brushColor as unknown as {vec: number[]}).vec
+      for (let i = 0; i < 4; i++) {
+        vec[i] = brush.color[i] ?? 0
+      }
+      break
+    }
   }
 
   // SQUARE brushes get the stroke-aligned oriented cuboid falloff.
@@ -310,23 +338,40 @@ export function builSculptcoreBrush({
   }
 
   // sync properties
+  const planeFamily = isPlaneFamilyTool(brush.tool)
+  const effInvert = invert && !isSmoothTool(brush.tool)
   wasmBrush.strength = brush.strength
   wasmBrush.radius = radius
-  wasmBrush.invert = invert
+  // Plane brushes invert by flipping the plane (below), not by negating
+  // strength — negative strength would push verts away from the plane.
+  // Color paint inverts by painting the secondary color (below) instead.
+  wasmBrush.invert = effInvert && !planeFamily && brush.tool !== SculptTools.COLOR
   wasmBrush.spacing = brush.spacing
   wasmBrush.autosmooth = brush.autosmooth
 
   // Per-tool plane / wing / falloff uniforms (runs before the caller's
   // writeProps() so props-backed scalars round-trip through loadProps).
   configureToolUniforms(wasmBrush, brush)
+  if (effInvert && planeFamily) {
+    // Inverted clay digs, inverted scrape builds: mirror the plane setup.
+    wasmBrush.planeoff = -wasmBrush.planeoff
+    wasmBrush.planeSide = -wasmBrush.planeSide
+  }
+  if (effInvert && brush.tool === SculptTools.COLOR) {
+    const vec = (wasmBrush.brushColor as unknown as {vec: number[]}).vec
+    for (let i = 0; i < 4; i++) {
+      vec[i] = brush.bgcolor[i] ?? 0
+    }
+  }
 
   if (wasmExec === undefined) {
     const st = wasm.manager.get('sculptcore::brush::CommandExecutor') as StructType
     const ctor = st.findConstructor('main')!
     wasmExec = wasm.manager.constructWith(ctor, mesh.spatial, wasmBrush) as CommandExecutor
-    // SMOOTH (and autosmooth) read neighbors from the CSR ring1 cache, not the
-    // live disk — a freshly built LiteMesh doesn't maintain live disk links, so
-    // LiveDisk smooth would find no neighbors and no-op. (1 = NeighborMode::Csr)
+    // BSMOOTH (the smooth brush + autosmooth) reads neighbors from the CSR ring1
+    // cache, not the live disk — a freshly built LiteMesh doesn't maintain live
+    // disk links, so a LiveDisk smooth would find no neighbors and no-op.
+    // (1 = NeighborMode::Csr)
     wasmExec.setNeighborMode(1)
   }
 

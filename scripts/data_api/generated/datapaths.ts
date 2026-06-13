@@ -288,6 +288,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculpt.brush.normalfac"
   | "scene.tools.sculpt.brush.outputs"
   | "scene.tools.sculpt.brush.pinch"
+  | "scene.tools.sculpt.brush.planeNormalMode"
   | "scene.tools.sculpt.brush.planeoff"
   | "scene.tools.sculpt.brush.radius"
   | "scene.tools.sculpt.brush.rake"
@@ -424,6 +425,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.normalfac"
   | "scene.tools.sculptcore.brush.outputs"
   | "scene.tools.sculptcore.brush.pinch"
+  | "scene.tools.sculptcore.brush.planeNormalMode"
   | "scene.tools.sculptcore.brush.planeoff"
   | "scene.tools.sculptcore.brush.radius"
   | "scene.tools.sculptcore.brush.rake"
@@ -487,6 +489,8 @@ export type GeneratedDataPath =
   | "settings"
   | "settings.addons"
   | "settings.brushSet"
+  | "settings.featureFlags"
+  | "settings.featureFlags.sculptcore_quad_remesher"
   | "settings.limitUndoMem"
   | "settings.undoMemLimit"
   | "settings_editor"
@@ -1078,6 +1082,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculpt.brush.normalfac": true;
     "scene.tools.sculpt.brush.outputs": true;
     "scene.tools.sculpt.brush.pinch": true;
+    "scene.tools.sculpt.brush.planeNormalMode": true;
     "scene.tools.sculpt.brush.planeoff": true;
     "scene.tools.sculpt.brush.radius": true;
     "scene.tools.sculpt.brush.rake": true;
@@ -1214,6 +1219,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.normalfac": true;
     "scene.tools.sculptcore.brush.outputs": true;
     "scene.tools.sculptcore.brush.pinch": true;
+    "scene.tools.sculptcore.brush.planeNormalMode": true;
     "scene.tools.sculptcore.brush.planeoff": true;
     "scene.tools.sculptcore.brush.radius": true;
     "scene.tools.sculptcore.brush.rake": true;
@@ -1277,6 +1283,8 @@ declare module "@framework/pathux" {
     "settings": true;
     "settings.addons": true;
     "settings.brushSet": true;
+    "settings.featureFlags": true;
+    "settings.featureFlags.sculptcore_quad_remesher": true;
     "settings.limitUndoMem": true;
     "settings.undoMemLimit": true;
     "settings_editor": true;

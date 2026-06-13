@@ -3,6 +3,7 @@ import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
 import {getAppStorage} from './app_storage'
+import {FeatureFlags, FeatureFlagManager} from './feature-flag'
 
 import '../util/polyfill.d.ts'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
@@ -133,6 +134,12 @@ AppSettings {
     this.brushSet = BrushSets.MEDIUM_RES
   }
 
+  /* Feature flags persist through their own storage key, not AppSettings;
+   * this getter just roots them in the datapath tree at settings.featureFlags. */
+  get featureFlags(): FeatureFlagManager {
+    return FeatureFlags
+  }
+
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
     const st = struct ?? api.mapStruct(this, true)
 
@@ -180,6 +187,8 @@ AppSettings {
     })
 
     ast.string('name', 'name', 'Name').readOnly()
+
+    st.struct('featureFlags', 'featureFlags', 'Feature Flags', api.mapStruct(FeatureFlagManager, true))
 
     st.list('addonSettings', 'addons', {
       getStruct(api: any, list: any, key: string) {

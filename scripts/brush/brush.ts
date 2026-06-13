@@ -18,7 +18,15 @@ import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {BrushDynamics, BrushDynChannel} from './brush_dynamics'
 export {BrushDynamics} from './brush_dynamics'
 
-import {SculptTools, SculptIcons, BrushFlags, DynTopoFlags, DynTopoOverrides, BrushSpacingModes} from './brush_base'
+import {
+  SculptTools,
+  SculptIcons,
+  BrushFlags,
+  DynTopoFlags,
+  DynTopoOverrides,
+  BrushSpacingModes,
+  PlaneNormalModes,
+} from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
 
@@ -39,6 +47,7 @@ SculptBrush {
   tool       : int;
   radius     : float;
   planeoff   : float;
+  planeNormalMode : int;
   concaveFilter : float;
   rake       : float;    
   spacing    : float;
@@ -86,6 +95,7 @@ SculptBrush {
   autosmooth = 0.0
   autosmoothInflate = 0.0
   planeoff = 0.0
+  planeNormalMode = PlaneNormalModes.VIEW
   rake = 0.0
   pinch = 0.0
 
@@ -130,7 +140,7 @@ SculptBrush {
     DynTopoSettings.defineAPI(api)
     DynTopoSettingsSC.defineAPI(api)
 
-    bst.flags('flag', 'flag', BrushFlags, 'Flag').icons({
+    bst.flags('flag', 'flag', deleteTsEnumIntegers(BrushFlags), 'Flag').icons({
       SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
     })
 
@@ -142,7 +152,7 @@ SculptBrush {
 
     bst.float('rakeCurvatureFactor', 'rakeCurvatureFactor', 'Curvature Factor').noUnits().range(0.0, 1.0)
 
-    bst.enum('spacingMode', 'spacingMode', BrushSpacingModes, 'Spacing Mode').descriptions({
+    bst.enum('spacingMode', 'spacingMode', deleteTsEnumIntegers(BrushSpacingModes), 'Spacing Mode').descriptions({
       EVEN: 'Fixed distance between brush points',
       NONE: 'Use raw brush points',
     })
@@ -151,12 +161,18 @@ SculptBrush {
 
     bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
     bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(1.0)
-    bst.enum('tool', 'tool', SculptTools).icons(SculptIcons)
+    bst.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
     bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
 
     bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
+    bst
+      .enum('planeNormalMode', 'planeNormalMode', deleteTsEnumIntegers(PlaneNormalModes), 'Plane Normal')
+      .descriptions({
+        VIEW   : 'Project onto a plane facing the viewport camera',
+        SURFACE: 'Project onto the surface-normal plane at the brush center',
+      })
     bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
@@ -269,6 +285,7 @@ SculptBrush {
     d.add(this.autosmoothInflate)
     d.add(this.pinch)
     d.add(this.planeoff)
+    d.add(this.planeNormalMode)
     d.add(this.rake)
     d.add(this.pinch)
     d.add(this.normalfac)
@@ -318,6 +335,7 @@ SculptBrush {
     b.strength = this.strength
     b.radius = this.radius
     b.planeoff = this.planeoff
+    b.planeNormalMode = this.planeNormalMode
 
     b.color.load(this.color)
     b.bgcolor.load(this.bgcolor)
@@ -355,6 +373,15 @@ SculptBrush {
 }
 DataBlock.register(SculptBrush)
 
+/** Tools whose default brushes ship with ACCUMULATE set. */
+const ACCUMULATE_DEFAULT_TOOLS = [
+  SculptTools.SMOOTH,
+  SculptTools.BSMOOTH,
+  SculptTools.PAINT_SMOOTH,
+  SculptTools.INFLATE,
+  SculptTools.CLAY,
+]
+
 export function makeDefaultBrushes() {
   const brushes = {} as {[k: string]: SculptBrush}
   const bmap = {} as {[k: string]: SculptBrush}
@@ -372,6 +399,11 @@ export function makeDefaultBrushes() {
     brush.tool = SculptTools[k] as unknown as SculptTools
 
     bmap[SculptTools[k]] = brush
+  }
+
+  // Smoothing, inflate and clay brushes accumulate by default.
+  for (const tool of ACCUMULATE_DEFAULT_TOOLS) {
+    bmap[tool].flag |= BrushFlags.ACCUMULATE
   }
 
   let brush
@@ -565,6 +597,11 @@ export function makeDefaultBrushes_MediumRes() {
     brush.tool = SculptTools[k] as unknown as SculptTools
 
     bmap[SculptTools[k]] = brush
+  }
+
+  // Smoothing, inflate and clay brushes accumulate by default.
+  for (const tool of ACCUMULATE_DEFAULT_TOOLS) {
+    bmap[tool].flag |= BrushFlags.ACCUMULATE
   }
 
   let brush

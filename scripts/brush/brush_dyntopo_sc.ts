@@ -217,32 +217,39 @@ export class DynTopoSettingsSC {
       }
     }
 
-    st.flags('overrideMask', 'overrides', DynTopoOverridesSC, 'Overrides').descriptions(tooltips).uiNames({
-      NONE: 'Inherit Everything',
-    })
+    st.flags('overrideMask', 'overrides', deleteTsEnumIntegers(DynTopoOverridesSC), 'Overrides')
+      .descriptions(tooltips)
+      .uiNames({
+        NONE: 'Inherit Everything',
+      })
 
-    st.flags('flag', 'flag', DynTopoFlagsSC, 'Flag').descriptions({
+    st.flags('flag', 'flag', deleteTsEnumIntegers(DynTopoFlagsSC), 'Flag').descriptions({
       ENABLED          : 'Enable dynamic topology while sculpting',
       DO_FLIPS         : 'Edge flips (keeps triangles well-shaped; recommended)',
       DO_SMOOTH        : 'Tangential smoothing (evens triangle sizes)',
       PRESERVE_FEATURES: 'Keep seams / sharp edges / face-set & UV-chart boundaries intact',
     })
 
-    st.enum('edgeMode', 'edgeMode', DynTopoEdgeModeSC, 'Detail Mode').descriptions({
+    st.enum('edgeMode', 'edgeMode', deleteTsEnumIntegers(DynTopoEdgeModeSC), 'Detail Mode').descriptions({
       WORLD  : 'Target edge length in world units',
       PERCENT: 'Target edge length as a percentage of the brush radius',
       PIXELS : 'Target edge length as a multiple of the projected pixel size',
     })
 
-    st.enum('mode', 'mode', DynTopoSCMode, 'Refine Mode').descriptions({
+    st.enum('mode', 'mode', deleteTsEnumIntegers(DynTopoSCMode), 'Refine Mode').descriptions({
       SUBDIVIDE: 'Only subdivide (split long edges)',
       COLLAPSE : 'Only collapse (remove short edges)',
       BOTH     : 'Subdivide and collapse',
     })
 
     st.float('edgeSize', 'edgeSize', 'Detail Size', 'Target edge length (units depend on Detail Mode)')
-      .range(0.01, 200.0)
+      .range(0.0001, 200.0)
       .noUnits()
+      .decimalPlaces(4)
+      .step(0.1)
+      .slideSpeed(10.0)
+      .expRate(1.75)
+
     st.float(
       'collapseRatio',
       'collapseRatio',
@@ -250,14 +257,30 @@ export class DynTopoSettingsSC {
       'Collapse edges shorter than this fraction of the target'
     )
       .range(0.05, 0.95)
+      .expRate(1.75)
+      .decimalPlaces(3)
+      .slideSpeed(2.0)
       .noUnits()
     st.float('grade', 'grade', 'Grade', 'Relax the target outward from the brush center (0 = uniform)')
       .range(0.0, 8.0)
+      .decimalPlaces(2)
+      .slideSpeed(2.0)
       .noUnits()
     st.float('smoothLambda', 'smoothLambda', 'Smooth Amount', 'Tangential smoothing step (0..1)')
       .range(0.0, 1.0)
+      .decimalPlaces(4)
+      .slideSpeed(2.0)
       .noUnits()
-    st.int('maxSplits', 'maxSplits', 'Split Budget', 'Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)').range(0, 200000).noUnits()
+    st.int(
+      'maxSplits',
+      'maxSplits',
+      'Split Budget',
+      'Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)'
+    )
+      .range(0, 200000)
+      .expRate(1.75)
+      .slideSpeed(2.0)
+      .noUnits()
     st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
 
     return st

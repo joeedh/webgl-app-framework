@@ -16,6 +16,8 @@ import type {ToolContext} from '../core/context'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {BrushDynamics} from './brush_dynamics'
 export {BrushDynamics} from './brush_dynamics'
+import {SculptTools} from './brush_enums'
+export * from './brush_enums'
 
 function feq(a: number, b: number) {
   return Math.abs(a - b) < 0.00001
@@ -48,45 +50,6 @@ export enum BrushFlags {
 export enum DynTopoModes {
   SCREEN = 0,
   WORLD = 1,
-}
-
-/*
-Note: there are different types of brushes:
-  + 'Draw' brushes move vertices along the surface normal at the center of the brush
-  + 'Clay' brushes project vertices to the plane defined by the surface normal at the center of the brush
-  + 'Smooth' brushes average vertex positions with their neighbors
-  + 'Mask' brushes modify the mask value of vertices
-  + 'Paint' brushes modify vertex colors
-  + 'Grab' brushes directly move portions of the mesh in some way.
-  + Other various special brushes exist (e.g. 'Snake', 'Topology', 'Hole Filler', etc.)
-*/
-
-export enum SculptTools {
-  CLAY = 0,
-  FILL = 1,
-  SCRAPE = 2,
-  SMOOTH = 3,
-  DRAW = 4,
-  SHARP = 5,
-  INFLATE = 6,
-  SNAKE = 7,
-  TOPOLOGY = 8,
-  GRAB = 9,
-  HOLE_FILLER = 10,
-  MASK_PAINT = 11,
-  WING_SCRAPE = 12,
-  PINCH = 13,
-  DIRECTIONAL_FAIR = 14,
-  SLIDE_RELAX = 15,
-  BVH_DEFORM = 16,
-  COLOR = 17,
-  POLYGROUP = 18,
-  BSMOOTH = 19,
-  PAINT = 128,
-  PAINT_SMOOTH = 129,
-  COLOR_BOUNDARY = 130,
-  TEXTURE_PAINT = 150,
-  FACE_SET_DRAW = 151,
 }
 
 export enum DynTopoFlags {
