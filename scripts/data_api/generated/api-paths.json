@@ -6012,6 +6012,8 @@
         "DRAW",
         "SHARP",
         "INFLATE",
+        "SNAKE",
+        "GRAB",
         "MASK_PAINT",
         "WING_SCRAPE",
         "PINCH",

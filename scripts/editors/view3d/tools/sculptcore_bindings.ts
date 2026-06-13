@@ -153,12 +153,14 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
   [SculptTools.BSMOOTH]    : SculptBrushes.BSMOOTH,
   [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
+  [SculptTools.GRAB]       : SculptBrushes.GRAB,
+  [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
 }
 
 /** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
  * (force application point + stroke-movement displacement). See applyDab. */
 export function isGrabTool(tool: SculptTools): boolean {
-  return tool === SculptTools.KELVINLET
+  return tool === SculptTools.KELVINLET || tool === SculptTools.GRAB || tool === SculptTools.SNAKE
 }
 
 /** Resolve a TS sculpt tool to its sculptcore kernel, or undefined if none. */

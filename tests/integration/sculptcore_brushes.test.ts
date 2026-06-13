@@ -43,6 +43,8 @@ interface BrushTestResult {
   drawMaskErased?: StrokeMetrics
   smoothInverted?: StrokeMetrics
   kelvinlet?: StrokeMetrics
+  grab?: StrokeMetrics
+  snakehook?: StrokeMetrics
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   accumulateDefaults?: Record<string, boolean>
   nonFiniteCount?: number
@@ -187,6 +189,20 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
     // Verts follow the +X march (grab direction); elastic field stays bounded.
     expect(r.kelvinlet!.meanAlongNormal).toBeGreaterThan(0)
     expect(r.kelvinlet!.maxDisp).toBeLessThan(r.radius! * 2)
+  })
+
+  test('grab drags the surface in the stroke direction, bounded', () => {
+    expect(r.grab?.invalid).toBeUndefined()
+    expect(r.grab!.movedCount).toBeGreaterThan(0)
+    expect(r.grab!.meanAlongNormal).toBeGreaterThan(0)
+    expect(r.grab!.maxDisp).toBeLessThan(r.radius! * 2)
+  })
+
+  test('snakehook drags + gathers in the stroke direction, bounded', () => {
+    expect(r.snakehook?.invalid).toBeUndefined()
+    expect(r.snakehook!.movedCount).toBeGreaterThan(0)
+    expect(r.snakehook!.meanAlongNormal).toBeGreaterThan(0)
+    expect(r.snakehook!.maxDisp).toBeLessThan(r.radius! * 2)
   })
 
   test('brush.color reaches the color kernel', () => {

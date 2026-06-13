@@ -55,7 +55,15 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      before execProgram, shared by the interactive op and runSculptcoreStroke. Verified on
      both backends by the new kelvinlet case in sculptcore_brushes.test.ts. See
      documentation/brush-notes.md "Grab brushes (kelvinlet)".)
-[ ]: write 'snake hook' and 'grab' brushes and expose to the user.
+[x]: write 'snake hook' and 'grab' brushes and expose to the user.
+     (new grab.sbrush + snakehook.sbrush kernels (SculptBrushes::GRAB=16/SNAKEHOOK=17,
+     wired in types.h/all.h/brush_executor.h); grab = direct translation by grabTo,
+     snakehook = drag + gather toward the advancing center. Both reuse the already-bound
+     grabFrom/grabTo (no new Brush fields) and the applyGrabDabState/isGrabTool path
+     added for kelvinlet. Mapped SculptTools.GRAB/SNAKE in TOOL_TO_SCULPTBRUSH; icons
+     SCULPT_GRAB/SCULPT_SNAKE already existed. Verified on both backends by new
+     grab/snakehook cases in sculptcore_brushes.test.ts. See documentation/brush-notes.md
+     "Grab brushes (kelvinlet / grab / snakehook)".)
 [x]: meshlog undo/redo sometimes crashes
      (root cause: the TS app path never called MeshLog::setActiveMesh, so topo callbacks
      no-op'd — undo restored positions but never topology; dyntopo undo/redo was replaying

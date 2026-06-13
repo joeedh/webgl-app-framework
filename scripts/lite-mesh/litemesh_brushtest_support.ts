@@ -54,6 +54,10 @@ interface BrushTestResult {
   smoothInverted?: StrokeMetrics
   /** KELVINLET grab at +Z with dabs moving +X: pulls verts along +X, bounded. */
   kelvinlet?: StrokeMetrics
+  /** GRAB at +Z with dabs moving +X: drags verts along +X, bounded. */
+  grab?: StrokeMetrics
+  /** SNAKEHOOK at +Z with dabs moving +X: drags + gathers along +X, bounded. */
+  snakehook?: StrokeMetrics
   /** Color paint at +Z (after the draw): per-channel means over painted verts. */
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   /** ACCUMULATE default flag per tool (smooth/bsmooth/paint-smooth/inflate/clay). */
@@ -173,6 +177,32 @@ function strokeAndMeasure(
   return diffMetrics(before, after, normal)
 }
 
+/**
+ * Run a *moving* grab-style stroke (kelvinlet/grab/snakehook) and return the
+ * displacement metrics projected onto +X. Grab brushes need moving dabs —
+ * `grabTo` is the per-dab displacement, zero until the brush moves — so this
+ * marches `dabCount` dabs along +X near the +Z pole and measures how far the
+ * surface follows. `axis = [1,0,0]` makes `meanAlongNormal` the mean pull in
+ * the stroke direction.
+ */
+function grabStrokeAndMeasure(mesh: LiteMesh, brush: SculptBrush, tool: SculptTools, R: number, radius: number): StrokeMetrics {
+  const step = radius * 0.3
+  const dabs = [
+    {p: [0, 0, R], normal: [0, 0, 1]},
+    {p: [step, 0, R], normal: [0, 0, 1]},
+    {p: [step * 2, 0, R], normal: [0, 0, 1]},
+  ]
+  const saved = {tool: brush.tool, strength: brush.strength}
+  brush.tool = tool
+  brush.strength = 1
+  const before = readGpuBuffer(mesh, 'position')
+  runSculptcoreStroke({mesh, brush, dabs, radius})
+  const after = readGpuBuffer(mesh, 'position')
+  brush.tool = saved.tool
+  brush.strength = saved.strength
+  return diffMetrics(before, after, [1, 0, 0])
+}
+
 function brushTest(): BrushTestResult {
   const result: BrushTestResult = {ok: false}
   try {
@@ -267,30 +297,12 @@ function brushTest(): BrushTestResult {
       {strength: 1, dabs: 3, invert: true}
     )
 
-    // KELVINLET grab at +Z: a grab brush pulls the region under the dab in the
-    // stroke-movement direction, so it needs *moving* dabs (grabTo is the
-    // per-dab displacement, zero until the brush moves). March three dabs along
-    // +X near the pole and verify the surface follows (+X mean displacement),
-    // and that the elastic field stays bounded (no blow-up).
-    {
-      const kelvinlet = need(SculptTools.KELVINLET)
-      const step = radius * 0.3
-      const kdabs = [
-        {p: [0, 0, R], normal: [0, 0, 1]},
-        {p: [step, 0, R], normal: [0, 0, 1]},
-        {p: [step * 2, 0, R], normal: [0, 0, 1]},
-      ]
-      const saved = {tool: kelvinlet.tool, strength: kelvinlet.strength}
-      kelvinlet.tool = SculptTools.KELVINLET
-      kelvinlet.strength = 1
-      const before = readGpuBuffer(mesh, 'position')
-      runSculptcoreStroke({mesh, brush: kelvinlet, dabs: kdabs, radius})
-      const after = readGpuBuffer(mesh, 'position')
-      kelvinlet.tool = saved.tool
-      kelvinlet.strength = saved.strength
-      // Project displacement onto +X (the stroke direction).
-      result.kelvinlet = diffMetrics(before, after, [1, 0, 0])
-    }
+    // Grab-style brushes need *moving* dabs (see grabStrokeAndMeasure). Each
+    // marches along +X near the +Z pole and must pull the surface along +X
+    // while staying bounded (no elastic/pinch blow-up).
+    result.kelvinlet = grabStrokeAndMeasure(mesh, need(SculptTools.KELVINLET), SculptTools.KELVINLET, R, radius)
+    result.grab = grabStrokeAndMeasure(mesh, need(SculptTools.GRAB), SculptTools.GRAB, R, radius)
+    result.snakehook = grabStrokeAndMeasure(mesh, need(SculptTools.SNAKE), SculptTools.SNAKE, R, radius)
 
     // Color paint back at +Z (deform-independent): paint a green-dominant color
     // and read the legacy composited `color` stream. The old kernel hardcoded
