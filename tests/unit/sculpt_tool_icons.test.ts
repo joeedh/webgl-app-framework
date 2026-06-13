@@ -6,8 +6,9 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import {fileURLToPath} from 'node:url'
 
-const ROOT = path.join(__dirname, '..', '..')
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 function sculptToolKeys(): string[] {
   const src = fs.readFileSync(path.join(ROOT, 'scripts', 'brush', 'brush_base.ts'), 'utf-8')

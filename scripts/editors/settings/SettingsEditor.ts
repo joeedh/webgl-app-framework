@@ -40,9 +40,12 @@ SettingsEditor {
 
     this.style['overflow'] = 'scroll'
 
-    tabs.tab('General')
+    let tab = tabs.tab('General')
+    tab.useIcons(false)
+    tab.prop('settings.limitUndoMem')
+    tab.prop('settings.undoMemLimit')
 
-    let tab = tabs.tab('Theme')
+    tab = tabs.tab('Theme')
 
     tab.button('Export Theme', () => {
       let theme = exportTheme()

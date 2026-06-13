@@ -322,6 +322,10 @@ function dumpScene(): unknown {
     // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
     // invariants (non-2-valence verts, components) and both undo stacks.
     boundarytest : (globalThis as {__boundaryTestResult?: unknown}).__boundaryTestResult,
+    // Reflect the undo-memory driver (`__undoMemTest`): per-step MeshLog byte
+    // accounting, calcUndoMem parity, redo-branch truncation, and the
+    // toolstack limitMemory trim freeing C++ steps via onUndoDestroy/freeStep.
+    undomemtest  : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
   }
 }
 

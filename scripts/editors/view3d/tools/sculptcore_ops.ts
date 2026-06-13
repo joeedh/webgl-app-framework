@@ -59,6 +59,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   static meshLog: MeshLog | undefined
   inStep = false
+  /** MeshLog step id owned by this op (set in undoPre); -1 = none. Keys
+   * calcUndoMem/onUndoDestroy so stack trimming frees the C++ step too. */
+  logStepId = -1
 
   /** Monotonic, process-global non-accumulate generation stamp; pre-incremented
    * once per stroke (so the first stroke gets 1, never 0 = "not stamped"). The
@@ -91,6 +94,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.beginStep()
+      this.logStepId = SculptPaintOp.meshLog.lastStepId()
       this.inStep = true
       window.redraw_viewport()
     }
@@ -112,12 +116,23 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
-  calcMemSize(ctx: ToolContext): number {
-    return 1
+  /** Undo data lives in the shared C++ MeshLog; report this op's step size so
+   * the tool stack's memory limit sees the real cost. */
+  calcUndoMem(_ctx: ToolContext): number {
+    const log = SculptPaintOp.meshLog
+    if (!log || this.logStepId < 0) {
+      return 0
+    }
+    return log.stepMemSize(this.logStepId)
   }
 
-  calcUndoMem(ctx: ToolContext): number {
-    return 1
+  /** Stack trim dropped this op — free its C++ MeshLog step too. */
+  onUndoDestroy(): void {
+    const log = SculptPaintOp.meshLog
+    if (log && this.logStepId >= 0) {
+      log.freeStep(this.logStepId)
+      this.logStepId = -1
+    }
   }
 
   getBrush(e: PointerEvent): IGetBrushRet {

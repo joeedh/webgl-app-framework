@@ -18,7 +18,14 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      settings.featureFlags.* — dotted flag keys mangled via featureFlagApiName —
      and the new tab lists every flag from FeatureFlags.definitions; guarded by
      tests/e2e/settings_editor.e2e.ts)
-[ ]: implement the undo memory size calculation for sculptcore's toolops, then make sure the maximum undo memory limit works and is exposed in the settings editor.
+[x]: implement the undo memory size calculation for sculptcore's toolops, then make sure the maximum undo memory limit works and is exposed in the settings editor.
+     (MeshLog step-id/memSize/freeStep API + SculptPaintOp.calcUndoMem/onUndoDestroy;
+     settings.limitUndoMem/undoMemLimit on the Settings General tab; AppToolStack syncs and
+     enforces on execTool/undo/redo. Fixed en route: MeshLog::undo/redo now thaw frozen
+     topology before replaying topo chunks — undoing a non-newest dyntopo step crashed
+     natively / hung on wasm (regression test sculptcore/tests/test_dyntopo_undo_nonnewest.cc).
+     Guarded by tests/integration/sculptcore_undomem.test.ts, both backends; see
+     documentation/undo-memory.md)
 [ ]: plane brushes should give you the option of projecting to the center surface normal or the view normal,
      default to the view normal.
 [x]: make sure sculpt mask painting is implemented and works
