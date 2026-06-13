@@ -45,6 +45,9 @@ interface BoundaryTestResult {
   strokeUndo?: GraphStats
   /** After MeshLog-redoing them — must equal strokeDyntopo. */
   strokeRedo?: GraphStats
+  /** After a SMOOTH-tool stroke (now the boundary-aware bsmooth kernel) over the
+   * seam junction with dyntopo OFF — frozen topology, so must equal strokeRedo. */
+  strokeSmooth?: GraphStats
   /** The picked pole verts + per-path marked edge counts (diagnostics). */
   poleVerts?: number[]
   pathEdgeCounts?: number[]
@@ -198,6 +201,25 @@ function boundaryTest(): BoundaryTestResult {
     log.redo(mesh.mesh, mesh.spatial)
     log.redo(mesh.mesh, mesh.spatial)
     result.strokeRedo = mesh.boundaryGraphStats()
+    mesh.regenTreeBatch()
+
+    // A SMOOTH-tool stroke now routes through the boundary-aware bsmooth kernel
+    // (TOOL_TO_SCULPTBRUSH maps SMOOTH → BSMOOTH). With dyntopo OFF the topology
+    // is frozen, so the boundary constraint graph must be byte-for-byte
+    // unchanged: bsmooth projects boundary-vert displacement into the tangent
+    // plane and never flags/clears edges.
+    const savedSmooth = {tool: draw.tool, strength: draw.strength, dtFlag: draw.dynTopoSC.flag}
+    try {
+      draw.tool = SculptTools.SMOOTH
+      draw.strength = 0.5
+      draw.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+      runSculptcoreStroke({mesh, brush: draw, dabs, radius})
+      result.strokeSmooth = mesh.boundaryGraphStats()
+    } finally {
+      draw.tool = savedSmooth.tool
+      draw.strength = savedSmooth.strength
+      draw.dynTopoSC.flag = savedSmooth.dtFlag
+    }
     mesh.regenTreeBatch()
 
     result.ok = true

@@ -137,10 +137,15 @@ export function pushBrushDeviceInputs(wasmBrush: WasmBrush, e: PointerEvent): vo
  * The plane family CLAY/SCRAPE/FILL all run the `plane` kernel; the per-tool
  * planeoff/planeSide uniforms (set in `configureToolUniforms`) select build-up
  * / cut / fill. WING_SCRAPE runs its own kernel.
+ *
+ * The SMOOTH tool routes to the boundary-aware BSMOOTH kernel — bsmooth replaces
+ * the plain smooth brush (ImmediateTODOs). bsmooth reduces to plain Laplacian
+ * smoothing when no boundaries are marked, so it's a transparent drop-in; the
+ * legacy `smooth` kernel survives only for the C++ test harness.
  */
 export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = {
   [SculptTools.DRAW]       : SculptBrushes.DRAW,
-  [SculptTools.SMOOTH]     : SculptBrushes.SMOOTH,
+  [SculptTools.SMOOTH]     : SculptBrushes.BSMOOTH,
   [SculptTools.INFLATE]    : SculptBrushes.INFLATE,
   [SculptTools.SHARP]      : SculptBrushes.SHARP,
   [SculptTools.PINCH]      : SculptBrushes.PINCH,
@@ -151,7 +156,6 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
   [SculptTools.COLOR]      : SculptBrushes.COLOR,
   [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
-  [SculptTools.BSMOOTH]    : SculptBrushes.BSMOOTH,
   [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
   [SculptTools.GRAB]       : SculptBrushes.GRAB,
   [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
@@ -175,15 +179,15 @@ export function isSmoothTool(tool: SculptTools): boolean {
 
 /**
  * (Re)build a composite brush program for one dab: the main brush command,
- * plus a chained SMOOTH command (autosmooth) when `brush.autosmooth > 0`.
+ * plus a chained BSMOOTH command (autosmooth) when `brush.autosmooth > 0`.
  *
- * The SMOOTH command's strength is set so its effective smooth factor lands at
- * `autosmooth * falloff`. The `strength` intrinsic is now just `strength *
- * falloff` (radius is no longer baked in), and the smooth kernel applies it as
- * a relative Laplacian blend that doesn't scale by radius — so the command
- * strength is `autosmooth` directly. The program is run over the same node set,
- * so SMOOTH re-snapshots `co_prev` after the main pass and smooths the deformed
- * result.
+ * Autosmooth uses the boundary-aware BSMOOTH kernel (bsmooth replaces smooth),
+ * so it preserves marked seams/sharp/polygroup borders just like the smooth
+ * brush. The command strength is `autosmooth` directly: the `strength` intrinsic
+ * is `strength * falloff` and the smooth kernel applies it as a relative
+ * Laplacian blend that doesn't scale by radius. The program runs over the same
+ * node set, so BSMOOTH re-snapshots `co_prev` after the main pass and smooths
+ * the deformed result.
  */
 /** The painted attr's category for a paint tool, else 0 (no attr handle). */
 function toolAttrCategory(tool: SculptTools): number {
@@ -216,7 +220,7 @@ export function buildBrushProgram(
 
   if (brush.autosmooth > 0 && radius > 0) {
     const smoothStrength = brush.autosmooth
-    const i = prog.addCommand(SculptBrushes.SMOOTH)
+    const i = prog.addCommand(SculptBrushes.BSMOOTH)
     prog.setCommandFloat(i, BrushProp.STRENGTH, smoothStrength)
     // Autosmooth always smooths forward, even when the main command is inverted.
     prog.setCommandInvert(i, false)
@@ -364,9 +368,10 @@ export function builSculptcoreBrush({
     const st = wasm.manager.get('sculptcore::brush::CommandExecutor') as StructType
     const ctor = st.findConstructor('main')!
     wasmExec = wasm.manager.constructWith(ctor, mesh.spatial, wasmBrush) as CommandExecutor
-    // SMOOTH (and autosmooth) read neighbors from the CSR ring1 cache, not the
-    // live disk — a freshly built LiteMesh doesn't maintain live disk links, so
-    // LiveDisk smooth would find no neighbors and no-op. (1 = NeighborMode::Csr)
+    // BSMOOTH (the smooth brush + autosmooth) reads neighbors from the CSR ring1
+    // cache, not the live disk — a freshly built LiteMesh doesn't maintain live
+    // disk links, so a LiveDisk smooth would find no neighbors and no-op.
+    // (1 = NeighborMode::Csr)
     wasmExec.setNeighborMode(1)
   }
 

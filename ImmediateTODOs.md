@@ -38,8 +38,16 @@ Make sure to keep CLAUDE.md and documentation up to date as you implement each i
      (added SCULPT_MASK_PAINT/COLOR/POLYGROUP/BSMOOTH/HOLE_FILLER/DIRECTIONAL_FAIR, indices
      120-125 in iconsheet.svg row 7; guarded by tests/unit/sculpt_tool_icons.test.ts)
 [x]: smoothing brushes should have accumulate on by default
-[ ]: all smoothing (dyntopo tangential smoothing, the smoothing brush, etc) must be boundary-aware; 
+[x]: all smoothing (dyntopo tangential smoothing, the smoothing brush, etc) must be boundary-aware; 
      the bsmooth brush should replace the smooth brush.
+     (TS-only routing: TOOL_TO_SCULPTBRUSH maps SculptTools.SMOOTH → SculptBrushes.BSMOOTH and the
+     standalone BSMOOTH tool entry is removed, so the SMOOTH tool IS the boundary-aware bsmooth kernel;
+     buildBrushProgram's autosmooth command now chains BSMOOTH too. bsmooth reduces to a plain Laplacian
+     with no boundaries marked, so it's a transparent drop-in. Dyntopo tangential smoothing was already
+     boundary-aware (smoothTangent skips boundary/non-manifold edges + the caller pins feature verts in
+     dyntopo.h). Guarded by a new SMOOTH-stroke case in sculptcore_boundary.test.ts (constraint graph
+     byte-for-byte unchanged, both backends) plus the existing smooth/autosmooth/invert cases in
+     sculptcore_brushes.test.ts. See documentation/brush-notes.md "Boundary-aware smoothing".)
 [x]: the brush invert flag isn't respected.  it should invert strength for most brushes (except for smooth brushes).
 [ ]: there is a longstanding bug where faces randomly don't draw, could be a gpu spatial node isn't being batched properly.  hard to reproduce.
 [x]: using the bsmooth brush with dyntopo on a mesh with polygroups crashes after a few strokes

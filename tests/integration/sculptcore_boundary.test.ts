@@ -46,6 +46,7 @@ interface BoundaryTestResult {
   strokeDyntopo?: GraphStats
   strokeUndo?: GraphStats
   strokeRedo?: GraphStats
+  strokeSmooth?: GraphStats
   poleVerts?: number[]
   pathEdgeCounts?: number[]
   junction?: number[]
@@ -187,5 +188,12 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore boundary constraints (
 
   test('MeshLog redo restores the post-dyntopo graph', () => {
     expect(r.strokeRedo).toEqual(r.strokeDyntopo)
+  })
+
+  test('SMOOTH stroke (boundary-aware bsmooth kernel) over the seam leaves the graph intact', () => {
+    // The SMOOTH tool now routes to the bsmooth kernel. With dyntopo OFF the
+    // topology is frozen, so smoothing the seam junction must not add, drop, or
+    // re-flag any boundary edge — the constraint graph is byte-for-byte equal.
+    expect(r.strokeSmooth).toEqual(r.strokeRedo)
   })
 })

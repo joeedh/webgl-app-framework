@@ -50,9 +50,10 @@ intentional.
 ## Tool dispatch
 
 `TOOL_TO_SCULPTBRUSH` maps the TS `SculptTools` enum → `SculptBrushes` kernel.
-Wired: DRAW, SMOOTH, BSMOOTH, INFLATE, SHARP, PINCH, MASK_PAINT, COLOR,
-POLYGROUP, and the plane family CLAY/SCRAPE/FILL/WING_SCRAPE. Tools with no
-equivalent (Grab, Snake, Paint, …) are absent → the op warns and skips the dab.
+Wired: DRAW, SMOOTH (→ the boundary-aware `BSMOOTH` kernel — see below), INFLATE,
+SHARP, PINCH, MASK_PAINT, COLOR, POLYGROUP, and the plane family
+CLAY/SCRAPE/FILL/WING_SCRAPE. Tools with no equivalent (Grab, Snake, Paint, …)
+are absent → the op warns and skips the dab.
 The base kernels read `strength` (via the `strength` intrinsic) and, where the
 displacement should scale with brush size, the `radius` uniform directly
 (`draw`/`inflate`/`pinch`; `smooth`/`sharp`/`mask` don't); plane/wing read
@@ -64,7 +65,7 @@ extra uniforms (below).
   (stroke_paint_op.ts) XORs ctrl with `BrushFlags.INVERT`, the bridge sets
   `wasmBrush.invert`, `writeProps()` stores it, and the executor's per-command
   `loadCommonProps` re-reads it (unless a command sets `overrideInvert`, as
-  autosmooth's SMOOTH entry does to pin `false`). Bool props go through
+  autosmooth's BSMOOTH entry does to pin `false`). Bool props go through
   `prop_coerce.h`, which dispatches `Prop::BOOL`/`BoolProp` like the numeric
   types — it didn't originally, which silently reset `invert` to its default
   before every dab. Smooth-family tools ignore invert (`isSmoothTool`).
@@ -78,22 +79,44 @@ extra uniforms (below).
 Default-on `ACCUMULATE` brushes: smooth, bsmooth, paint-smooth, inflate, clay
 (see `accumulable` in the kernels / brush defaults in `scripts/brush/brush.ts`).
 
+## Boundary-aware smoothing (bsmooth replaces smooth)
+
+All smoothing in the app is boundary-aware: the SMOOTH tool routes to the
+`BSMOOTH` kernel, the autosmooth command chains `BSMOOTH` (below), and dyntopo's
+tangential smoothing pins feature verts (`dyntopo.h` `smoothTangent` returns
+`false` on boundary/non-manifold edges and the caller additionally skips
+`feat.isFeatureVert` verts when the feature set is active). There is no plain
+`SMOOTH` kernel reachable from the app — `bsmooth.sbrush` is the one smoothing
+kernel.
+
+`bsmooth` reads `.boundary.vert.class` per vertex: a boundary vertex averages
+only neighbors that share a boundary type (`(vc & nb.vclass) == 0` → weight 0)
+and projects its displacement into the tangent plane, so marked seams / sharp
+edges / polygroup borders are preserved instead of being pulled across. With no
+boundaries marked it reduces to a plain Laplacian, so it's a transparent drop-in
+for the old smooth brush. Consumers must run `boundary::recomputeDirty` first;
+the executor's `refreshBoundaryClassForBSmooth` does this on the first command of
+a step when `m->boundaryDirty`. Because smoothing diverges when inverted,
+`isSmoothTool` excludes the SMOOTH tool from invert.
+
 ## Composite brushes / autosmooth (`BrushProgram`)
 
 A `BrushProgram` is an ordered list of sub-commands run over the **same** node
-set per dab. Autosmooth is `[mainBrush, SMOOTH]`: each command resolves the
+set per dab. Autosmooth is `[mainBrush, BSMOOTH]`: each command resolves the
 brush's props (with sparse overrides applied), then runs like a standalone
-brush. SMOOTH is a second `exec()` whose Jacobi `co_prev` snapshot is re-taken
-*after* the main pass mutated positions, so it smooths the result. A future
-dyntopo pass is just an entry prepended to `commands` — no API change.
+brush. The chained `BSMOOTH` is a second `exec()` whose Jacobi `co_prev` snapshot
+is re-taken *after* the main pass mutated positions, so it smooths the result. A
+future dyntopo pass is just an entry prepended to `commands` — no API change.
 
-The SMOOTH entry is appended by `buildBrushProgram` whenever `brush.autosmooth >
-0 && radius > 0`, with command strength = `brush.autosmooth` and invert pinned
+The `BSMOOTH` entry is appended by `buildBrushProgram` whenever `brush.autosmooth
+> 0 && radius > 0`, with command strength = `brush.autosmooth` and invert pinned
 `false` (autosmooth always smooths forward, even under an inverted main brush).
-`builSculptcoreBrush` calls `setNeighborMode(1)` (CSR ring-1) so the chained
-SMOOTH finds neighbors on a fresh `LiteMesh`. This is the **only** smoothing
-path — there is no TS-side smoothing — so it works identically on both backends
-(the executor is shared; WGSL dispatch will inherit the same command list).
+Using the boundary-aware kernel means autosmooth preserves marked seams just like
+the smooth brush. `builSculptcoreBrush` calls `setNeighborMode(1)` (CSR ring-1)
+so the chained smooth finds neighbors on a fresh `LiteMesh`. This is the **only**
+smoothing path — there is no TS-side smoothing — so it works identically on both
+backends (the executor is shared; WGSL dispatch will inherit the same command
+list).
 
 Sparse overrides (`setCommandFloat`) are keyed by an **int `BrushProp` id**, not
 a name (see gotchas).
@@ -105,6 +128,12 @@ normal, so its **perpendicular** displacement is ~0; the chained SMOOTH moves
 verts toward neighbor averages, driving `meanPerp` clearly positive — the
 decisive proof the autosmooth command ran (`maxDisp` barely moves because a
 radial DRAW bump is already smooth).
+
+The bsmooth routing is additionally guarded by the boundary-constraint test
+(`tests/integration/sculptcore_boundary.test.ts`): a SMOOTH-tool stroke over a
+marked seam junction with dyntopo OFF leaves the constraint graph byte-for-byte
+unchanged (frozen topology + tangent-plane projection ⇒ no edge added, dropped,
+or re-flagged).
 
 ## Falloff
 
