@@ -92,13 +92,16 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   }
 
   undoPre(ctx: ToolContext) {
+    const brush = this.inputs.brush.getValue()
+    const hasDyntopo = brush.dynTopoSC.enabled
+
     this.strokeGroupId = undefined
     this.prevDabLocal = undefined
     this.dabSeed = 1
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
-      SculptPaintOp.meshLog.beginStep()
+      SculptPaintOp.meshLog.beginStep(hasDyntopo)
       this.logStepId = SculptPaintOp.meshLog.lastStepId()
       this.inStep = true
       window.redraw_viewport()
@@ -440,7 +443,7 @@ export function runSculptcoreStroke(opts: {
     SculptPaintOp.meshLog = wasm.manager.construct('sculptcore::meshlog::MeshLog')
   }
   const meshLog = SculptPaintOp.meshLog!
-  meshLog.beginStep()
+  meshLog.beginStep(brush.dynTopoSC.enabled)
 
   // Mirror SculptPaintOp: show the painted attribute (color/polygroup).
   syncDisplayModeToBrush(mesh, brush.tool)
