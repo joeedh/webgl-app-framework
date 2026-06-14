@@ -8,10 +8,10 @@ export class PaintSample {
 PaintSample {
   p              : vec4;
   dp             : vec4;
-  sp             : vec4;
+  screenP        : vec2;
+  dScreenP       : vec2;
   strokeS        : float;
   dstrokeS       : float;
-  dsp            : vec4;
   origp          : vec4;
   isInterp       : bool;
   sharp          : float;
@@ -24,11 +24,12 @@ PaintSample {
   color          : vec4;
 
   rendermat      : mat4;
+  irendermat     : mat4;
+  view3dSize     : vec2;
 
   viewvec        : vec3;
   vieworigin     : vec3;
   viewPlane      : vec3;
-  autosmoothInflate : float;
 
   planeoff       : float;
   rake           : float;
@@ -39,16 +40,21 @@ PaintSample {
   pinch          : float;
   smoothProj     : float;
   autosmooth     : float;
+  autosmoothInflate : float;
   concaveFilter  : float;
   invert         : bool;
   esize          : float;
-  curve          : optional(Bezier);
+  curve          : optional(bezier.Bezier);
   pressure       : float;
   hit            : bool;
+  useAltBrush    : bool;
 }`
   )
 
   pressure = 1.0
+  twist = 0.0
+  tiltX = 0.0
+  tiltY = 0.0
 
   static interpKeys = [
     'pressure',
@@ -72,6 +78,8 @@ PaintSample {
   dp: Vector4
   viewPlane: Vector3
   rendermat: Matrix4
+  irendermat: Matrix4
+  view3dSize: Vector2
   /* arc length S along stroke in units of brush radius */
   strokeS: number
   /* change in arc length S along stroke in units of brush radius*/
@@ -109,6 +117,8 @@ PaintSample {
   hit = true
   /** @deprecated */
   mpos = new Vector2()
+  /** triggered by shift key */
+  useAltBrush = false
 
   constructor() {
     this.origp = new Vector4()
@@ -117,6 +127,8 @@ PaintSample {
     this.viewPlane = new Vector3()
 
     this.rendermat = new Matrix4()
+    this.irendermat = new Matrix4()
+    this.view3dSize = new Vector2()
 
     this.strokeS = 0.0
     this.dstrokeS = 0.0
@@ -225,6 +237,8 @@ PaintSample {
     b.hit = this.hit
 
     b.rendermat.load(this.rendermat)
+    b.irendermat.load(this.irendermat)
+    b.view3dSize.load(this.view3dSize)
 
     b.pinch = this.pinch
     b.rake = this.rake
@@ -233,6 +247,8 @@ PaintSample {
     b.autosmooth = this.autosmooth
     b.planeoff = this.planeoff
     b.concaveFilter = this.concaveFilter
+
+    b.useAltBrush = this.useAltBrush
   }
 
   copy(): PaintSample {

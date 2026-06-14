@@ -342,7 +342,7 @@ export class LiteMesh extends SceneObjectData {
     this,
     `
     litemesh.LiteMesh {
-      _data : iter(byte) | this.serialize();
+      _data : arraybuffer(byte) | this.serialize();
     }
     `
   )
@@ -404,7 +404,7 @@ export class LiteMesh extends SceneObjectData {
       .customGet(function () {
         let count = '' + this.dataref.mesh.f.count
         let s = ''
-        for (let i=0; i<count.length; i++) {
+        for (let i = 0; i < count.length; i++) {
           let i2 = count.length - i
           if (i2 % 3 === 0 && i2 > 0) s += ','
           s += count[i]
@@ -530,7 +530,7 @@ export class LiteMesh extends SceneObjectData {
     reader(this)
     super.loadSTRUCT(reader)
 
-    if (this._data && this._data.length > 0) {
+    if (this._data instanceof ArrayBuffer || this._data?.length) {
       this.mesh = this.wasm.Mesh_deserialize(new Uint8Array(this._data))
     } else {
       // Legacy / empty block (saved before mesh serialization was wired): fall
@@ -567,7 +567,7 @@ export class LiteMesh extends SceneObjectData {
   private _hasMaterialDrawShader = false
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
-  _data?: number[] | Uint8Array
+  _data?: number[] | Uint8Array | ArrayBuffer
   /** Viewport surface color source (see LiteMeshDisplayMode). View state only,
    * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
    * SpatialTree.displayColorMode (which TS can't read back). */

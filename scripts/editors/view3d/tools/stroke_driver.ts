@@ -14,15 +14,7 @@
 import {PaintSample} from './pbvh_paintsample.js'
 import {Bezier} from '../../../util/bezier.js'
 import {Matrix4, Vector2, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js'
-import {
-  arcLengthWalk,
-  crToBezier,
-  Cubic,
-  evalCubic,
-  lerpV,
-  subCubic,
-  Vec,
-} from '../../../util/stroke_math.js'
+import {arcLengthWalk, crToBezier, Cubic, evalCubic, lerpV, subCubic, Vec} from '../../../util/stroke_math.js'
 
 /** Centripetal Catmull-Rom: no cusps/loops on clustered jittery input. */
 const ALPHA = 0.5
@@ -34,6 +26,9 @@ export interface StrokeInput {
   y: number
   /** 0..1; caller normalizes (mouse => 1, pen/touch => e.pressure) */
   pressure: number
+  tiltX: number
+  tiltY: number
+  twist: number
   /** caller pre-resolves ctrlKey + BrushFlags.INVERT */
   invert: boolean
   /** ms; informational only (not used for spacing) */
@@ -56,6 +51,7 @@ export interface IStrokeProjection {
   rendermat(): Matrix4
   /** device px; used to convert a screen-px radius to world units */
   glSize(): Vector2
+  size(): Vector2
 }
 
 /** World-space ray hit. origin/dir and p/normal are all world space. */
@@ -90,6 +86,9 @@ interface ControlPoint {
   viewvec: Vec // [x,y,z] ray direction at this point
   hit: boolean
   pressure: number
+  tiltX: number
+  tiltY: number
+  twist: number
   invert: boolean
   params: StrokeParams
 }
@@ -111,6 +110,7 @@ export class BrushStrokeDriver {
   private out: PaintSample[] = []
   private _rendermat = new Matrix4()
   private _irendermat = new Matrix4()
+  private _view3dSize = new Vector2()
   private _tmp4 = new Vector4()
 
   constructor(opts: StrokeDriverOptions) {
@@ -159,6 +159,7 @@ export class BrushStrokeDriver {
 
     // snapshot the camera transform for this batch of events
     this._rendermat.load(this.opts.projection.rendermat())
+    this._view3dSize.load(this.opts.projection.size())
     this._irendermat.load(this._rendermat)
     this._irendermat.invert()
 
@@ -218,7 +219,10 @@ export class BrushStrokeDriver {
       viewvec,
       hit,
       pressure: input.pressure,
-      invert: input.invert,
+      tiltX   : input.tiltX ?? 0,
+      tiltY   : input.tiltY ?? 0,
+      twist   : input.twist ?? 0,
+      invert  : input.invert,
       params,
     })
 
@@ -385,10 +389,15 @@ export class BrushStrokeDriver {
     ps.vieworigin[1] = origin[1]
     ps.vieworigin[2] = origin[2]
     ps.rendermat.load(this._rendermat)
+    ps.irendermat.load(this._irendermat)
+    ps.view3dSize.load(this._view3dSize)
 
     ps.radius = lerpNum(cpA.params.radius, cpB.params.radius, t)
     ps.strength = lerpNum(cpA.params.strength, cpB.params.strength, t)
     ps.pressure = lerpNum(cpA.pressure, cpB.pressure, t)
+    ps.tiltX = lerpNum(cpA.tiltX, cpB.tiltX, t)
+    ps.tiltY = lerpNum(cpA.tiltY, cpB.tiltY, t)
+    ps.twist = lerpNum(cpA.twist, cpB.twist, t)
     ps.invert = t < 0.5 ? cpA.invert : cpB.invert
     ps.color.load(cpA.params.color).interp(cpB.params.color, t)
     ps.hit = hit

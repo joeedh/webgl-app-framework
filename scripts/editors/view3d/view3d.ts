@@ -40,7 +40,7 @@ import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events
 import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils'
 import {Icons} from '../icon_enum'
 import {NoneWidget} from './widgets/widget_tools'
-import {View3DFlags, CameraModes} from './view3d_base'
+import {View3DFlags, CameraModes, view3dProject, view3dUnproject} from './view3d_base'
 import type {Library} from '../../core/lib_api'
 import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
 import type {SceneObject} from '../../sceneobject/sceneobject'
@@ -69,8 +69,6 @@ export interface ITempText {
   size: number
 }
 
-const proj_temps = util.cachering.fromConstructor(Vector4, 32)
-const unproj_temps = util.cachering.fromConstructor(Vector4, 32)
 const curtemps = util.cachering.fromConstructor(Vector3, 32)
 
 declare global {
@@ -727,67 +725,11 @@ View3D {
   }
 
   project(co: Vector2 | Vector3 | Vector4, mat?: Matrix4) {
-    const tmp = proj_temps.next().zero()
-
-    tmp[0] = co[0]
-    tmp[1] = co[1]
-
-    if (co.length > 2) {
-      tmp[2] = co[2]!
-    }
-
-    tmp[3] = 1.0
-    tmp.multVecMatrix(mat ? mat : this.activeCamera.rendermat)
-
-    if (tmp[3] !== 0.0) {
-      tmp[0] /= tmp[3]
-      tmp[1] /= tmp[3]
-      tmp[2] /= tmp[3]
-    }
-
-    const w = tmp[3]
-
-    tmp[0] = (tmp[0] * 0.5 + 0.5) * this.size![0]
-    tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * this.size![1]
-
-    for (let i = 0; i < co.length; i++) {
-      co[i] = tmp[i]
-    }
-
-    return w
+    return view3dProject(co, this.size!, mat ?? this.activeCamera.rendermat)
   }
 
   unproject(co: Vector2 | Vector3 | Vector4, imat?: Matrix4) {
-    const tmp = unproj_temps.next().zero()
-
-    tmp[0] = (co[0] / this.size![0]) * 2.0 - 1.0
-    tmp[1] = (1.0 - co[1] / this.size![1]) * 2.0 - 1.0
-
-    if (co.length > 2) {
-      tmp[2] = co[2]!
-    }
-
-    if (co.length > 3) {
-      tmp[3] = co[3]!
-    } else {
-      tmp[3] = 1.0
-    }
-
-    tmp.multVecMatrix(imat ? imat : this.activeCamera.irendermat)
-
-    const w = tmp[3]
-
-    if (tmp[3] !== 0.0) {
-      tmp[0] /= tmp[3]
-      tmp[1] /= tmp[3]
-      tmp[2] /= tmp[3]
-    }
-
-    for (let i = 0; i < co.length; i++) {
-      co[i] = tmp[i]
-    }
-
-    return w
+    return view3dUnproject(co, this.size!, imat ?? this.activeCamera.irendermat)
   }
 
   setCursor(mat: Matrix4) {

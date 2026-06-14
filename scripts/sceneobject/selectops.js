@@ -1,28 +1,6 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js'
-import {SimpleMesh, LayerTypes} from '../webgl/simplemesh.ts'
-import {
-  IntProperty,
-  BoolProperty,
-  FloatProperty,
-  EnumProperty,
-  FlagProperty,
-  ToolProperty,
-  Vec3Property,
-  Mat4Property,
-  PropFlags,
-  PropTypes,
-  PropSubTypes,
-  ToolOp,
-  ToolFlags,
-  UndoFlags,
-  ListProperty,
-} from '../path.ux/scripts/pathux.js'
-import {dist_to_line_2d} from '../path.ux/scripts/util/math.js'
-import {CallbackNode, NodeFlags} from '../core/graph.js'
-import {DependSocket} from '../core/graphsockets.js'
-import * as util from '../util/util.js'
-import {Icons} from '../editors/icon_enum.js'
-import {SceneObject, ObjectFlags} from './sceneobject.js'
+import {Vector2} from '../util/vectormath.js'
+import {IntProperty, BoolProperty, EnumProperty, ToolOp, ListProperty} from '../path.ux/scripts/pathux.js'
+import {ObjectFlags} from './sceneobject.js'
 
 import {SelMask, SelToolModes, SelOneToolModes} from '../editors/view3d/selectmode.js'
 

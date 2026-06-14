@@ -1,7 +1,7 @@
 import * as constants from './const'
 import type {AppState} from './appstate'
 import * as util from '../util/util'
-import {ToolOp, UndoFlags} from '../path.ux/pathux'
+import {ArrayBufferProperty, StringProperty, ToolOp, UndoFlags} from '../path.ux/pathux'
 import {SelMask} from '../editors/view3d/selectmode'
 import {ScreenBlock} from '../editors/editor_base'
 import {Collection} from '../scene/collection'
@@ -22,6 +22,47 @@ export class RootFileOp extends ToolOp {
     }
   }
 }
+
+export class RootLoadFileOp extends ToolOp<{
+  fileBuffer: ArrayBufferProperty
+}> {
+  constructor(buffer?: ArrayBuffer | SharedArrayBuffer) {
+    super()
+
+    if (buffer !== undefined) {
+      this.inputs.fileBuffer.setValue(buffer as ArrayBuffer)
+    }
+  }
+
+  // can only run in toolsys re-exec
+  static canRun(ctx: ToolContext, toolop?: ToolOp) {
+    return false
+  }
+
+  static tooldef() {
+    return {
+      undoflag: UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
+      uiname  : 'File Start',
+      toolpath: 'app.__load_file',
+      inputs: {
+        fileBuffer: new ArrayBufferProperty(),
+      },
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const {fileBuffer} = this.getInputs()
+    if (fileBuffer.byteLength > 0) {
+      ctx.state.loadFile(fileBuffer, {
+        reset_toolstack: false,
+        load_screen    : false,
+        load_settings  : false,
+        reset_context  : false,
+      })
+    }
+  }
+}
+ToolOp.register(RootLoadFileOp)
 
 /** Root operator that builds a file. */
 export class BasicFileOp extends ToolOp {
@@ -77,6 +118,14 @@ export function genDefaultFile(appstate: AppState, dont_load_startup = 0): void 
   if (startup) {
     try {
       appstate.loadFile(startup.buffer as ArrayBuffer)
+      if (
+        !(appstate.ctx.toolstack[0] instanceof RootLoadFileOp) &&
+        !(appstate.ctx.toolstack[0] instanceof BasicFileOp) &&
+        !(appstate.ctx.toolstack[1] instanceof BasicFileOp)
+      ) {
+        appstate.ctx.toolstack.prepend(new RootLoadFileOp(startup.buffer as ArrayBuffer))
+        appstate.ctx.toolstack.cur = 0
+      }
       return
     } catch (error) {
       util.print_stack(error as Error)

@@ -25,6 +25,7 @@ import {Material} from './material'
 import {View3D} from '../editors/all.js'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {areaclasses, AreaFlags} from '../path.ux/scripts/screen/area_base'
+import {RootLoadFileOp} from './gen_default_file'
 
 type AppLibrary = Library & {material: BlockSet<Material>; scene: BlockSet<Scene>}
 
@@ -591,6 +592,26 @@ export class ViewContext extends ToolContext {
 
   debug = new DebugEditorAPI(this)
 
+  /** fulfills when replay is finished */
+  replay(stopCB: () => boolean): Promise<unknown> {
+    const start = () => {
+      // instead of undo'ing back to root,
+      // use RootFileLoadOp
+      const toolstack = this.toolstack
+      if (toolstack[0] instanceof RootLoadFileOp) {
+        this.state.loadFile(toolstack[0].inputs.fileBuffer.getValue(), {
+          load_screen    : false,
+          reset_toolstack: false,
+          reset_context  : false,
+        })
+        toolstack.cur = 0 // replay will start at cur + 1
+      } else {
+        console.log('failed to find root file load op; rewinding via undo')
+        toolstack.rewind()
+      }
+    }
+    return this.toolstack.replay(stopCB, undefined, start)
+  }
   validate() {
     return true
   }

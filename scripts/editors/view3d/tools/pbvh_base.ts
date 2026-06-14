@@ -7,6 +7,7 @@ import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
 import {PaintSample} from './pbvh_paintsample.js'
+import {PropFlags} from '../../../path.ux/scripts/pathux.js'
 
 import {
   Curve1DProperty,
@@ -208,6 +209,7 @@ PaintSampleProperty {
   constructor() {
     super(PAINT_SAMPLE_TYPE)
     this.data = []
+    this.flag |= PropFlags.NO_DEFAULT
   }
 
   calcMemSize(): number {
@@ -229,7 +231,7 @@ PaintSampleProperty {
 
   setValue(b: Iterable<PaintSample>): this {
     super.setValue(b instanceof Array ? b : Array.from(b))
-
+    debugger
     this.data.length = 0
     for (const item of b) {
       this.data.push(item)

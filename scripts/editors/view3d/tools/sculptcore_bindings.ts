@@ -5,6 +5,7 @@ import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
+import { PaintSample } from './pbvh_paintsample';
 
 /** Mirror of the C++ enum FalloffShape (brush.h); passed to setFalloffShape. */
 const FalloffShape = {Spherical: 0, Cube: 1, Linear: 2, Box: 3} as const
@@ -117,13 +118,12 @@ export function configureBrushDynamics(
  * pushed but currently inert until a channel maps to them. Mouse has no
  * pressure, so it reads as full strength (curve(1) ≈ 1).
  */
-export function pushBrushDeviceInputs(wasmBrush: WasmBrush, e: PointerEvent): void {
+export function pushBrushDeviceInputs(wasmBrush: WasmBrush, ps: PaintSample): void {
   wasmBrush.clearDeviceInputs()
-  const pressure = e.pointerType === 'mouse' ? 1.0 : e.pressure || 1.0
-  wasmBrush.pushDeviceInput(DeviceType.PRESSURE, pressure)
-  wasmBrush.pushDeviceInput(DeviceType.TILTX, (e.tiltX || 0) / 90)
-  wasmBrush.pushDeviceInput(DeviceType.TILTY, (e.tiltY || 0) / 90)
-  const twist = (e as PointerEvent & {twist?: number}).twist
+  wasmBrush.pushDeviceInput(DeviceType.PRESSURE, ps.pressure)
+  wasmBrush.pushDeviceInput(DeviceType.TILTX, (ps.tiltX || 0) / 90)
+  wasmBrush.pushDeviceInput(DeviceType.TILTY, (ps.tiltY || 0) / 90)
+  const twist = ps.twist
   if (twist !== undefined) {
     wasmBrush.pushDeviceInput(DeviceType.TWIST, twist / 360)
   }

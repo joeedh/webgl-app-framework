@@ -186,6 +186,17 @@ let quad_rets = util.cachering.fromConstructor(QuadClosestRet3, 64)
 let quad_eval_rets = util.cachering.fromConstructor(Vector3, 64)
 
 export class Quad {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `bezier.Bezier {
+      a     : vec3;
+      b     : vec3;
+      c     : vec3;
+      d     : vec3;
+      quads : array(bezier.Quad);
+    }`
+  )
+
   constructor(a, b, c) {
     this.a = new Vector3(a)
     this.b = new Vector3(b)
@@ -435,17 +446,6 @@ export class Bezier {
     return this
   }
 }
-
-Bezier.STRUCT = `
-bezier.Bezier {
-  a     : vec3;
-  b     : vec3;
-  c     : vec3;
-  d     : vec3;
-  quads : array(bezier.Quad);
-}
-`
-nstructjs.register(Bezier)
 
 export function makeBezier(a, b, c, d, s) {
   return new Bezier(a, b, c, d)

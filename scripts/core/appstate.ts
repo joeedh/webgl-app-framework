@@ -51,7 +51,7 @@ import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools
 import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
-import {genDefaultFile, RootFileOp} from './gen_default_file'
+import {genDefaultFile, RootFileOp, RootLoadFileOp} from './gen_default_file'
 import {applyMissingAddonHooks, installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
@@ -580,6 +580,7 @@ export class AppState {
   }
 
   loadFile(buf: ArrayBuffer | DataView, args?: LoadFileArgs): void {
+    console.warn('Load File')
     let ret
     try {
       ret = this.loadFile_intern(buf, args)
@@ -940,7 +941,10 @@ export class AppState {
         this.toolstack = filectx.toolstack!
         this.toolstack.ctx = this.ctx
       } else {
-        this.toolstack.execTool(this.ctx, new RootFileOp())
+        this.toolstack.execTool(
+          this.ctx,
+          new RootLoadFileOp(filectx.buf instanceof DataView ? filectx.buf.buffer : filectx.buf)
+        )
       }
     }
 

@@ -1,5 +1,5 @@
 import {CommandExecutor, MeshLog, SpatialNode, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
-import type {ToolContext} from '../../../core/context'
+import type {ToolContext, ViewContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
 import {StrokeDriverOp} from './stroke_paint_op'
@@ -17,6 +17,8 @@ import {
 } from './sculptcore_bindings'
 import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
+import type {View3D} from '../view3d'
+import {view3dProject, view3dUnproject} from '../view3d_base'
 
 export interface IGetBrushRet {
   brush: SculptBrush
@@ -143,7 +145,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
-  getBrush(e: PointerEvent): IGetBrushRet {
+  getBrush(ctx: ToolContext, ps: PaintSample): IGetBrushRet {
     const brush = this.inputs.brush.getValue()
     // Non-accumulate is the default (ACCUMULATE bit CLEAR). The executor ignores
     // it for non-deform brushes, so it's safe to pass unconditionally.
@@ -151,9 +153,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     const result = builSculptcoreBrush({
       wasm: getWasmImmediate()!,
       brush,
-      mesh     : this.modal_ctx!.object!.data as LiteMesh,
+      mesh     : ctx.object!.data as LiteMesh,
       radius   : this.calcRadius(brush.radius),
-      invert   : this.getInvertFromEvent(e),
+      invert   : ps.invert,
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
       nonAccum,
@@ -218,27 +220,27 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   /** Apply one evenly-spaced driver dab: re-raycast at the sample's screen
    * point to snap to the surface (object-local space), then run the sculptcore
    * brush pipeline + optional dyntopo over the filtered nodes. */
-  applyDab(ps: PaintSample, e: PointerEvent): void {
+  applyDab(ctx: ViewContext | ToolContext, ps: PaintSample): void {
     if (!this.inStep) {
       return
     }
 
-    const ctx = this.modal_ctx!
-    const view3d = ctx.view3d
+    const view3d = (ctx as ViewContext).view3d as View3D | undefined
     const toolmode = ctx.toolmode as SculptCorePaintMode
 
-    view3d.resetDrawLines()
+    // XXX move this into the base class and out of applyDab
+    if (view3d !== undefined) {
+      view3d.resetDrawLines()
+      toolmode.mpos[0] = ps.screenP[0] + view3d.pos![0]
+      toolmode.mpos[1] = ps.screenP[1] + view3d.pos![1]
+      toolmode.drawBrush(view3d, true, ps.screenP[0] + view3d.pos![0], ps.screenP[1] + view3d.pos![1])
+    }
 
-    toolmode.mpos[0] = ps.screenP[0] + view3d.pos![0]
-    toolmode.mpos[1] = ps.screenP[1] + view3d.pos![1]
-    toolmode.drawBrush(view3d, true, ps.screenP[0] + view3d.pos![0], ps.screenP[1] + view3d.pos![1])
-
-    const {brush, wasmExec, wasmBrush} = this.getBrush(e)
+    const {brush, wasmExec, wasmBrush} = this.getBrush(ctx, ps)
     const wasm = getWasmImmediate()!
 
-    const local = ps.screenP.copy()
-    const viewvec = view3d.getViewVec(local[0], local[1])
-    const origin = view3d.activeCamera.pos.copy()
+    const viewvec = ps.viewvec
+    const origin = ps.vieworigin
     const mesh = ctx.object!.data as LiteMesh
 
     const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
@@ -259,17 +261,16 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
     const p4 = new Vector4().load3(p)
     p4[3] = 1.0
-    p4.multVecMatrix(view3d.activeCamera.rendermat)
+    p4.multVecMatrix(ps.rendermat)
 
     const m1 = new Vector3(p)
-    view3d.project(m1)
+    view3dProject(m1, ps.view3dSize, ps.rendermat)
     const m2 = new Vector3(m1)
     m2[0] += 1
 
-    view3d.unproject(m2)
+    view3dUnproject(m2, ps.view3dSize, ps.irendermat)
 
     const dist = m2.vectorDistance(p)
-
     radius *= dist
 
     // XXX binding system generator error, the type catalog is missing this
@@ -292,7 +293,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // new id when that face has no group yet).
       if (brush.tool === SculptTools.POLYGROUP) {
         if (this.strokeGroupId === undefined) {
-          if (e.shiftKey && isect.face >= 0) {
+          if (ps.useAltBrush && isect.face >= 0) {
             const sampled = mesh.mesh.faceGroup(isect.face)
             this.strokeGroupId = sampled > 0 ? sampled : mesh.mesh.maxFaceGroup() + 1
           } else {
@@ -335,7 +336,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
       // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
       // stack that loadProps applies inside execProgram.
-      pushBrushDeviceInputs(wasmBrush, e)
+      pushBrushDeviceInputs(wasmBrush, ps)
 
       // Build the per-dab command list (main brush + optional autosmooth) and
       // run it over the filtered node set.
@@ -358,11 +359,18 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
 
     mesh.regenTreeBatch()
+    mesh.spatial.update(mesh.wasm.gpu)
     window.redraw_viewport()
   }
 
-  modalEnd(was_cancelled: boolean): void {
-    super.modalEnd(was_cancelled)
+  modalEnd(was_cancelled: boolean) {
+    const ctx = this.modal_ctx!
+    const result = super.modalEnd(was_cancelled)
+    this.finishStroke(ctx)
+    return result
+  }
+
+  finishStroke(ctx: ToolContext): void {
     // Release the stroke-long topology thaw the dyntopo path held (no-op if the
     // executor never ran a dyntopo dab).
     this.executor?.endDynTopoStroke()
@@ -379,15 +387,23 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       this.dynTopoParams = undefined
     }
     // Dyntopo changes the seam/feature topology; refresh the overlay batch.
-    const mesh = this.modal_ctx?.object?.data
+    const mesh = ctx.object?.data
     if (mesh instanceof LiteMesh) {
       mesh.markSeamsDirty()
     }
     window.redraw_viewport()
   }
 
-  exec() {
-    console.error('TODO: support re-execution of sculptcore paint ops')
+  exec(ctx: ToolContext): void {
+    for (const ps of this.inputs.samples.getValue()) {
+      this.applyDab(ctx, ps)
+    }
+    if (!this.modalRunning) {
+      this.finishStroke(ctx)
+    }
+
+    window.redraw_viewport()
+    //console.error('TODO: support re-execution of sculptcore paint ops')
   }
 }
 ToolOp.register(SculptPaintOp)
@@ -456,8 +472,6 @@ export function runSculptcoreStroke(opts: {
   let wasmBrush: WasmBrush | undefined = undefined
   let wasmExec: CommandExecutor | undefined = undefined
   let dynParams: DynTopoParams | undefined = undefined
-  // Mouse-equivalent device sample (full pressure).
-  const ev = {pointerType: 'mouse', pressure: 1.0, tiltX: 0, tiltY: 0} as unknown as PointerEvent
 
   // Mirror the interactive op's non-accumulate handling (default = on; ACCUMULATE
   // bit re-enables accumulate) with one stroke-generation stamp for this stroke.
@@ -493,7 +507,7 @@ export function runSculptcoreStroke(opts: {
     wasmBrush.radius = radius
     wasmBrush.writeProps()
     wasmExec.meshLog = meshLog
-    pushBrushDeviceInputs(wasmBrush, ev)
+    pushBrushDeviceInputs(wasmBrush, new PaintSample())
 
     // Dyntopo remesh before the deform (mirrors SculptPaintOp).
     const dt = brush.dynTopoSC

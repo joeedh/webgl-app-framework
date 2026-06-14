@@ -14,7 +14,7 @@ ToolOp.prototype.calcUndoMem = function (ctx) {
     return 0
   }
 
-  return this._undo.byteLength
+  return this._undo?.byteLength ?? 0
 }
 
 ToolOp.prototype.undoPre = function (ctx) {
@@ -123,7 +123,7 @@ export class FileOpenOp extends ToolOp {
       .then((data) => {
         console.log('got data!', data)
         _appstate.saveHandle = undefined
-        _appstate.loadFileAsync(data)
+        _appstate.loadFileAsync(data, {reset_toolstack: true, load_screen: true, reset_context: true})
       })
 
     //loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {

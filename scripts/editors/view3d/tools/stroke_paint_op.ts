@@ -69,7 +69,7 @@ export abstract class StrokeDriverOp<
   }
 
   /** Apply one evenly-spaced dab to the subclass's geometry. */
-  abstract applyDab(ps: PaintSample, e: PointerEvent): void
+  abstract applyDab(ctx: ToolContext | ViewContext, ps: PaintSample, e: PointerEvent): void
   /** World-space ray cast used to place the driver's control points (and, in
    * WORLD space mode, to measure spacing). Return undefined to run screen-only. */
   abstract makeRayCast(): StrokeRayCast | undefined
@@ -101,10 +101,14 @@ export abstract class StrokeDriverOp<
   }
 
   toStrokeInput(e: PointerEvent): StrokeInput {
+    const twistE = e as PointerEvent & {twist?: number}
     return {
       x          : e.x,
       y          : e.y,
       pressure   : this.getPressure(e),
+      tiltX      : e.tiltX,
+      tiltY      : e.tiltY,
+      twist      : twistE.twist ?? 0.0,
       invert     : this.getInvertFromEvent(e),
       time       : util.time_ms(),
       pointerType: e.pointerType,
@@ -141,6 +145,7 @@ export abstract class StrokeDriverOp<
       cameraPos    : () => view3d.activeCamera.pos,
       rendermat    : () => view3d.activeCamera.rendermat,
       glSize       : () => view3d.glSize,
+      size         : () => view3d.size!,
     }
   }
 
@@ -182,7 +187,8 @@ export abstract class StrokeDriverOp<
       return
     }
     for (const ps of driver.poll()) {
-      this.applyDab(ps, e)
+      this.inputs.samples.push(ps)
+      this.applyDab(this.modal_ctx!, ps, e)
     }
   }
 
