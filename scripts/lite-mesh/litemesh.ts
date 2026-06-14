@@ -624,9 +624,6 @@ export class LiteMesh extends SceneObjectData {
    * clean rebuild matters: incrementally triangulating leaves the quad-built BVH
    * unbalanced, which is what made dyntopo slow on quad meshes. */
   triangulate(): boolean {
-    if (!this.hasNgons()) {
-      return false
-    }
     this.wasm.Mesh_triangulate(this.mesh)
     this._rebuildSpatial()
     return true
