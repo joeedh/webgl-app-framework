@@ -592,7 +592,10 @@ export class ViewContext extends ToolContext {
 
   debug = new DebugEditorAPI(this)
 
-  /** fulfills when replay is finished */
+  /** 
+   * fulfills when replay is finished, stopCB returns false if it wants replay to stop
+   * (it's called after each tool).
+   */
   replay(stopCB: () => boolean): Promise<unknown> {
     const start = () => {
       // instead of undo'ing back to root,
