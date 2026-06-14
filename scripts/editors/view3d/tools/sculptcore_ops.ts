@@ -324,6 +324,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         acc.flips += st.flips
         acc.rounds = st.rounds
         acc.budgetHit = acc.budgetHit || st.budget_hit
+        SculptPaintOp.meshLog!.pushTopoChunk()
       }
 
       const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
