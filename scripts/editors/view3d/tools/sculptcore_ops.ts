@@ -272,9 +272,6 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // XXX binding system generator error, the type catalog is missing this
     // @ts-expect-error
     const vecCls = wasm.manager.findVectorClass('sculptcore::spatial::SpatialNode*')
-    const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
-
-    mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
 
     const brushType = toolToSculptBrush(brush.tool)
     if (brushType === undefined) {
@@ -328,6 +325,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         acc.rounds = st.rounds
         acc.budgetHit = acc.budgetHit || st.budget_hit
       }
+
+      const nodes = wasm.manager.constructWith(vecCls!.findDefaultConstructor()!) as unknown as any
+      mesh.spatial.filterNodes(wasm.float3(p), radius, nodes)
 
       // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
       // stack that loadProps applies inside execProgram.
