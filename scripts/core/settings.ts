@@ -103,6 +103,10 @@ export interface AppSettingsJSON {
   limitUndoMem: boolean
   undoMemLimit: number
   brushSet: number
+  autosaveEnabled: boolean
+  autosaveIntervalMinutes: number
+  autosaveMaxBackups: number
+  autosaveToProjectDir: boolean
   addonSettings: Record<string, AddonSettingsJSON>
 }
 
@@ -111,11 +115,15 @@ export class AppSettings {
     this,
     `
 AppSettings {
-  screens       : array(SavedScreen);
-  limitUndoMem  : bool;
-  undoMemLimit  : int;
-  brushSet      : int;
-  addonSettings : iterkeys(AddonSettings);
+  screens                 : array(SavedScreen);
+  limitUndoMem            : bool;
+  undoMemLimit            : int;
+  brushSet                : int;
+  autosaveEnabled         : bool;
+  autosaveIntervalMinutes : double;
+  autosaveMaxBackups      : int;
+  autosaveToProjectDir    : bool;
+  addonSettings           : iterkeys(AddonSettings);
 }
 `
   )
@@ -125,6 +133,10 @@ AppSettings {
   limitUndoMem: boolean
   undoMemLimit: number
   brushSet: number
+  autosaveEnabled: boolean
+  autosaveIntervalMinutes: number
+  autosaveMaxBackups: number
+  autosaveToProjectDir: boolean
 
   constructor() {
     this.screens = []
@@ -132,6 +144,10 @@ AppSettings {
     this.limitUndoMem = true
     this.undoMemLimit = 512 //in megabytes
     this.brushSet = BrushSets.MEDIUM_RES
+    this.autosaveEnabled = true
+    this.autosaveIntervalMinutes = 5 //UI in minutes; clamped 0.5–120
+    this.autosaveMaxBackups = 5
+    this.autosaveToProjectDir = true
   }
 
   /* Feature flags persist through their own storage key, not AppSettings;
@@ -151,6 +167,30 @@ AppSettings {
 
     st.bool('limitUndoMem', 'limitUndoMem', 'Limit Undo Memory').on('change', onchange)
     st.int('undoMemLimit', 'undoMemLimit', 'Mem Limit', 'Memory Limit in megabytes (for undo)').on('change', onchange)
+
+    // Autosave: persist immediately on change and re-arm the running timer so a
+    // new interval / enable toggle takes effect without a restart.
+    const onAutosaveChange = function (this: {dataref: AppSettings}) {
+      if (this.dataref === _appstate.settings) {
+        this.dataref.save()
+        ;(window as unknown as {_appstate?: {autosave?: {rearm(): void}}})._appstate?.autosave?.rearm()
+      }
+    }
+
+    st.bool('autosaveEnabled', 'autosaveEnabled', 'Enable Autosave').on('change', onAutosaveChange)
+    st.float('autosaveIntervalMinutes', 'autosaveIntervalMinutes', 'Autosave Interval', 'Minutes between autosaves')
+      .noUnits()
+      .range(0.5, 120)
+      .on('change', onAutosaveChange)
+    st.int('autosaveMaxBackups', 'autosaveMaxBackups', 'Max Backups', 'Number of rotating autosave backups to keep')
+      .range(1, 50)
+      .on('change', onAutosaveChange)
+    st.bool(
+      'autosaveToProjectDir',
+      'autosaveToProjectDir',
+      'Autosave Next To Project',
+      'Write backups next to the open project (vs. into .sculptcore/autosave)'
+    ).on('change', onAutosaveChange)
     st.enum('brushSet', 'brushSet', BrushSets)
       .on('change', function (this: {dataref: AppSettings}) {
         const settings = this.dataref
@@ -220,11 +260,15 @@ AppSettings {
 
   toJSON(): AppSettingsJSON {
     return {
-      screens      : this.screens,
-      limitUndoMem : this.limitUndoMem,
-      undoMemLimit : this.undoMemLimit,
-      brushSet     : this.brushSet,
-      addonSettings: this.addonSettings as any,
+      screens                : this.screens,
+      limitUndoMem           : this.limitUndoMem,
+      undoMemLimit           : this.undoMemLimit,
+      brushSet               : this.brushSet,
+      autosaveEnabled        : this.autosaveEnabled,
+      autosaveIntervalMinutes: this.autosaveIntervalMinutes,
+      autosaveMaxBackups     : this.autosaveMaxBackups,
+      autosaveToProjectDir   : this.autosaveToProjectDir,
+      addonSettings          : this.addonSettings as any,
     }
   }
 
@@ -234,6 +278,19 @@ AppSettings {
 
     if (json.brushSet !== undefined) {
       this.brushSet = json.brushSet
+    }
+
+    if (json.autosaveEnabled !== undefined) {
+      this.autosaveEnabled = json.autosaveEnabled
+    }
+    if (json.autosaveIntervalMinutes !== undefined) {
+      this.autosaveIntervalMinutes = json.autosaveIntervalMinutes
+    }
+    if (json.autosaveMaxBackups !== undefined) {
+      this.autosaveMaxBackups = json.autosaveMaxBackups
+    }
+    if (json.autosaveToProjectDir !== undefined) {
+      this.autosaveToProjectDir = json.autosaveToProjectDir
     }
 
     this.addonSettings = (json.addonSettings as any) || {}

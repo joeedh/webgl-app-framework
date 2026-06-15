@@ -12,6 +12,9 @@ const MAIN_META_PATH = Path.join(REPO_ROOT, 'build', 'meta-main.json')
 let options = {
   entryPoints: [
     './scripts/entry_point.js',
+    // Autosave compression worker (plan §5.4). Stable, unhashed name so the
+    // host can spawn `build/autosave_worker.js` as a sibling module worker.
+    {in: './scripts/core/autosave_worker.ts', out: 'autosave_worker'},
     {in: './sculptcore/typescript/build/sculptcore-browser.wasm', out: 'sculptcore-browser'},
     // Emit the Emscripten glue at a stable, unhashed path. Its pthread pool
     // spawns workers via `new Worker(new URL('sculptcore-browser.js',

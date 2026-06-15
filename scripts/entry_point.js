@@ -8,6 +8,9 @@ import './typescript_entry.js'
 import './camera/camera.js'
 
 import * as appstate from './core/appstate.js'
+// Registers the OPFS / IndexedDB autosave backend (used when no Electron fs
+// backend is available). Side-effect import; harmless under Electron.
+import './core/autosave_backend_browser.js'
 import {loadShapes} from './webgl/simplemesh_shapes.js'
 
 import './test/test_base.js'

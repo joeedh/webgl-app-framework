@@ -52,6 +52,7 @@ import {APP_VERSION, CompressionFlags} from './const'
 import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp, RootLoadFileOp} from './gen_default_file'
+import {AutosaveManager} from './autosave'
 import {applyMissingAddonHooks, installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
@@ -149,6 +150,10 @@ export class AppState {
   three_renderer: unknown
   playing: boolean
   filename?: string
+  /** Monotonic edit counter; the autosave dirty gate compares against it. */
+  changeId: number
+  /** Periodic crash-recovery autosave (constructed once the app has booted). */
+  autosave?: AutosaveManager
 
   constructor() {
     this.arguments = []
@@ -168,6 +173,7 @@ export class AppState {
     this.three_renderer = undefined
 
     this.playing = false
+    this.changeId = 0
   }
 
   unswapScreen(): void {
@@ -249,6 +255,12 @@ export class AppState {
       genDefaultFile(this)
     }
     this.filename = 'unnamed.' + cconst.FILE_EXT
+
+    // Start crash-recovery autosave now that storage + the default file exist;
+    // offer to recover a newer backup before the user starts editing.
+    this.autosave = new AutosaveManager(this)
+    this.autosave.start()
+    void this.autosave.checkRecovery()
   }
 
   createFile(args: CreateFileArgs = {save_screen: true, save_settings: false, save_library: true}): ArrayBuffer {

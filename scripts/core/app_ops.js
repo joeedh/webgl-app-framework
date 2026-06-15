@@ -58,6 +58,7 @@ export class FileSaveOp extends ToolOp {
       platform.platform
         .writeFile(data, _appstate.saveHandle, 'application/x-octet-stream')
         .then(() => {
+          _appstate.autosave?.onProjectSaved()
           ctx.message('File saved')
         })
         .catch(() => {
@@ -80,6 +81,7 @@ export class FileSaveOp extends ToolOp {
       })
       .then((saveHandle) => {
         _appstate.saveHandle = saveHandle
+        _appstate.autosave?.onProjectSaved()
         ctx.message('File saved')
       })
     //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
