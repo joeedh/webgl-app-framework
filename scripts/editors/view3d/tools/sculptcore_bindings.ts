@@ -155,6 +155,7 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.FILL]       : SculptBrushes.FILL,
   [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
   [SculptTools.COLOR]      : SculptBrushes.COLOR,
+  [SculptTools.PAINT_SMOOTH]: SculptBrushes.COLORSMOOTH,
   [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
   [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
   [SculptTools.GRAB]       : SculptBrushes.GRAB,
@@ -191,7 +192,8 @@ export function isSmoothTool(tool: SculptTools): boolean {
  */
 /** The painted attr's category for a paint tool, else 0 (no attr handle). */
 function toolAttrCategory(tool: SculptTools): number {
-  if (tool === SculptTools.COLOR) return AttrUseFlags.COLOR
+  // PAINT_SMOOTH (the color-smooth brush) paints the same color layer as COLOR.
+  if (tool === SculptTools.COLOR || tool === SculptTools.PAINT_SMOOTH) return AttrUseFlags.COLOR
   if (tool === SculptTools.POLYGROUP) return AttrUseFlags.POLYGROUP
   return 0
 }
@@ -204,6 +206,31 @@ export function buildBrushProgram(
   mesh?: LiteMesh
 ): void {
   prog.clear()
+
+  // The dedicated Smooth tools (geometry BSMOOTH, color COLORSMOOTH) iterate the
+  // blend step up to 4× with strength (strength 0 → 0 passes, 2.0 → 4 passes).
+  // Each pass is a stable per-vertex blend (capped at 1.0); the pass count carries
+  // the total smoothing, which avoids the >1 overshoot a single high-strength step
+  // produces. Pressure dynamics still modulate each pass (the override is a base
+  // value loadProps resolves through the device-input stack). Default strength
+  // 0.5 → 1 pass, bit-identical to the pre-iteration single command.
+  if (mainBrushType === SculptBrushes.BSMOOTH || mainBrushType === SculptBrushes.COLORSMOOTH) {
+    const iters = Math.max(0, Math.min(4, Math.round(brush.strength * 2)))
+    const passStrength = Math.min(brush.strength, 1.0)
+    // COLORSMOOTH averages the active color layer; bind it like the color brush.
+    const category = toolAttrCategory(brush.tool)
+    const layer = category !== 0 && mesh ? mesh.activeAttrLayerIndex(category) : -1
+    for (let j = 0; j < iters; j++) {
+      const idx = prog.addCommand(mainBrushType)
+      prog.setCommandFloat(idx, BrushProp.STRENGTH, passStrength)
+      prog.setCommandInvert(idx, false)
+      if (category !== 0 && layer >= 0) {
+        prog.setCommandAttrLayer(idx, 0, layer)
+      }
+    }
+    return
+  }
+
   const mainIdx = prog.addCommand(mainBrushType)
 
   // Brush bridge (Wave 2b): for paint tools, point the kernel's single declared
@@ -348,6 +375,10 @@ export function builSculptcoreBrush({
   wasmBrush.invert = effInvert && !planeFamily && brush.tool !== SculptTools.COLOR
   wasmBrush.spacing = brush.spacing
   wasmBrush.autosmooth = brush.autosmooth
+  // Pinch (sharp/pinch kernels) and smooth projection (bsmooth volume
+  // preservation) are @static uniforms read straight off these members.
+  wasmBrush.pinch = brush.pinch
+  wasmBrush.projection = brush.smoothProj
 
   // Per-tool plane / wing / falloff uniforms (runs before the caller's
   // writeProps() so props-backed scalars round-trip through loadProps).

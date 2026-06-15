@@ -239,6 +239,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculpt.brush.dynTopo.valenceGoal"
   | "scene.tools.sculpt.brush.dynTopoSC"
   | "scene.tools.sculpt.brush.dynTopoSC.collapseRatio"
+  | "scene.tools.sculpt.brush.dynTopoSC.dynTopoSpacing"
   | "scene.tools.sculpt.brush.dynTopoSC.edgeMode"
   | "scene.tools.sculpt.brush.dynTopoSC.edgeSize"
   | "scene.tools.sculpt.brush.dynTopoSC.flag"
@@ -376,6 +377,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.dynTopo.valenceGoal"
   | "scene.tools.sculptcore.brush.dynTopoSC"
   | "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio"
+  | "scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing"
   | "scene.tools.sculptcore.brush.dynTopoSC.edgeMode"
   | "scene.tools.sculptcore.brush.dynTopoSC.edgeSize"
   | "scene.tools.sculptcore.brush.dynTopoSC.flag"
@@ -466,6 +468,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.drawWireframe"
   | "scene.tools.sculptcore.dynTopo"
   | "scene.tools.sculptcore.dynTopo.collapseRatio"
+  | "scene.tools.sculptcore.dynTopo.dynTopoSpacing"
   | "scene.tools.sculptcore.dynTopo.edgeMode"
   | "scene.tools.sculptcore.dynTopo.edgeSize"
   | "scene.tools.sculptcore.dynTopo.flag"
@@ -509,6 +512,8 @@ export type GeneratedDataPath =
   | "shadernetwork.outputs"
   | "toolDefaults"
   | "toolDefaults.app"
+  | "toolDefaults.app.__load_file"
+  | "toolDefaults.app.__load_file.fileBuffer"
   | "toolDefaults.app.prop_set"
   | "toolDefaults.app.prop_set.dataPath"
   | "toolDefaults.app.prop_set.destType"
@@ -1033,6 +1038,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculpt.brush.dynTopo.valenceGoal": true;
     "scene.tools.sculpt.brush.dynTopoSC": true;
     "scene.tools.sculpt.brush.dynTopoSC.collapseRatio": true;
+    "scene.tools.sculpt.brush.dynTopoSC.dynTopoSpacing": true;
     "scene.tools.sculpt.brush.dynTopoSC.edgeMode": true;
     "scene.tools.sculpt.brush.dynTopoSC.edgeSize": true;
     "scene.tools.sculpt.brush.dynTopoSC.flag": true;
@@ -1170,6 +1176,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.dynTopo.valenceGoal": true;
     "scene.tools.sculptcore.brush.dynTopoSC": true;
     "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing": true;
     "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": true;
     "scene.tools.sculptcore.brush.dynTopoSC.edgeSize": true;
     "scene.tools.sculptcore.brush.dynTopoSC.flag": true;
@@ -1260,6 +1267,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.drawWireframe": true;
     "scene.tools.sculptcore.dynTopo": true;
     "scene.tools.sculptcore.dynTopo.collapseRatio": true;
+    "scene.tools.sculptcore.dynTopo.dynTopoSpacing": true;
     "scene.tools.sculptcore.dynTopo.edgeMode": true;
     "scene.tools.sculptcore.dynTopo.edgeSize": true;
     "scene.tools.sculptcore.dynTopo.flag": true;
@@ -1303,6 +1311,8 @@ declare module "@framework/pathux" {
     "shadernetwork.outputs": true;
     "toolDefaults": true;
     "toolDefaults.app": true;
+    "toolDefaults.app.__load_file": true;
+    "toolDefaults.app.__load_file.fileBuffer": true;
     "toolDefaults.app.prop_set": true;
     "toolDefaults.app.prop_set.dataPath": true;
     "toolDefaults.app.prop_set.destType": true;

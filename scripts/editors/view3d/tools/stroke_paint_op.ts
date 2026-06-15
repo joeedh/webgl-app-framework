@@ -110,6 +110,7 @@ export abstract class StrokeDriverOp<
       tiltY      : e.tiltY,
       twist      : twistE.twist ?? 0.0,
       invert     : this.getInvertFromEvent(e),
+      useAltBrush: e.shiftKey,
       time       : util.time_ms(),
       pointerType: e.pointerType,
     }

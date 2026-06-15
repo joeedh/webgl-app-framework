@@ -12,6 +12,7 @@ import {
   UIBase,
   util,
   Vector3,
+  Vector4,
 } from '../../../path.ux/pathux'
 import {FeatureFlags} from '../../../core/feature-flag'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
@@ -220,6 +221,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     col.prop(path + '.brush.spacing')
     col.prop(path + '.brush.color')
     col.prop(path + '.brush.bgcolor')
+    col.tool(`brush.swap_colors(dataPath='${path}.brush')`)
 
     col.prop(path + '.brush.planeoff')
     col.prop(path + '.brush.planeNormalMode')
@@ -282,6 +284,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     dfield(panel2, 'smoothLambda')
     dfield(panel2, 'maxSplits')
     dfield(panel2, 'maxRounds')
+    dfield(panel2, 'dynTopoSpacing')
 
     if (FeatureFlags.get('sculptcore.quad_remesher')) {
       col.toolPanel('litemesh.quad_remesh')
@@ -425,7 +428,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     st.struct('_apiDynTopoSC', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
     st.bool('_apiInheritDynTopoSC', 'inheritDynTopo', 'Inherit Everything')
 
-    st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors')
+    st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors').icon(
+      Icons.REPROJECT_CUSTOM_DATA
+    )
 
     return st
   }
@@ -734,6 +739,44 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
   }
 
+  /** Eyedropper for the color brush: ray-pick the vertex under the cursor and
+   * load its color into the active brush's primary color. No-op on a miss. */
+  sampleColorUnderCursor(e: PointerEvent): void {
+    const ctx = this.ctx
+    if (!ctx?.view3d || !ctx.object) {
+      return
+    }
+    const mesh = ctx.object.data as LiteMesh
+    const m = ctx.view3d.getLocalMouse(e.x, e.y)
+    const obmatrix = ctx.object.outputs.matrix.getValue()
+
+    // Object-local ray through the cursor pixel (same unproject as BVH picking).
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(ctx.view3d.activeCamera.rendermat)
+    imat.invert()
+    const d = 0.9999
+    const p1 = new Vector4([m[0], m[1], -d, 1.0])
+    ctx.view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+    const p2 = new Vector4([m[0], m[1], d, 1.0])
+    ctx.view3d.unproject(p2, imat)
+    const dir = new Vector3(p2).sub(origin)
+
+    const vert = mesh.pickVert(origin, dir)
+    if (vert < 0) {
+      return
+    }
+    const out: number[] = []
+    mesh.mesh.vertexColor(vert, out)
+    if (out.length < 4) {
+      return
+    }
+    const brush = this.getBrush()
+    brush.color.load([out[0], out[1], out[2], out[3]])
+    brush.graphUpdate()
+    window.redraw_viewport()
+  }
+
   on_mousedown(e: PointerEvent, x: number, y: number): boolean {
     this.mpos[0] = e.x
     this.mpos[1] = e.y
@@ -741,10 +784,23 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     if (e.button === 0 && !e.altKey) {
       let brush = this.getBrush()
 
-      const isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH
+      const isColor =
+        brush.tool === SculptTools.COLOR ||
+        brush.tool === SculptTools.PAINT ||
+        brush.tool === SculptTools.PAINT_SMOOTH
       const smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH
 
-      if (e.shiftKey) {
+      // Ctrl-click with a color brush is the eyedropper: sample the vertex color
+      // under the cursor into the primary color and skip the stroke entirely.
+      if (e.ctrlKey && isColor) {
+        this.sampleColorUnderCursor(e)
+        return true
+      }
+
+      // For the poly-group brush shift means "extend" (sample the existing group
+      // under the cursor), not temp-switch-to-smooth; leave its brush in place so
+      // the stroke's useAltBrush path runs.
+      if (e.shiftKey && brush.tool !== SculptTools.POLYGROUP) {
         brush = this.getBrush(smoothtool)
       }
 
@@ -753,12 +809,6 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       brush = brush.copy()
       brush.dynTopo.loadDefaults(this.dynTopo)
       brush.dynTopoSC.loadDefaults(this.dynTopoSC)
-
-      if (e.ctrlKey) {
-        const t = brush.color
-        brush.color = brush.bgcolor
-        brush.bgcolor = t
-      }
       brush.radius = radius
 
       this.ctx.api.execTool(this.ctx, 'sculptcore.paint()', {

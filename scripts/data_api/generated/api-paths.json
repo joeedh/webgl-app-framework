@@ -3080,6 +3080,19 @@
       "decimalPlaces": 3,
       "step": 0.1
     },
+    "scene.tools.sculpt.brush.dynTopoSC.dynTopoSpacing": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Remesh Spacing",
+      "description": "How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 3,
+      "step": 0.1
+    },
     "scene.tools.sculpt.brush.dynTopoSC.edgeMode": {
       "kind": "prop",
       "indexed": false,
@@ -3184,6 +3197,7 @@
         "DO_FLIPS",
         "DO_SMOOTH",
         "PRESERVE_FEATURES",
+        "DYNTOPO_SPACING",
         "EDGE_MODE",
         "EDGE_SIZE",
         "COLLAPSE_RATIO",
@@ -4622,6 +4636,19 @@
       "decimalPlaces": 3,
       "step": 0.1
     },
+    "scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Remesh Spacing",
+      "description": "How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 3,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": {
       "kind": "prop",
       "indexed": false,
@@ -4726,6 +4753,7 @@
         "DO_FLIPS",
         "DO_SMOOTH",
         "PRESERVE_FEATURES",
+        "DYNTOPO_SPACING",
         "EDGE_MODE",
         "EDGE_SIZE",
         "COLLAPSE_RATIO",
@@ -5490,7 +5518,7 @@
         0,
         450
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 1
     },
     "scene.tools.sculptcore.drawBVH": {
@@ -5564,6 +5592,19 @@
       "range": [
         0.05,
         0.95
+      ],
+      "decimalPlaces": 3,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.dynTopo.dynTopoSpacing": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Remesh Spacing",
+      "description": "How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)",
+      "range": [
+        0,
+        2
       ],
       "decimalPlaces": 3,
       "step": 0.1
@@ -5672,6 +5713,7 @@
         "DO_FLIPS",
         "DO_SMOOTH",
         "PRESERVE_FEATURES",
+        "DYNTOPO_SPACING",
         "EDGE_MODE",
         "EDGE_SIZE",
         "COLLAPSE_RATIO",
@@ -5730,7 +5772,7 @@
         0,
         450
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 0.1
     },
     "scene.tools.sculptcore.symmetryAxes": {
@@ -6034,6 +6076,20 @@
       "indexed": false,
       "dynamic": false
     },
+    "toolDefaults.app.__load_file": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.app.__load_file.fileBuffer": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "ArrayBufferProperty",
+      "uiname": "File Buffer",
+      "description": "File Buffer",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.app.prop_set": {
       "kind": "struct",
       "indexed": false,
@@ -6073,6 +6129,7 @@
         "CURVE",
         "FLOAT_ARRAY",
         "REPORT",
+        "ARRAY_BUFFER",
         "DataRefProperty",
         "DataRefListProperty",
         "BrushProperty",

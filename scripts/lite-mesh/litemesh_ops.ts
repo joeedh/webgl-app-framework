@@ -6,6 +6,7 @@ import {LiteMesh, AttrDomain} from './litemesh'
 import {makeDefaultMaterial} from '../core/material'
 import {FeatureFlags} from '../core/feature-flag'
 import {Icons} from '../editors/icon_enum.js'
+import {SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 
 export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   Inputs,
@@ -727,6 +728,65 @@ export class TriangulateLiteMeshOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(TriangulateLiteMeshOp)
+
+/**
+ * Reorder the active LiteMesh's elements for cache locality (depth-first BVH
+ * order), making subsequent sculpting/dyntopo faster. The reorder is recorded as
+ * a single step on the shared MeshLog undo stack (`SpatialTree::applyReorder` via
+ * `MeshLog::reorderForLocality`), so undo/redo route through MeshLog — not a
+ * serialize snapshot — keeping the TS toolstack and the C++ stack in sync exactly
+ * like a sculpt stroke. `_logStepId` captures the pushed step for undo-mem
+ * accounting.
+ */
+export class ReorderLocalityOp extends LiteMeshAttrOp {
+  _logStepId = -1
+
+  static tooldef() {
+    return {
+      toolpath   : 'litemesh.reorder_locality',
+      uiname     : 'Optimize Mesh Layout',
+      description: 'Reorder mesh elements for cache locality (faster sculpting)',
+      inputs     : {},
+    }
+  }
+
+  // The reorder records its own MeshLog step; there's no separate undo snapshot.
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    const log = SculptPaintOp.meshLog
+    return log && this._logStepId >= 0 ? log.stepMemSize(this._logStepId) : 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = SculptPaintOp.ensureMeshLog()
+    mesh.reorderForLocality(log)
+    this._logStepId = log.lastStepId()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && SculptPaintOp.meshLog) {
+      SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+      mesh.refreshAfterReorder()
+      window.redraw_all?.()
+    }
+  }
+
+  redo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && SculptPaintOp.meshLog) {
+      SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
+      mesh.refreshAfterReorder()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(ReorderLocalityOp)
 
 /**
  * Feature-aligned global quad remesh of the active LiteMesh (cross-field →

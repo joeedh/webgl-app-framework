@@ -1,4 +1,4 @@
-import {ToolOp, StringProperty, nstructjs, PropertySlots, ToolDef} from '../path.ux/scripts/pathux.js'
+import {ToolOp, StringProperty, nstructjs, PropertySlots, ToolDef, Vector4} from '../path.ux/scripts/pathux.js'
 import {SculptBrush, DefaultBrushes, getBrushes} from './brush'
 import {Icons} from '../editors/icon_enum.js'
 import type {ToolContext} from '../core/context'
@@ -161,6 +161,37 @@ export class LoadDefaultBrush<
 }
 
 ToolOp.register(LoadDefaultBrush)
+
+export class SwapBrushColors<
+  InputSlots extends PropertySlots = {},
+  OutputSlots extends PropertySlots = {},
+> extends BrushOp<InputSlots, OutputSlots> {
+  static tooldef() {
+    return {
+      uiname     : 'Swap Colors',
+      toolpath   : 'brush.swap_colors',
+      description: 'Swap primary and secondary colors',
+      inputs     : {},
+      icon       : Icons.SWAP_COLORS,
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const brush = this.getBrush(ctx)
+    if (!brush) {
+      return
+    }
+
+    const tmp = new Vector4(brush.color)
+    brush.color.load(brush.bgcolor)
+    brush.bgcolor.load(tmp)
+
+    brush.graphUpdate()
+    window.updateDataGraph()
+  }
+}
+
+ToolOp.register(SwapBrushColors)
 
 export class ReloadAllBrushes extends ToolOp {
   static tooldef() {

@@ -564,6 +564,7 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.PINCH]
   brush.autosmooth = 0.2
+  brush.pinch = 1.0
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SHARPER)
   brush.dynamics.strength.useDynamics = true
   brush.dynamics.autosmooth.useDynamics = false
@@ -778,6 +779,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.rake = 0.0
   brush.rakeCurvatureFactor = 1.0
   brush.autosmooth = 0.2
+  brush.pinch = 1.0
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SHARPER)
   brush.dynamics.strength.useDynamics = true
   brush.dynamics.autosmooth.useDynamics = false

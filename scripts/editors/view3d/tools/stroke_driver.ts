@@ -31,6 +31,8 @@ export interface StrokeInput {
   twist: number
   /** caller pre-resolves ctrlKey + BrushFlags.INVERT */
   invert: boolean
+  /** shift held: poly-group "extend" (sample existing id under cursor) */
+  useAltBrush: boolean
   /** ms; informational only (not used for spacing) */
   time: number
   pointerType?: string
@@ -90,6 +92,7 @@ interface ControlPoint {
   tiltY: number
   twist: number
   invert: boolean
+  useAltBrush: boolean
   params: StrokeParams
 }
 
@@ -223,6 +226,7 @@ export class BrushStrokeDriver {
       tiltY   : input.tiltY ?? 0,
       twist   : input.twist ?? 0,
       invert  : input.invert,
+      useAltBrush: input.useAltBrush,
       params,
     })
 
@@ -399,6 +403,7 @@ export class BrushStrokeDriver {
     ps.tiltY = lerpNum(cpA.tiltY, cpB.tiltY, t)
     ps.twist = lerpNum(cpA.twist, cpB.twist, t)
     ps.invert = t < 0.5 ? cpA.invert : cpB.invert
+    ps.useAltBrush = t < 0.5 ? cpA.useAltBrush : cpB.useAltBrush
     ps.color.load(cpA.params.color).interp(cpB.params.color, t)
     ps.hit = hit
 

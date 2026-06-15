@@ -18,6 +18,7 @@ const apiKeyMap: {[k: string]: string} = {
   smoothLambda : 'SMOOTH_LAMBDA',
   maxSplits    : 'MAX_SPLITS',
   maxRounds    : 'MAX_ROUNDS',
+  dynTopoSpacing: 'DYNTOPO_SPACING',
 }
 
 for (const k in DynTopoOverridesSC) {
@@ -54,6 +55,7 @@ export class DynTopoSettingsSC {
     smoothLambda  : float;
     maxSplits     : int;
     maxRounds     : int;
+    dynTopoSpacing : float;
   }`
   )
 
@@ -72,6 +74,11 @@ export class DynTopoSettingsSC {
   // dabs. 0 = unlimited triggers the round-2 cascade (~110ms/dab at 5M).
   maxSplits = 1024
   maxRounds = 50
+  // Remesh spacing, independent of the brush-dab spacing: dyntopo runs only
+  // once per this much stroke travel (units of 2·radius, like brush spacing),
+  // not on every dab. Decoupling keeps a dense, finely-spaced deform stroke from
+  // remeshing on every dab (expensive + over-refining). 0.25 ≈ every half-radius.
+  dynTopoSpacing = 0.25
 
   constructor() {}
 
@@ -128,6 +135,7 @@ export class DynTopoSettingsSC {
     d.add(this.smoothLambda)
     d.add(this.maxSplits)
     d.add(this.maxRounds)
+    d.add(this.dynTopoSpacing)
 
     return d.get()
   }
@@ -146,6 +154,7 @@ export class DynTopoSettingsSC {
     r = r && feq(this.collapseRatio, b.collapseRatio)
     r = r && feq(this.grade, b.grade)
     r = r && feq(this.smoothLambda, b.smoothLambda)
+    r = r && feq(this.dynTopoSpacing, b.dynTopoSpacing)
 
     return r
   }
@@ -182,6 +191,7 @@ export class DynTopoSettingsSC {
     if (!(mask & dyn.SMOOTH_LAMBDA)) this.smoothLambda = b.smoothLambda
     if (!(mask & dyn.MAX_SPLITS)) this.maxSplits = b.maxSplits
     if (!(mask & dyn.MAX_ROUNDS)) this.maxRounds = b.maxRounds
+    if (!(mask & dyn.DYNTOPO_SPACING)) this.dynTopoSpacing = b.dynTopoSpacing
 
     return this
   }
@@ -197,6 +207,7 @@ export class DynTopoSettingsSC {
     this.smoothLambda = b.smoothLambda
     this.maxSplits = b.maxSplits
     this.maxRounds = b.maxRounds
+    this.dynTopoSpacing = b.dynTopoSpacing
 
     return this
   }
@@ -282,6 +293,16 @@ export class DynTopoSettingsSC {
       .slideSpeed(2.0)
       .noUnits()
     st.int('maxRounds', 'maxRounds', 'Max Rounds', 'Max independent-set rounds per dab').range(1, 200).noUnits()
+    st.float(
+      'dynTopoSpacing',
+      'dynTopoSpacing',
+      'Remesh Spacing',
+      'How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)'
+    )
+      .range(0.0, 2.0)
+      .decimalPlaces(3)
+      .slideSpeed(2.0)
+      .noUnits()
 
     return st
   }

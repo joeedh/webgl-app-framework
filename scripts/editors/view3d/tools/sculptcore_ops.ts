@@ -56,6 +56,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   dynTopoParams?: DynTopoParams
   /** Deterministic per-dab seed for dyntopo's independent-set selection. */
   dabSeed = 1
+  /** Stroke arc-length (ps.strokeS) at which dyntopo last remeshed. Dyntopo runs
+   * at its own `dynTopoSpacing`, not every dab; -Infinity makes the first dab
+   * always remesh. */
+  lastDynTopoS = -Infinity
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
@@ -87,10 +91,18 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   constructor() {
     super()
+    SculptPaintOp.ensureMeshLog()
+  }
+
+  /** The single shared C++ undo stack for all mesh-mutating ops (sculpt strokes
+   * + the litemesh layout-reorder op). Lazily constructed so any op can record
+   * onto it before the first stroke. */
+  static ensureMeshLog(): MeshLog {
     if (SculptPaintOp.meshLog === undefined) {
       const wasm = getWasmImmediate()!
       SculptPaintOp.meshLog = wasm.manager.construct('sculptcore::meshlog::MeshLog')
     }
+    return SculptPaintOp.meshLog!
   }
 
   /** Build (or reuse) the executor + wasmBrush so the step can be opened via
@@ -122,6 +134,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.strokeGroupId = undefined
     this.prevDabLocal = undefined
     this.dabSeed = 1
+    this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
@@ -332,12 +345,18 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // Dynamic topology config: build the params handle the executor uses to
       // remesh under the dab BEFORE the brush deform. `dist` is world-units-
       // per-pixel at the dab (computed above). Null params = dyntopo off.
+      // Dyntopo runs at its own `dynTopoSpacing` along the stroke, not on every
+      // dab (a dense deform stroke would otherwise remesh excessively). ps.strokeS
+      // is the accumulated arc-length in units of 2·radius (same units as the
+      // spacing param); remesh only once it has advanced past dynTopoSpacing.
       const dt = brush.dynTopoSC
       let params: DynTopoParams | undefined = undefined
-      if (dt.enabled) {
+      const dynTopoDue = ps.strokeS - this.lastDynTopoS >= dt.dynTopoSpacing
+      if (dt.enabled && dynTopoDue) {
         const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
         params = this.getDynTopoParams()
         configureDynTopoParams(params, dt, l_max, l_min)
+        this.lastDynTopoS = ps.strokeS
       }
 
       // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics

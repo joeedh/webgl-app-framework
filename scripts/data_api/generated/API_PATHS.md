@@ -411,6 +411,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.dynTopo.valenceGoal` | prop | IntProperty | Valence Goal | range 0..12 |
 | `scene.tools.sculpt.brush.dynTopoSC` | struct |  |  |  |
 | `scene.tools.sculpt.brush.dynTopoSC.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculpt.brush.dynTopoSC.dynTopoSpacing` | prop | FloatProperty | Remesh Spacing | range 0..2 |
 | `scene.tools.sculpt.brush.dynTopoSC.edgeMode` | prop | EnumProperty | Detail Mode | enum {WORLD, PERCENT, PIXELS} |
 | `scene.tools.sculpt.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
 | `scene.tools.sculpt.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
@@ -418,7 +419,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculpt.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculpt.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
 | `scene.tools.sculpt.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculpt.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculpt.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculpt.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculpt.brush.dynamics` | struct |  |  |  |
 | `scene.tools.sculpt.brush.dynamics.autosmooth` | struct |  |  |  |
@@ -548,6 +549,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynTopo.valenceGoal` | prop | IntProperty | Valence Goal | range 0..12 |
 | `scene.tools.sculptcore.brush.dynTopoSC` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.dynTopoSC.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing` | prop | FloatProperty | Remesh Spacing | range 0..2 |
 | `scene.tools.sculptcore.brush.dynTopoSC.edgeMode` | prop | EnumProperty | Detail Mode | enum {WORLD, PERCENT, PIXELS} |
 | `scene.tools.sculptcore.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
 | `scene.tools.sculptcore.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
@@ -555,7 +557,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
 | `scene.tools.sculptcore.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculptcore.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculptcore.brush.dynamics` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.dynamics.autosmooth` | struct |  |  |  |
@@ -638,6 +640,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.drawWireframe` | prop | BoolProperty | Draw Wireframe |  |
 | `scene.tools.sculptcore.dynTopo` | struct |  |  |  |
 | `scene.tools.sculptcore.dynTopo.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
+| `scene.tools.sculptcore.dynTopo.dynTopoSpacing` | prop | FloatProperty | Remesh Spacing | range 0..2 |
 | `scene.tools.sculptcore.dynTopo.edgeMode` | prop | EnumProperty | Detail Mode | enum {WORLD, PERCENT, PIXELS} |
 | `scene.tools.sculptcore.dynTopo.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
 | `scene.tools.sculptcore.dynTopo.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
@@ -645,7 +648,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.dynTopo.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.dynTopo.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
 | `scene.tools.sculptcore.dynTopo.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculptcore.dynTopo.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculptcore.dynTopoStatsLabel` | prop | StringProperty | DynTopo Stats |  |
 | `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
@@ -713,9 +716,11 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | --- | --- | --- | --- | --- |
 | `toolDefaults` | struct |  |  |  |
 | `toolDefaults.app` | struct |  |  |  |
+| `toolDefaults.app.__load_file` | struct |  |  |  |
+| `toolDefaults.app.__load_file.fileBuffer` | prop | ArrayBufferProperty | File Buffer |  |
 | `toolDefaults.app.prop_set` | struct |  |  |  |
 | `toolDefaults.app.prop_set.dataPath` | prop | StringProperty | Data Path |  |
-| `toolDefaults.app.prop_set.destType` | prop | EnumProperty | Dest Type | enum {INT, STRING, BOOL, ENUM, FLAG, FLOAT, VEC2, VEC3, VEC4, MATRIX4, QUAT, PROPLIST, STRSET, CURVE, FLOAT_ARRAY, REPORT, DataRefProperty, DataRefListProperty, BrushProperty, PaintSampleProperty} |
+| `toolDefaults.app.prop_set.destType` | prop | EnumProperty | Dest Type | enum {INT, STRING, BOOL, ENUM, FLAG, FLOAT, VEC2, VEC3, VEC4, MATRIX4, QUAT, PROPLIST, STRSET, CURVE, FLOAT_ARRAY, REPORT, ARRAY_BUFFER, DataRefProperty, DataRefListProperty, BrushProperty, PaintSampleProperty} |
 | `toolDefaults.app.prop_set.flagBit` | prop | IntProperty | Flag Bit |  |
 | `toolDefaults.app.prop_set.fullSaveUndo` | prop | BoolProperty | Full Save Undo |  |
 | `toolDefaults.app.prop_set.massSetPath` | prop | StringProperty | Mass Set Path |  |

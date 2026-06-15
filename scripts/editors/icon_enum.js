@@ -132,5 +132,7 @@ export let Icons = {
   SCULPT_KELVINLET        : 126,
   MARK_SEAM               : 127,
   MARK_SHARP              : 128,
+  SWAP_COLORS             : 129,
+  REPROJECT_CUSTOM_DATA   : 130,
 }
 setIconMap(Icons)

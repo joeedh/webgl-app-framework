@@ -134,6 +134,9 @@ export enum DynTopoOverridesSC {
   // end DynTopoFlagsSC mirror
 
   // These mirror scalar/enum properties instead of flags.
+  // (bit 15 sits in the free gap below the scalar block so NONE/EVERYTHING keep
+  // their serialized bit values.)
+  DYNTOPO_SPACING = 1 << 15,
   EDGE_MODE = 1 << 16,
   EDGE_SIZE = 1 << 17,
   COLLAPSE_RATIO = 1 << 18,

@@ -17,7 +17,7 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
-import {DrawBatch, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import {DrawBatch, MeshLog, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import type {RequestedAttrBridge} from '@sculptcore/api/api'
 import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
@@ -516,6 +516,11 @@ export class LiteMesh extends SceneObjectData {
       label: 'Add Poly Group',
     })
     attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
+
+    // Reorder the mesh's element arrays into BVH depth-first order so sculpting
+    // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
+    const layout = container.panel('Layout')
+    layout.tool('litemesh.reorder_locality()', {label: 'Optimize Mesh Layout'})
   }
 
   afterSTRUCT(): void {
@@ -627,6 +632,41 @@ export class LiteMesh extends SceneObjectData {
     this.wasm.Mesh_triangulate(this.mesh)
     this._rebuildSpatial()
     return true
+  }
+
+  /** Reorder mesh elements for cache locality, recording an undoable reorder step
+   * on the shared `meshLog`. C++ rebuilds the tree in place, so this only refreshes
+   * the tree-derived GPU state afterwards (see refreshAfterReorder). */
+  reorderForLocality(meshLog: MeshLog): void {
+    meshLog.reorderForLocality(this.spatial)
+    this.refreshAfterReorder()
+  }
+
+  /** Refresh tree-derived GPU state after the C++ SpatialTree rebuilt in place
+   * (reorder exec/undo/redo). Unlike _rebuildSpatial the tree handle is unchanged
+   * — C++ already rebuilt its nodes + drawBatch — so we only re-fetch the batches
+   * and invalidate the pipeline/binding caches keyed on the old drawBatch pointer. */
+  refreshAfterReorder(): void {
+    if (this.treeBatch) {
+      this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+      this.treeBatch = undefined
+    }
+    if (this.seamBatch) {
+      this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
+      this.seamBatch = undefined
+    }
+    this.spatial.update(this.wasm.gpu)
+    this.drawBatch = this.spatial.getDrawBatch()
+    this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+
+    this.drawBatchExecutorGPU?.invalidatePipelines()
+    for (const bindings of this.gpuBindingsCache.values()) bindings.destroy()
+    this.gpuBindingsCache.clear()
+    this._hasMaterialDrawShader = false
+    const eng = this as unknown as {_engineDrawShaderHash?: number; _engineAttrLayersSig?: number}
+    eng._engineDrawShaderHash = undefined
+    eng._engineAttrLayersSig = undefined
+    this.markSeamsDirty()
   }
 
   /** Feature-aligned global quad remesh (cross-field → seamless param → integer
