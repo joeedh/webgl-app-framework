@@ -188,12 +188,10 @@ let quad_eval_rets = util.cachering.fromConstructor(Vector3, 64)
 export class Quad {
   static STRUCT = nstructjs.inlineRegister(
     this,
-    `bezier.Bezier {
-      a     : vec3;
-      b     : vec3;
-      c     : vec3;
-      d     : vec3;
-      quads : array(bezier.Quad);
+    `bezier.Quad {
+      a : vec3;
+      b : vec3;
+      c : vec3;
     }`
   )
 
@@ -264,19 +262,22 @@ export class Quad {
     return ret2
   }
 }
-Quad.STRUCT = `
-bezier.Quad {
-  a : vec3;
-  b : vec3;
-  c : vec3;
-}
-`
-nstructjs.register(Quad)
 
 let dv_rets = util.cachering.fromConstructor(Vector3, 128)
 let eval_rets = util.cachering.fromConstructor(Vector3, 128)
 
 export class Bezier {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `bezier.Bezier {
+      a     : vec3;
+      b     : vec3;
+      c     : vec3;
+      d     : vec3;
+      quads : array(bezier.Quad);
+    }`
+  )
+
   constructor(a, b, c, d) {
     this.a = new Vector3(a)
     this.b = new Vector3(b)

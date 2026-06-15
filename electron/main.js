@@ -9,7 +9,6 @@ const path = require('path')
 // isolation, which Electron won't grant a file:// page. Re-enable the
 // SharedArrayBuffer feature so the transfer is allowed. Must run before ready.
 app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer')
-
 // --- application argv -------------------------------------------------------
 // Electron does NOT forward the user args of `electron main.js <args...>` into
 // the renderer's process.argv. We capture them here and re-inject them into the
@@ -44,6 +43,8 @@ if (remoteDebug !== undefined) {
   app.commandLine.appendSwitch('remote-allow-origins', '*')
   console.log(`[apptest] CDP remote debugging on http://127.0.0.1:${port}`)
 }
+
+app.commandLine.appendSwitch('js-flags', '--expose-gc')
 
 // Lets the renderer test harness (--exit) shut the app down cleanly.
 ipcMain.handle('apptest:quit', async () => {

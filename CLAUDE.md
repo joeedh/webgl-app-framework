@@ -10,6 +10,11 @@ Read the contents of AGENTS.md.
 Note: roughly preserve comments written by the user however if they ask you to audit
       or correct comments in a file you may edit the comment to ensure correctness.
 
+- **Doc vs non-doc comments**: a *doc comment* documents the signature it sits
+  directly above (a function, method, struct, class, or file) — typically `/** */`
+  / `///` / a file-level header. Everything else is a *non-doc comment*: inline or
+  block comments inside a function body explaining a specific statement or step.
+  The 3-line length limit below applies **only to non-doc comments**.
 - **Permanent non-doc comments**: keep short and concise — no more than 3 lines.
   A comment longer than 3 lines is allowed at most once per ~500 lines of a file.
   Permanent comments should not reference the prior state of the code.
@@ -19,9 +24,17 @@ Note: roughly preserve comments written by the user however if they ask you to a
   with `CLAUDENOTE:` so they can be found and stripped later. The final step of
   any plan is to remove the `CLAUDENOTE:` comments — replacing the ones still
   worth keeping with permanent (≤ 3-line) non-doc comments.
-- **Doc comments**: short and concise; only add them for non-obvious function
-  signatures. A doc comment may simply explain how a non-obvious parameter
-  behaves when that is shorter than describing the whole function.
+- **Doc comments**: not subject to the 3-line limit, but still keep them short
+  and concise; only add them for non-obvious function signatures. A doc comment
+  may simply explain how a non-obvious parameter behaves when that is shorter
+  than describing the whole function.
+- **Approved long non-doc comments**: when a non-doc comment genuinely needs to
+  exceed 3 lines (or push a file past its budget), you may ask me to approve it.
+  If I approve, add an entry in the form `{path}:{function}:{one-line summary}`
+  to the nearest sub-project's approved-comments registry — for sculptcore that
+  is `sculptcore/approvedLongComments.md` (see `sculptcore/CLAUDE.md` for the
+  C++ style requirement). Entries listed there are exempt from the length limit
+  and the per-file budget — do not flag or shorten them in a later comment audit.
 
 ## Addons
 
@@ -311,6 +324,15 @@ for status. Key conventions:
   per buffer). **Never throw on the bulk-data seam** — return an empty
   `Uint8Array` for a not-yet-filled buffer (a throw is swallowed as a
   `drawObjects` warning and silently aborts the whole render pass).
+- **Adding a new N-API method is a 4-place change** — a method exported in
+  `source/napi/napi_runtime.{h,cc}` (`define(exports, ...)` in `installExports`)
+  is invisible to the app until it's threaded through the TS layer: add it to the
+  `NativeAddon` type (`typescript/api/nativeBackend.ts`), add a `NativeManager`
+  method that calls `this.addon.<name>(...)`, and — easy to forget — **add the
+  entry to `makeNativeInterface` in `typescript/api/nativeManager.ts`**, which is
+  the object the app actually consumes as the `IWasmInterface`. Name the manager
+  /interface entry to match the WASM `INeededWasm` member (`LSTL_*`, `Mesh_*`, …)
+  so both backends are true drop-ins.
 - Parity is guarded by `tests/integration/sculptcore_parity.test.ts` (under
   `pnpm test`): boots the app headlessly per backend, diffs GPU-buffer
   signatures + leaf counts; self-skips when the bundle or `.node` is absent.

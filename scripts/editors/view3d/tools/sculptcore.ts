@@ -119,16 +119,18 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.label('Spacing')
     strip.prop(path + '.brush.spacingMode')
 
-    function doChannel(chName: string, panelCh: PanelContents<ViewContext> = settings): Container<ViewContext> {
-      const col2 = panelCh.col().strip()
+    function doChannel(chName: string, settingsPanel: PanelContents<ViewContext> = settings) {
+      const strip = settingsPanel.col()
 
+      const panelCh = strip.panel('')
+      const col2 = panelCh.panelFrame.titleframe.strip()
       if (chName === 'radius') {
         col2.prop(path + `.brushRadius`)
       } else {
         col2.prop(path + `.brush.${chName}`)
       }
+      col2.flushUpdate()
 
-      panelCh = col2.panel('Dynamics')
       panelCh.panelFrame.openCloseIcon.overrideClassDefault('panel.header', 'iconSize', 12)
 
       panelCh.panelFrame.overrideDefault('padding-top', 0)
@@ -139,7 +141,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       panelCh.setCSS()
 
       panelCh.useIcons(false)
-      return col2
+      panelCh.flushSetCSS()
+      panelCh.flushUpdate()
+
+      return strip
     }
 
     /*
@@ -363,8 +368,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       Z: Icons.SYM_Z,
     })
 
-    st.float('sharedBrushRadius', 'sharedBrushRadius', 'Shared Radius').noUnits().range(0, 450)
-    st.float('_brushSizeHelper', 'brushRadius', 'Radius').noUnits().range(0, 450).step(1.0)
+    st.float('sharedBrushRadius', 'sharedBrushRadius', 'Shared Radius').noUnits().range(0, 450).decimalPlaces(2)
+    st.float('_brushSizeHelper', 'brushRadius', 'Radius').noUnits().range(0, 450).step(1.0).decimalPlaces(2)
 
     function onchange(this: any): void {
       const pbvh = this.dataref

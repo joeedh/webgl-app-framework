@@ -24,6 +24,11 @@ export class AppToolStack extends ToolStack {
     mem = (mem / 1024 / 1024).toFixed(3) + 'mb'
     console.warn('Toolstack Memory:', mem)
 
+    window.setTimeout(() => {
+      // garbage collect if we have access to it
+      window.gc?.()
+    })
+
     return super.limitMemory(limit, ctx)
   }
 
