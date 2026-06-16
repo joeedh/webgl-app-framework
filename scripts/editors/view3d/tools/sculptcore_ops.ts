@@ -61,6 +61,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * at its own `dynTopoSpacing`, not every dab; -Infinity makes the first dab
    * always remesh. */
   lastDynTopoS = -Infinity
+  /** Whether the current stroke sample is a dyntopo-remesh sample. Decided once
+   * on the primary dab (mirrorIdx 0) and reused by every mirror image so all
+   * sides of a symmetric stroke remesh together (#38). */
+  _dabDynTopoDue = false
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
@@ -412,12 +416,22 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // spacing param); remesh only once it has advanced past dynTopoSpacing.
       const dt = brush.dynTopoSC
       let params: DynTopoParams | undefined = undefined
-      const dynTopoDue = ps.strokeS - this.lastDynTopoS >= dt.dynTopoSpacing
+      // Decide remesh-due once per stroke sample on the primary dab; mirror
+      // images (mirrorIdx > 0) reuse it so every symmetric side remeshes on the
+      // same samples. Updating lastDynTopoS per-image would make the primary dab
+      // consume the budget and starve the mirror dabs of dyntopo (#38).
+      const dynTopoDue =
+        mirrorIdx === 0 ? ps.strokeS - this.lastDynTopoS >= dt.dynTopoSpacing : this._dabDynTopoDue
+      if (mirrorIdx === 0) {
+        this._dabDynTopoDue = dynTopoDue
+      }
       if (dt.enabled && dynTopoDue) {
         const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
         params = this.getDynTopoParams()
         configureDynTopoParams(params, dt, l_max, l_min)
-        this.lastDynTopoS = ps.strokeS
+        if (mirrorIdx === 0) {
+          this.lastDynTopoS = ps.strokeS
+        }
       }
 
       // Per-dab pen device samples (pressure/tilt/twist) drive the dynamics
