@@ -30,6 +30,8 @@ import {GenericIsect} from '../util/spatial'
 import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 import type {DrawQueue, FrameContext} from '../render/queue'
 import {isWebGPU} from '../core/renderer_flag'
+import {getSerializeCacheMode, getDeferredBlobCollector, getDeferredBlobResolver} from '../core/serialize_cache'
+import {makeBlobPlaceholder, readBlobPlaceholder} from '../core/autosave_format'
 import {getActiveWebGpuContext} from '../render/queue_factory'
 import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
@@ -536,7 +538,22 @@ export class LiteMesh extends SceneObjectData {
     super.loadSTRUCT(reader)
 
     if (this._data instanceof ArrayBuffer || this._data?.length) {
-      this.mesh = this.wasm.Mesh_deserialize(new Uint8Array(this._data))
+      let data: Uint8Array = new Uint8Array(this._data)
+      // M3 autosave split files embed an 8-byte placeholder; resolve it to the
+      // SCULPT00 blob held in the container's blob table (see autosave_format.ts).
+      const blobId = readBlobPlaceholder(data)
+      if (blobId >= 0) {
+        const resolved = getDeferredBlobResolver()?.(blobId)
+        if (!resolved) {
+          console.warn('litemesh: autosave blob', blobId, 'missing; loading default cube')
+          this.mesh = this.wasm.Mesh_createCube(120, 1.0, 1.0)
+          this._initSpatial()
+          this._data = undefined
+          return
+        }
+        data = resolved
+      }
+      this.mesh = this.wasm.Mesh_deserialize(data)
     } else {
       // Legacy / empty block (saved before mesh serialization was wired): fall
       // back to a default cube so the file still loads with geometry.
@@ -573,6 +590,14 @@ export class LiteMesh extends SceneObjectData {
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array | ArrayBuffer
+  /** Coarse "mesh changed" counter for the autosave blob cache (M2). Bumped
+   * whenever the spatial tree flushed pending geometry/attribute changes, plus
+   * at the topology-replacing entry points. A missed bump only stales an
+   * autosave backup (app.save bypasses the cache), and a spurious bump only
+   * costs one recompress — so coarse is safe. */
+  meshRevision = 0
+  /** Last serialize() result keyed by meshRevision; reused in cache mode. */
+  private _blobCache?: {revision: number; blob: Uint8Array}
   /** Viewport surface color source (see LiteMeshDisplayMode). View state only,
    * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
    * SpatialTree.displayColorMode (which TS can't read back). */
@@ -762,6 +787,9 @@ export class LiteMesh extends SceneObjectData {
     eng._engineDrawShaderHash = undefined
     eng._engineAttrLayersSig = undefined
     this.markSeamsDirty()
+    // Wholesale topology swap (triangulate / quadRemesh / undo restore) → the
+    // serialized form changed; invalidate the autosave blob cache (M2).
+    this.meshRevision++
   }
 
   /** Swap in a different mesh handle (undo restoring a pre-triangulate snapshot):
@@ -775,9 +803,51 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
-  /** Serialize the mesh to a versioned, compressed blob for the STRUCT getter. */
+  /** Bump meshRevision if the spatial tree had pending changes to flush. Called
+   * from the draw path (cheap when clean) and before a cache-mode serialize so
+   * the revision reflects the latest committed geometry even if no frame drew
+   * since the edit. */
+  private _flushRevision(): void {
+    if (this.spatial.update(this.wasm.gpu)) {
+      this.meshRevision++
+    }
+  }
+
+  /** Serialize the mesh to a versioned, compressed blob for the STRUCT getter.
+   * In autosave cache mode (getSerializeCacheMode) an unchanged mesh reuses its
+   * previous blob instead of recompressing; app.save leaves cache mode off so
+   * the canonical file is always freshly serialized. */
   serialize(): Uint8Array {
-    return this.wasm.Mesh_serialize(this.mesh)
+    // M3 split path: hand the collector either a cached compressed blob or a
+    // fresh uncompressed raw payload (the worker lz4-frames it off-thread), and
+    // embed only an 8-byte placeholder inline. See autosave_serialize.ts.
+    const collector = getDeferredBlobCollector()
+    if (collector) {
+      this._flushRevision()
+      if (this._blobCache && this._blobCache.revision === this.meshRevision) {
+        return makeBlobPlaceholder(collector.add({state: 'compressed', bytes: this._blobCache.blob}))
+      }
+      const revision = this.meshRevision
+      const raw = this.wasm.Mesh_serializeRaw(this.mesh)
+      const blobId = collector.add({
+        state       : 'raw',
+        bytes       : raw,
+        onCompressed: (compressed) => {
+          this._blobCache = {revision, blob: compressed}
+        },
+      })
+      return makeBlobPlaceholder(blobId)
+    }
+
+    if (getSerializeCacheMode()) {
+      this._flushRevision()
+      if (this._blobCache && this._blobCache.revision === this.meshRevision) {
+        return this._blobCache.blob
+      }
+    }
+    const blob = this.wasm.Mesh_serialize(this.mesh)
+    this._blobCache = {revision: this.meshRevision, blob}
+    return blob
   }
 
   rayCast(origin: Vector3, dir: Vector3): GenericIsect | undefined {
@@ -847,6 +917,9 @@ export class LiteMesh extends SceneObjectData {
       state
     )
     this._seamsDirty = true // the persistent overlay rebuilds on next draw
+    // Edge-flag attribute edits are serialized but don't move geometry, so the
+    // spatial-tree draw flush may not see them — bump explicitly (M2).
+    this.meshRevision++
     return n
   }
 
@@ -1649,6 +1722,9 @@ export class LiteMesh extends SceneObjectData {
     // tool modes have no such field and should still show seams).
     const drawFeatures = toolmode?.drawFeatureOverlay !== false
     if (this.spatial.update(this.wasm.gpu)) {
+      // The tree flushed pending geometry/attribute edits → the serialized form
+      // changed; invalidate the autosave blob cache (M2).
+      this.meshRevision++
       if (this.treeBatch) {
         this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
         if (drawBVH) {

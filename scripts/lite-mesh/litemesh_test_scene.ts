@@ -37,6 +37,8 @@ import './litemesh_brushtest_support'
 import './litemesh_boundarytest_support'
 // Side-effect: registers globalThis.__undoMemTest for the undo-memory test.
 import './litemesh_undomem_support'
+// Side-effect: registers globalThis.__autosaveTest for the autosave round-trip test.
+import './litemesh_autosavetest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

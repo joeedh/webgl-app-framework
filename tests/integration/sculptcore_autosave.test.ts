@@ -1,0 +1,189 @@
+/**
+ * Autosave round-trip integration test (plan §3/§5, M1–M3).
+ *
+ * Boots the real Electron app headlessly per backend on the spherified
+ * `litemesh-cube`, then drives `__autosaveTest()` (scripts/lite-mesh/
+ * litemesh_autosavetest_support.ts) via `--eval`: ~5 seconds of randomly-placed
+ * dyntopo DRAW strokes with two randomly-timed autosaves through the real
+ * AutosaveManager + split serializer (Mesh_serializeRaw → lz4 worker → WASV
+ * container). After the 5s both backups are read back and validated — WASV
+ * framing plus a geometry-signature round-trip against the state captured at
+ * save time. The structured result rides the `--dump` JSON as `autosavetest`.
+ *
+ * The harness awaits async `--eval` results, so the 5s loop completes before the
+ * dump. The legs are wall-clock-bound (~5s each) on top of boot, so the jest
+ * timeouts are generous.
+ *
+ * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * bundle (`pnpm build`). The native leg additionally needs the N-API addon
+ * (`make.mjs node`); without it only the WASM leg runs.
+ */
+
+import {execFileSync} from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import Path from 'node:path'
+import {fileURLToPath} from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
+const BUNDLE = Path.join(REPO_ROOT, 'build', 'entry_point.js')
+const NATIVE_ADDON = Path.join(REPO_ROOT, 'sculptcore', 'build', 'native-node', 'sculptcore_node.node')
+
+interface PosSig {
+  floatCount: number
+  sum: number
+  sumAbs: number
+  min: number
+  max: number
+  finite: boolean
+}
+interface SaveRecord {
+  index: number
+  scheduledMs: number
+  firedAtMs: number
+  strokesBefore: number
+  backupKey: string | null
+  bytesLen: number
+  sigAtSave: PosSig
+  containerValid?: boolean
+  blobCount?: number
+  shellLen?: number
+  parseError?: string
+  sigLoaded?: PosSig
+  finite?: boolean
+  sigMatch?: boolean
+}
+interface AutosaveTestResult {
+  ok: boolean
+  error?: string
+  seed?: number
+  backendKind?: string
+  usedManager?: boolean
+  durationMs?: number
+  totalStrokes?: number
+  saveTimes?: number[]
+  saves?: SaveRecord[]
+}
+
+function resolveElectronExe(): string | undefined {
+  try {
+    const exe = execFileSync('node', ['-p', "require('electron')"], {
+      cwd     : Path.join(REPO_ROOT, 'electron'),
+      encoding: 'utf-8',
+    }).trim()
+    return exe && fs.existsSync(exe) ? exe : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Boot headlessly under `backend`, run __autosaveTest(), return its result. */
+function runAutosaveTest(electronExe: string, backend: 'wasm' | 'native'): AutosaveTestResult {
+  const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'scautosave-')), `${backend}.json`)
+  const env = {...process.env}
+  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
+  execFileSync(
+    electronExe,
+    [
+      Path.join(REPO_ROOT, 'electron', 'main.js'),
+      '--headless',
+      '--no-devtools',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      // Moderate density so dyntopo has geometry to subdivide, still fast/leg.
+      '--scene-arg',
+      'subdiv=32',
+      '--eval',
+      '__autosaveTest()',
+      '--dump',
+      out,
+      '--exit',
+    ],
+    {cwd: REPO_ROOT, env, encoding: 'utf-8', stdio: 'pipe', timeout: 120000}
+  )
+  if (!fs.existsSync(out)) throw new Error(`${backend} dump not written to ${out}`)
+  const dump = JSON.parse(fs.readFileSync(out, 'utf-8')) as {autosavetest?: AutosaveTestResult}
+  if (!dump.autosavetest) throw new Error(`${backend} dump has no autosavetest result`)
+  return dump.autosavetest
+}
+
+const electronExe = resolveElectronExe()
+const haveBundle = fs.existsSync(BUNDLE)
+const haveNative = fs.existsSync(NATIVE_ADDON)
+const canRun = !!electronExe && haveBundle
+
+if (!canRun) {
+  const why = [
+    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
+  ]
+    .filter(Boolean)
+    .join('; ')
+  // eslint-disable-next-line no-console
+  console.warn(`[sculptcore-autosave] skipped: ${why}`)
+} else if (!haveNative) {
+  // eslint-disable-next-line no-console
+  console.warn('[sculptcore-autosave] native leg skipped: addon missing (run make.mjs node)')
+}
+
+const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']
+const maybe = canRun ? describe : describe.skip
+
+maybe.each(backends.map((b) => [b] as const))('sculptcore autosave round-trip (%s)', (backend) => {
+  let r: AutosaveTestResult
+
+  beforeAll(() => {
+    r = runAutosaveTest(electronExe!, backend)
+  }, 120000)
+
+  test('driver ran cleanly through the 5s stroke loop', () => {
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-autosave] ${backend} driver error (seed ${r.seed}):\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.totalStrokes).toBeGreaterThan(0)
+    expect(r.durationMs).toBe(5000)
+  })
+
+  test('took exactly two autosaves at distinct, in-interval times', () => {
+    expect(r.saves).toHaveLength(2)
+    const [a, b] = r.saves!
+    // Both save windows fall inside (0, 5s) and the second is meaningfully later.
+    expect(a.firedAtMs).toBeGreaterThan(0)
+    expect(b.firedAtMs).toBeGreaterThan(a.firedAtMs)
+    expect(b.firedAtMs).toBeLessThanOrEqual(r.durationMs! + 500)
+    // Strokes kept running between the two saves.
+    expect(b.strokesBefore).toBeGreaterThan(a.strokesBefore)
+  })
+
+  test('each save produced a non-empty WASV container with ≥1 mesh blob', () => {
+    for (const s of r.saves!) {
+      expect(s.parseError).toBeUndefined()
+      expect(s.containerValid).toBe(true)
+      expect(s.bytesLen).toBeGreaterThan(0)
+      expect(s.shellLen).toBeGreaterThan(0)
+      expect(s.blobCount).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  test('both saves read back and round-trip to their save-time geometry', () => {
+    for (const s of r.saves!) {
+      expect(s.sigAtSave.floatCount).toBeGreaterThan(0)
+      expect(s.sigAtSave.finite).toBe(true)
+      expect(s.finite).toBe(true)
+      expect(s.sigMatch).toBe(true)
+    }
+  })
+
+  test('the two snapshots captured different mesh states', () => {
+    const [a, b] = r.saves!
+    // Continuous dyntopo strokes between the saves must change the geometry —
+    // topology (vertex count) and/or vertex positions.
+    const changed = a.sigAtSave.floatCount !== b.sigAtSave.floatCount || Math.abs(a.sigAtSave.sumAbs - b.sigAtSave.sumAbs) > 1e-4
+    expect(changed).toBe(true)
+  })
+})

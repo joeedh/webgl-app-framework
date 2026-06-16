@@ -326,6 +326,10 @@ function dumpScene(): unknown {
     // accounting, calcUndoMem parity, redo-branch truncation, and the
     // toolstack limitMemory trim freeing C++ steps via onUndoDestroy/freeStep.
     undomemtest  : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
+    // Reflect the autosave driver (`__autosaveTest`): random dyntopo strokes for
+    // ~5s with two randomly-timed split-serialization autosaves, each read back
+    // and validated (container framing + geometry-signature round-trip).
+    autosavetest : (globalThis as {__autosaveTestResult?: unknown}).__autosaveTestResult,
     // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
     // stores on globalThis.__evalTestResult lands in the dump (renderer
     // console output never reaches the harness stdout, so the dump is the
@@ -423,9 +427,11 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
         // `CTX.debug.showEditor({editorType:'MaterialEditor', minVisibleWidth:400})`.
         // Runs after the scene is built and before `--run` tools, so it can set
         // up editor state those tools need (many editor ToolOps gate on the
-        // active editor type — see the CTX.debug guide in CLAUDE.md).
+        // active editor type — see the CTX.debug guide in CLAUDE.md). Await the
+        // result so an async driver (e.g. __autosaveTest's 5s stroke+save loop)
+        // completes before --dump snapshots its reflected result.
         // eslint-disable-next-line no-eval
-        ;(0, eval)(expr)
+        await (0, eval)(expr)
         console.log(`${TAG} eval ${expr}`)
       } catch (err) {
         console.error(`${TAG} eval failed: ${expr}`, err)

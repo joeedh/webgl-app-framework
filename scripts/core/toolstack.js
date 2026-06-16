@@ -18,6 +18,14 @@ export class AppToolStack extends ToolStack {
     return this
   }
 
+  /** Mark the document changed so the autosave dirty gate fires. */
+  _markChanged(ctx) {
+    const state = (ctx ?? this.ctx)?.state
+    if (state) {
+      state.changeId++
+    }
+  }
+
   limitMemory(limit, ctx) {
     let mem = this.calcMemSize(ctx)
 
@@ -59,6 +67,7 @@ export class AppToolStack extends ToolStack {
     toolop.execCtx = tctx
 
     if (!(undoflag & UndoFlags.NO_UNDO)) {
+      this._markChanged(ctx)
       this.cur++
 
       //save branch for if tool cancel
@@ -132,6 +141,7 @@ export class AppToolStack extends ToolStack {
       tool.undo(tool.execCtx)
 
       this.cur--
+      this._markChanged(this.ctx)
     }
   }
 
@@ -139,6 +149,7 @@ export class AppToolStack extends ToolStack {
     this._syncSettings(this.ctx) //sync undo settings
 
     super.redo()
+    this._markChanged(this.ctx)
 
     console.log('redo!')
   }

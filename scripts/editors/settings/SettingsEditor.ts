@@ -45,6 +45,12 @@ SettingsEditor {
     tab.prop('settings.limitUndoMem')
     tab.prop('settings.undoMemLimit')
 
+    tab.label('Autosave')
+    tab.prop('settings.autosaveEnabled')
+    tab.prop('settings.autosaveIntervalMinutes')
+    tab.prop('settings.autosaveMaxBackups')
+    tab.prop('settings.autosaveToProjectDir')
+
     tab = tabs.tab('Theme')
 
     tab.button('Export Theme', () => {
