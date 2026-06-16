@@ -29,7 +29,11 @@ let options = {
   outdir     : './build',
   bundle     : true,
   target     : 'es2022',
-  sourcemap  : 'inline',
+  // Overridable for the Pages build (ESBUILD_SOURCEMAP=external) so the served
+  // entry_point.js isn't bloated by its ~20 MB inline map. Defaults to inline
+  // for local dev (single file, no extra fetch). Accepts any esbuild sourcemap
+  // mode: inline | external | linked | both.
+  sourcemap  : process.env.ESBUILD_SOURCEMAP || 'inline',
   minify     : false,
   treeShaking: false,
   logLevel   : 'info',
