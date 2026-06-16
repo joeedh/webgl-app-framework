@@ -33,6 +33,13 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
   dimen: IntProperty
   size: FloatProperty
 }> {
+  // Created datablocks (for the synchronous undo). Refs are stable because this
+  // op does NOT use the default memfile undo — see undo() below.
+  _ob?: SceneObject
+  _litemesh?: LiteMesh
+  _mat?: ReturnType<typeof makeDefaultMaterial>
+  _prevActive?: SceneObject
+
   static tooldef() {
     return {
       toolpath: 'litemesh.add_cube',
@@ -43,6 +50,18 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
         size  : new FloatProperty(1.0),
       },
     }
+  }
+
+  // Lightweight undo: track + remove the created object/mesh/material. The
+  // default ToolOp undo does a full async loadUndoFile, but ToolStack.rerun()
+  // re-execs synchronously right after undo() — before that async reload
+  // settles — so the re-exec wrote into a stale context and the mesh vanished
+  // (ImmediateTODOs #10). A synchronous remove/re-create avoids the reload.
+  undoPre(ctx: ToolContext): void {
+    this._prevActive = ctx.scene?.objects?.active as SceneObject | undefined
+  }
+  calcUndoMem(): number {
+    return 0
   }
 
   exec(ctx: ToolContext) {
@@ -66,6 +85,36 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
     ctx.scene.objects.setSelect(ob, true)
     ctx.scene.objects.setActive(ob)
 
+    this._ob = ob
+    this._litemesh = litemesh
+    this._mat = mat
+
+    window.redraw_viewport(true)
+  }
+
+  undo(ctx: ToolContext) {
+    const ob = this._ob
+    if (ob && ctx.scene.objects.indexOf(ob) >= 0) {
+      ctx.scene.objects.setSelect(ob, false)
+      ctx.scene.remove(ob)
+      const data = ob.data
+      if (ob.lib_users <= 0) {
+        ctx.datalib.remove(ob) // calls ob.destroy()
+      }
+      if (data && data.lib_users <= 0) {
+        ctx.datalib.remove(data)
+      }
+      if (this._mat && this._mat.lib_users <= 0) {
+        ctx.datalib.remove(this._mat)
+      }
+    }
+    // Restore the prior active/selection so the viewport reflects the undone state.
+    const prev = this._prevActive
+    if (prev && ctx.scene.objects.indexOf(prev) >= 0) {
+      ctx.scene.objects.setSelect(prev, true)
+      ctx.scene.objects.setActive(prev)
+    }
+    this._ob = this._litemesh = this._mat = undefined
     window.redraw_viewport(true)
   }
 }
