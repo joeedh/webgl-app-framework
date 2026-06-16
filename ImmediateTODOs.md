@@ -15,8 +15,8 @@
 [x]: default autosave interval should be 1 minute
 [x]: add a 'load last autosave' to the file menu. 
 [x]: make sure autosave properly restores an _appstate.fileHandle that points to the autosave's original file path.  this is possible on electron but may not be possible on web.
-[ ]: the snake hook is snapping to the surface normal plane it should use the view plane 
-[ ]: make the grab brush behave like blender's grab brush.
+[x]: the snake hook is snapping to the surface normal plane it should use the view plane 
+[x]: make the grab brush behave like blender's grab brush.
 [ ]: add an overlay for drawing sculpt masks, should be enabled by default
 [ ]: enable the poly group overlay draw by default
 [x]: Add a 'rebuild spatial tree' button to litemesh's obdata tab
@@ -28,10 +28,10 @@
 [ ]: the edges drawn around poly groups should be updated after each dab if enabled, and they should be
      an option that's off by default.
 [x]: the smooth brush should not default to have brush dynamics on its strength on, and it's default strength should be 1.
-[ ]: add a new toolop to mark edges sharp automatically by face angle and create an icon in the 
+[x]: add a new toolop to mark edges sharp automatically by face angle and create an icon in the 
      viewport header for it.
 [ ]: triangulate is still breaking poly group overlay draw
-[ ]: kelvinlet brush is also using the surface normal plane it should not
+[x]: kelvinlet brush is also using the surface normal plane it should not
 [ ]: kelvinlet brush is behaving like the snake hook for some reason not a kelvinlet grab
 [x]: change the default dyntopo max rounds to 5
 [ ]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
