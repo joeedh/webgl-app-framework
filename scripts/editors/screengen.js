@@ -52,9 +52,11 @@ export function genDefaultScreen(appstate) {
 
   let sarea2 = screen.splitArea(sarea, t, true)
 
+  smenu.area.closed = true // hide view3d
   smenu.switchEditor(MenuBarEditor)
 
   let sarea3 = screen.splitArea(sarea2, 0.75, false)
+  sarea3.area.closed = true // hide view3d
   sarea3.switchEditor(PropsEditor)
 
   screen.listen()

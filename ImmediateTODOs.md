@@ -1,33 +1,38 @@
-[x]: Make sure pressing shift temporarily switches to the smooth brush in the TS app
-[x]: Pressing shift should temporarily switch to smooth in the native debug app
-[x]: The kelvinlet brush appears to be broken, it's extremely slow and can crash the TS app.
-[x]: The smooth brush should support a 'projection' parameter that projects vertices
-     to their normal planes during smoothing to prevent volume shrinkage ('projection'
-	 is a scaling factor for this projection) and it should be wired to the projection
-	 brush parameter in the TS app.
-[x]: implement a 'grab' brush (like blender's sculpt grab brush) and expose it to the TS app
-[x]: implement a 'snake hook' brush (like blender's sculpt snake hook brush) and expose it to the TS app
-[x]: the sharp brush is broken, it's not applying positive displacement.  also make sure the 
-TS app's pinch brush setting is wired to sculptcore properly (for all brushes that need it,
-e.g. the pinch brush too).
-[x]: make sure the dyntopo defaults on the TS side are correct (I think it's DynTopoParamsSC?)
-[x]: implement a color smoothing brush that averages vertex colors across neighbors
-[x]: the extend mode of the poly brush is broken in the TS app
-[x]: dyntopo often crashes after a number of strokes, especially if there are uv seams or poly groups
-     etc.  reproduce with file example/crash.wproj .  note: that file may not have the proper attribute setup; if it doesn't see if you can have sculptcore's deserialzation code 
-     detect and fix it.
-[x]: dyntopo undo is broken for the poly brush it mangles the groups
-[x]: dyntopo undo also mangles the color brush though to a much less extent then the poly brush
-[x]: pressing ctrl and clicking in the color brush (in the TS app) should sample the mesh 
-     color under the mouse
-[x]: in the TS app add an icon below the primary and seconday colors to swap them (create an appropriate icon).
-[x]: smooth brushes should iterate up to 4 times depending on strength, strength at 0
-     is 0 iterations and strength at 2 is 4.
-[x]: create an icon for the reprojectCustomData icon button in the sculptcore viewport header
-     (data path scene.tools.sculptmode.reprojectCustomData).
-[x]: add a toolop to the TS app that exposes SpatialTree::applyReorder, and add a button to
-     invoke it to litemesh's obdata properties tab.  it should properly deal with meshlog.
-[x]: trianguating a mesh either drops poly groups or breaks drawing overlays of them
-[x]: dyntopo should execute at an independent spacing from brush dabs; it should have its 
-     own spacing paramter exposed to the user (and wired into the TS app).  it should default
-     to 0.25
+[ ]: in the TS app toggling SHOW_RENDER on and back off again breaks webgpu state
+[ ]: the default scene builder should create a scene with a litemesh sphere of size 4 and dimen 50
+[ ]: fold the settings editor's tabs into panels in PropsEditor's settings tab,
+     except for the theme tab.  that will stay in settings editor, which will be renamed
+     to theme editor.
+[ ]: the old sculpt mode icon still appears in the toolmode header toolbar in the viewport
+     even when it's addon is disabled.  it should not.
+[ ]: only the mesh and sculptcore addons should be enabled by default.
+[ ]: changing parameters in AddLiteMeshCubeOp in the last command panel causes the mesh
+     to disappear.  you can reproduce this with:
+     `CTX.api.execTool(CTX, 'litemesh.add_cube')` wait for a redraw, then `CTX.toolstack.head.inputs.size.setValue(2); CTX.toolstack.rerun()`
+[ ]: make an icon for BrushFlags.SQUARE
+[ ]: sharp brush should have invert flag set by default.
+[ ]: default autosave interval should be 1 minute
+[ ]: add a 'load last autosave' to the file menu. 
+[ ]: make sure autosave properly restores an _appstate.fileHandle that points to the autosave's original file path.  this is possible on electron but may not be possible on web.
+[ ]: the snake hook is snapping to the surface normal plane it should use the view plane 
+[ ]: make the grab brush behave like blender's grab brush.
+[ ]: add an overlay for drawing sculpt masks, should be enabled by default
+[ ]: enable the poly group overlay draw by default
+[ ]: Add a 'rebuild spatial tree' button to litemesh's obdata tab
+[ ]: Create a fuzz integration test for the electron app.  it works by randomly selecting a brush tool
+     (that's valid for sculptcore) executing a random sculpt stroke, with a 1/5 change of either disabling or enabling dyntopo.  it should wait for redraw after every stroke, and should write some sort of log of what it did for re-executability.  the fuzz test should have some kind of option to control how long it runs.  there is a very intermittent dyntopo crash see if this can
+     reproduce it.
+[ ]: change poly brush so ctrl extends the current brush, and shift instead invokes the smooth brush
+     but with projection = 1.0.
+[ ]: the edges drawn around poly groups should be updated after each dab if enabled, and they should be
+     an option that's off by default.
+[ ]: the smooth brush should not default to have brush dynamics on its strength on, and it's default strength should be 1.
+[ ]: add a new toolop to mark edges sharp automatically by face angle and create an icon in the 
+     viewport header for it.
+[ ]: triangulate is still breaking poly group overlay draw
+[ ]: kelvinlet brush is also using the surface normal plane it should not
+[ ]: kelvinlet brush is behaving like the snake hook for some reason not a kelvinlet grab
+[ ]: change the default dyntopo max rounds to 5
+[ ]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
+
+

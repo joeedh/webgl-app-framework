@@ -53,7 +53,7 @@ export class FileSaveOp extends ToolOp {
     let args = {save_toolstack: this.inputs.saveToolStack.getValue()}
 
     if (!needDialog) {
-      let data = _appstate.createFile(args)
+      let data = new DataView(_appstate.createFile(args))
 
       platform.platform
         .writeFile(data, _appstate.saveHandle, 'application/x-octet-stream')
@@ -61,7 +61,9 @@ export class FileSaveOp extends ToolOp {
           _appstate.autosave?.onProjectSaved()
           ctx.message('File saved')
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error(err.stack)
+          console.error(err.message)
           ctx.error('Save Error')
         })
       return
