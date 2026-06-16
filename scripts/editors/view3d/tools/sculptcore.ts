@@ -797,10 +797,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         return true
       }
 
-      // For the poly-group brush shift means "extend" (sample the existing group
-      // under the cursor), not temp-switch-to-smooth; leave its brush in place so
-      // the stroke's useAltBrush path runs.
-      if (e.shiftKey && brush.tool !== SculptTools.POLYGROUP) {
+      // Shift smooths. For the poly-group brush, ctrl is the "extend" modifier
+      // (sample the existing group under the cursor; see useAltBrush in
+      // stroke_paint_op), and shift smooths at full surface projection.
+      const wasPolyGroup = brush.tool === SculptTools.POLYGROUP
+      if (e.shiftKey) {
         brush = this.getBrush(smoothtool)
       }
 
@@ -810,6 +811,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       brush.dynTopo.loadDefaults(this.dynTopo)
       brush.dynTopoSC.loadDefaults(this.dynTopoSC)
       brush.radius = radius
+      if (wasPolyGroup && e.shiftKey) {
+        brush.smoothProj = 1.0
+      }
 
       this.ctx.api.execTool(this.ctx, 'sculptcore.paint()', {
         brush       : brush,

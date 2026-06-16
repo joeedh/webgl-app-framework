@@ -84,7 +84,12 @@ export abstract class StrokeDriverOp<
     const brush = this.inputs.brush.getValue()
     const mode = brush.tool
 
-    if (e.ctrlKey && mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH) {
+    if (
+      e.ctrlKey &&
+      mode !== SculptTools.PAINT &&
+      mode !== SculptTools.PAINT_SMOOTH &&
+      mode !== SculptTools.POLYGROUP
+    ) {
       invert = true
     }
     if (brush.flag & BrushFlags.INVERT) {
@@ -102,6 +107,9 @@ export abstract class StrokeDriverOp<
 
   toStrokeInput(e: PointerEvent): StrokeInput {
     const twistE = e as PointerEvent & {twist?: number}
+    // Poly-group "extend" is on ctrl (shift smooths instead, see sculptcore
+    // on_mousedown); every other brush uses shift for its alt path.
+    const isPolyGroup = this.inputs.brush.getValue().tool === SculptTools.POLYGROUP
     return {
       x          : e.x,
       y          : e.y,
@@ -110,7 +118,7 @@ export abstract class StrokeDriverOp<
       tiltY      : e.tiltY,
       twist      : twistE.twist ?? 0.0,
       invert     : this.getInvertFromEvent(e),
-      useAltBrush: e.shiftKey,
+      useAltBrush: isPolyGroup ? e.ctrlKey : e.shiftKey,
       time       : util.time_ms(),
       pointerType: e.pointerType,
     }
