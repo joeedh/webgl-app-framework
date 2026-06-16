@@ -112,6 +112,14 @@ jobs:
           cp index.html _site/
           cp -r build _site/build
           cp -r assets _site/assets
+          # esbuild keeps three libs *external* (see external[] in esbuilder.js),
+          # so at runtime build/entry_point.js imports them from ../scripts/... —
+          # i.e. site-root /scripts/...  Ship exactly those files; the rest of the
+          # 277 MB source tree is bundled into build/ and not served.
+          mkdir -p _site/scripts/extern/jszip _site/scripts/util
+          cp scripts/extern/jszip/jszip.js _site/scripts/extern/jszip/jszip.js
+          cp scripts/extern/Math.js        _site/scripts/extern/Math.js
+          cp scripts/util/numeric.js       _site/scripts/util/numeric.js
           # Pages serves from a per-repo subpath; all app references are relative,
           # so no <base> rewrite is needed. SPA-style 404 fallback:
           cp index.html _site/404.html
