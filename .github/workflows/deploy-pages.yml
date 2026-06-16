@@ -1,0 +1,125 @@
+name: Deploy to GitHub Pages
+
+# Builds the browser bundle (esbuild) and publishes it to GitHub Pages on every
+# push to master. The heavy sculptcore WASM artifact is built from source in CI
+# but cached by the sculptcore submodule commit, so a typical TS-only change
+# skips the Emscripten toolchain entirely and only re-bundles.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Pages deployment needs these; id-token is required by actions/deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; let a newer master push supersede an
+# in-flight run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4 # version comes from package.json "packageManager"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ---- sculptcore WASM (cached by submodule SHA) ------------------------
+      # esbuild consumes sculptcore/typescript/build/sculptcore-browser.{wasm,js}.
+      # Those are gitignored build outputs; we rebuild them only when the
+      # sculptcore submodule commit changes.
+      - name: Resolve sculptcore commit
+        id: sc
+        run: echo "sha=$(git -C sculptcore rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache sculptcore WASM bundle
+        id: wasm-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            sculptcore/typescript/build/sculptcore-browser.wasm
+            sculptcore/typescript/build/sculptcore-browser.js
+          key: sc-wasm-release-v1-${{ steps.sc.outputs.sha }}-${{ hashFiles('sculptcore/emsdkVersion.txt') }}
+
+      # emsdk is a ~2.4 GB git-cloned toolchain; cache it across runs so only the
+      # first WASM build (or an emsdk version bump) pays the install cost.
+      - name: Cache emsdk toolchain
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        id: emsdk-cache
+        uses: actions/cache@v4
+        with:
+          path: sculptcore/emsdk
+          key: emsdk-${{ hashFiles('sculptcore/emsdkVersion.txt') }}
+
+      - name: Build sculptcore WASM
+        if: steps.wasm-cache.outputs.cache-hit != 'true'
+        working-directory: sculptcore
+        run: |
+          pnpm install --frozen-lockfile          # make.mjs deps (yargs, ...)
+          # Optimized, debug-info-free WASM for end users (vs the default
+          # RelWithDebInfo, which carries DWARF and is ~5x larger).
+          cat > local-build-options.mjs <<'EOF'
+          export default {
+            CMAKE_BUILD_TYPE: 'Release',
+            CMAKE_GENERATOR: 'Ninja',
+            WITH_ASAN: false,
+            WITH_MESHLOG_ABSEIL_HASHMAP: false,
+          }
+          EOF
+          if [ ! -x emsdk/emsdk ]; then
+            node make.mjs install-emsdk            # git-clones + installs pinned emsdk/cmake/ninja
+          fi
+          node make.mjs fetch-wgpu-native          # pinned WebGPU prebuilt (headers used by the build)
+          node make.mjs codegen                    # compile .sbrush kernels -> generated C++ headers
+          node make.mjs configure wasm             # picks up CMAKE_BUILD_TYPE=Release from local-build-options.mjs
+          node make.mjs build wasm                 # emits + copies sculptcore-browser.{wasm,js} into typescript/build
+
+      # ---- App bundle + site assembly --------------------------------------
+      - name: Bundle app (esbuild)
+        run: pnpm build # node tools/esbuilder.js -> ./build
+
+      - name: Assemble Pages site
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html _site/
+          cp -r build _site/build
+          cp -r assets _site/assets
+          # Pages serves from a per-repo subpath; all app references are relative,
+          # so no <base> rewrite is needed. SPA-style 404 fallback:
+          cp index.html _site/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
