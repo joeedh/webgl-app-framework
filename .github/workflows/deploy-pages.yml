@@ -73,6 +73,14 @@ jobs:
       - name: Build sculptcore WASM
         if: steps.wasm-cache.outputs.cache-hit != 'true'
         working-directory: sculptcore
+        env:
+          # Trust the checked-in source/brush/kernels/generated/*.brush.gen.h
+          # headers instead of building the native `sbrushc` host tool. Building
+          # sbrushc would force a full native CMake configure (Vulkan + wgpu_native,
+          # neither available/prebuilt for linux), which is exactly what this WASM-
+          # only runner must avoid. sbrushCodegen() fails loudly if any header is
+          # missing, so a stale submodule checkout can't silently ship old kernels.
+          SBRUSH_SKIP_NATIVE_CODEGEN: '1'
         run: |
           pnpm install --frozen-lockfile          # make.mjs deps (yargs, ...)
           # Optimized, debug-info-free WASM for end users (vs the default
@@ -88,11 +96,10 @@ jobs:
           if [ ! -x emsdk/emsdk ]; then
             node make.mjs install-emsdk            # git-clones + installs pinned emsdk/cmake/ninja
           fi
-          # No wgpu-native: it's the native WebGPU backend (extern/CMakeLists.txt
-          # adds it only under NOT BUILD_WASM); the WASM build uses browser WebGPU.
-          node make.mjs codegen                    # compile .sbrush kernels -> generated C++ headers
+          # No wgpu-native and no native codegen: both are the native (NOT BUILD_WASM)
+          # toolchain; the WASM build uses browser WebGPU + checked-in brush headers.
           node make.mjs configure wasm             # picks up CMAKE_BUILD_TYPE=Release from local-build-options.mjs
-          node make.mjs build wasm                 # emits + copies sculptcore-browser.{wasm,js} into typescript/build
+          node make.mjs build wasm                 # internally skips sbrushc (env above); emits sculptcore-browser.{wasm,js}
 
       # ---- App bundle + site assembly --------------------------------------
       - name: Bundle app (esbuild)
