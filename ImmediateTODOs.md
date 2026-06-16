@@ -7,7 +7,7 @@
 [x]: the old sculpt mode icon still appears in the toolmode header toolbar in the viewport
      even when it's addon is disabled.  it should not.
 [x]: only the mesh and sculptcore addons should be enabled by default.
-[ ]: changing parameters in AddLiteMeshCubeOp in the last command panel causes the mesh
+[x]: changing parameters in AddLiteMeshCubeOp in the last command panel causes the mesh
      to disappear.  you can reproduce this with:
      `CTX.api.execTool(CTX, 'litemesh.add_cube')` wait for a redraw, then `CTX.toolstack.head.inputs.size.setValue(2); CTX.toolstack.rerun()`
 [x]: make an icon for BrushFlags.SQUARE
