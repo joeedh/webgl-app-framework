@@ -4,7 +4,7 @@
 [ ]: fold the settings editor's tabs into panels in PropsEditor's settings tab,
      except for the theme tab.  that will stay in settings editor, which will be renamed
      to theme editor.
-[ ]: the old sculpt mode icon still appears in the toolmode header toolbar in the viewport
+[x]: the old sculpt mode icon still appears in the toolmode header toolbar in the viewport
      even when it's addon is disabled.  it should not.
 [x]: only the mesh and sculptcore addons should be enabled by default.
 [ ]: changing parameters in AddLiteMeshCubeOp in the last command panel causes the mesh
@@ -35,8 +35,8 @@
 [ ]: kelvinlet brush is behaving like the snake hook for some reason not a kelvinlet grab
 [x]: change the default dyntopo max rounds to 5
 [ ]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
-[ ]: drawing with mirror on doesn't apply dyntopo in the mirror dabs it should
-[ ]: when drawing with mirror the mirrored stroke often seems to have a bit more strength
+[x]: drawing with mirror on doesn't apply dyntopo in the mirror dabs it should
+[x]: when drawing with mirror the mirrored stroke often seems to have a bit more strength
      then the current one
 
 
