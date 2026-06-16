@@ -35,5 +35,8 @@
 [ ]: kelvinlet brush is behaving like the snake hook for some reason not a kelvinlet grab
 [ ]: change the default dyntopo max rounds to 5
 [ ]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
+[ ]: drawing with mirror on doesn't apply dyntopo in the mirror dabs it should
+[ ]: when drawing with mirror the mirrored stroke often seems to have a bit more strength
+     then the current one
 
 
