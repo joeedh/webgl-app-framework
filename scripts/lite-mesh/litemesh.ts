@@ -1049,6 +1049,52 @@ export class LiteMesh extends SceneObjectData {
     this._seamsDirty = true
   }
 
+  /** Read every live vertex's index + object-local position as flat (idx,x,y,z)
+   * quadruples (the C++ `dumpVertCo` out-param). Backend-agnostic; pairs with
+   * `setVertCo` for the symmetrize op's read→mirror→write pass. */
+  dumpVertCo(): {idx: number[]; co: number[][]} {
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
+    ).findVectorClass('float')
+    const ctor = cls.findDefaultConstructor()
+    const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    ;(this.mesh as unknown as {dumpVertCo(o: never): void}).dumpVertCo(vec as never)
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    const idx: number[] = []
+    const co: number[][] = []
+    for (let i = 0; i + 3 < arr.length; i += 4) {
+      idx.push(arr[i] | 0)
+      co.push([arr[i + 1], arr[i + 2], arr[i + 3]])
+    }
+    return {idx, co}
+  }
+
+  /** Write the position of live vertex `idx` (a per-vertex scalar setter — the
+   * only marshal-safe vertex-write seam). Caller refreshes the spatial tree. */
+  setVertCo(idx: number, x: number, y: number, z: number): void {
+    ;(this.mesh as unknown as {setVertCo(i: number, x: number, y: number, z: number): void}).setVertCo(idx, x, y, z)
+  }
+
+  /** Rebuild the spatial tree after a direct positional edit (e.g. the symmetrize
+   * op's setVertCo pass). Unlike a brush deform, those writes don't flag spatial
+   * nodes, so node bounds and the GPU vertex buffers both go stale until the tree
+   * is rebuilt; `regenTreeBatch` alone only drops the overlay batch. */
+  rebuildSpatialFromEdit(): void {
+    this._rebuildSpatial()
+  }
+
+  /** Destructive symmetrize across the `axis` (0=x,1=y,2=z) plane: bisect the
+   * mesh, keep the `sign` half (+1 positive / -1 negative), mirror it, weld the
+   * seam watertight (native `Mesh::symmetrize`). Topology changes wholesale, so
+   * normals + the spatial tree are recomputed. Backend-agnostic. */
+  symmetrizeDestructive(axis: number, sign: number, threshold: number): void {
+    ;(
+      this.mesh as unknown as {symmetrize(a: number, s: number, t: number): void}
+    ).symmetrize(axis, sign, threshold)
+    this.recalcNormals()
+    this._rebuildSpatial()
+  }
+
   /* ----- Wave 7: UV generation from seams ----- */
 
   /** Corner-domain layer names (to diff what generateUVFromSeams just created). */
@@ -1278,6 +1324,13 @@ export class LiteMesh extends SceneObjectData {
       this.treeBatch = undefined
     }
     return this
+  }
+
+  /** Recompute vertex normals from the current positions (bound C++
+   * recalc_normals). Needed after a direct positional edit — e.g. symmetrize —
+   * that bypasses the brush-deform path's own normal updates. */
+  recalcNormals(): void {
+    ;(this.mesh as unknown as {recalc_normals(): void}).recalc_normals()
   }
 
   /** Surface color source; see LiteMeshDisplayMode. Setting it flags every GPU

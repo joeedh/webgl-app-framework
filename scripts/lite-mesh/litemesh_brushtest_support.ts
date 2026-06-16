@@ -24,6 +24,7 @@ import type {SculptBrush} from '../brush/index'
 import {runSculptcoreStroke} from '../editors/view3d/tools/sculptcore_ops'
 import {AttrDomain, AttrUseFlags, LiteMesh} from './litemesh'
 import {AttrType} from './litemesh_base'
+import {SymmetrizeLiteMeshOp} from './litemesh_ops'
 
 /** Displacement metrics for one stroke, from the position-buffer diff. */
 interface StrokeMetrics {
@@ -70,6 +71,14 @@ interface BrushTestResult {
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   /** ACCUMULATE default flag per tool (smooth/bsmooth/paint-smooth/inflate/clay). */
   accumulateDefaults?: Record<string, boolean>
+  /** Symmetric X DRAW dab off-center: both X-sides move, roughly balanced. */
+  symMirrorX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
+  /** Symmetric X+Y+Z DRAW dab from one octant: moved verts cover all 8 octants. */
+  symOctants?: {octantsCovered: number; movedCount: number; invalid?: string}
+  /** Plain (no symmetry) off-center DRAW dab: only the dab's own X-side moves. */
+  symPlainX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
+  /** Symmetrize op about X: position-mirror miss-fraction before vs after (after ≈ 0). */
+  symmetrize?: {missBefore: number; missAfter: number}
   /** Non-finite floats in the final position buffer (must be 0). */
   nonFiniteCount?: number
   radius?: number
@@ -167,6 +176,121 @@ function diffMetrics(before: Float32Array | undefined, after: Float32Array | und
   return m
 }
 
+/**
+ * Side-balance of a stroke about the plane `axis = 0`: counts moved
+ * render-vertices on the positive and negative side of the plane (classified by
+ * the *before* position), with the largest displacement. A symmetric stroke
+ * moves both sides (≈ balanced counts); a plain stroke moves only the dab's own
+ * side. `eps` is the on-plane dead-zone (verts with |coord| ≤ eps are ignored).
+ */
+function mirrorBalance(
+  before: Float32Array | undefined,
+  after: Float32Array | undefined,
+  axis: number,
+  eps: number
+): {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string} {
+  const out = {movedPos: 0, movedNeg: 0, maxDisp: 0}
+  if (!before || !after || before.length !== after.length) {
+    return {...out, invalid: 'position buffer unreadable/resized'}
+  }
+  for (let i = 0; i < before.length; i += 3) {
+    const dx = after[i] - before[i]
+    const dy = after[i + 1] - before[i + 1]
+    const dz = after[i + 2] - before[i + 2]
+    const d = Math.hypot(dx, dy, dz)
+    if (d <= 1e-6) continue
+    const s = before[i + axis]
+    if (s > eps) out.movedPos++
+    else if (s < -eps) out.movedNeg++
+    if (d > out.maxDisp) out.maxDisp = d
+  }
+  return out
+}
+
+/**
+ * Octant coverage of a stroke: how many of the 8 sign-octants contain at least
+ * one moved render-vertex (classified by the *before* position). A symmetric
+ * X+Y+Z stroke from one octant mirrors into all 8. Verts on a plane (within
+ * `eps`) have an ambiguous octant and are skipped.
+ */
+function octantCoverage(
+  before: Float32Array | undefined,
+  after: Float32Array | undefined,
+  eps: number
+): {octantsCovered: number; movedCount: number; invalid?: string} {
+  if (!before || !after || before.length !== after.length) {
+    return {octantsCovered: 0, movedCount: 0, invalid: 'position buffer unreadable/resized'}
+  }
+  const seen = new Set<number>()
+  let moved = 0
+  for (let i = 0; i < before.length; i += 3) {
+    const dx = after[i] - before[i]
+    const dy = after[i + 1] - before[i + 1]
+    const dz = after[i + 2] - before[i + 2]
+    if (Math.hypot(dx, dy, dz) <= 1e-6) continue
+    moved++
+    const ox = before[i] > eps ? 1 : before[i] < -eps ? 0 : -1
+    const oy = before[i + 1] > eps ? 1 : before[i + 1] < -eps ? 0 : -1
+    const oz = before[i + 2] > eps ? 1 : before[i + 2] < -eps ? 0 : -1
+    if (ox < 0 || oy < 0 || oz < 0) continue
+    seen.add((ox << 2) | (oy << 1) | oz)
+  }
+  return {octantsCovered: seen.size, movedCount: moved}
+}
+
+/**
+ * Fraction of render-vertices whose mirror image about the plane `axis = 0` is
+ * absent from the quantized position set — ~0 for a mesh symmetric across that
+ * plane, positive when one side has been deformed independently. `cell` is the
+ * quantization tolerance.
+ */
+function posMissFrac(pos: Float32Array | undefined, axis: number, cell: number): number {
+  if (!pos || pos.length === 0) return 1
+  const q = (v: number) => Math.round(v / cell)
+  const set = new Set<string>()
+  for (let i = 0; i < pos.length; i += 3) {
+    set.add(`${q(pos[i])},${q(pos[i + 1])},${q(pos[i + 2])}`)
+  }
+  let miss = 0
+  let total = 0
+  const c = [0, 0, 0]
+  for (let i = 0; i < pos.length; i += 3) {
+    c[0] = q(pos[i])
+    c[1] = q(pos[i + 1])
+    c[2] = q(pos[i + 2])
+    c[axis] = -c[axis]
+    total++
+    if (!set.has(`${c[0]},${c[1]},${c[2]}`)) miss++
+  }
+  return total ? miss / total : 1
+}
+
+/**
+ * Run a single off-center DRAW dab (optionally mirrored by `symmetryAxes`,
+ * forwarded to `runSculptcoreStroke`) and return the position buffers before and
+ * after. Non-accumulating, full strength; restores the brush afterward.
+ */
+function runSymDraw(
+  mesh: LiteMesh,
+  draw: SculptBrush,
+  p: number[],
+  normal: number[],
+  radius: number,
+  symmetryAxes: number
+): {before: Float32Array | undefined; after: Float32Array | undefined} {
+  const saved = {tool: draw.tool, strength: draw.strength, flag: draw.flag}
+  draw.tool = SculptTools.DRAW
+  draw.strength = 1
+  draw.flag &= ~BrushFlags.ACCUMULATE
+  const before = readGpuBuffer(mesh, 'position')
+  runSculptcoreStroke({mesh, brush: draw, dabs: [{p, normal}], radius, symmetryAxes})
+  const after = readGpuBuffer(mesh, 'position')
+  draw.tool = saved.tool
+  draw.strength = saved.strength
+  draw.flag = saved.flag
+  return {before, after}
+}
+
 /** Run one stroke and return the position-buffer displacement metrics. */
 function strokeAndMeasure(
   mesh: LiteMesh,
@@ -251,7 +375,10 @@ function brushTest(): BrushTestResult {
   const result: BrushTestResult = {ok: false}
   try {
     const g = globalThis as unknown as {
-      _appstate?: {ctx?: {object?: {data?: unknown}}}
+      _appstate?: {
+        ctx?: {object?: {data?: unknown}}
+        toolstack?: {execTool: (ctx: unknown, op: unknown) => void}
+      }
       _DefaultBrushes?: Record<string, SculptBrush>
     }
     const mesh = g._appstate?.ctx?.object?.data
@@ -277,6 +404,11 @@ function brushTest(): BrushTestResult {
     }
     const radius = R * 0.25
     result.radius = radius
+
+    // Pristine (symmetric) snapshot, captured before any stroke deforms the mesh.
+    // The symmetrize sub-test (Part B) restores this and applies a clean one-sided
+    // deformation, so nearest-source mirroring can reproduce it near-exactly.
+    const pristine = mesh.serialize()
 
     // ACCUMULATE defaults (pure flag check, no strokes).
     result.accumulateDefaults = {
@@ -395,6 +527,54 @@ function brushTest(): BrushTestResult {
         meanB       : painted ? sb / painted : 0,
       }
     }
+
+    // Symmetry (Part A of the mirror plan): a stroke driven with `symmetryAxes`
+    // is replayed at its SymAxisMap mirror images. Run at end-of-test so these
+    // off-pole strokes never perturb the differential measurements above.
+    const eps = R * 0.02
+    const sd = (() => {
+      const v = [0.62, 0.31, 0.72]
+      const l = Math.hypot(v[0], v[1], v[2])
+      return [v[0] / l, v[1] / l, v[2] / l]
+    })()
+    const sp = [sd[0] * R, sd[1] * R, sd[2] * R]
+    // Symmetric X: the off-center dab and its X-mirror move both X-halves.
+    {
+      const {before, after} = runSymDraw(mesh, draw, sp, sd, radius, 1)
+      result.symMirrorX = mirrorBalance(before, after, 0, eps)
+    }
+    // Symmetric X+Y+Z: the +++ octant dab mirrors into all 8 octants.
+    {
+      const {before, after} = runSymDraw(mesh, draw, sp, sd, radius, 7)
+      result.symOctants = octantCoverage(before, after, eps)
+    }
+    // Plain (no symmetry): the same-sided dab moves only its own X-half.
+    {
+      const sp2 = [sd[0] * R, -sd[1] * R, sd[2] * R]
+      const {before, after} = runSymDraw(mesh, draw, sp2, [sd[0], -sd[1], sd[2]], radius, 0)
+      result.symPlainX = mirrorBalance(before, after, 0, eps)
+    }
+
+    // Symmetrize op (Part B): restore the pristine symmetric sphere, deform ONLY
+    // the +X half with a clean DRAW (so -X stays pristine), then run the real
+    // (destructive) `litemesh.symmetrize` op (keep +X, bisect, mirror onto -X,
+    // weld the seam) through the toolstack. It bisects/deletes/mirrors topology,
+    // so the result is exactly symmetric: the position-mirror miss-fraction must
+    // drop from clearly nonzero to ~0.
+    mesh._replaceMesh(mesh.wasm.Mesh_deserialize(pristine))
+    // Settle the GPU buffer layout after swapping in the fresh mesh handle.
+    strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0})
+    // Gentle one-sided deform: clears the quantization cell so missBefore is
+    // clearly nonzero; the destructive op then mirrors +X exactly onto -X.
+    const cell = R * 5e-3
+    strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0.3})
+    const missBefore = posMissFrac(readGpuBuffer(mesh, 'position'), 0, cell)
+    const symOp = new SymmetrizeLiteMeshOp()
+    symOp.inputs.axes.setValue(1) // X
+    symOp.inputs.direction.setValue(1) // POSITIVE: keep +X, mirror onto -X
+    g._appstate!.toolstack!.execTool(g._appstate!.ctx, symOp)
+    const missAfter = posMissFrac(readGpuBuffer(mesh, 'position'), 0, cell)
+    result.symmetrize = {missBefore, missAfter}
 
     // Final sanity: no NaN/Inf anywhere in the position buffer.
     const posEnd = readGpuBuffer(mesh, 'position')

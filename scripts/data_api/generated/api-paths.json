@@ -5810,7 +5810,8 @@
         "PINCH",
         "COLOR",
         "POLYGROUP",
-        "KELVINLET"
+        "KELVINLET",
+        "PAINT_SMOOTH"
       ]
     },
     "scene.tools.sculptcore.transformWidget": {
@@ -6213,6 +6214,20 @@
       "description": "Radius",
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "toolDefaults.brush.swap_colors": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.brush.swap_colors.dataPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Data Path",
+      "description": "Data Path",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.bvh": {
       "kind": "struct",
@@ -7544,6 +7559,96 @@
       "description": "Use Sharp Features",
       "decimalPlaces": 4,
       "step": 0.05
+    },
+    "toolDefaults.litemesh.symmetrize": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.symmetrize.axes": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Axes",
+      "description": "Axes",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "X",
+        "Y",
+        "Z"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize.direction": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Direction",
+      "description": "Direction",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NEGATIVE",
+        "POSITIVE"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize.threshold": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Threshold",
+      "description": "Threshold",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.symmetrize_snap": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.symmetrize_snap.axes": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Axes",
+      "description": "Axes",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "X",
+        "Y",
+        "Z"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize_snap.direction": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Direction",
+      "description": "Direction",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NEGATIVE",
+        "POSITIVE"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize_snap.threshold": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Threshold",
+      "description": "Threshold",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.material": {
       "kind": "struct",

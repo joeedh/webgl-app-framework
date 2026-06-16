@@ -655,7 +655,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculptcore.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
-| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, GRAB, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, KELVINLET} |
+| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, GRAB, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, KELVINLET, PAINT_SMOOTH} |
 | `scene.tools.sculptcore.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
 | `scene.tools.sculptcore.type` | prop | StringProperty | Type |  |
 
@@ -731,6 +731,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.brush.set_radius` | struct |  |  |  |
 | `toolDefaults.brush.set_radius.brush` | prop | DataRefProperty | Brush |  |
 | `toolDefaults.brush.set_radius.radius` | prop | FloatProperty | Radius |  |
+| `toolDefaults.brush.swap_colors` | struct |  |  |  |
+| `toolDefaults.brush.swap_colors.dataPath` | prop | StringProperty | Data Path |  |
 | `toolDefaults.bvh` | struct |  |  |  |
 | `toolDefaults.bvh.bvh_deform` | struct |  |  |  |
 | `toolDefaults.bvh.bvh_deform.brush` | prop | BrushProperty | Brush |  |
@@ -874,6 +876,14 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.quad_remesh.useCurvature` | prop | BoolProperty | Use Curvature |  |
 | `toolDefaults.litemesh.quad_remesh.useDensity` | prop | BoolProperty | Use Density |  |
 | `toolDefaults.litemesh.quad_remesh.useSharpFeatures` | prop | BoolProperty | Use Sharp Features |  |
+| `toolDefaults.litemesh.symmetrize` | struct |  |  |  |
+| `toolDefaults.litemesh.symmetrize.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
+| `toolDefaults.litemesh.symmetrize.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |
+| `toolDefaults.litemesh.symmetrize.threshold` | prop | FloatProperty | Threshold | range 0..2 |
+| `toolDefaults.litemesh.symmetrize_snap` | struct |  |  |  |
+| `toolDefaults.litemesh.symmetrize_snap.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
+| `toolDefaults.litemesh.symmetrize_snap.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |
+| `toolDefaults.litemesh.symmetrize_snap.threshold` | prop | FloatProperty | Threshold | range 0..2 |
 | `toolDefaults.material` | struct |  |  |  |
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
