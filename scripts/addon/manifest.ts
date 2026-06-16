@@ -40,6 +40,10 @@ export interface IAddonManifest {
    * install time. Builtin addons always use 'prebuilt' implicitly (built by
    * the project's build step). See plan §2.3. */
   buildMode?: 'prebuilt' | 'source'
+
+  /** Whether the addon is enabled out-of-the-box (no persisted user pref).
+   * Defaults to true; set false for addons that should ship disabled. */
+  defaultEnabled?: boolean
 }
 
 export class ManifestValidationError extends Error {
@@ -112,17 +116,22 @@ export function validateManifest(raw: unknown, manifestPath?: string): IAddonMan
     )
   }
 
+  if (m.defaultEnabled !== undefined && typeof m.defaultEnabled !== 'boolean') {
+    throw new ManifestValidationError('"defaultEnabled" must be a boolean', manifestPath)
+  }
+
   return {
-    id          : m.id as string,
-    name        : m.name as string,
-    version     : m.version as string,
-    author      : typeof m.author === 'string' ? m.author : undefined,
-    entry       : m.entry as string,
-    dependencies: (m.dependencies as string[] | undefined) ?? [],
-    permissions : m.permissions as string[] | undefined,
-    description : typeof m.description === 'string' ? m.description : undefined,
-    icon        : (m.icon as string | number | undefined) ?? undefined,
-    buildMode   : (m.buildMode as 'prebuilt' | 'source' | undefined) ?? 'prebuilt',
+    id            : m.id as string,
+    name          : m.name as string,
+    version       : m.version as string,
+    author        : typeof m.author === 'string' ? m.author : undefined,
+    entry         : m.entry as string,
+    dependencies  : (m.dependencies as string[] | undefined) ?? [],
+    permissions   : m.permissions as string[] | undefined,
+    description   : typeof m.description === 'string' ? m.description : undefined,
+    icon          : (m.icon as string | number | undefined) ?? undefined,
+    buildMode     : (m.buildMode as 'prebuilt' | 'source' | undefined) ?? 'prebuilt',
+    defaultEnabled: (m.defaultEnabled as boolean | undefined) ?? true,
   }
 }
 

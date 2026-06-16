@@ -198,7 +198,9 @@ export class AddonManager {
     // Late registration (after start() already ran, e.g. tests/HMR): create the
     // record + enable immediately so it behaves like a boot-time builtin.
     if (this.started) {
-      this._materializePending([m.id]).then(() => this.enable(m.id))
+      this._materializePending([m.id]).then(() => {
+        if (m.defaultEnabled !== false) this.enable(m.id)
+      })
     }
   }
 
@@ -393,8 +395,11 @@ export class AddonManager {
     if (autoEnable) {
       // Enable in record order (already topological from materialize); enable()
       // is idempotent and pulls deps on first, so order is not load-bearing.
+      // Skip addons that opt out via manifest.defaultEnabled=false (they ship
+      // disabled until the user turns them on); their deps are still pulled in
+      // by any default-enabled dependent.
       for (const rec of this.addons.slice()) {
-        if (rec.manifest && !rec.enabled) {
+        if (rec.manifest && !rec.enabled && rec.manifest.defaultEnabled !== false) {
           this.enable(rec.manifest.id)
         }
       }

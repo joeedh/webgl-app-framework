@@ -142,6 +142,7 @@ SculptBrush {
 
     bst.flags('flag', 'flag', deleteTsEnumIntegers(BrushFlags), 'Flag').icons({
       SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
+      SQUARE     : Icons.SQUARE_BRUSH,
     })
 
     bst
@@ -474,7 +475,7 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.SMOOTH]
-  brush.strength = 0.5
+  brush.strength = 1.0
   brush.planeoff = -1.0
   brush.normalfac = 1.0
 
@@ -485,7 +486,7 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SPHERE)
 
   brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
-  brush.dynamics.strength.useDynamics = true
+  brush.dynamics.strength.useDynamics = false
 
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
@@ -502,6 +503,7 @@ export function makeDefaultBrushes() {
   brush.strength = 0.5
   brush.autosmooth = 0.25
   brush.dynamics.autosmooth.useDynamics = false
+  brush.flag |= BrushFlags.INVERT
   brush.pinch = 0.5
   brush.spacing = 0.09
   brush.dynamics.strength.useDynamics = true
