@@ -88,7 +88,8 @@ jobs:
           if [ ! -x emsdk/emsdk ]; then
             node make.mjs install-emsdk            # git-clones + installs pinned emsdk/cmake/ninja
           fi
-          node make.mjs fetch-wgpu-native          # pinned WebGPU prebuilt (headers used by the build)
+          # No wgpu-native: it's the native WebGPU backend (extern/CMakeLists.txt
+          # adds it only under NOT BUILD_WASM); the WASM build uses browser WebGPU.
           node make.mjs codegen                    # compile .sbrush kernels -> generated C++ headers
           node make.mjs configure wasm             # picks up CMAKE_BUILD_TYPE=Release from local-build-options.mjs
           node make.mjs build wasm                 # emits + copies sculptcore-browser.{wasm,js} into typescript/build
