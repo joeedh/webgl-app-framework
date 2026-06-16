@@ -1,7 +1,7 @@
 [ ]: in the TS app toggling SHOW_RENDER on and back off again breaks webgpu state
 [x]: the default scene builder should create a scene with a litemesh sphere of size 4 and dimen 50
      and switch to the sculptcore toolmode.
-[ ]: fold the settings editor's tabs into panels in PropsEditor's settings tab,
+[x]: fold the settings editor's tabs into panels in PropsEditor's settings tab,
      except for the theme tab.  that will stay in settings editor, which will be renamed
      to theme editor.
 [x]: the old sculpt mode icon still appears in the toolmode header toolbar in the viewport
