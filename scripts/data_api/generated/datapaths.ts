@@ -676,6 +676,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.symmetrize.axes"
   | "toolDefaults.litemesh.symmetrize.direction"
   | "toolDefaults.litemesh.symmetrize.threshold"
+  | "toolDefaults.litemesh.symmetrize_snap"
+  | "toolDefaults.litemesh.symmetrize_snap.axes"
+  | "toolDefaults.litemesh.symmetrize_snap.direction"
+  | "toolDefaults.litemesh.symmetrize_snap.threshold"
   | "toolDefaults.material"
   | "toolDefaults.material.new"
   | "toolDefaults.material.new.dataPathToSet"
@@ -1481,6 +1485,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.symmetrize.axes": true;
     "toolDefaults.litemesh.symmetrize.direction": true;
     "toolDefaults.litemesh.symmetrize.threshold": true;
+    "toolDefaults.litemesh.symmetrize_snap": true;
+    "toolDefaults.litemesh.symmetrize_snap.axes": true;
+    "toolDefaults.litemesh.symmetrize_snap.direction": true;
+    "toolDefaults.litemesh.symmetrize_snap.threshold": true;
     "toolDefaults.material": true;
     "toolDefaults.material.new": true;
     "toolDefaults.material.new.dataPathToSet": true;

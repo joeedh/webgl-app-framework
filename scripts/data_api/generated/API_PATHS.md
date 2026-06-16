@@ -880,6 +880,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.symmetrize.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
 | `toolDefaults.litemesh.symmetrize.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |
 | `toolDefaults.litemesh.symmetrize.threshold` | prop | FloatProperty | Threshold | range 0..2 |
+| `toolDefaults.litemesh.symmetrize_snap` | struct |  |  |  |
+| `toolDefaults.litemesh.symmetrize_snap.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
+| `toolDefaults.litemesh.symmetrize_snap.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |
+| `toolDefaults.litemesh.symmetrize_snap.threshold` | prop | FloatProperty | Threshold | range 0..2 |
 | `toolDefaults.material` | struct |  |  |  |
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |

@@ -557,15 +557,15 @@ function brushTest(): BrushTestResult {
 
     // Symmetrize op (Part B): restore the pristine symmetric sphere, deform ONLY
     // the +X half with a clean DRAW (so -X stays pristine), then run the real
-    // `litemesh.symmetrize` op (keep +X, mirror onto -X) through the toolstack.
-    // It must drive the position-mirror miss-fraction from clearly nonzero back
-    // to ~0 — nearest-source matching reproduces a one-sided deform near-exactly.
+    // (destructive) `litemesh.symmetrize` op (keep +X, bisect, mirror onto -X,
+    // weld the seam) through the toolstack. It bisects/deletes/mirrors topology,
+    // so the result is exactly symmetric: the position-mirror miss-fraction must
+    // drop from clearly nonzero to ~0.
     mesh._replaceMesh(mesh.wasm.Mesh_deserialize(pristine))
     // Settle the GPU buffer layout after swapping in the fresh mesh handle.
     strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0})
-    // Gentle one-sided deform: displacement must clear the quantization cell yet
-    // stay under the vertex spacing, so the op's nearest-source matching reliably
-    // pairs each mirrored vertex with its deformed counterpart (not a neighbor).
+    // Gentle one-sided deform: clears the quantization cell so missBefore is
+    // clearly nonzero; the destructive op then mirrors +X exactly onto -X.
     const cell = R * 5e-3
     strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0.3})
     const missBefore = posMissFrac(readGpuBuffer(mesh, 'position'), 0, cell)

@@ -1010,6 +1010,18 @@ export class LiteMesh extends SceneObjectData {
     this._rebuildSpatial()
   }
 
+  /** Destructive symmetrize across the `axis` (0=x,1=y,2=z) plane: bisect the
+   * mesh, keep the `sign` half (+1 positive / -1 negative), mirror it, weld the
+   * seam watertight (native `Mesh::symmetrize`). Topology changes wholesale, so
+   * normals + the spatial tree are recomputed. Backend-agnostic. */
+  symmetrizeDestructive(axis: number, sign: number, threshold: number): void {
+    ;(
+      this.mesh as unknown as {symmetrize(a: number, s: number, t: number): void}
+    ).symmetrize(axis, sign, threshold)
+    this.recalcNormals()
+    this._rebuildSpatial()
+  }
+
   /* ----- Wave 7: UV generation from seams ----- */
 
   /** Corner-domain layer names (to diff what generateUVFromSeams just created). */

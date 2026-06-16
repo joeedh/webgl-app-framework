@@ -808,6 +808,14 @@ ToolOp.register(ReorderLocalityOp)
  * axis planes). Undo snapshots the pre-symmetrize mesh (serialize blob), like
  * TriangulateLiteMeshOp.
  */
+/**
+ * Destructive symmetrize: for each selected axis, the native `Mesh::symmetrize`
+ * bisects the mesh along the plane, keeps the `direction` half, mirrors it, and
+ * welds the seam so the result stays watertight (a real topology change, unlike
+ * the position-snapping `litemesh.symmetrize_snap`). Multiple axes apply in
+ * sequence (X→Y→Z), yielding bilateral/quadrant/octant symmetry. Undo snapshots
+ * the pre-op mesh (serialize) and restores it via `_replaceMesh`.
+ */
 export class SymmetrizeLiteMeshOp extends LiteMeshAttrOp<{
   axes: FlagProperty
   direction: EnumProperty
@@ -819,6 +827,74 @@ export class SymmetrizeLiteMeshOp extends LiteMeshAttrOp<{
     return {
       toolpath: 'litemesh.symmetrize',
       uiname  : 'Symmetrize',
+      icon    : Icons.SYMMETRIZE,
+      inputs: ToolOp.inherit({
+        axes     : new FlagProperty(1, {X: 1, Y: 2, Z: 4}).saveLastValue(),
+        direction: new EnumProperty(1, {NEGATIVE: -1, POSITIVE: 1}).saveLastValue(),
+        threshold: new FloatProperty(1e-4).setRange(0, 2).noUnits().saveLastValue(),
+      }),
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {axes, direction, threshold} = this.getInputs()
+    if (!axes) {
+      return
+    }
+
+    const sign = Number(direction) >= 0 ? 1 : -1
+    for (let a = 0; a < 3; a++) {
+      if (!(axes & (1 << a))) {
+        continue
+      }
+      // Bisect/mirror/weld this axis; the native op rewrites topology, so normals
+      // and the spatial tree are rebuilt inside symmetrizeDestructive.
+      mesh.symmetrizeDestructive(a, sign, threshold)
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(SymmetrizeLiteMeshOp)
+
+/**
+ * Non-destructive symmetrize: snaps destination-side vertices onto the mirrored
+ * position of their nearest source-side counterpart WITHOUT changing topology
+ * (no bisect/weld). Keeps a mesh's existing vertices but makes their positions
+ * symmetric — useful when the mesh is already topologically symmetric and only
+ * drifted. For a true watertight half-mirror use `litemesh.symmetrize`.
+ */
+export class SymmetrizeSnapLiteMeshOp extends LiteMeshAttrOp<{
+  axes: FlagProperty
+  direction: EnumProperty
+  threshold: FloatProperty
+}> {
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.symmetrize_snap',
+      uiname  : 'Symmetrize (Snap)',
       icon    : Icons.SYMMETRIZE,
       inputs: ToolOp.inherit({
         axes     : new FlagProperty(1, {X: 1, Y: 2, Z: 4}).saveLastValue(),
@@ -883,7 +959,7 @@ export class SymmetrizeLiteMeshOp extends LiteMeshAttrOp<{
     }
   }
 }
-ToolOp.register(SymmetrizeLiteMeshOp)
+ToolOp.register(SymmetrizeSnapLiteMeshOp)
 
 /**
  * Make `co` (flat object-local positions, mutated in place) symmetric about the

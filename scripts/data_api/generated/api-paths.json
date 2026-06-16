@@ -7605,6 +7605,51 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.litemesh.symmetrize_snap": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.symmetrize_snap.axes": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Axes",
+      "description": "Axes",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "X",
+        "Y",
+        "Z"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize_snap.direction": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Direction",
+      "description": "Direction",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NEGATIVE",
+        "POSITIVE"
+      ]
+    },
+    "toolDefaults.litemesh.symmetrize_snap.threshold": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Threshold",
+      "description": "Threshold",
+      "range": [
+        0,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.material": {
       "kind": "struct",
       "indexed": false,
