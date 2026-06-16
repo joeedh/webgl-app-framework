@@ -126,9 +126,18 @@ jobs:
           cp scripts/extern/jszip/jszip.js _site/scripts/extern/jszip/jszip.js
           cp scripts/extern/Math.js        _site/scripts/extern/Math.js
           cp scripts/util/numeric.js       _site/scripts/util/numeric.js
+          # sculptcore's WASM pthread pool needs SharedArrayBuffer, which requires
+          # cross-origin isolation (COOP+COEP). GitHub Pages can't set those
+          # response headers, so coi-serviceworker installs a SW that injects them
+          # client-side and reloads once to take effect. Served from site root so
+          # its scope covers the whole app; injected only here (Pages), leaving the
+          # committed index.html — and the Electron/dev paths — untouched.
+          cp coi-serviceworker.js _site/coi-serviceworker.js
+          sed -i 's#<head>#<head>\n  <script src="coi-serviceworker.js"></script>#' _site/index.html
           # Pages serves from a per-repo subpath; all app references are relative,
-          # so no <base> rewrite is needed. SPA-style 404 fallback:
-          cp index.html _site/404.html
+          # so no <base> rewrite is needed. SPA-style 404 fallback (inherits the
+          # coi-serviceworker injection from the patched index.html):
+          cp _site/index.html _site/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
