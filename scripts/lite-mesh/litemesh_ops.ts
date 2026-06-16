@@ -5,6 +5,7 @@ import {
   FlagProperty,
   EnumProperty,
   ToolOp,
+  UndoFlags,
   PropertySlots,
   Vector3,
   Vector4,
@@ -960,6 +961,32 @@ export class SymmetrizeSnapLiteMeshOp extends LiteMeshAttrOp<{
   }
 }
 ToolOp.register(SymmetrizeSnapLiteMeshOp)
+
+/**
+ * Rebuild the LiteMesh spatial tree from scratch. Non-destructive to mesh data
+ * (only the acceleration structure + GPU buffers are regenerated), so it carries
+ * no undo state.
+ */
+export class RebuildSpatialTreeLiteMeshOp extends LiteMeshAttrOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.rebuild_spatial_tree',
+      uiname  : 'Rebuild Spatial Tree',
+      undoflag: UndoFlags.NO_UNDO,
+      inputs  : {},
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    mesh.rebuildSpatialFromEdit()
+    window.redraw_all?.()
+  }
+}
+ToolOp.register(RebuildSpatialTreeLiteMeshOp)
 
 /**
  * Make `co` (flat object-local positions, mutated in place) symmetric about the

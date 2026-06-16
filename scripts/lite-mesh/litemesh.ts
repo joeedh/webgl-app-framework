@@ -523,6 +523,7 @@ export class LiteMesh extends SceneObjectData {
     // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
     const layout = container.panel('Layout')
     layout.tool('litemesh.reorder_locality()', {label: 'Optimize Mesh Layout'})
+    layout.tool('litemesh.rebuild_spatial_tree()', {label: 'Rebuild Spatial Tree'})
   }
 
   afterSTRUCT(): void {
