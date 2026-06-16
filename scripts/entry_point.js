@@ -69,6 +69,11 @@ import addon, {startAddons} from './addon/addon.js'
 // See documentation/plans/native-electron.md (Workstream F).
 import './lite-mesh/litemesh_test_scene.js'
 
+// Overrides the mesh subsystem's startup cube (imported above) with a LiteMesh
+// sphere + sculptcore startup toolmode. Must come AFTER the mesh default_scene
+// import so this builder wins. See ImmediateTODOs #2.
+import './lite-mesh/litemesh_default_scene.js'
+
 import {getAppArgv, getArg} from './core/app_argv.js'
 import {runTestHarness} from './core/test_harness.js'
 
