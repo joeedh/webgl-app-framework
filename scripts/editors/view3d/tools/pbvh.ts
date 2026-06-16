@@ -1,7 +1,7 @@
 import './pbvh_bvhdef'
 
 import {WidgetFlags} from '../widgets/widgets.js'
-import {ToolModes, ToolMode} from '../view3d_toolmode.js'
+import {ToolModes} from '../view3d_toolmode.js'
 import {BVH, BVHFlags, BVHNode} from '../../../../addons/builtin/mesh/src/bvh.js'
 import {KeyMap, HotKey} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
@@ -2578,4 +2578,7 @@ view3d.BVHToolMode {
   }
 }
 
-ToolMode.register(BVHToolMode)
+// NOTE: BVHToolMode is registered through the pbvh_sculpt addon's register()
+// lifecycle (api.register), NOT at module scope — so disabling the addon
+// removes its toolmode (and viewport header icon). See addons/builtin/
+// pbvh_sculpt/src/main.ts.

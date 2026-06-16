@@ -2,11 +2,11 @@
  * PBVH Sculpt addon entry point.
  *
  * Ships in the main bundle: its toolmode classes live in
- * `scripts/editors/view3d/tools/` and register themselves into the ToolModes
- * enum at module scope (loaded via entry_point's `tools.js` import). This addon
- * announces itself + publishes its surface so it appears in the addon UI and
- * peers can declare `dependencies: ['pbvh_sculpt']`. Registered as an in-bundle
- * builtin source by `addons/builtin/builtin_registry.ts`.
+ * `scripts/editors/view3d/tools/`. The addon's register() hook registers
+ * BVHToolMode through api.register (so disabling the addon unregisters the
+ * toolmode + its viewport-header icon) and publishes its surface so it appears
+ * in the addon UI and peers can declare `dependencies: ['pbvh_sculpt']`.
+ * Registered as an in-bundle builtin source by `addons/builtin/builtin_registry.ts`.
  */
 
 import type {AddonAPI, IAddon, IAddonDefine} from '@framework/api'
@@ -21,9 +21,10 @@ export const addonDefine: IAddonDefine = {
 }
 
 export function register(api: AddonAPI<IAddon>) {
-  // Keep in sync with addons/builtin/pbvh_sculpt/src/api.ts. The classes are
-  // registered into the ToolModes enum at module scope (in scripts/.../tools);
-  // here we only publish the runtime surface for peers.
+  // Register the toolmode through the addon lifecycle so disabling the addon
+  // unregisters it (removing its viewport-header icon) — previously a
+  // module-scope ToolMode.register leaked the icon while disabled (#7).
+  api.register(BVHToolMode)
   api.exportNamespace('pbvh_sculpt', {BVHToolMode, PaintToolModeBase})
 }
 
