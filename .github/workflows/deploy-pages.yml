@@ -103,6 +103,12 @@ jobs:
 
       # ---- App bundle + site assembly --------------------------------------
       - name: Bundle app (esbuild)
+        env:
+          # External (not inline) sourcemaps: keeps the served entry_point.js
+          # small (~20 MB inline map moves into a separate .map, fetched only
+          # when devtools are open). esbuild 'external' emits the .map without a
+          # sourceMappingURL comment, so normal page loads never download it.
+          ESBUILD_SOURCEMAP: external
         run: pnpm build # node tools/esbuilder.js -> ./build
 
       - name: Assemble Pages site
