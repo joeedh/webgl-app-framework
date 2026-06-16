@@ -324,6 +324,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.tool('litemesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.mark_sharp_interactive()')
+    strip.tool('litemesh.mark_sharp_by_angle()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
     if (FeatureFlags.get('sculptcore.quad_remesher')) {

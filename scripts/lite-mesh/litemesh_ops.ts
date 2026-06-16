@@ -989,6 +989,56 @@ export class RebuildSpatialTreeLiteMeshOp extends LiteMeshAttrOp {
 ToolOp.register(RebuildSpatialTreeLiteMeshOp)
 
 /**
+ * Mark edges sharp automatically wherever the dihedral angle between adjacent
+ * faces exceeds `angle` (degrees). Additive (won't clear existing sharps).
+ * Serialize-snapshot undo, mirroring SymmetrizeSnapLiteMeshOp.
+ */
+export class MarkSharpByAngleLiteMeshOp extends LiteMeshAttrOp<{
+  angle: FloatProperty
+}> {
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.mark_sharp_by_angle',
+      uiname  : 'Mark Sharp by Angle',
+      icon    : Icons.MARK_SHARP_ANGLE,
+      inputs: {
+        angle: new FloatProperty(30).setRange(0, 180).noUnits().saveLastValue(),
+      },
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {angle} = this.getInputs()
+    mesh.markSharpByAngle((angle * Math.PI) / 180, 1)
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MarkSharpByAngleLiteMeshOp)
+
+/**
  * Make `co` (flat object-local positions, mutated in place) symmetric about the
  * plane `axis = 0`: every destination-side vertex (`sign(p[axis]) === −dir`)
  * copies the mirrored position of its nearest source-side counterpart, and any

@@ -135,5 +135,6 @@ export let Icons = {
   SWAP_COLORS             : 129,
   REPROJECT_CUSTOM_DATA   : 130,
   SQUARE_BRUSH            : 131,
+  MARK_SHARP_ANGLE        : 132,
 }
 setIconMap(Icons)

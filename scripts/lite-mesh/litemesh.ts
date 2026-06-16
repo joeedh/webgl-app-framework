@@ -989,6 +989,17 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
   }
 
+  /** Mark EDGE_SHARP on every manifold edge whose dihedral angle exceeds
+   * `angleRadians` (additive). Returns the number of edges changed. */
+  markSharpByAngle(angleRadians: number, state = 1): number {
+    const n = (this.mesh as unknown as {markSharpByAngle(a: number, s: number): number}).markSharpByAngle(
+      angleRadians,
+      state
+    )
+    this.markSeamsDirty()
+    return n
+  }
+
   /** Indices + xyz (object-local) of every vertex incident to a `kind`-flagged
    * edge (0 = seam, 1 = sharp), index-aligned. The marking tool projects these
    * to screen to snap the path endpoint onto an existing feature vertex. */
