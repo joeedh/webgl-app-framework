@@ -17,6 +17,7 @@ import {
 } from './sculptcore_bindings'
 import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
+import {SymAxisMap} from './pbvh_base'
 import type {View3D} from '../view3d'
 import {view3dProject, view3dUnproject} from '../view3d_base'
 
@@ -63,9 +64,11 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
-  /** Previous dab's object-local surface center, for grab brushes (kelvinlet):
-   * grabTo = thisDab − prevDab. Undefined until the first dab of the stroke. */
-  prevDabLocal?: Vector3
+  /** Per-mirror-image previous dab object-local surface center, for grab brushes
+   * (kelvinlet): grabTo = thisDab − prevDab. Index 0 = primary dab, 1..n =
+   * SymAxisMap mirror images; each image traces its own path so its grab delta
+   * must not be shared. Empty until the first dab of the stroke. */
+  prevDabLocal: (Vector3 | undefined)[] = []
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -132,10 +135,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     const hasDyntopo = brush.dynTopoSC.enabled
 
     this.strokeGroupId = undefined
-    this.prevDabLocal = undefined
+    this.prevDabLocal = []
     this.dabSeed = 1
     this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
+    // Snapshot the live symmetry axes as an op input so a later exec replay
+    // (which may see a different ctx.toolmode) mirrors the same way (A.4).
+    this.inputs.symmetryAxes.setValue((ctx.toolmode as SculptCorePaintMode | undefined)?.symmetryAxes ?? 0)
     ;(ctx.toolmode as SculptCorePaintMode | undefined)?.resetDynTopoStats()
     if (SculptPaintOp.meshLog) {
       // The executor owns the meshlog step boundary; build it now so the step
@@ -255,9 +261,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
-  /** Apply one evenly-spaced driver dab: re-raycast at the sample's screen
-   * point to snap to the surface (object-local space), then run the sculptcore
-   * brush pipeline + optional dyntopo over the filtered nodes. */
+  /** Apply one evenly-spaced driver dab to the surface, plus a mirrored dab for
+   * every active symmetry axis. The brush cursor overlay is drawn once here (for
+   * the real, unmirrored sample); the per-dab work — including the object-local
+   * ray reflection — lives in {@link applyDabOne}. */
   applyDab(ctx: ViewContext | ToolContext, ps: PaintSample): void {
     if (!this.inStep) {
       return
@@ -274,18 +281,65 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       toolmode.drawBrush(view3d, true, ps.screenP[0] + view3d.pos![0], ps.screenP[1] + view3d.pos![1])
     }
 
+    // Primary dab (identity reflection), then one dab per SymAxisMap mirror image
+    // about the mesh's own local axis planes. Each image keeps its own grab state
+    // (prevDabLocal[i]) and advances the dyntopo seed (A.5).
+    this.applyDabOne(ctx, ps, undefined, 0)
+
+    const sym = this.getSymmetryAxes(ctx)
+    if (sym === 0) {
+      return
+    }
+    const muls = SymAxisMap[sym]
+    for (let i = 0; i < muls.length; i++) {
+      this.applyDabOne(ctx, ps, muls[i], i + 1)
+    }
+  }
+
+  /** The live symmetry axes bitflag {X:1,Y:2,Z:4}: the value snapshotted in
+   * undoPre, falling back to the toolmode for any non-snapshotted call (A.4). */
+  getSymmetryAxes(ctx: ViewContext | ToolContext): number {
+    const v = this.inputs.symmetryAxes.getValue()
+    if (v !== undefined) {
+      return v
+    }
+    return (ctx.toolmode as SculptCorePaintMode | undefined)?.symmetryAxes ?? 0
+  }
+
+  /** Apply one dab on the (optionally mirrored) side of the mesh: reflect the
+   * object-local view ray by `mul` (a SymAxisMap component-sign multiplier;
+   * undefined = primary dab), re-raycast to snap to the surface, then run the
+   * sculptcore brush pipeline + optional dyntopo. `mirrorIdx` keys this image's
+   * cross-dab grab state (0 = primary, 1..n = SymAxisMap order). */
+  private applyDabOne(
+    ctx: ViewContext | ToolContext,
+    ps: PaintSample,
+    mul: Vector3 | undefined,
+    mirrorIdx: number
+  ): void {
+    const toolmode = ctx.toolmode as SculptCorePaintMode
+
     const {brush, wasmExec, wasmBrush} = this.getBrush(ctx, ps)
     const wasm = getWasmImmediate()!
 
-    const viewvec = ps.viewvec
-    const origin = ps.vieworigin
     const mesh = ctx.object!.data as LiteMesh
 
     const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
     imatrix.invert()
 
+    // Local copies — never mutate the shared ps, so every mirror image reflects
+    // the same original ray (A.3).
+    const origin = new Vector3(ps.vieworigin)
+    const viewvec = new Vector3(ps.viewvec)
     viewvec.multVecMatrix(imatrix)
     origin.multVecMatrix(imatrix)
+
+    if (mul !== undefined) {
+      // Reflect about the local origin planes: a point reflection through 0 is
+      // the same pure component sign-flip as a direction reflection.
+      origin.mul(mul)
+      viewvec.mul(mul)
+    }
 
     const isect = mesh.rayCast(origin, viewvec)
 
@@ -374,13 +428,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // Grab-style brushes (kelvinlet): pull the region under the dab in the
       // stroke-movement direction (see applyGrabDabState).
       if (isGrabTool(brush.tool)) {
-        this.prevDabLocal = applyGrabDabState(wasmBrush, p, this.prevDabLocal)
+        this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, p, this.prevDabLocal[mirrorIdx])
       }
 
       // One unified dab: dyntopo pre-pass (if params != null), node filter,
       // deform, and per-dab topo-chunk seal — all in the executor, one order
       // shared by every client. The seed only matters when dyntopo is on.
-      wasmExec.applyDab(prog, wasm.float3(p), wasm.float3(dabNormal), radius, params, dt.enabled ? this.dabSeed++ : 0)
+      wasmExec.applyDab(prog, wasm.float3(p), wasm.float3(dabNormal), radius, params ?? (0 as never), dt.enabled ? this.dabSeed++ : 0)
 
       if (dt.enabled) {
         // Accumulate stats for the debug HUD (lastDynTopoStats holds this dab's
@@ -482,6 +536,11 @@ export function runSculptcoreStroke(opts: {
   dist?: number
   /** Stroke-level invert (the interactive op's ctrl modifier). */
   invert?: boolean
+  /** Symmetry axes bitflag {X:1,Y:2,Z:4}: each dab is also applied at its
+   * SymAxisMap mirror images (p/normal sign-flipped about the local origin),
+   * exactly like `SculptPaintOp.applyDab`. The test scene is object-local at the
+   * origin, so the world-space dabs here are already in mirror space. */
+  symmetryAxes?: number
 }): {dabs: number; skipped: boolean} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
@@ -525,63 +584,82 @@ export function runSculptcoreStroke(opts: {
   wasmExec.meshLog = meshLog
   wasmExec.beginStep(brush.dynTopoSC.enabled)
 
+  // Expand each input dab into its primary image plus SymAxisMap mirror images
+  // (p/normal component-sign-flipped about the local origin), exactly like
+  // SculptPaintOp.applyDab. Each image keeps its own previous-dab state so a
+  // grab brush traces an independent path per mirror.
+  const sym = opts.symmetryAxes ?? 0
+  const muls = sym ? SymAxisMap[sym] : []
+  const prevByImage: (Vector3 | undefined)[] = []
+
   let dynParams: DynTopoParams | undefined = undefined
   let dabIdx = 0
-  let prevDabLocal: Vector3 | undefined = undefined
   for (const dab of opts.dabs) {
-    const r = builSculptcoreBrush({
-      wasm,
-      brush,
-      mesh,
-      radius,
-      invert: opts.invert ?? false,
-      wasmBrush,
-      wasmExec,
-      nonAccum,
-      strokeGen,
-    })
-    wasmBrush = r.wasmBrush
-    wasmExec = r.wasmExec
-
-    if (brush.tool === SculptTools.POLYGROUP) {
-      wasmBrush.activeGroup = polyGroupId
+    const images: {p: number[]; normal: number[]; image: number}[] = [{p: dab.p, normal: dab.normal, image: 0}]
+    for (let i = 0; i < muls.length; i++) {
+      const mul = muls[i]
+      images.push({
+        p: [dab.p[0] * mul[0], dab.p[1] * mul[1], dab.p[2] * mul[2]],
+        normal: [dab.normal[0] * mul[0], dab.normal[1] * mul[1], dab.normal[2] * mul[2]],
+        image: i + 1,
+      })
     }
-    wasmBrush.strength = brush.strength
-    wasmBrush.radius = radius
-    wasmBrush.writeProps()
-    wasmExec.meshLog = meshLog
-    pushBrushDeviceInputs(wasmBrush, new PaintSample())
 
-    // Dyntopo config before the deform (mirrors SculptPaintOp). Undefined = off.
-    const dt = brush.dynTopoSC
-    let params: DynTopoParams | undefined = undefined
-    if (dt.enabled) {
-      const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
-      if (!dynParams) {
-        dynParams = wasm.manager.construct('sculptcore::dyntopo::DynTopoParams') as DynTopoParams
+    for (const img of images) {
+      const r = builSculptcoreBrush({
+        wasm,
+        brush,
+        mesh,
+        radius,
+        invert: opts.invert ?? false,
+        wasmBrush,
+        wasmExec,
+        nonAccum,
+        strokeGen,
+      })
+      wasmBrush = r.wasmBrush
+      wasmExec = r.wasmExec
+
+      if (brush.tool === SculptTools.POLYGROUP) {
+        wasmBrush.activeGroup = polyGroupId
       }
-      configureDynTopoParams(dynParams, dt, l_max, l_min)
-      params = dynParams
-    }
+      wasmBrush.strength = brush.strength
+      wasmBrush.radius = radius
+      wasmBrush.writeProps()
+      wasmExec.meshLog = meshLog
+      pushBrushDeviceInputs(wasmBrush, new PaintSample())
 
-    // Grab-style brushes (kelvinlet) need per-dab grabFrom/grabTo, same as the
-    // interactive op's applyDab.
-    if (isGrabTool(brush.tool)) {
-      prevDabLocal = applyGrabDabState(wasmBrush, dab.p, prevDabLocal)
-    }
+      // Dyntopo config before the deform (mirrors SculptPaintOp). Undefined = off.
+      const dt = brush.dynTopoSC
+      let params: DynTopoParams | undefined = undefined
+      if (dt.enabled) {
+        const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
+        if (!dynParams) {
+          dynParams = wasm.manager.construct('sculptcore::dyntopo::DynTopoParams') as DynTopoParams
+        }
+        configureDynTopoParams(dynParams, dt, l_max, l_min)
+        params = dynParams
+      }
 
-    const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
-    buildBrushProgram(prog, brushType, brush, radius, mesh)
-    wasmExec.applyDab(
-      prog,
-      wasm.float3(new Vector3(dab.p)),
-      wasm.float3(new Vector3(dab.normal)),
-      radius,
-      params,
-      dabIdx + 1
-    )
-    prog[Symbol.dispose]()
-    dabIdx++
+      // Grab-style brushes (kelvinlet) need per-dab grabFrom/grabTo, same as the
+      // interactive op's applyDab; each mirror image traces its own path.
+      if (isGrabTool(brush.tool)) {
+        prevByImage[img.image] = applyGrabDabState(wasmBrush, img.p, prevByImage[img.image])
+      }
+
+      const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
+      buildBrushProgram(prog, brushType, brush, radius, mesh)
+      wasmExec.applyDab(
+        prog,
+        wasm.float3(new Vector3(img.p)),
+        wasm.float3(new Vector3(img.normal)),
+        radius,
+        params ?? (0 as never),
+        dabIdx + 1
+      )
+      prog[Symbol.dispose]()
+      dabIdx++
+    }
   }
 
   wasmExec.endDynTopoStroke()

@@ -527,6 +527,8 @@ export type GeneratedDataPath =
   | "toolDefaults.brush.set_radius"
   | "toolDefaults.brush.set_radius.brush"
   | "toolDefaults.brush.set_radius.radius"
+  | "toolDefaults.brush.swap_colors"
+  | "toolDefaults.brush.swap_colors.dataPath"
   | "toolDefaults.bvh"
   | "toolDefaults.bvh.bvh_deform"
   | "toolDefaults.bvh.bvh_deform.brush"
@@ -670,6 +672,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.quad_remesh.useCurvature"
   | "toolDefaults.litemesh.quad_remesh.useDensity"
   | "toolDefaults.litemesh.quad_remesh.useSharpFeatures"
+  | "toolDefaults.litemesh.symmetrize"
+  | "toolDefaults.litemesh.symmetrize.axes"
+  | "toolDefaults.litemesh.symmetrize.direction"
+  | "toolDefaults.litemesh.symmetrize.threshold"
   | "toolDefaults.material"
   | "toolDefaults.material.new"
   | "toolDefaults.material.new.dataPathToSet"
@@ -1326,6 +1332,8 @@ declare module "@framework/pathux" {
     "toolDefaults.brush.set_radius": true;
     "toolDefaults.brush.set_radius.brush": true;
     "toolDefaults.brush.set_radius.radius": true;
+    "toolDefaults.brush.swap_colors": true;
+    "toolDefaults.brush.swap_colors.dataPath": true;
     "toolDefaults.bvh": true;
     "toolDefaults.bvh.bvh_deform": true;
     "toolDefaults.bvh.bvh_deform.brush": true;
@@ -1469,6 +1477,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.quad_remesh.useCurvature": true;
     "toolDefaults.litemesh.quad_remesh.useDensity": true;
     "toolDefaults.litemesh.quad_remesh.useSharpFeatures": true;
+    "toolDefaults.litemesh.symmetrize": true;
+    "toolDefaults.litemesh.symmetrize.axes": true;
+    "toolDefaults.litemesh.symmetrize.direction": true;
+    "toolDefaults.litemesh.symmetrize.threshold": true;
     "toolDefaults.material": true;
     "toolDefaults.material.new": true;
     "toolDefaults.material.new.dataPathToSet": true;

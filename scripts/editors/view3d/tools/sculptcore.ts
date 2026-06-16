@@ -321,7 +321,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     row = addHeaderRow()
     strip = row.strip()
     strip.useIcons(true)
-    strip.tool('mesh.symmetrize()')
+    strip.tool('litemesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.mark_sharp_interactive()')
     strip.tool('litemesh.generate_uv()')

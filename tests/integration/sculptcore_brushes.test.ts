@@ -50,6 +50,10 @@ interface BrushTestResult {
   autosmoothOn?: StrokeMetrics
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
   accumulateDefaults?: Record<string, boolean>
+  symMirrorX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
+  symOctants?: {octantsCovered: number; movedCount: number; invalid?: string}
+  symPlainX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
+  symmetrize?: {missBefore: number; missAfter: number}
   nonFiniteCount?: number
   radius?: number
 }
@@ -231,6 +235,38 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
     // green-dominant mean over the painted verts.
     expect(r.color!.meanG).toBeGreaterThan(r.color!.meanR)
     expect(r.color!.meanG).toBeGreaterThan(r.color!.meanB)
+  })
+
+  test('symmetric X stroke mirrors the dab across the X plane (Part A)', () => {
+    expect(r.symMirrorX?.invalid).toBeUndefined()
+    // The off-center dab and its X-mirror both move verts, on both X-halves...
+    expect(r.symMirrorX!.movedPos).toBeGreaterThan(0)
+    expect(r.symMirrorX!.movedNeg).toBeGreaterThan(0)
+    // ...in roughly balanced counts (the mesh is near-symmetric there).
+    const lo = Math.min(r.symMirrorX!.movedPos, r.symMirrorX!.movedNeg)
+    const hi = Math.max(r.symMirrorX!.movedPos, r.symMirrorX!.movedNeg)
+    expect(lo).toBeGreaterThan(hi * 0.3)
+  })
+
+  test('symmetric X+Y+Z stroke covers all 8 octants (Part A)', () => {
+    expect(r.symOctants?.invalid).toBeUndefined()
+    expect(r.symOctants!.octantsCovered).toBe(8)
+  })
+
+  test('plain off-center stroke moves only its own X-half (asymmetry baseline)', () => {
+    expect(r.symPlainX?.invalid).toBeUndefined()
+    expect(r.symPlainX!.movedPos).toBeGreaterThan(0)
+    // No symmetry → the mirror half is untouched (only stray near-plane verts).
+    expect(r.symPlainX!.movedNeg * 5).toBeLessThan(r.symPlainX!.movedPos)
+  })
+
+  test('symmetrize op makes the mesh X-symmetric (Part B)', () => {
+    expect(r.symmetrize).toBeDefined()
+    // A clean one-sided +X deform left the mesh clearly X-asymmetric...
+    expect(r.symmetrize!.missBefore).toBeGreaterThan(0.01)
+    // ...and symmetrize about X drives the mirror miss-fraction back toward ~0.
+    expect(r.symmetrize!.missAfter).toBeLessThan(0.02)
+    expect(r.symmetrize!.missAfter).toBeLessThan(r.symmetrize!.missBefore * 0.5)
   })
 
   test('no NaN/Inf in the final position buffer', () => {

@@ -1,4 +1,15 @@
-import {FloatProperty, IntProperty, BoolProperty, ToolOp, PropertySlots, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux'
+import {
+  FloatProperty,
+  IntProperty,
+  BoolProperty,
+  FlagProperty,
+  EnumProperty,
+  ToolOp,
+  PropertySlots,
+  Vector3,
+  Vector4,
+  Matrix4,
+} from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
@@ -787,6 +798,205 @@ export class ReorderLocalityOp extends LiteMeshAttrOp {
   }
 }
 ToolOp.register(ReorderLocalityOp)
+
+/**
+ * Make the active LiteMesh geometrically symmetric along a chosen axis set,
+ * topology-preserving (positions only — no bisect/weld). For each enabled axis
+ * the destination side's verts copy the mirrored position of their nearest
+ * source-side counterpart; verts within `threshold` of a plane snap onto it.
+ * Pairs with mirrored sculpt strokes (both reflect about the mesh's own local
+ * axis planes). Undo snapshots the pre-symmetrize mesh (serialize blob), like
+ * TriangulateLiteMeshOp.
+ */
+export class SymmetrizeLiteMeshOp extends LiteMeshAttrOp<{
+  axes: FlagProperty
+  direction: EnumProperty
+  threshold: FloatProperty
+}> {
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.symmetrize',
+      uiname  : 'Symmetrize',
+      icon    : Icons.SYMMETRIZE,
+      inputs: ToolOp.inherit({
+        axes     : new FlagProperty(1, {X: 1, Y: 2, Z: 4}).saveLastValue(),
+        direction: new EnumProperty(1, {NEGATIVE: -1, POSITIVE: 1}).saveLastValue(),
+        threshold: new FloatProperty(1e-4).setRange(0, 2).noUnits().saveLastValue(),
+      }),
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const {axes, direction, threshold} = this.getInputs()
+    if (!axes) {
+      return
+    }
+
+    // Read all live vertex positions once; mutate this array per axis, write
+    // back at the end (one setVertCo per moved vert).
+    const {idx, co} = mesh.dumpVertCo()
+    const n = idx.length
+    if (n === 0) {
+      return
+    }
+
+    const dir = Number(direction) >= 0 ? 1 : -1
+    for (let a = 0; a < 3; a++) {
+      if (!(axes & (1 << a))) {
+        continue
+      }
+      symmetrizeAxis(co, a, dir, threshold)
+    }
+
+    for (let i = 0; i < n; i++) {
+      const p = co[i]
+      mesh.setVertCo(idx[i], p[0], p[1], p[2])
+    }
+
+    mesh.recalcNormals()
+    // Direct setVertCo writes don't flag spatial nodes, so node bounds and the
+    // GPU vertex buffers are stale; rebuild the tree to refresh both.
+    mesh.rebuildSpatialFromEdit()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      const wasm = getWasmImmediate()!
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(SymmetrizeLiteMeshOp)
+
+/**
+ * Make `co` (flat object-local positions, mutated in place) symmetric about the
+ * plane `axis = 0`: every destination-side vertex (`sign(p[axis]) === −dir`)
+ * copies the mirrored position of its nearest source-side counterpart, and any
+ * vertex within `threshold` of the plane snaps onto it. Source side is the half
+ * with `sign(p[axis]) === dir` (plus on-plane verts). Topology-preserving.
+ */
+function symmetrizeAxis(co: number[][], axis: number, dir: number, threshold: number): void {
+  // Source = the kept half (dir side) plus on-plane verts: the mirror target set.
+  const srcIdx: number[] = []
+  for (let i = 0; i < co.length; i++) {
+    const s = co[i][axis]
+    if (Math.abs(s) <= threshold || Math.sign(s) === dir) {
+      srcIdx.push(i)
+    }
+  }
+  if (srcIdx.length === 0) {
+    return
+  }
+
+  // Spatial hash over source positions for nearest-vertex matching. Cell size is
+  // the mean nearest-neighbor scale approximated from the bound diagonal / n^(1/3).
+  let min = [Infinity, Infinity, Infinity]
+  let max = [-Infinity, -Infinity, -Infinity]
+  for (const i of srcIdx) {
+    const p = co[i]
+    for (let k = 0; k < 3; k++) {
+      if (p[k] < min[k]) min[k] = p[k]
+      if (p[k] > max[k]) max[k] = p[k]
+    }
+  }
+  const diag = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) || 1
+  const cell = Math.max(diag / Math.max(1, Math.cbrt(srcIdx.length)), 1e-6)
+  const grid = new Map<string, number[]>()
+  const key = (x: number, y: number, z: number) =>
+    `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`
+  for (const i of srcIdx) {
+    const p = co[i]
+    const k = key(p[0], p[1], p[2])
+    let bucket = grid.get(k)
+    if (!bucket) {
+      bucket = []
+      grid.set(k, bucket)
+    }
+    bucket.push(i)
+  }
+
+  // Find the source vertex nearest to point m by scanning a growing ring of
+  // cells until a hit is found, then one extra ring to confirm the true nearest.
+  const nearest = (m: number[]): number => {
+    const cx = Math.floor(m[0] / cell)
+    const cy = Math.floor(m[1] / cell)
+    const cz = Math.floor(m[2] / cell)
+    let best = -1
+    let bestD = Infinity
+    for (let r = 0; r < 64; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dz = -r; dz <= r; dz++) {
+            // Only the shell at radius r (interior already scanned).
+            if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== r) {
+              continue
+            }
+            const bucket = grid.get(`${cx + dx},${cy + dy},${cz + dz}`)
+            if (!bucket) {
+              continue
+            }
+            for (const i of bucket) {
+              const p = co[i]
+              const d = (p[0] - m[0]) ** 2 + (p[1] - m[1]) ** 2 + (p[2] - m[2]) ** 2
+              if (d < bestD) {
+                bestD = d
+                best = i
+              }
+            }
+          }
+        }
+      }
+      // Once we have a candidate, scan one more shell (a closer vert can sit in
+      // an as-yet-unscanned neighbor cell) then stop.
+      if (best >= 0 && r > 0) {
+        break
+      }
+    }
+    return best
+  }
+
+  // Destination side: mirror each vert across the plane, snap to the nearest
+  // source vert, and copy that source's mirrored position back.
+  for (let i = 0; i < co.length; i++) {
+    const p = co[i]
+    const s = p[axis]
+    if (Math.abs(s) <= threshold) {
+      p[axis] = 0
+      continue
+    }
+    if (Math.sign(s) === dir) {
+      continue
+    }
+    const m = [p[0], p[1], p[2]]
+    m[axis] = -m[axis]
+    const sj = nearest(m)
+    if (sj < 0) {
+      continue
+    }
+    const sp = co[sj]
+    p[0] = sp[0]
+    p[1] = sp[1]
+    p[2] = sp[2]
+    p[axis] = -p[axis]
+  }
+}
 
 /**
  * Feature-aligned global quad remesh of the active LiteMesh (cross-field →
