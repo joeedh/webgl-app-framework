@@ -69,6 +69,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * SymAxisMap mirror images; each image traces its own path so its grab delta
    * must not be shared. Empty until the first dab of the stroke. */
   prevDabLocal: (Vector3 | undefined)[] = []
+  /** Per-mirror-image grab anchor: the first dab's surface point (`co`) and the
+   * stroke's fixed view direction (`nrm`, object-local). Grab-style brushes
+   * (grab/snakehook/kelvinlet) project each later dab onto the plane through
+   * `co` with normal `nrm` so they drag in the *view* plane, not along the
+   * curved surface. Empty until the first dab. */
+  grabAnchor: ({co: Vector3; nrm: Vector3} | undefined)[] = []
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -136,6 +142,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
     this.strokeGroupId = undefined
     this.prevDabLocal = []
+    this.grabAnchor = []
     this.dabSeed = 1
     this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
@@ -425,10 +432,27 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // object-local here (same vector the dab raycast used).
       const dabNormal = resolvePlaneDabNormal(brush.tool, brush.planeNormalMode, normal, viewvec)
 
-      // Grab-style brushes (kelvinlet): pull the region under the dab in the
-      // stroke-movement direction (see applyGrabDabState).
+      // Grab-style brushes (grab/snakehook/kelvinlet): pull the region in the
+      // stroke-movement direction (see applyGrabDabState). The displacement must
+      // track the *view* plane, not the curved surface — otherwise dragging
+      // snaps geometry along the surface normal plane (#18/#19/#34). Project each
+      // dab's view ray onto the plane through the stroke anchor (first dab's
+      // surface point) with the stroke's fixed view normal.
       if (isGrabTool(brush.tool)) {
-        this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, p, this.prevDabLocal[mirrorIdx])
+        let q = new Vector3(p)
+        const anchor = this.grabAnchor[mirrorIdx]
+        if (anchor === undefined) {
+          const nrm = new Vector3(viewvec)
+          nrm.normalize()
+          this.grabAnchor[mirrorIdx] = {co: new Vector3(p), nrm}
+        } else {
+          const denom = viewvec.dot(anchor.nrm)
+          if (Math.abs(denom) > 1e-7) {
+            const s = (anchor.co.dot(anchor.nrm) - origin.dot(anchor.nrm)) / denom
+            q = new Vector3(viewvec).mulScalar(s).add(origin)
+          }
+        }
+        this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, q, this.prevDabLocal[mirrorIdx])
       }
 
       // One unified dab: dyntopo pre-pass (if params != null), node filter,
