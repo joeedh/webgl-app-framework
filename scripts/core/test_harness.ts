@@ -330,6 +330,10 @@ function dumpScene(): unknown {
     // ~5s with two randomly-timed split-serialization autosaves, each read back
     // and validated (container framing + geometry-signature round-trip).
     autosavetest : (globalThis as {__autosaveTestResult?: unknown}).__autosaveTestResult,
+    // Reflect the fuzz driver (`__fuzzTest`): random sculptcore strokes with
+    // random dyntopo toggles, a replayable per-stroke log, and a non-finite scan
+    // (hunts the intermittent dyntopo crash).
+    fuzztest     : (globalThis as {__fuzzTestResult?: unknown}).__fuzzTestResult,
     // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
     // stores on globalThis.__evalTestResult lands in the dump (renderer
     // console output never reaches the harness stdout, so the dump is the
