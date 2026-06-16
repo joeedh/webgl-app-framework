@@ -220,6 +220,7 @@ MenuBarEditor {
          //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
        }],*/
       'app.open()',
+      'app.load_last_autosave()',
       'app.save(forceDialog=false saveToolStack=true)|Save With Toolstack',
       'app.save(forceDialog=true)|Save As',
       'app.export_stl()',

@@ -217,6 +217,29 @@ export class AutosaveManager {
       return false
     }
 
+    return this._applyLatest(latest)
+  }
+
+  /**
+   * Unconditionally load the newest backup (the "Load Last Autosave" command).
+   * Unlike checkRecovery this skips the once-only guard and the newer-than-project
+   * test, so it always reloads whatever the latest backup is.
+   */
+  async loadLatest(): Promise<boolean> {
+    if (!this.backend) return false
+    const latest = await this.backend.readLatest()
+    if (!latest) {
+      this.status('No autosave found')
+      return false
+    }
+    return this._applyLatest(latest)
+  }
+
+  /** Read + load a specific backup record, restoring the source fileHandle and
+   * marking the result dirty so it re-autosaves. */
+  private async _applyLatest(latest: AutosaveLatest): Promise<boolean> {
+    if (!this.backend) return false
+
     const bytes = await this.backend.readBackup(latest.backupKey)
     if (!bytes) {
       console.warn('autosave: recovery backup vanished', latest.backupKey)
@@ -236,7 +259,10 @@ export class AutosaveManager {
         reset_context  : true,
       })
     }
-    // Recovered work is, by definition, unsaved relative to its project.
+    // Restore the save handle so a subsequent Save writes back to the project's
+    // original file (works on Electron, where the handle is a path; a web
+    // FileSystemFileHandle can't be reconstructed from a string, so Save there
+    // falls back to a Save-As dialog).
     if (latest.sourcePath) {
       this.state.saveHandle = {data: latest.sourcePath, name: baseName(latest.sourcePath)}
     }
