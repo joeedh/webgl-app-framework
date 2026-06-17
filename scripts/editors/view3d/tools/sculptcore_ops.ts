@@ -305,6 +305,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     for (let i = 0; i < muls.length; i++) {
       this.applyDabOne(ctx, ps, muls[i], i + 1)
     }
+
+    // When the poly-group edge overlay is enabled, refresh its boundaries each
+    // dab so group painting shows live (#28). Cheap no-op when the overlay is off.
+    if ((toolmode as unknown as {drawPolyGroupEdges?: boolean})?.drawPolyGroupEdges) {
+      const mesh = ctx.object?.data as LiteMesh | undefined
+      mesh?.markSeamsDirty?.()
+    }
   }
 
   /** The live symmetry axes bitflag {X:1,Y:2,Z:4}: the value snapshotted in
