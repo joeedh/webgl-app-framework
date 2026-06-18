@@ -344,7 +344,8 @@ export class LiteMesh extends SceneObjectData {
     this,
     `
     litemesh.LiteMesh {
-      _data : arraybuffer(byte) | this.serialize();
+      _data     : arraybuffer(byte) | this.serialize();
+      repairLog : array(string);
     }
     `
   )
@@ -555,6 +556,14 @@ export class LiteMesh extends SceneObjectData {
         data = resolved
       }
       this.mesh = this.wasm.Mesh_deserialize(data)
+      // Repair any structural corruption baked into the saved file before the
+      // spatial tree is built or any op runs on it (#37). Cheap (returns 0
+      // without rebuilding) on a healthy mesh.
+      const nErr = (this.mesh as unknown as {repairMesh(): number}).repairMesh()
+      if (nErr > 0) {
+        this.repairLog.push(`[load] repaired ${nErr} mesh-structure error(s) (details in console)`)
+        ;(this.mesh as unknown as {clearRepairLog(): void}).clearRepairLog()
+      }
     } else {
       // Legacy / empty block (saved before mesh serialization was wired): fall
       // back to a default cube so the file still loads with geometry.
@@ -603,6 +612,12 @@ export class LiteMesh extends SceneObjectData {
    * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
    * SpatialTree.displayColorMode (which TS can't read back). */
   _displayColorMode: number = LiteMeshDisplayMode.VERTEX_COLOR
+
+  /** Serialized log of mesh-structure repairs (validateAndRepair on a detected
+   * dyntopo fault, #37). Each entry is prefixed with the brush context by the
+   * sculpt op; the detailed per-error lines go to the console. Capped to keep
+   * the file small. */
+  repairLog: string[] = []
 
   // Renderable through the material pipeline: in SHOW_RENDER mode the
   // RealtimeEngine BasePass only pushes setRequestedAttrs/setDrawShader to
@@ -998,6 +1013,7 @@ export class LiteMesh extends SceneObjectData {
   edgeFlagKind(e: number, kind: number): number {
     return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
   }
+
 
   /** Mark EDGE_SHARP on every manifold edge whose dihedral angle exceeds
    * `angleRadians` (additive). Returns the number of edges changed. */

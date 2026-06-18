@@ -19,6 +19,7 @@ import {setSerializeCacheMode} from './serialize_cache'
 import {isAutosaveContainer} from './autosave_format'
 import {loadSplitAutosave, SplitSerializer} from './autosave_serialize'
 import {AutosaveWorkerHost} from './autosave_worker_host'
+import {hasArg} from './app_argv'
 
 const MIN_INTERVAL_MIN = 0.5
 const MAX_INTERVAL_MIN = 120
@@ -211,10 +212,18 @@ export class AutosaveManager {
     }
     if (!offer) return false
 
-    const where = latest.sourcePath ? `\nProject: ${latest.sourcePath}` : ' (untitled project)'
-    const msg = `Recover unsaved work from ${formatTime(latest.timestamp)}?${where}`
-    if (!(globalThis.confirm?.(msg) ?? false)) {
+    // Headless / automation: `--no-autosave-recover` skips the blocking confirm()
+    // dialog (which otherwise wedges the renderer until dismissed) and declines
+    // recovery; `--autosave-recover` accepts it without prompting.
+    if (hasArg('no-autosave-recover')) {
       return false
+    }
+    if (!hasArg('autosave-recover')) {
+      const where = latest.sourcePath ? `\nProject: ${latest.sourcePath}` : ' (untitled project)'
+      const msg = `Recover unsaved work from ${formatTime(latest.timestamp)}?${where}`
+      if (!(globalThis.confirm?.(msg) ?? false)) {
+        return false
+      }
     }
 
     return this._applyLatest(latest)

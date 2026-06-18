@@ -34,7 +34,7 @@
 [x]: kelvinlet brush is also using the surface normal plane it should not
 [ ]: kelvinlet brush is behaving like the snake hook for some reason not a kelvinlet grab
 [x]: change the default dyntopo max rounds to 5
-[ ]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
+[x]: examples/crash2.wproj (which is in the sculptcore toolmode) crashes after a few strokes
 [x]: drawing with mirror on doesn't apply dyntopo in the mirror dabs it should
 [x]: when drawing with mirror the mirrored stroke often seems to have a bit more strength
      then the current one
