@@ -1,7 +1,8 @@
 /**
- * Headless / scripted test harness for the Electron shell.
+ * Headless / scripted test harness for the NW.js shell.
  *
- * Driven by CLI args forwarded from `electron/main.js` (see `app_argv.ts`).
+ * Driven by CLI args read from `nw.App.argv` (see `app_argv.ts`); the launcher
+ * `nwjs/launch.mjs` / `nwjs_boot.ts` passes them after the app dir.
  * Lets a build/CI step boot the *real* app, build a deterministic scene
  * (notably one containing a sculptcore-backed `LiteMesh`), optionally run a
  * tool, then save a `.wproj`, dump a backend-comparable JSON snapshot, grab a
@@ -26,7 +27,7 @@
  *   --exit                  quit the app once the scenario completes
  *
  * Nothing here runs unless one of these flags is present, so a normal launch
- * (`electron main.js`) is unaffected.
+ * (`pnpm run nwjs`) is unaffected.
  */
 
 import {getAppArgv, getArg, getArgList, hasArg} from './app_argv'
@@ -59,7 +60,7 @@ function nodeRequire(): ((m: string) => unknown) | undefined {
 
 function writeFile(path: string, data: Uint8Array | string): void {
   const req = nodeRequire()
-  if (!req) throw new Error('node fs unavailable (not running under Electron nodeIntegration)')
+  if (!req) throw new Error('node fs unavailable (not running under NW.js)')
   const fs = req('fs') as {writeFileSync: (p: string, d: Uint8Array | string) => void}
   fs.writeFileSync(path, data)
 }
@@ -67,7 +68,7 @@ function writeFile(path: string, data: Uint8Array | string): void {
 /** Read a file as an ArrayBuffer (for `--load`). */
 function readFileBuffer(path: string): ArrayBuffer {
   const req = nodeRequire()
-  if (!req) throw new Error('node fs unavailable (not running under Electron nodeIntegration)')
+  if (!req) throw new Error('node fs unavailable (not running under NW.js)')
   const fs = req('fs') as {readFileSync: (p: string) => {buffer: ArrayBuffer; byteOffset: number; byteLength: number}}
   const b = fs.readFileSync(path)
   return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
@@ -374,15 +375,15 @@ async function captureScreenshot(path: string): Promise<void> {
 }
 
 async function quit(): Promise<void> {
-  const req = nodeRequire()
   try {
-    const electron = req?.('electron') as {ipcRenderer?: {invoke: (c: string) => Promise<void>}} | undefined
-    if (electron?.ipcRenderer) {
-      await electron.ipcRenderer.invoke('apptest:quit')
+    // NW.js: quit the whole app directly (no main process / IPC needed).
+    const nw = (globalThis as {nw?: {App?: {quit(): void}}}).nw
+    if (nw?.App) {
+      nw.App.quit()
       return
     }
   } catch (err) {
-    console.warn(`${TAG} apptest:quit IPC failed, falling back to window.close`, err)
+    console.warn(`${TAG} nw.App.quit failed, falling back to window.close`, err)
   }
   window.close()
 }

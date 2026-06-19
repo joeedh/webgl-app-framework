@@ -1,0 +1,39 @@
+diff --git a/lib/runtimePaths.js b/lib/runtimePaths.js
+index 4fc9f177e80d51e92dc442f3ed97caa06a27b1eb..8b2c875cd8b4ffb4e40f084ef7829b1ae2231542 100644
+--- a/lib/runtimePaths.js
++++ b/lib/runtimePaths.js
+@@ -4,6 +4,10 @@ const semver = require('semver')
+ 
+ const NODE_MIRROR = process.env.NVM_NODEJS_ORG_MIRROR || 'https://nodejs.org/dist'
+ const ELECTRON_MIRROR = process.env.ELECTRON_MIRROR || 'https://artifacts.electronjs.org/headers/dist'
++// The legacy node-webkit.s3.amazonaws.com bucket only serves pre-~0.100 NW.js
++// versions; modern dists live at dl.nwjs.io and are packaged node-style
++// (node-vX.tar.gz full headers + x64/node.lib, no separate nw.lib).
++const NWJS_MIRROR = process.env.NWJS_MIRROR || 'https://dl.nwjs.io'
+ 
+ const runtimePaths = {
+ 	node: function (targetOptions) {
+@@ -34,6 +38,23 @@ const runtimePaths = {
+ 		}
+ 	},
+ 	nw: function (targetOptions) {
++		// Modern NW.js (~0.100+) publishes node-style dist files at dl.nwjs.io:
++		// node-vX.tar.gz (full source headers, like the old nw-headers) and
++		// x64/node.lib (no separate nw.lib). The old node-webkit.s3 bucket +
++		// nw-headers/nw.lib naming only exists for legacy versions.
++		if (semver.gte(targetOptions.runtimeVersion, '0.100.0')) {
++			return {
++				externalPath: NWJS_MIRROR + '/v' + targetOptions.runtimeVersion + '/',
++				winLibs: [
++					{
++						dir: targetOptions.isArm64 ? 'arm64' : targetOptions.isX64 ? 'x64' : 'x86',
++						name: 'node.lib',
++					},
++				],
++				tarPath: 'node-v' + targetOptions.runtimeVersion + '.tar.gz',
++				headerOnly: false,
++			}
++		}
+ 		if (semver.gte(targetOptions.runtimeVersion, '0.13.0')) {
+ 			return {
+ 				externalPath: 'https://node-webkit.s3.amazonaws.com/v' + targetOptions.runtimeVersion + '/',

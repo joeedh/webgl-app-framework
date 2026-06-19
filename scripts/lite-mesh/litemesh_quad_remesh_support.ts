@@ -1,7 +1,7 @@
 /**
  * Integration-test support for the host-side quad-remesh path
  * (`sculptcore/documentation/plans/quad-remeshing.md`, M6h). Exposes
- * `globalThis.__quadRemeshTest()`, which the Electron headless harness drives
+ * `globalThis.__quadRemeshTest()`, which the NW.js headless harness drives
  * from `--eval` (see `tests/integration/litemesh_quad_remesh.test.ts`).
  *
  * It runs the *real* `litemesh.quad_remesh` ToolOp through the toolstack on the

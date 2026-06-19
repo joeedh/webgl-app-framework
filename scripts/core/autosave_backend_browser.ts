@@ -6,7 +6,7 @@
  * Prefers OPFS (`navigator.storage.getDirectory`) — persistent, no gesture,
  * async writes — and falls back to IndexedDB where OPFS is absent. Registers
  * itself via registerBrowserAutosaveBackend so getAutosaveBackend() picks it up
- * when no Electron fs backend is available. Side-effect import only.
+ * when no NW.js fs backend is available. Side-effect import only.
  */
 
 import {
@@ -16,7 +16,7 @@ import {
   type AutosaveWriteOpts,
 } from './autosave_backend'
 
-/** Per-store rotation manifest (mirrors the Electron backend's). */
+/** Per-store rotation manifest (mirrors the NW.js backend's). */
 interface RotationManifest {
   newestSlot: number
   maxBackups: number

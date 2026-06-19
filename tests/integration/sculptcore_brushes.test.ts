@@ -2,7 +2,7 @@
  * Brush-behavior integration test (ImmediateTODOs: invert handling, draw-sharp
  * boundedness, mask painting, brush.color piping, accumulate-by-default flags).
  *
- * Drives the real Electron app headlessly per backend on the spherified
+ * Drives the real NW.js app headlessly per backend on the spherified
  * `litemesh-cube` scene, runs `__brushTest()` (scripts/lite-mesh/
  * litemesh_brushtest_support.ts) via `--eval`, and asserts the structured
  * result reflected into the `--dump` JSON as `brushtest`. The driver runs
@@ -10,7 +10,7 @@
  * measures displacement through the GPU position/color vertex buffers — the
  * backend-agnostic bulk-data seam.
  *
- * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`pnpm build`). The native leg additionally needs the N-API addon
  * (`make.mjs node`); without it only the WASM leg runs.
  */
@@ -58,11 +58,11 @@ interface BrushTestResult {
   radius?: number
 }
 
-/** Resolve the Electron executable via the electron/ workspace package. */
-function resolveElectronExe(): string | undefined {
+/** Resolve the NW.js executable via the nwjs/ workspace package. */
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -72,15 +72,14 @@ function resolveElectronExe(): string | undefined {
 }
 
 /** Boot headlessly under `backend`, run __brushTest(), return its result. */
-function runBrushTest(electronExe: string, backend: 'wasm' | 'native'): BrushTestResult {
+function runBrushTest(nwExe: string, backend: 'wasm' | 'native'): BrushTestResult {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'scbrush-')), `${backend}.json`)
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -104,14 +103,14 @@ function runBrushTest(electronExe: string, backend: 'wasm' | 'native'): BrushTes
   return dump.brushtest
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -130,7 +129,7 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
   let r: BrushTestResult
 
   beforeAll(() => {
-    r = runBrushTest(electronExe!, backend)
+    r = runBrushTest(nwExe!, backend)
   }, 180000)
 
   test('driver ran cleanly', () => {

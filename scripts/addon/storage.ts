@@ -3,7 +3,7 @@
  *
  * Each backend exposes the same shape so `installFromBlob` (and the loader's
  * "list installed addons" walk) work uniformly across the web (IndexedDB),
- * Electron (filesystem via IPC), and tests (in-memory). See plan §2 / §6 step 9.
+ * NW.js (filesystem, direct require), and tests (in-memory). See plan §2 / §6 step 9.
  *
  * Path semantics: relative POSIX paths within the addon, e.g.
  *   "manifest.json", "build/main.js", "build/_chunks/chunk-AB12.js"
@@ -119,7 +119,7 @@ export class InMemoryAddonStorage implements AddonStorage {
 // ---------------------------------------------------------------------------
 
 function makeBlobUrl(bytes: Uint8Array, mime: string): string {
-  // Browsers and Electron renderers implement URL.createObjectURL; jsdom (test
+  // Browsers and NW.js renderers implement URL.createObjectURL; jsdom (test
   // environment) doesn't. Fall back to a data: URL there — same import()
   // semantics, just less compact.
   if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
@@ -380,14 +380,13 @@ export class IndexedDBAddonStorage implements AddonStorage {
 
 // ---------------------------------------------------------------------------
 // NodeFsAddonStorage — filesystem backend for environments with Node access
-// (Electron renderer with nodeIntegration:true, pure Node tests, or any host
+// (NW.js renderer, pure Node tests, or any host
 // that wires up `fs` via a context bridge).
 //
 // Layout under the base directory: <baseDir>/<addonId>/<relPath>
 //
-// In Electron the caller picks baseDir as `path.join(app.getPath('userData'),
-// 'addons')` from main.js and passes it across (or computes via IPC; see
-// scripts/addon/storage_electron.ts in step 9c when it lands). See plan §6.
+// In NW.js the caller picks baseDir as `path.join(nw.App.dataPath, 'addons')`
+// (see scripts/addon/storage_nwjs.ts). See plan §6.
 // ---------------------------------------------------------------------------
 
 export interface INodeFs {

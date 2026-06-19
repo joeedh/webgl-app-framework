@@ -1,6 +1,6 @@
 /**
  * Integration-test support for sculptcore brush behavior. Exposes
- * `globalThis.__brushTest()`, which the Electron headless harness drives from
+ * `globalThis.__brushTest()`, which the NW.js headless harness drives from
  * `--eval` (see `tests/integration/sculptcore_brushes.test.ts`); the result is
  * reflected into the `--dump` JSON as `brushtest`.
  *

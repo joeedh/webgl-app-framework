@@ -1,6 +1,6 @@
 /**
  * Main-thread host for the autosave compression worker (plan §5.4). Lazily
- * spawns the module worker (browser + Electron renderer), forwards raw mesh
+ * spawns the module worker (browser + NW.js renderer), forwards raw mesh
  * payloads as transferables, and resolves with the compressed `SCULPT00` blobs.
  * If a worker can't be spawned (no `Worker`, headless context, build missing) it
  * transparently falls back to inline main-thread compression, so autosave always

@@ -1,61 +1,30 @@
 /**
- * Application argv access for the Electron shell.
+ * Application argv access for the NW.js shell.
  *
- * Electron does not forward the user args of `electron main.js <args...>` into
- * the renderer's `process.argv`, so `electron/main.js` re-injects them two
- * ways: as a base64 `--apptest-argv=<...>` token in `webPreferences.
- * additionalArguments` (primary, cross-platform, survives reload), and — for
- * the legacy `electron/run.sh` flow — into `arguments.txt`. This module reads
- * whichever is present and hands back a plain `string[]`.
+ * NW.js merges the Node + browser contexts and exposes the app's user args
+ * (the ones after the app path, minus chromium switches) directly to the
+ * renderer as `nw.App.argv`. This module reads that and hands back a plain
+ * `string[]`.
  *
- * Browser builds (no `process`) get an empty arg list.
+ * Browser builds (no `nw`) get an empty arg list.
  */
-
-const ARGV_TOKEN = '--apptest-argv='
 
 let _cached: string[] | undefined
 
-function fromAdditionalArguments(): string[] | undefined {
-  // process.argv exists in the Electron renderer (nodeIntegration:true).
-  const argv = (globalThis as {process?: {argv?: string[]}}).process?.argv
-  if (!argv) return undefined
-
-  for (const a of argv) {
-    if (a.startsWith(ARGV_TOKEN)) {
-      try {
-        // atob + TextDecoder avoids a Buffer/@types/node dependency.
-        const bytes = Uint8Array.from(atob(a.slice(ARGV_TOKEN.length)), (c) => c.charCodeAt(0))
-        const parsed = JSON.parse(new TextDecoder().decode(bytes))
-        if (Array.isArray(parsed)) return parsed.map(String)
-      } catch (err) {
-        console.warn('app_argv: failed to decode --apptest-argv token', err)
-      }
-    }
-  }
-  return undefined
+interface NwApp {
+  App?: {argv?: string[]}
 }
 
-function fromArgumentsTxt(): string[] | undefined {
-  try {
-    // require is only available under nodeIntegration; guard for the browser.
-    const req = (globalThis as {require?: (m: string) => unknown}).require
-    if (!req) return undefined
-    const fs = req('fs') as {existsSync: (p: string) => boolean; readFileSync: (p: string, e: string) => string}
-    if (!fs.existsSync('arguments.txt')) return undefined
-    const buf = fs
-      .readFileSync('arguments.txt', 'utf8')
-      .replace(/[ \t]+/g, ' ')
-      .trim()
-    return buf.length ? buf.split(' ') : []
-  } catch {
-    return undefined
-  }
+function fromNwAppArgv(): string[] | undefined {
+  const nw = (globalThis as {nw?: NwApp}).nw
+  const argv = nw?.App?.argv
+  return Array.isArray(argv) ? argv.map(String) : undefined
 }
 
-/** Returns the forwarded application args (empty in the browser). Cached. */
+/** Returns the NW.js application args (empty in the browser). Cached. */
 export function getAppArgv(): string[] {
   if (_cached !== undefined) return _cached
-  _cached = fromAdditionalArguments() ?? fromArgumentsTxt() ?? []
+  _cached = fromNwAppArgv() ?? []
   return _cached
 }
 

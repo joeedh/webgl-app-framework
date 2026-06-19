@@ -1,7 +1,7 @@
 /**
  * Tests NodeFsAddonStorage against Node's real fs/promises (operating on a
- * temp directory). This is the backend the Electron renderer uses via
- * scripts/addon/storage_electron.ts. Step 9c of the refactor (plan §6 step 9).
+ * temp directory). This is the backend the NW.js renderer uses via
+ * scripts/addon/storage_nwjs.ts. Step 9c of the refactor (plan §6 step 9).
  *
  * The contract is the same as InMemoryAddonStorage / IndexedDBAddonStorage —
  * tests here focus on the fs-specific paths: directory creation,

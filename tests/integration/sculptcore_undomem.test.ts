@@ -2,7 +2,7 @@
  * Sculpt undo-memory integration test (ImmediateTODOs: undo memory size
  * calculation for sculptcore's toolops + the maximum undo memory limit).
  *
- * Drives the real Electron app headlessly per backend on the `litemesh-cube`
+ * Drives the real NW.js app headlessly per backend on the `litemesh-cube`
  * scene, runs `__undoMemTest()` (scripts/lite-mesh/litemesh_undomem_support.ts)
  * via `--eval`, and asserts the structured result reflected into the `--dump`
  * JSON as `undomemtest`. The driver runs real sculpt strokes (one with dyntopo
@@ -12,7 +12,7 @@
  * (dropped ops must free their C++ steps via `onUndoDestroy` → `freeStep`),
  * the settings → stack `_syncSettings` wiring, and `freeStep`'s guards.
  *
- * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`pnpm build`). The native leg additionally needs the N-API addon
  * (`make.mjs node`); without it only the WASM leg runs.
  */
@@ -50,11 +50,11 @@ interface UndoMemTestResult {
   totalAfterUndoRedo?: number
 }
 
-/** Resolve the Electron executable via the electron/ workspace package. */
-function resolveElectronExe(): string | undefined {
+/** Resolve the NW.js executable via the nwjs/ workspace package. */
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -64,15 +64,14 @@ function resolveElectronExe(): string | undefined {
 }
 
 /** Boot headlessly under `backend`, run __undoMemTest(), return its result. */
-function runUndoMemTest(electronExe: string, backend: 'wasm' | 'native'): UndoMemTestResult {
+function runUndoMemTest(nwExe: string, backend: 'wasm' | 'native'): UndoMemTestResult {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'scundomem-')), `${backend}.json`)
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -94,14 +93,14 @@ function runUndoMemTest(electronExe: string, backend: 'wasm' | 'native'): UndoMe
   return dump.undomemtest
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -120,7 +119,7 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore undo memory (%s)', (ba
   let r: UndoMemTestResult
 
   beforeAll(() => {
-    r = runUndoMemTest(electronExe!, backend)
+    r = runUndoMemTest(nwExe!, backend)
   }, 180000)
 
   test('driver ran cleanly', () => {

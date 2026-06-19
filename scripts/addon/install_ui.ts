@@ -9,7 +9,7 @@
  *
  * The picker is built from a transient `<input type="file">`; no special
  * pathux integration needed. Works in any browser-like environment (Chrome,
- * Electron renderer, jsdom-with-DOM-stubs).
+ * NW.js renderer, jsdom-with-DOM-stubs).
  */
 
 import addonManager from './addon.js'

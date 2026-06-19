@@ -1,6 +1,6 @@
 /**
  * Registers sculptcore-backed `LiteMesh` test scenes into the core test-scene
- * registry (`scripts/core/test_scenes.ts`), driven by the Electron CLI harness
+ * registry (`scripts/core/test_scenes.ts`), driven by the NW.js CLI harness
  * (`--gen-scene litemesh-cube`, see `scripts/core/test_harness.ts`).
  *
  * This lives in the lite-mesh layer — not core — because building the scene

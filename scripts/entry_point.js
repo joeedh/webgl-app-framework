@@ -8,8 +8,8 @@ import './typescript_entry.js'
 import './camera/camera.js'
 
 import * as appstate from './core/appstate.js'
-// Registers the OPFS / IndexedDB autosave backend (used when no Electron fs
-// backend is available). Side-effect import; harmless under Electron.
+// Registers the OPFS / IndexedDB autosave backend (used when no NW.js fs
+// backend is available). Side-effect import; harmless under NW.js.
 import './core/autosave_backend_browser.js'
 import {loadShapes} from './webgl/simplemesh_shapes.js'
 
@@ -93,9 +93,8 @@ if (_backend) {
 await sculptcore.loadWasm()
 
 export function handleNodeArguments() {
-  // getAppArgv reads the forwarded argv (electron/main.js injects it as a
-  // base64 --apptest-argv token via webPreferences.additionalArguments, with
-  // the legacy arguments.txt as fallback). See scripts/core/app_argv.ts.
+  // getAppArgv reads the NW.js user args (nw.App.argv); see
+  // scripts/core/app_argv.ts.
   let args = getAppArgv()
   _appstate.arguments = args
   console.log('app arguments', args)
@@ -139,7 +138,7 @@ export async function init() {
       window._print_evt_debug = true
     }, 100)
 
-    if (window.haveElectron) {
+    if (window.haveNwjs) {
       window.setTimeout(() => {
         handleNodeArguments()
       }, 0)

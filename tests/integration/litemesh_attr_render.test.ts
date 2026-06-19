@@ -10,7 +10,7 @@
  * a *missing* layer must still render (default-filled) while reporting the slot
  * as absent, never throwing on the bulk-data seam.
  *
- * It runs the real Electron app headlessly against the `litemesh-attrtest` scene
+ * It runs the real NW.js app headlessly against the `litemesh-attrtest` scene
  * (a cube carrying a VERTEX FLOAT4 `color` layer + a CORNER FLOAT2 `uv` layer,
  * both built deterministically in C++ — see litemesh_test_scene.ts), then drives
  * `globalThis.__attrtestApply([...])` via `--eval` to build the material, run
@@ -19,10 +19,10 @@
  * `--dump` snapshots both the resulting GPU buffers (`objects[].gpuBuffers`) and
  * the driver's requested/missing contract (`attrtest`).
  *
- * Mirrors sculptcore_parity.test.ts for the Electron-resolution / self-skip
+ * Mirrors sculptcore_parity.test.ts for the NW.js-resolution / self-skip
  * boilerplate, and reuses its tolerant numeric diff for the WASM↔native attr
  * parity assertion. Self-skips (green) when the app bundle / native addon /
- * electron toolchain is absent, like the parity test.
+ * NW.js toolchain is absent, like the parity test.
  */
 
 import {execFileSync} from 'node:child_process'
@@ -79,11 +79,11 @@ function diffDump(a: unknown, b: unknown, path = ''): string[] {
   return out
 }
 
-/** Resolve the Electron executable via the electron/ workspace package. */
-function resolveElectronExe(): string | undefined {
+/** Resolve the NW.js executable via the nwjs/ workspace package. */
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -131,19 +131,18 @@ interface Dump {
  * the attr buffers the driver caused sculptcore to build.
  */
 function runAttrScene(
-  electronExe: string,
+  nwExe: string,
   backend: 'wasm' | 'native',
   requests: {name: string; category: number}[]
 ): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'attrtest-')), `${backend}.json`)
   const evalExpr = `globalThis.__attrtestApply(${JSON.stringify(requests)})`
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -174,16 +173,15 @@ function runAttrScene(
  * on both sides into `attrRoundtrip` for the test to compare. WASM is sufficient
  * (serialization is backend-independent pure JS).
  */
-function runRoundtripScene(electronExe: string, requests: {name: string; category: number}[]): Dump {
+function runRoundtripScene(nwExe: string, requests: {name: string; category: number}[]): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'attrjson-')), 'wasm.json')
   const evalExpr = `globalThis.__attrtestRoundtrip(${JSON.stringify(requests)})`
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       'wasm',
@@ -208,16 +206,16 @@ function liteMeshOf(dump: Dump): DumpObject {
   return lm
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
 // The core path (request → codegen → buffers) is fully exercised on WASM; native
 // is only needed for the parity sub-test, which self-skips independently below.
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -232,7 +230,7 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
   let wasmDump: Dump
 
   beforeAll(() => {
-    wasmDump = runAttrScene(electronExe!, 'wasm', [
+    wasmDump = runAttrScene(nwExe!, 'wasm', [
       {name: 'color', category: CAT_COLOR},
       {name: 'uv', category: CAT_UV},
     ])
@@ -283,7 +281,7 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
   })
 
   test('a request for a missing layer renders with defaults and is reported absent', () => {
-    const dump = runAttrScene(electronExe!, 'wasm', [
+    const dump = runAttrScene(nwExe!, 'wasm', [
       {name: 'color', category: CAT_COLOR},
       {name: 'nonexistent', category: CAT_UV},
     ])
@@ -310,7 +308,7 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
     // shader-graph fixture format. Build a material with AttributeNodes, write
     // it to JSON, read it back, and confirm every AttributeNode's name+category
     // survives — so a `.json` graph round-trips into a runnable material.
-    const dump = runRoundtripScene(electronExe!, [
+    const dump = runRoundtripScene(nwExe!, [
       {name: 'color', category: CAT_COLOR},
       {name: 'uv', category: CAT_UV},
     ])
@@ -335,7 +333,7 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
   parityTest(
     'native and WASM build identical attribute buffers',
     () => {
-      const nativeDump = runAttrScene(electronExe!, 'native', [
+      const nativeDump = runAttrScene(nwExe!, 'native', [
         {name: 'color', category: CAT_COLOR},
         {name: 'uv', category: CAT_UV},
       ])
