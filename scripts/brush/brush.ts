@@ -26,6 +26,7 @@ import {
   DynTopoOverrides,
   BrushSpacingModes,
   PlaneNormalModes,
+  DynTopoOverridesSC,
 } from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
@@ -134,7 +135,7 @@ SculptBrush {
   }
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    let bst = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+    const bst = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
 
     // Sibling structs referenced below must exist first.
     DynTopoSettings.defineAPI(api)
@@ -196,14 +197,14 @@ SculptBrush {
 
     let dst
 
-    let cst = api.mapStruct(BrushDynChannel, true)
+    const cst = api.mapStruct(BrushDynChannel, true)
     cst.bool('useDynamics', 'useDynamics', 'Use Dynamics').icon(Icons.BRUSH_DYNAMICS)
     cst.curve1d('curve', 'curve', 'Curve')
 
     dst = api.mapStruct(BrushDynamics, true)
-    let b = new BrushDynamics()
+    const b = new BrushDynamics()
 
-    for (let ch of b.channels) {
+    for (const ch of b.channels) {
       dst.struct(ch.name, ch.name, ch.name, cst)
     }
 
@@ -525,6 +526,9 @@ export function makeDefaultBrushes() {
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
+  brush.dynTopoSC.overrideMask = DynTopoOverridesSC.ENABLED
+  brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
+  brush.flag &= ~BrushFlags.ACCUMULATE
   const curvejson = {
     type         : 'BSplineCurve',
     points: [
@@ -578,6 +582,17 @@ export function makeDefaultBrushes() {
   brush.dynamics.autosmooth.useDynamics = false
   brush.spacing = 0.04
   brush.smoothProj = 0.85
+
+  brush = bmap[SculptTools.KELVINLET]
+  brush.autosmooth = 0.0
+  brush.rake = 0.0
+  brush.radius = 100
+  brush.flag &= ~BrushFlags.SHARED_SIZE
+  brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
+  brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
+  brush.dynTopoSC.overrideMask = DynTopoOverridesSC.ENABLED
+  brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
+  brush.flag &= ~BrushFlags.ACCUMULATE
 
   return brushes
 }
@@ -736,6 +751,10 @@ export function makeDefaultBrushes_MediumRes() {
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
+  brush.dynTopoSC.overrideMask = DynTopoOverridesSC.ENABLED
+  brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
+  brush.flag &= ~BrushFlags.ACCUMULATE
+
   const curvejson = {
     type         : 'BSplineCurve',
     points: [
@@ -793,6 +812,17 @@ export function makeDefaultBrushes_MediumRes() {
   brush.dynamics.autosmooth.useDynamics = false
   brush.spacing = 0.04
   brush.smoothProj = 0.85
+
+  brush = bmap[SculptTools.KELVINLET]
+  brush.autosmooth = 0.0
+  brush.rake = 0.0
+  brush.radius = 100
+  brush.flag &= ~BrushFlags.SHARED_SIZE
+  brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
+  brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
+  brush.dynTopoSC.overrideMask = DynTopoOverridesSC.ENABLED
+  brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
+  brush.flag &= ~BrushFlags.ACCUMULATE
 
   return brushes
 }
