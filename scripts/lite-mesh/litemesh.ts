@@ -650,7 +650,7 @@ export class LiteMesh extends SceneObjectData {
   /** Build the spatial tree + draw batches over `this.mesh`. Shared by the
    * constructor and the deserialization path. */
   private _initSpatial(): void {
-    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20, 1 << 13)
+    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 32, 1 << 13)
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
