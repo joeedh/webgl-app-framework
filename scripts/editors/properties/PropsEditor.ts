@@ -37,6 +37,7 @@ import {loadUndoMesh, saveUndoMesh} from '../../../addons/builtin/mesh/src/mesh_
 import type {ToolContext, ViewContext} from '../../core/context'
 import {ToolMode} from '../view3d/view3d_toolmode'
 import {SceneObject} from '../../sceneobject/sceneobject'
+import {SettingsEditor} from '../settings/SettingsEditor'
 
 export const TexturePathModes = {
   BRUSH : 0,
@@ -915,6 +916,7 @@ export class PropsEditor extends Editor {
   objTab!: TabItemContainer<ViewContext>
   texTab!: TabItemContainer<ViewContext>
   workspaceTab!: TabItemContainer<ViewContext>
+  _settingsTab?: TabItemContainer<ViewContext>
   _last_toolmode?: ToolMode
   _last_obj?: SceneObject
   texUser: ProceduralTexUser
@@ -1121,24 +1123,33 @@ PropsEditor {
     const last = document.createElement('last-tool-panel-x') as LastToolPanel<ViewContext>
     tab.add(last)
 
-    tab = this.tabs.tab('Settings')
+    this._settingsTab = this.tabs.tab('Settings')
+    this._buildSettingsPanels()
+  }
 
-    panel = tab.panel('Brushes')
+  /** Build (or rebuild) the Settings tab. Folds the former Settings/Theme
+   * editor's General, Addons and Feature Flags tabs in here as panels (#4);
+   * theme editing stays in the (now "Theme Editor") SettingsEditor. */
+  _buildSettingsPanels(): void {
+    const tab = this._settingsTab
+    if (!tab) return
+    tab.clear()
+
+    let panel = tab.panel('Brushes')
     const strip = panel.row()
     strip.useIcons(false)
-
     strip.prop('settings.brushSet')
-
     strip.useIcons(true)
     strip.tool('brush.reload_all_defaults()')
 
-    panel = tab.panel('Undo')
+    panel = tab.panel('General')
+    SettingsEditor.buildGeneralSettings(panel.col())
 
-    const col = panel.col()
-    col.useIcons(false)
+    panel = tab.panel('Addons')
+    SettingsEditor.buildAddonsSettings(panel.col(), () => this.doOnce(this._buildSettingsPanels))
 
-    col.prop('settings.limitUndoMem')
-    col.prop('settings.undoMemLimit')
+    panel = tab.panel('Feature Flags')
+    SettingsEditor.buildFeatureFlagsSettings(panel.col())
   }
 
   textureTab(tab: TabItemContainer<ViewContext>) {
@@ -1197,6 +1208,11 @@ PropsEditor {
     //check init
     if (this.texPanel) {
       this.texPanel._init()
+    }
+
+    // Refresh the Settings tab's Addons panel when the addon list changes.
+    if (this._settingsTab && this.ctx?.settings.syncAddonList()) {
+      this.doOnce(this._buildSettingsPanels)
     }
 
     this.updateToolMode()

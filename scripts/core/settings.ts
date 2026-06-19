@@ -145,7 +145,7 @@ AppSettings {
     this.undoMemLimit = 512 //in megabytes
     this.brushSet = BrushSets.MEDIUM_RES
     this.autosaveEnabled = true
-    this.autosaveIntervalMinutes = 5 //UI in minutes; clamped 0.5–120
+    this.autosaveIntervalMinutes = 1 //UI in minutes; clamped 0.5–120
     this.autosaveMaxBackups = 5
     this.autosaveToProjectDir = true
   }

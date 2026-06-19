@@ -21,6 +21,19 @@ export function setDefaultSceneBuilder(fn: DefaultSceneBuilder | null): void {
   _builder = fn
 }
 
+let _defaultToolMode = 'object'
+
+/** Toolmode the freshly-built default file activates (if that mode is
+ * registered, else gen_default_file falls back to 'object'). Set by whichever
+ * subsystem contributes the default scene. */
+export function setDefaultToolMode(name: string): void {
+  _defaultToolMode = name
+}
+
+export function getDefaultToolMode(): string {
+  return _defaultToolMode
+}
+
 export function getDefaultSceneBuilder(): DefaultSceneBuilder | null {
   return _builder
 }

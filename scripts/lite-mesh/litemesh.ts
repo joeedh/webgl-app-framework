@@ -344,7 +344,8 @@ export class LiteMesh extends SceneObjectData {
     this,
     `
     litemesh.LiteMesh {
-      _data : arraybuffer(byte) | this.serialize();
+      _data     : arraybuffer(byte) | this.serialize();
+      repairLog : array(string);
     }
     `
   )
@@ -523,6 +524,7 @@ export class LiteMesh extends SceneObjectData {
     // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
     const layout = container.panel('Layout')
     layout.tool('litemesh.reorder_locality()', {label: 'Optimize Mesh Layout'})
+    layout.tool('litemesh.rebuild_spatial_tree()', {label: 'Rebuild Spatial Tree'})
   }
 
   afterSTRUCT(): void {
@@ -554,6 +556,14 @@ export class LiteMesh extends SceneObjectData {
         data = resolved
       }
       this.mesh = this.wasm.Mesh_deserialize(data)
+      // Repair any structural corruption baked into the saved file before the
+      // spatial tree is built or any op runs on it (#37). Cheap (returns 0
+      // without rebuilding) on a healthy mesh.
+      const nErr = (this.mesh as unknown as {repairMesh(): number}).repairMesh()
+      if (nErr > 0) {
+        this.repairLog.push(`[load] repaired ${nErr} mesh-structure error(s) (details in console)`)
+        ;(this.mesh as unknown as {clearRepairLog(): void}).clearRepairLog()
+      }
     } else {
       // Legacy / empty block (saved before mesh serialization was wired): fall
       // back to a default cube so the file still loads with geometry.
@@ -602,6 +612,12 @@ export class LiteMesh extends SceneObjectData {
    * not serialized — defaults to VERTEX_COLOR on load. Mirrors the C++
    * SpatialTree.displayColorMode (which TS can't read back). */
   _displayColorMode: number = LiteMeshDisplayMode.VERTEX_COLOR
+
+  /** Serialized log of mesh-structure repairs (validateAndRepair on a detected
+   * dyntopo fault, #37). Each entry is prefixed with the brush context by the
+   * sculpt op; the detailed per-error lines go to the console. Capped to keep
+   * the file small. */
+  repairLog: string[] = []
 
   // Renderable through the material pipeline: in SHOW_RENDER mode the
   // RealtimeEngine BasePass only pushes setRequestedAttrs/setDrawShader to
@@ -928,17 +944,27 @@ export class LiteMesh extends SceneObjectData {
     this._seamsDirty = true
   }
 
-  /** Rebuild the seam-edge overlay batch if the seam set/geometry changed. */
-  private _ensureSeamBatch(): void {
-    if (!this._seamsDirty) {
+  /** Last `includePolyGroup` the seam batch was built with, so toggling the
+   * poly-group-edges option rebuilds it even when the seam set is unchanged. */
+  private _seamBatchPolyGroup = false
+
+  /** Rebuild the seam-edge overlay batch if the seam set/geometry changed, or if
+   * the poly-group-edges toggle (`includePolyGroup`) flipped. */
+  private _ensureSeamBatch(includePolyGroup = false): void {
+    if (!this._seamsDirty && includePolyGroup === this._seamBatchPolyGroup) {
       return
     }
     this._seamsDirty = false
+    this._seamBatchPolyGroup = includePolyGroup
     if (this.seamBatch) {
       this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
       this.seamBatch = undefined
     }
-    this.seamBatch = this.spatial.buildSeamBatch(this.wasm.gpu) ?? undefined
+    this.seamBatch =
+      (this.spatial as unknown as {buildSeamBatch(g: unknown, p: boolean): DrawBatch | undefined}).buildSeamBatch(
+        this.wasm.gpu,
+        includePolyGroup
+      ) ?? undefined
   }
 
   /** The shortest edge-path's vertex positions as flat xyz triples (for drawing
@@ -986,6 +1012,18 @@ export class LiteMesh extends SceneObjectData {
   /** Read a single edge's feature bit of `kind` (0 = seam, 1 = sharp). */
   edgeFlagKind(e: number, kind: number): number {
     return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
+  }
+
+
+  /** Mark EDGE_SHARP on every manifold edge whose dihedral angle exceeds
+   * `angleRadians` (additive). Returns the number of edges changed. */
+  markSharpByAngle(angleRadians: number, state = 1): number {
+    const n = (this.mesh as unknown as {markSharpByAngle(a: number, s: number): number}).markSharpByAngle(
+      angleRadians,
+      state
+    )
+    this.markSeamsDirty()
+    return n
   }
 
   /** Indices + xyz (object-local) of every vertex incident to a `kind`-flagged
@@ -1774,6 +1812,12 @@ export class LiteMesh extends SceneObjectData {
     // Default on: only an explicit `drawFeatureOverlay === false` hides it (other
     // tool modes have no such field and should still show seams).
     const drawFeatures = toolmode?.drawFeatureOverlay !== false
+    // Poly-group boundary edges are a separate, opt-in overlay (#28).
+    const drawPolyGroupEdges = !!(toolmode as unknown as {drawPolyGroupEdges?: boolean})?.drawPolyGroupEdges
+    // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
+    // unchanged, so pushing every frame is cheap.
+    const drawMask = (toolmode as unknown as {drawMask?: boolean})?.drawMask !== false
+    ;(this.spatial as unknown as {setDisplayMask?: (on: boolean) => void}).setDisplayMask?.(drawMask)
     if (this.spatial.update(this.wasm.gpu)) {
       // The tree flushed pending geometry/attribute edits → the serialized form
       // changed; invalidate the autosave blob cache (M2).
@@ -1791,7 +1835,7 @@ export class LiteMesh extends SceneObjectData {
     // rebuild would thaw in the sculpt hot path. The overlay therefore tracks
     // seam *topology*, not live vert motion mid-stroke (refreshed on next seam
     // edit) — an acceptable trade for not thawing every frame.
-    this._ensureSeamBatch()
+    this._ensureSeamBatch(drawPolyGroupEdges)
 
     if (drawBVH && !this.treeBatch) {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)

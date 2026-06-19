@@ -73,7 +73,7 @@ export class DynTopoSettingsSC {
   // single-round (~25fps+ on a ~5M-tri mesh); excess splits defer to later
   // dabs. 0 = unlimited triggers the round-2 cascade (~110ms/dab at 5M).
   maxSplits = 1024
-  maxRounds = 50
+  maxRounds = 5
   // Remesh spacing, independent of the brush-dab spacing: dyntopo runs only
   // once per this much stroke travel (units of 2·radius, like brush spacing),
   // not on every dab. Decoupling keeps a dense, finely-spaced deform stroke from

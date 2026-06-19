@@ -138,6 +138,31 @@ export class FileOpenOp extends ToolOp {
 
 ToolOp.register(FileOpenOp)
 
+export class LoadLastAutosaveOp extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : 'Load Last Autosave',
+      toolpath: 'app.load_last_autosave',
+      inputs  : {},
+      undoflag: UndoFlags.NO_UNDO,
+    }
+  }
+
+  exec(ctx) {
+    const mgr = _appstate.autosave
+    if (!mgr) {
+      console.warn('autosave manager not ready')
+      return
+    }
+    mgr.loadLatest().then((ok) => {
+      if (ok) {
+        window.redraw_viewport(true)
+      }
+    })
+  }
+}
+ToolOp.register(LoadLastAutosaveOp)
+
 export class FileNewOp extends ToolOp {
   static tooldef() {
     return {

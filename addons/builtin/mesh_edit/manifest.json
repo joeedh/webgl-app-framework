@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "author": "joeedh",
   "entry": "src/main.ts",
-  "dependencies": ["mesh"],
+  "dependencies": [
+    "mesh"
+  ],
   "description": "Mesh-editing toolmode (vertex/edge/face selection, transform, ops).",
-  "buildMode": "prebuilt"
+  "buildMode": "prebuilt",
+  "defaultEnabled": false
 }

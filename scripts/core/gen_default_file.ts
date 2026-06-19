@@ -9,7 +9,7 @@ import {Scene} from '../scene/scene'
 import type {ToolContext} from './context'
 import {Library} from './lib_api'
 import {genDefaultScreen} from '../editors/screengen'
-import {buildDefaultSceneContents} from './default_file'
+import {buildDefaultSceneContents, getDefaultToolMode} from './default_file'
 import {getAppStorage} from './app_storage'
 
 /*root operator for when loading files*/
@@ -96,7 +96,11 @@ export class BasicFileOp extends ToolOp {
 
     window.updateDataGraph()
 
-    scene.switchToolMode('object')
+    // The subsystem that contributed the default scene picks the startup
+    // toolmode (e.g. sculptcore for the litemesh sphere); fall back to 'object'
+    // if that mode isn't registered (its addon disabled).
+    const wantMode = getDefaultToolMode()
+    scene.switchToolMode(scene.toolModeProp.values[wantMode] !== undefined ? wantMode : 'object')
     // note: switchToolMode sets the select mask, we set it
     // to VERTEX here
     scene.selectMask = SelMask.VERTEX

@@ -47,8 +47,13 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   dynTopoSC = new DynTopoSettingsSC()
 
   /** Draw the boundary-feature overlay (seam=orange, sharp=cyan, projected=green,
-   * poly-group=magenta, UV-chart=yellow). */
+   * UV-chart=yellow). Poly-group edges are a separate opt-in toggle below. */
   drawFeatureOverlay = true
+
+  /** Draw poly-group boundary edges (magenta). Off by default and refreshed each
+   * dab while painting groups (ImmediateTODOs #28). Independent of the feature
+   * overlay's seam/sharp edges, but only visible while that overlay is on. */
+  drawPolyGroupEdges = false
 
   /** Accumulated dyntopo op counts for the current/last stroke (debug HUD). */
   dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
@@ -307,6 +312,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.drawMask`)
     strip.prop(`scene.tools.${name}.drawFeatureOverlay`)
+    strip.prop(`scene.tools.${name}.drawPolyGroupEdges`)
     strip.pathlabel(`scene.tools.${name}.dynTopoStatsLabel`, '')
 
     let row = addHeaderRow()
@@ -324,6 +330,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.tool('litemesh.symmetrize()')
     strip.tool('litemesh.mark_seam_interactive()')
     strip.tool('litemesh.mark_sharp_interactive()')
+    strip.tool('litemesh.mark_sharp_by_angle()')
     strip.tool('litemesh.generate_uv()')
     strip.tool('litemesh.triangulate()')
     if (FeatureFlags.get('sculptcore.quad_remesher')) {
@@ -401,15 +408,19 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     st.bool('drawNodeIds', 'drawNodeIds', 'Draw BVH Vertex IDs').on('change', onchange)
     st.bool('drawFlat', 'drawFlat', 'Draw Flat').on('change', onchange).icon(Icons.DRAW_SCULPT_FLAT)
+    const refreshSeams = function (this: any) {
+      const mesh = this.dataref?.ctx?.mesh
+      if (mesh && 'markSeamsDirty' in mesh) {
+        ;(mesh as LiteMesh).markSeamsDirty()
+      }
+      window.redraw_viewport(true)
+    }
     st.bool('drawFeatureOverlay', 'drawFeatureOverlay', 'Feature Overlay')
-      .description('Draw seam / sharp / poly-group / UV-chart boundaries')
-      .on('change', function (this: any) {
-        const mesh = this.dataref?.ctx?.mesh
-        if (mesh && 'markSeamsDirty' in mesh) {
-          ;(mesh as LiteMesh).markSeamsDirty()
-        }
-        window.redraw_viewport(true)
-      })
+      .description('Draw seam / sharp / UV-chart boundaries')
+      .on('change', refreshSeams)
+    st.bool('drawPolyGroupEdges', 'drawPolyGroupEdges', 'Poly Group Edges')
+      .description('Draw poly-group boundary edges (off by default; updates each dab)')
+      .on('change', refreshSeams)
     st.string('dynTopoStatsLabel', 'dynTopoStatsLabel', 'DynTopo Stats').readOnly()
     /* Only tools sculptcore implements (TOOL_TO_SCULPTBRUSH) are selectable
      * in this tool mode; the legacy pbvh mode keeps the full enum. */
@@ -797,10 +808,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         return true
       }
 
-      // For the poly-group brush shift means "extend" (sample the existing group
-      // under the cursor), not temp-switch-to-smooth; leave its brush in place so
-      // the stroke's useAltBrush path runs.
-      if (e.shiftKey && brush.tool !== SculptTools.POLYGROUP) {
+      // Shift smooths. For the poly-group brush, ctrl is the "extend" modifier
+      // (sample the existing group under the cursor; see useAltBrush in
+      // stroke_paint_op), and shift smooths at full surface projection.
+      const wasPolyGroup = brush.tool === SculptTools.POLYGROUP
+      if (e.shiftKey) {
         brush = this.getBrush(smoothtool)
       }
 
@@ -810,6 +822,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       brush.dynTopo.loadDefaults(this.dynTopo)
       brush.dynTopoSC.loadDefaults(this.dynTopoSC)
       brush.radius = radius
+      if (wasPolyGroup && e.shiftKey) {
+        brush.smoothProj = 1.0
+      }
 
       this.ctx.api.execTool(this.ctx, 'sculptcore.paint()', {
         brush       : brush,

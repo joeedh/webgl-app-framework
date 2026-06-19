@@ -1,4 +1,4 @@
-import {exportTheme, loadUIData, nstructjs, saveUIData, TabContainer} from '../../path.ux/scripts/pathux'
+import {exportTheme, loadUIData, nstructjs, saveUIData} from '../../path.ux/scripts/pathux'
 import {UIBase} from '../../path.ux/scripts/core/ui_base'
 import {Container} from '../../path.ux/scripts/core/ui'
 import {Editor} from '../editor_base'
@@ -10,7 +10,6 @@ import type {ViewContext} from '../../core/context'
 
 export class SettingsEditor extends Editor {
   body!: Container<ViewContext>
-  tabs!: TabContainer<ViewContext>
 
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -36,23 +35,19 @@ SettingsEditor {
 
     container.clear()
 
-    const tabs = (this.tabs = container.tabs('left'))
-
     this.style['overflow'] = 'scroll'
 
-    let tab = tabs.tab('General')
-    tab.useIcons(false)
-    tab.prop('settings.limitUndoMem')
-    tab.prop('settings.undoMemLimit')
+    // The general/addons/feature-flag settings now live in the PropsEditor
+    // Settings tab (ImmediateTODOs #4); only theme editing stays here.
+    SettingsEditor.buildThemePanel(container as unknown as Container<ViewContext>)
 
-    tab.label('Autosave')
-    tab.prop('settings.autosaveEnabled')
-    tab.prop('settings.autosaveIntervalMinutes')
-    tab.prop('settings.autosaveMaxBackups')
-    tab.prop('settings.autosaveToProjectDir')
+    loadUIData(container, uidata)
 
-    tab = tabs.tab('Theme')
+    this.flushUpdate()
+  }
 
+  /** Theme editing UI (export + the live theme-editor element). */
+  static buildThemePanel(tab: Container<ViewContext>): void {
     tab.button('Export Theme', () => {
       let theme = exportTheme()
 
@@ -81,18 +76,30 @@ SettingsEditor {
     })
 
     tab.add(UIBase.createElement('theme-editor-x'))
+  }
 
-    tab = tabs.tab('Addons')
+  /** General (undo + autosave) settings. Reusable by the PropsEditor Settings tab. */
+  static buildGeneralSettings(tab: Container<ViewContext>): void {
+    tab.useIcons(false)
+    tab.prop('settings.limitUndoMem')
+    tab.prop('settings.undoMemLimit')
 
-    // Install button at the top — opens a file picker, installs the .zip via
-    // the configured storage backend, and reloads the addon list.
+    tab.label('Autosave')
+    tab.prop('settings.autosaveEnabled')
+    tab.prop('settings.autosaveIntervalMinutes')
+    tab.prop('settings.autosaveMaxBackups')
+    tab.prop('settings.autosaveToProjectDir')
+  }
+
+  /** Addon enable/install/uninstall list. `rebuild` re-runs after install/uninstall. */
+  static buildAddonsSettings(tab: Container<ViewContext>, rebuild: () => void): void {
     if (addonManager.storage) {
       tab.button('Install Addon…', () => {
         pickAndInstallAddon()
           .then((result) => {
             if (result) {
               console.log(`installed addon "${result.manifest.id}"`)
-              this.doOnce(this.rebuild)
+              rebuild()
             }
           })
           .catch((err) => {
@@ -112,43 +119,30 @@ SettingsEditor {
       row.prop(path + '.enabled')
       row.label(addon.name)
 
-      // Third-party addons get an Uninstall button. Builtin addons stay
-      // for the session — they can be disabled via the enabled checkbox.
       const manifest = addon.manifest
       if (manifest && !addon.builtin) {
         row.button('Uninstall', () => {
           if (!window.confirm?.(`Uninstall "${manifest.name}"?`)) return
           addonManager
             .uninstall(manifest.id)
-            .then(() => this.doOnce(this.rebuild))
+            .then(() => rebuild())
             .catch((err) => console.error('uninstall failed:', err))
         })
       }
     }
+  }
 
-    tab = tabs.tab('Feature Flags')
+  /** Feature-flag toggles. */
+  static buildFeatureFlagsSettings(tab: Container<ViewContext>): void {
     tab.useIcons(false)
-
     for (const flag of FeatureFlags.definitions) {
       tab.prop(`settings.featureFlags.${featureFlagApiName(flag.key)}`)
     }
-
-    loadUIData(container, uidata)
-
-    this.flushUpdate()
-  }
-
-  update(): void {
-    if (this.ctx?.settings.syncAddonList()) {
-      this.doOnce(this.rebuild)
-    }
-
-    return super.update()
   }
 
   static define() {
     return {
-      uiname  : 'Settings',
+      uiname  : 'Theme Editor',
       areaname: 'settings-editor',
       tagname : 'settings-editor-x',
       icon    : Icons.EDITOR_SETTINGS,

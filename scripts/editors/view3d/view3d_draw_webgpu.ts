@@ -241,6 +241,37 @@ function clamp(v: number, lo: number, hi: number): number {
  * (say, an unported widget pipeline) doesn't kill the entire frame.
  */
 function drawSceneWebGpu(view3d: ViewLike): void {
+  // Leaving rendered mode (SHOW_RENDER/ONLY_RENDER off): revert any object whose
+  // RealtimeEngine BasePass installed a material draw shader back to the basic
+  // solid shader. Otherwise the solid pass keeps drawing with the material WGSL
+  // (which needs the engine's group1/2 bindings the solid pass lacks) and the
+  // viewport goes blank (#1). setDrawShader('') drops drawShaderReady in C++;
+  // clearing the engine hash lets the BasePass re-push when render mode returns.
+  const inRender = view3d.flag !== undefined && view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)
+  if (!inRender) {
+    const scn = (view3d as ViewLike & {ctx?: {scene?: SceneLike}}).ctx?.scene
+    const renderable = scn?.objects?.renderable
+    if (renderable) {
+      for (const ob of renderable) {
+        const d = ob.data as
+          | (DataLike & {
+              _hasMaterialDrawShader?: boolean
+              _engineDrawShaderHash?: number
+              setDrawShader?: (wgsl: string) => void
+            })
+          | undefined
+        if (d && d._hasMaterialDrawShader && typeof d.setDrawShader === 'function') {
+          try {
+            d.setDrawShader('')
+            d._engineDrawShaderHash = undefined
+          } catch (err) {
+            warnOnce('revertDrawShader', `${(err as Error).message}`)
+          }
+        }
+      }
+    }
+  }
+
   // Scene-object meshes — routes through createDrawQueue, which
   // returns the WebGPU adapter while currentPass is open.
   try {
