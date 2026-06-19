@@ -364,8 +364,8 @@ async function captureScreenshot(path: string): Promise<void> {
     return
   }
   // toDataURL can come back blank for a GPU canvas without preserveDrawingBuffer;
-  // this is best-effort. The robust path is the chrome-devtools-mcp screenshot
-  // tool over the CDP endpoint (see --remote-debug).
+  // this is best-effort. The robust path is `node nwjs/cdp.mjs shot <out>` over
+  // the CDP endpoint (see --remote-debug).
   const url = canvas.toDataURL('image/png')
   const bin = atob(url.slice(url.indexOf(',') + 1))
   const bytes = new Uint8Array(bin.length)
@@ -479,7 +479,7 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
     console.error(`${TAG} harness error`, err)
   }
 
-  // Expose for external drivers (e.g. chrome-devtools-mcp evaluate_script).
+  // Expose for external drivers (e.g. `nwjs/cdp.mjs eval` over CDP).
   ;(globalThis as {__apptestResult?: unknown}).__apptestResult = result
   console.log(`${TAG} done`, result)
 

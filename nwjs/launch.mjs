@@ -9,7 +9,7 @@
  * renderer verbatim as `nw.App.argv` (read by scripts/core/app_argv.ts and the
  * window.html bootstrap). The one ergonomic flag we translate is
  * `--remote-debug[=PORT]`, mapped to the chromium switches that expose a CDP
- * endpoint for chrome-devtools-mcp (mirrors the old electron/main.js behavior).
+ * endpoint a direct client (e.g. `nwjs/cdp.mjs`) connects to — no MCP server.
  */
 import {spawn} from 'node:child_process'
 import {createRequire} from 'node:module'
