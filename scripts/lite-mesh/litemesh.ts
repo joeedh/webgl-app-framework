@@ -650,7 +650,7 @@ export class LiteMesh extends SceneObjectData {
   /** Build the spatial tree + draw batches over `this.mesh`. Shared by the
    * constructor and the deserialization path. */
   private _initSpatial(): void {
-    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20)
+    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 20, 1 << 13)
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -1014,7 +1014,6 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {edgeFlagKind(e: number, k: number): number}).edgeFlagKind(e, kind)
   }
 
-
   /** Mark EDGE_SHARP on every manifold edge whose dihedral angle exceeds
    * `angleRadians` (additive). Returns the number of edges changed. */
   markSharpByAngle(angleRadians: number, state = 1): number {
@@ -1126,9 +1125,7 @@ export class LiteMesh extends SceneObjectData {
    * seam watertight (native `Mesh::symmetrize`). Topology changes wholesale, so
    * normals + the spatial tree are recomputed. Backend-agnostic. */
   symmetrizeDestructive(axis: number, sign: number, threshold: number): void {
-    ;(
-      this.mesh as unknown as {symmetrize(a: number, s: number, t: number): void}
-    ).symmetrize(axis, sign, threshold)
+    ;(this.mesh as unknown as {symmetrize(a: number, s: number, t: number): void}).symmetrize(axis, sign, threshold)
     this.recalcNormals()
     this._rebuildSpatial()
   }

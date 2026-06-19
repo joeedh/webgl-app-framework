@@ -43,7 +43,7 @@ export function initSculptcoreDemo(
   const wasm = getWasmImmediate()!
   const mesh = wasm.Mesh_createCube(dimen, size, sphereFac)
   mesh.recalc_normals()
-  const tree = wasm.Mesh_buildSpatialTree(mesh, leafLimit, depthLimit)
+  const tree = wasm.Mesh_buildSpatialTree(mesh, leafLimit, depthLimit, 0)
   const batch = tree.buildLeafBoundsBatch(wasm.gpu)!
   const executor = new WebGLBatchExecutor(gl, wasm, Shaders.BasicLineShader2)
 
