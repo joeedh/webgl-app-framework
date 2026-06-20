@@ -1,5 +1,14 @@
 # Refactor: toolmodes → addons, decouple mesh from core
 
+> **Shell note (post-NW.js migration):** this plan predates the switch from
+> Electron to **NW.js** and designs addon install/storage around Electron's
+> main-process + IPC + preload model (`electron/main.js`, `ElectronAddonStorage`,
+> `window.haveElectron`). NW.js has **no main process** — `require`, `process`,
+> file dialogs, and `nw.*` are reachable directly in the renderer — so that whole
+> layer collapses: do FS directly in the renderer (gate on `window.haveNwjs`), no
+> IPC/preload bridge. Treat the "Electron" sections below as superseded; the
+> non-shell parts (toolmode→addon extraction, mesh/core decoupling) still apply.
+
 ## Context
 
 We're on the `sculptcore` branch. Today the framework couples mesh, sculpt, curve, and

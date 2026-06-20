@@ -187,7 +187,7 @@ save-side change beyond that is needed.)
      global schema registration end-to-end.
 3. **Manual smoke (optional):** load a `.wproj`/material whose graph references a
    disabled addon's node via the headless harness
-   (`node electron/main.js ... --eval`/`--save`) and confirm no load crash and a
+   (`node nwjs/launch.mjs ... --eval`/`--save`) and confirm no load crash and a
    clean re-save.
 
 ## Critical files

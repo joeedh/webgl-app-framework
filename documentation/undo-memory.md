@@ -67,7 +67,7 @@ bodies).
 ## Testing
 
 `tests/integration/sculptcore_undomem.test.ts` drives the whole seam on
-both backends (wasm + native) through the headless Electron harness:
+both backends (wasm + native) through the headless NW.js harness:
 `scripts/lite-mesh/litemesh_undomem_support.ts` registers
 `globalThis.__undoMemTest`, run via `--eval` and reflected into the
 `--dump` JSON as `undomemtest`. It covers per-step accounting (incl. a

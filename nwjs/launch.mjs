@@ -26,6 +26,7 @@ const appDir = dirname(dirname(fileURLToPath(import.meta.url)))
 const nwBin = await requireCjs('nw').findpath()
 
 const userArgs = process.argv.slice(2)
+// note: support for gc() manual invocation is enabled in package.json
 const chromiumArgs = []
 const appArgs = []
 
@@ -50,6 +51,7 @@ for (const arg of userArgs) {
 // `nw <app-dir> [chromium switches] [app args]`. NW.js consumes the chromium
 // switches and forwards the rest to nw.App.argv.
 const args = [appDir, ...chromiumArgs, ...appArgs]
+console.log(args.join(' '))
 const child = spawn(nwBin, args, {stdio: 'inherit'})
 
 child.on('exit', (code, signal) => {

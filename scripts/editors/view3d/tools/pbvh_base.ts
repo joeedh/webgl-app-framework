@@ -1,6 +1,6 @@
-import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
+import {bez4, dbez4} from '../../../util/bezier.js'
 import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js'
-import {CameraModes} from '../view3d_base.js'
+import type {Scene} from '../../../scene/scene'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
 import type {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
 import {WidgetFlags} from '../widgets/widgets.js'
@@ -37,7 +37,7 @@ import {
   PaintToolSlot,
 } from '../../../brush/index'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
-import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
+import {DataRefProperty, DataRef, BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../../addons/builtin/mesh/src/customdata.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {Mesh, Vector3LayerElem, Vertex} from '../../../../addons/builtin/mesh/src/mesh.js'
@@ -49,6 +49,7 @@ import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh.js'
 
 import * as util from '../../../util/util.js'
 import {SceneObject, SceneObjectData} from '../../../sceneobject/index.js'
+import { enumValues } from '../../../util/enum-utils.js';
 
 export interface ISampleViewRet {
   origco: Vector3
@@ -530,6 +531,29 @@ export function calcConcaveLayer(mesh: any): void {
 }
 
 export abstract class PaintToolModeBase extends ToolMode {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+  PaintToolModeBase {
+    drawBVH                : bool;
+    drawCavityMap          : bool;
+    drawFlat               : bool;
+    drawWireframe          : bool;
+    drawValidEdges         : bool;
+    drawNodeIds            : bool;
+    drawMask               : bool;
+    drawDispDisField       : bool;
+    editDisplaced          : bool;
+    drawColPatches         : bool;
+    symmetryAxes           : int;
+    tool                   : int;
+    slots                  : iterkeys(PaintToolSlot);
+    sharedBrushRadius      : float;
+    dynTopo                : DynTopoSettings;
+    reprojectCustomData    : bool;
+  }`
+  )
+
   mdown = false
   float = 0
   lastFaceSet: number
@@ -629,6 +653,39 @@ export abstract class PaintToolModeBase extends ToolMode {
       l.remove()
     }
     this._brush_lines.length = 0
+  }
+
+  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
+    for (const k in this.slots) {
+      this.slots[k].dataLink(scene, getblock, getblock_addUser)
+    }
+
+    for (const tool of enumValues(SculptTools)) {
+      if (!(tool in this.slots)) {
+        this.slots[tool as unknown as number] = new PaintToolSlot(tool as SculptTools)
+      }
+    }
+  }
+
+  loadSTRUCT(reader: StructReader<this>): void {
+    reader(this)
+    super.loadSTRUCT(reader)
+
+    //deal with old files
+    if (Array.isArray(this.slots)) {
+      const slots = this.slots
+      this.slots = {}
+
+      for (const slot of slots) {
+        this.slots[slot.tool] = slot
+      }
+    }
+
+    // also happens in old files
+    if ('brush' in this) {
+      this.tool = (this as unknown as any)['brush'].tool
+      delete this.brush
+    }
   }
 }
 
@@ -1030,8 +1087,8 @@ export abstract class PaintOpBase<
 
       function interpScalar(t: number, key: keyof PaintSample, subkey?: number) {
         /** TODO: smoothly interpolate using ps, lastps1, lastps2, lastps3*/
-        let a = (subkey !== undefined ? (lastps1![key] as any)[subkey] : lastps1[key]) as number
-        let b = (subkey !== undefined ? (ps![key] as any)[subkey] : ps[key]) as number
+        const a = (subkey !== undefined ? (lastps1![key] as any)[subkey] : lastps1[key]) as number
+        const b = (subkey !== undefined ? (ps![key] as any)[subkey] : ps[key]) as number
 
         return a + (b - a) * t
       }

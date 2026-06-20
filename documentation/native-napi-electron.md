@@ -1,11 +1,11 @@
 # Native N-API sculptcore backend (vs. WASM)
 
-> **Shell update:** the desktop shell is now **NW.js** (the `nwjs/` workspace),
-> not Electron. The native addon is built for the NW.js ABI
+> **Shell:** the desktop shell is **NW.js** (the `nwjs/` workspace); the Electron
+> shell was removed. The native addon is built for the NW.js ABI
 > (`node sculptcore/make.mjs node` → default `--runtime nw`, cmake-js `-r nw`);
-> detection keys off `process.versions.nw` alongside `.electron`. The N-API
-> model below is unchanged — "Electron" references describe the original design
-> and apply equally to NW.js (both embed Node + V8 with the same sandbox rules).
+> detection keys off `process.versions.nw`. The N-API model is shell-agnostic —
+> NW.js and Electron both embed Node + V8 with the same sandbox rules — so the
+> original Electron-era design carried over unchanged.
 
 `sculptcore` (the C++20 mesh/sculpt engine under `sculptcore/`) is consumed
 from the TypeScript app through **two interchangeable runtime backends behind a
@@ -14,7 +14,7 @@ single JS API**:
 - **WASM** — the browser path. The engine is compiled to WebAssembly by
   Emscripten; a TypeScript runtime bridges JS↔C++ by treating WASM linear
   memory as flat typed arrays.
-- **Native N-API** — the Electron path. The engine is compiled to a native
+- **Native N-API** — the NW.js (desktop) path. The engine is compiled to a native
   Node addon (`.node`); a C++ N-API runtime bridges JS↔C++ by reading the
   `litestl::binding` reflection descriptors directly and dereferencing real
   `void*`s.
@@ -25,9 +25,9 @@ the browser is always WASM.
 
 This document explains how the native path works and how it differs from WASM.
 The implementation plan and live status are in
-[`plans/native-electron.md`](plans/native-electron.md); the Electron CLI that
+[`plans/native-electron.md`](plans/native-electron.md); the NW.js CLI that
 boots the app on either backend is in
-[`plans/native-electron-test-harness.md`](plans/native-electron-test-harness.md).
+[`native-electron-test-harness.md`](native-electron-test-harness.md).
 
 ---
 
@@ -40,7 +40,7 @@ runtime reads/writes fields with `HEAP32[(ptr + offset) >> PTRSHIFT]` over a
 because WASM exposes nothing but flat memory plus a handful of `LSTL_*` C
 helper functions.
 
-For the desktop (Electron) build we want native performance and 64-bit
+For the desktop (NW.js) build we want native performance and 64-bit
 correctness. Rather than make the JS runtime bigint/64-bit clean, the native
 path adds a **second runtime implemented in C++** that reuses the existing
 `litestl::binding` descriptors in-process. The key consequence:
@@ -56,7 +56,7 @@ path adds a **second runtime implemented in C++** that reuses the existing
 | Concern | WASM backend | Native N-API backend |
 |---|---|---|
 | Engine artifact | `build/sculptcore.wasm` + `sculptcore.js` glue (Emscripten/Embind) | `build/native-node/sculptcore_node.node` (cmake-js, clang) |
-| Where it runs | Browser (and Node for tests) | Electron renderer (`require`'d) |
+| Where it runs | Browser (and Node for tests) | NW.js renderer (`require`'d) |
 | Reflection | Re-implemented in JS over a serialized offset table (`LSTL_GetBindingInfo`) | Reads `litestl::binding` descriptors directly in C++ |
 | A bound object | JS wrapper holding `ptr: number` | JS class instance with `napi_wrap`'d C++ `void*` + `StructType*` |
 | Field read/write | `HEAP32[(ptr+off) >> shift]` etc. on linear memory | `*(T*)(ptr + member.offset)` in C++ |
@@ -72,7 +72,7 @@ path adds a **second runtime implemented in C++** that reuses the existing
 
 ```
 node sculptcore/make.mjs node            # build build/native-node/sculptcore_node.node
-node sculptcore/make.mjs node --smoke    # build, then load in Electron and call version()/bindingCount()
+node sculptcore/make.mjs node --smoke    # build, then load in NW.js and call version()/bindingCount()
 ```
 
 How it differs from the plain native build (`make.mjs build native` →
@@ -82,14 +82,20 @@ How it differs from the plain native build (`make.mjs build native` →
   `CMakeLists.txt`, gated on `DEFINED CMAKE_JS_VERSION` so a plain
   `make.mjs configure native` never sees it. Entry point:
   `sculptcore/source/napi/napi_entry.cc`.
-- `make.mjs node` uses **cmake-js** for *configure* only — it downloads the
-  Electron N-API headers + `node.lib` and injects the `CMAKE_JS_*` variables —
+- `make.mjs node` uses **cmake-js** for *configure* only (`-r nw`) — it provides
+  the NW.js N-API headers + `node.lib` and injects the `CMAKE_JS_*` variables —
   then builds just `--target sculptcore_node` with the clang toolchain into a
   separate `build/native-node/` dir (cmake-js's `/MT` CRT, kept consistent
   within the addon, leaving `build/native` untouched).
-- The Electron version is read from `../electron/package.json`
-  (override with `--electron-version`). Re-run `make.mjs node` after an Electron
-  bump to ABI-rebuild against the new headers.
+- The NW.js version is read from the repo-root `package.json` `nw` dep. Re-run
+  `make.mjs node` after an NW.js bump to ABI-rebuild against the new headers.
+- **NW.js header provisioning:** cmake-js's built-in NW.js download points at the
+  legacy `node-webkit.s3.amazonaws.com` mirror, which 404s for current releases
+  (leaving an empty `nw.lib` the linker rejects). `make.mjs`'s `provisionNwjsCache`
+  pre-populates cmake-js's per-version cache from **`dl.nwjs.io`** instead
+  (`node-v<ver>.tar.gz` headers + `x64/node.lib`, mirrored to `nw.lib` since NW.js
+  0.111.3+ is node-ABI and ships no separate `nw.lib`), so cmake-js skips its own
+  broken download. Idempotent.
 
 ### Toolchain gotchas (de-risked in `sculptcore/spike/napi/`)
 
@@ -98,7 +104,7 @@ How it differs from the plain native build (`make.mjs build native` →
   toolchain (at both `-O0` and `-O3`); the raw `node_api.h` C ABI is correct.
   Only `cmake-js` was added as a dev dependency.
 - **clang targets the MSVC ABI** on Windows (under vcvars via
-  `configureEnv.mjs`), so it links Electron's MSVC `node.lib` fine — but
+  `configureEnv.mjs`), so it links NW.js's MSVC `node.lib` fine — but
   cmake-js passes `/DELAYLOAD:NODE.EXE` in `link.exe` syntax, which the clang++
   driver rejects. Re-add it via CMake `LINKER:/DELAYLOAD:node.exe` +
   `delayimp.lib`.
@@ -110,7 +116,7 @@ How it differs from the plain native build (`make.mjs build native` →
 ```
 napi_entry.cc      NAPI_MODULE entry: initBindings(); new NapiRuntime(env, getBindingManager()); installExports()
 napi_runtime.h/cc  the reflection runtime (the bulk of the work)
-electron_smoke.cjs node-side smoke test driving the addon through Electron
+napi_smoke.cjs     shared smoke-test body, loaded in a hidden NW.js window by `make.mjs node --smoke`
 ```
 
 At module init (`napi_entry.cc`):
@@ -227,7 +233,7 @@ This is the single most important native-vs-WASM difference for performance.
 WASM hands JS a raw pointer into linear memory, so a vertex buffer is a true
 zero-copy view: `new Uint8Array(HEAPU8.buffer, ptr, len)`.
 
-Electron enables the **V8 sandbox**, which **forbids external (out-of-sandbox)
+NW.js enables the **V8 sandbox**, which **forbids external (out-of-sandbox)
 ArrayBuffers** — `napi_create_external_arraybuffer` returns
 `napi_no_external_buffers_allowed`. So the native bulk-data path (`vectorView`,
 `pointerBytes`) falls back to a **one-shot copy** into a sandbox-internal
@@ -249,7 +255,7 @@ ArrayBuffer:
 
 ```ts
 // nativeBackend.ts
-nativeBackendRequested()  // insideElectron && globalThis.__SCULPTCORE_BACKEND === 'native'
+nativeBackendRequested()  // insideDesktopShell (process.versions.nw|electron) && globalThis.__SCULPTCORE_BACKEND === 'native'
 loadNativeAddon()         // require()s the .node in the renderer; undefined in the browser
 ```
 
@@ -258,7 +264,7 @@ WASM. When the addon is present it builds a `NativeManager`-backed
 `IWasmInterface` and returns that instead of instantiating the WASM module;
 otherwise it logs and falls back to WASM (non-breaking).
 
-The `--backend native` CLI flag (Electron test harness) sets
+The `--backend native` CLI flag (NW.js test harness) sets
 `globalThis.__SCULPTCORE_BACKEND` *early in `entry_point.js`*, before the first
 `loadWasm()` — the harness's normal post-init handling is too late for that
 first load.
@@ -368,7 +374,13 @@ MeshLog undo/redo (strokes) restore the stats exactly, per backend.
 
 ## Debugging tips
 
-- A native `abort()` **bypasses JS try/catch**, so `electron_smoke.cjs` flushes
+- **stdout/stderr work in NW.js.** NW.js merges the Node + browser contexts into
+  one window, so a native `printf` / `sc_napi_logf` and the renderer's
+  `console.log` reach the launching terminal normally. The Electron-era
+  workarounds for its broken renderer fds — `freopen`/`redirectStdout`,
+  routing native logs to the DevTools console, flushing per-stage markers to
+  disk — should no longer be needed; prefer plain stdout/stderr.
+- A native `abort()` **bypasses JS try/catch**, so `napi_smoke.cjs` flushes
   a per-stage marker to disk to localize crashes.
 - When a render goes blank, **check for a swallowed JS throw first** (it hides
   as a `drawObjects` warning) before suspecting a GPU validation error —
