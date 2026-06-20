@@ -734,7 +734,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       return false
     }
 
-    return !!(brush.dynTopoSC.overrideMask & DynTopoOverridesSC.NONE)
+    return !!(brush.dynTopoSC?.overrideMask & DynTopoOverridesSC.NONE)
   }
 
   set _apiInheritDynTopoSC(v: boolean) {

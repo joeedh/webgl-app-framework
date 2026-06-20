@@ -1,11 +1,16 @@
-# Electron test harness & CLI (orchestration for the native-electron plan)
+# NW.js test harness & CLI (orchestration for the native-addon plan)
+
+> The desktop shell is now **NW.js** (the `nwjs/` workspace); the Electron shell
+> was removed. This doc describes the NW.js harness. The original design was
+> built against Electron — see [`native-electron.md`](native-electron.md) for
+> that historical plan.
 
 Supporting infrastructure for
 [`native-electron.md`](native-electron.md): a command-line system for the
-Electron shell that boots the **real** app, builds deterministic test scenes
+NW.js shell that boots the **real** app, builds deterministic test scenes
 (notably sculptcore-backed `LiteMesh` scenes), and saves / dumps / screenshots
 them headlessly — so the native N-API backend and the WASM backend can be
-driven through identical scenarios and diffed for parity (Workstream F).
+driven through identical scenarios and diffed for parity.
 
 ## Why a procedural scene builder (not a saved `.wproj`)
 
@@ -21,27 +26,32 @@ LiteMesh geometry.
 
 ## Argument flow
 
-Electron does not forward the user args of `electron main.js <args…>` into the
-renderer's `process.argv`. `electron/main.js` now:
+NW.js merges the Node + browser contexts into one window, so there is no main
+process and no IPC: the app args reach the renderer **directly** as
+`nw.App.argv` — no base64 token, no `additionalArguments` re-injection. The
+launcher just spawns `nw <repo-root> <args…>`.
 
-1. Captures `process.argv` (sliced for dev vs packaged) as `APP_ARGV`.
-2. Re-injects them into the renderer as a base64 `--apptest-argv=<…>` token via
-   `webPreferences.additionalArguments` (cross-platform, survives reload).
-3. Parses the few **main-process-only** flags itself (they must act before the
-   window exists).
+`scripts/core/app_argv.ts` reads `nw.App.argv` in the renderer. The browser
+build (no `nw`) sees an empty arg list, so nothing here affects it.
 
-`scripts/core/app_argv.ts` decodes the token in the renderer (falling back to
-the legacy `arguments.txt` that `electron/run.sh` writes). The browser build
-sees an empty arg list, so nothing here affects it.
+`nwjs/launch.mjs` translates two ergonomic flags before spawning (the rest pass
+through untouched to the renderer harness):
+
+- `--remote-debug[=PORT]` → the Chromium `--remote-debugging-port` +
+  `--remote-allow-origins=*` switches.
+- `--headless` → the app-only `--apptest-headless` (because `--headless` is a
+  real Chromium switch NW.js would intercept). The `nwjs/window.html` bootstrap
+  keeps the window hidden under `--apptest-headless` (the manifest starts it
+  `show:false`) and opens DevTools unless `--no-devtools`.
 
 ## Flags
 
-### Main-process flags (parsed in `electron/main.js`)
+### Launcher flags (translated in `nwjs/launch.mjs`)
 
 | Flag | Effect |
 |---|---|
 | `--remote-debug[=PORT]` | Enable the Chrome DevTools Protocol endpoint (default `9222`) + `--remote-allow-origins=*`. Drive it with the direct-CDP client `nwjs/cdp.mjs` (no MCP server). |
-| `--headless` | Create the window with `show:false` (CI / batch generation). |
+| `--headless` | Start the window hidden (`--apptest-headless`; CI / batch generation). |
 | `--no-devtools` | Don't auto-open DevTools. |
 
 ### Renderer test-harness flags (parsed in `scripts/core/test_harness.ts`)
@@ -50,15 +60,16 @@ sees an empty arg list, so nothing here affects it.
 |---|---|
 | `--gen-scene <name>` | Build a registered test scene, replacing the default startup file via the **non-cached** path (`genDefaultFile(appstate, 1)` — skips the localStorage startup snapshot). |
 | `--scene-arg k=v` | (repeatable) Parameters passed to the builder. |
+| `--eval "<js>"` | (repeatable) Eval a JS expression in global scope (where `CTX`/`_appstate` live) after the scene is built and before `--run` tools; failures flag `__apptestResult`. |
 | `--run "tool.path(...)"` | (repeatable) Run a `ToolOp` by data-API path. |
 | `--save <out.wproj>` | Write a project file after building. |
 | `--dump <out.json>` | Write a structured, backend-comparable scene snapshot. |
 | `--screenshot <out.png>` | Capture the `#webgl` canvas (best-effort; prefer the CDP screenshot tool). |
-| `--backend native\|wasm` | Record the requested sculptcore backend (`globalThis.__SCULPTCORE_BACKEND`). Only `wasm` is wired today. |
+| `--backend native\|wasm` | Select the sculptcore backend (`globalThis.__SCULPTCORE_BACKEND`). `native` loads the N-API addon and falls back to `wasm` if the `.node` is absent. |
 | `--list-scenes` | Print registered scene names. |
-| `--exit` | Quit the app once the scenario completes (via the `apptest:quit` IPC). |
+| `--exit` | Quit the app once the scenario completes (via `nw.App.quit()`). |
 
-A normal launch (`electron main.js`) sets none of these and is unaffected.
+A normal launch (`pnpm run nwjs`) sets none of these and is unaffected.
 
 ## Scene-builder registry
 
@@ -78,17 +89,24 @@ from the appropriate layer.
 ## Examples
 
 ```bash
-ELECTRON="node_modules/.pnpm/electron@41.1.1/node_modules/electron/dist/electron.exe"
+# Launch the NW.js shell with harness flags (pnpm run nwjs = node nwjs/launch.mjs):
 
 # Build a LiteMesh cube, dump a snapshot, quit (CI-friendly):
-$ELECTRON electron/main.js --gen-scene litemesh-cube --dump out.json --exit
+node nwjs/launch.mjs --gen-scene litemesh-cube --dump out.json --exit
 
 # Higher-res cube, no light, save a project file:
-$ELECTRON electron/main.js --gen-scene litemesh-cube --scene-arg subdiv=240 --scene-arg light=0 --save cube.wproj --exit
+node nwjs/launch.mjs --gen-scene litemesh-cube --scene-arg subdiv=240 --scene-arg light=0 --save cube.wproj --exit
+
+# Native backend, headless, scripted parity dump:
+node nwjs/launch.mjs --backend native --headless --gen-scene litemesh-cube --dump out.json --exit
 
 # Interactive + scriptable over CDP (drive with nwjs/cdp.mjs):
 node nwjs/launch.mjs --gen-scene litemesh-cube --remote-debug
 ```
+
+Because NW.js merges the Node and browser contexts, the renderer's
+`console.log` / native `printf` reach the launching terminal's stdout/stderr
+normally — none of the Electron-era fd-redirection workarounds are needed.
 
 The harness publishes its outcome on `window.__apptestResult`, so an external
 driver (`node nwjs/cdp.mjs eval "return window.__apptestResult"`) can read

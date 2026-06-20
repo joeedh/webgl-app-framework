@@ -159,7 +159,7 @@ or recursion). Port **Worley** end-to-end first; it's the worst case.
   analytical gradient diff per texture (confirms `grad` matches the old
   numerical method within eps).
 - **Exit criterion:** all five textures pass `tex-verify`; brush sampling in
-  the app visually unchanged (Electron `--screenshot` before/after on a
+  the app visually unchanged (NW.js `--screenshot` before/after on a
   textured sculpt stroke, `test_harness.ts:267`).
 
 ### Phase 4 — Runtime authoring surface
@@ -169,7 +169,7 @@ or recursion). Port **Worley** end-to-end first; it's the worst case.
   errors back to JS.
 - In-app texture editor compiles live; GPU gets a WebGPU shader module, CPU
   gets a JS `Function`.
-- **Images:** an Electron harness scene that authors a texture string at
+- **Images:** an NW.js harness scene that authors a texture string at
   runtime, applies it, and `--screenshot`s the WebGPU result; a `tex-verify`
   run driven by a user-supplied `.stex` string.
 - **Exit criterion:** a texture typed at runtime renders on GPU and samples on
@@ -183,7 +183,7 @@ or recursion). Port **Worley** end-to-end first; it's the worst case.
   (`scripts/texture/textureGen.ts`) paths.
 - Update `TODO.md` for any cross-layer consumers of the removed files.
 - **Images:** final full-gallery `tex-verify` run as the regression baseline;
-  an Electron `--screenshot` of WebGPU texture paint to confirm the GPU path
+  an NW.js `--screenshot` of WebGPU texture paint to confirm the GPU path
   works post-cutover.
 
 ## Risks

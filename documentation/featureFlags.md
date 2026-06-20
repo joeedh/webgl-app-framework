@@ -105,7 +105,7 @@ the path round-trip.
 Flags are serialized as JSON under the storage key `feature-flags-app`, written
 through `getAppStorage()` (`scripts/core/app_storage.ts`) — **not** raw
 `localStorage` or mathl's emulated local storage. The backend is chosen at
-runtime: the browser build stores the JSON in `localStorage`, while the Electron
+runtime: the browser build stores the JSON in `localStorage`, while the NW.js
 build writes it to a discrete `feature-flags.json` file under the `.sculptcore`
 directory (`<repo>/.sculptcore` from source, `~/.sculptcore` when packaged).
 The key→filename mapping lives in `FILE_NAMES` in `app_storage.ts`.

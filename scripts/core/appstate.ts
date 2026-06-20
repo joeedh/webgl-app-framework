@@ -639,8 +639,9 @@ export class AppState {
     }
 
     const filectx: FileContext = {} as FileContext
+    filectx.file = new BinaryReader(buf)
 
-    let file = (filectx.file = new BinaryReader(buf))
+    let file = filectx.file
 
     const s = file.string(4)
     if (s !== cconst.FILE_MAGIC) {

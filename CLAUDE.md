@@ -216,7 +216,7 @@ the app root. `nwjs/window.html` loads `../build/entry_point.js` (i.e.
 The shell takes CLI args to boot the real app and build/save/dump deterministic
 test scenes headlessly — the orchestration layer for the sculptcore native-addon
 work. See
-[documentation/plans/native-electron-test-harness.md](documentation/plans/native-electron-test-harness.md)
+[documentation/native-electron-test-harness.md](documentation/native-electron-test-harness.md)
 for the full flag reference. Key conventions:
 
 - App args reach the renderer directly as `nw.App.argv` (no IPC / no base64

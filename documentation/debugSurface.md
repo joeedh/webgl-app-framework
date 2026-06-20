@@ -6,9 +6,9 @@ endpoint (NW.js build, `--remote-debug`) — when debugging the **browser build*
 or the **NW.js build**. Everything below lives in the page realm and is present
 once the app has booted (`appstate.init()` has run).
 
-See also: the **Debug context API (`CTX.debug`)** and **Electron test harness**
+See also: the **Debug context API (`CTX.debug`)** and **NW.js test harness**
 sections of [../CLAUDE.md](../CLAUDE.md), and
-[plans/native-electron-test-harness.md](plans/native-electron-test-harness.md)
+[native-electron-test-harness.md](native-electron-test-harness.md)
 for the headless `--eval`/`--run` flags.
 
 ## Entry globals (the roots)
@@ -21,7 +21,7 @@ for the headless `--eval`/`--run` flags.
 | `DEBUG` | `cconst.DEBUG` — path.ux debug-toggle flags (see below). | path.ux `config/const.ts:192` |
 | `redraw_all()` | Schedules a `requestAnimationFrame` redraw. | `appstate.ts:1163` |
 | `updateDataGraph(force?)` | Re-execs the dependency graph (`force=true` runs synchronously). | `appstate.ts:1207` |
-| `haveElectron` | Truthy in the Electron shell. | — |
+| `haveNwjs` | Truthy in the NW.js shell. | `entry_point.js` |
 | `__SCULPTCORE_BACKEND` | `'native'`/`'wasm'` backend selector (set early). | `entry_point.js:82` |
 | `__apptestResult` | Where the `--eval` harness records eval success/failure. | `test_harness.ts:451` |
 | `FILE_LOADING` | True while a `.wproj` is loading. | `appstate.ts` |
@@ -43,7 +43,7 @@ The purpose-built reflection / automation surface:
   tagname string, an Editor class, or an instance. Returns
   `{editor, action, swappedOutEditor?}`.
   - ⚠️ Needs a laid-out screen — fine in browser/Playwright and windowed
-    Electron, but **can crash a bare headless boot**.
+    NW.js, but **can crash a bare headless boot**.
 
 ## `CTX` (ViewContext) — live state by getter
 

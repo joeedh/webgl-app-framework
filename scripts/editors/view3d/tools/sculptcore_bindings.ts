@@ -160,6 +160,7 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
   [SculptTools.GRAB]       : SculptBrushes.GRAB,
   [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
+  [SculptTools.FEATURE_ALIGN]: SculptBrushes.FEATURE_ALIGN,
 }
 
 /** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
@@ -175,7 +176,12 @@ export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined 
 
 /** Smooth-family tools ignore invert (inverted Laplacian smoothing diverges). */
 export function isSmoothTool(tool: SculptTools): boolean {
-  return tool === SculptTools.SMOOTH || tool === SculptTools.BSMOOTH || tool === SculptTools.PAINT_SMOOTH
+  return (
+    tool === SculptTools.SMOOTH ||
+    tool === SculptTools.BSMOOTH ||
+    tool === SculptTools.PAINT_SMOOTH ||
+    tool === SculptTools.FEATURE_ALIGN
+  )
 }
 
 /**
@@ -379,6 +385,8 @@ export function builSculptcoreBrush({
   // preservation) are @static uniforms read straight off these members.
   wasmBrush.pinch = brush.pinch
   wasmBrush.projection = brush.smoothProj
+  // Feature-align rake strength (read by the featurealign kernel as ctx.brush.rake).
+  wasmBrush.rake = brush.rake
 
   // Per-tool plane / wing / falloff uniforms (runs before the caller's
   // writeProps() so props-backed scalars round-trip through loadProps).

@@ -204,7 +204,7 @@ Default `true` keeps existing producers/serialized data backward-compatible. `mi
    with carry continuity across abutting segments; centripetal CR doesn't overshoot the input
    bbox on a clustered-then-far triple. (Vectors don't transform under jsdom — keep these
    host-independent.)
-2. **Integration** (`tests/integration/stroke_driver.test.ts`, headless Electron via the
+2. **Integration** (`tests/integration/stroke_driver.test.ts`, headless NW.js via the
    `--eval`→`CTX` bridge, see `tests/integration/node_editor_ops.test.ts`): build a driver with
    a real `view3d` adapter against a known mesh, push a scripted `StrokeInput[]` (diagonal +
    sharp corner + one off-mesh point), expose results via a small `CTX.debug` hook (the driver

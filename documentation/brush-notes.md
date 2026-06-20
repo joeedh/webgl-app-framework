@@ -4,7 +4,7 @@ Sculpt brushes run across two layers. The **TS bridge** turns the UI's
 `SculptBrush` + a pointer stroke into calls on the **C++ sculptcore engine**,
 which owns the actual per-vertex math. The engine runs behind the
 backend-agnostic `IWasmInterface` (WASM in the browser, native N-API in
-Electron — see [native-napi-electron.md](native-napi-electron.md)).
+NW.js — see [native-napi-electron.md](native-napi-electron.md)).
 
 The realtime sculpt path is **CPU** (`CommandExecutor`). The WGSL/GPU brush
 kernels exist for a future GPU stroke dispatch and for the `sbrush-verify`
@@ -260,7 +260,7 @@ layer is a hook, not yet wired.
   `/spatial/leaf_count` cpp-vs-wgsl mismatch (7 vs 8) is pre-existing,
   unrelated to brushes.
 - Behavior (end-to-end, both backends): `tests/integration/sculptcore_brushes.test.ts`
-  boots the Electron harness with `--eval "__brushTest()"`
+  boots the NW.js harness with `--eval "__brushTest()"`
   (`scripts/lite-mesh/litemesh_brushtest_support.ts`) and asserts invert
   direction, draw-sharp boundedness, mask gating + inverted-mask erase,
   brush.color piping, accumulate defaults, and no NaN/Inf. The driver reads

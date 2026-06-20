@@ -10,7 +10,7 @@ export function* enumKeys(e: Record<string | number, string | number>) {
 /** assumes enum maps to numbers */
 export function* enumValues(e: Record<string | number, string | number>) {
   for (const k in e) {
-    if (typeof k === 'string') {
+    if (typeof k === 'string' && isNaN(parseInt(k))) {
       yield e[k]
     }
   }
