@@ -2,7 +2,7 @@
  * Host-side quad-remesh integration + parity test
  * (`sculptcore/documentation/plans/quad-remeshing.md`, M6h).
  *
- * Drives the real `litemesh.quad_remesh` ToolOp through the Electron app
+ * Drives the real `litemesh.quad_remesh` ToolOp through the NW.js app
  * headlessly, once per backend, on the deterministic `litemesh-uvsphere` scene —
  * a UV sphere being the smallest mesh that drives a *successful* feature-aligned
  * remesh (the spherified cube of `litemesh-cube` has eight valence-3 corner
@@ -21,7 +21,7 @@
  * (`test_remesh_extract`), not re-proven here.
  *
  * Self-skips (logged) without the app bundle (`pnpm build`) + native addon
- * (`make.mjs node`) + a resolvable Electron, so CI without the native toolchain
+ * (`make.mjs node`) + a resolvable NW.js, so CI without the native toolchain
  * stays green — same prerequisites as sculptcore_parity.test.ts.
  */
 
@@ -75,11 +75,11 @@ function diffDump(a: unknown, b: unknown, path = ''): string[] {
   return out
 }
 
-/** Resolve the Electron executable via the electron/ workspace package. */
-function resolveElectronExe(): string | undefined {
+/** Resolve the NW.js executable via the nwjs/ workspace package. */
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -109,15 +109,14 @@ interface QuadRemeshResult {
  * Boot the app headlessly under `backend`, build the UV-sphere scene, run the
  * quad-remesh ToolOp (+ undo + redo) via `--eval`, and return the dump.
  */
-function dumpBackend(electronExe: string, backend: 'wasm' | 'native'): Record<string, unknown> {
+function dumpBackend(nwExe: string, backend: 'wasm' | 'native'): Record<string, unknown> {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'qremesh-')), `${backend}.json`)
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as a plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -141,16 +140,16 @@ function dumpBackend(electronExe: string, backend: 'wasm' | 'native'): Record<st
   return JSON.parse(fs.readFileSync(out, 'utf-8'))
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!electronExe && haveBundle && haveNative
+const canRun = !!nwExe && haveBundle && haveNative
 
 const maybe = canRun ? describe : describe.skip
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
     !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs node)`,
   ]
@@ -167,8 +166,8 @@ maybe('litemesh quad-remesh ToolOp (native↔WASM)', () => {
   let nativeQR: QuadRemeshResult
 
   beforeAll(() => {
-    wasmDump = dumpBackend(electronExe!, 'wasm')
-    nativeDump = dumpBackend(electronExe!, 'native')
+    wasmDump = dumpBackend(nwExe!, 'wasm')
+    nativeDump = dumpBackend(nwExe!, 'native')
     wasmQR = wasmDump.quadRemesh as QuadRemeshResult
     nativeQR = nativeDump.quadRemesh as QuadRemeshResult
   }, 420000)

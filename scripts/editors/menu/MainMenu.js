@@ -22,12 +22,6 @@ const menuSize = 27
 import * as platform from '../../core/platform.js'
 import {addonManager} from '@framework/api'
 
-let electron_api
-if (window.haveElectron) {
-  import('../../path.ux/scripts/platforms/electron/electron_api.js').then((api) => {
-    electron_api = api
-  })
-}
 
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
@@ -135,7 +129,7 @@ MenuBarEditor {
   constructor() {
     super()
 
-    this.needElectronRebuild = true
+    this.needNativeMenuRebuild = true
 
     this.menuSize = menuSize
     this.areaDragToolEnabled = false
@@ -148,7 +142,7 @@ MenuBarEditor {
   }
 
   buildEditMenu() {
-    this.needElectronRebuild = true
+    this.needNativeMenuRebuild = true
 
     let def = this._editMenuDef
 
@@ -288,9 +282,9 @@ MenuBarEditor {
     this.setCSS()
     this.flushUpdate()
 
-    if (window.haveElectron) {
-      menubar.style['display'] = 'none'
-    }
+    // NW.js native menu-bar click delivery is unreliable (clicks don't reach the
+    // JS handler); use the in-app HTML menubar instead — same as the browser
+    // build. The nwjs platform still provides native file dialogs + fs.
   }
 
   onFileLoad() {
@@ -387,12 +381,6 @@ MenuBarEditor {
 
   update() {
     super.update()
-
-    if (this.needElectronRebuild && window.haveElectron && electron_api) {
-      this.needElectronRebuild = false
-      electron_api.initMenuBar(this, true)
-      this._menubar.style['display'] = 'none'
-    }
 
     if (
       this.ctx &&

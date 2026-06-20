@@ -2,7 +2,7 @@
  * Named test-scene builders for the headless / CLI test harness.
  *
  * Mirrors `core/default_file.ts`'s single-builder hook, but keyed by name so
- * the Electron CLI (`--gen-scene <name>`, see `core/test_harness.ts`) and the
+ * the NW.js CLI (`--gen-scene <name>`, see `core/test_harness.ts`) and the
  * native↔WASM sculptcore parity suite (documentation/plans/native-electron.md,
  * Workstream F) can build a deterministic scene to render, save, or dump.
  *

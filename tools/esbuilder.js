@@ -45,9 +45,13 @@ let options = {
   loader     : {'.wasm': 'copy'},
   external: [
     'fs',
+    'fs/promises',
     'path',
+    'os',
     'marked',
     '*/build/sculptcore.js',
+    // path.ux retains its electron platform (additive); its static
+    // require("electron") must stay external even though the app uses NW.js.
     'electron',
     'scripts/util/numeric.js',
     'numeric',

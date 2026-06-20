@@ -1,6 +1,5 @@
 packages:
   - addons/*
-  - electron
   - sculptcore/tests
   - sculptcore/source/litestl/binding/typescriptRuntime
   - sculptcore/source/litestl/tests
@@ -21,15 +20,11 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - '@kmamal/gpu'
-  - electron
+  - nw
 
-patchedDependencies:
-  eslint-plugin-prettier: patches/eslint-plugin-prettier.patch
-
-# Force every nstructjs dependency (incl. the path.ux submodule's `^0.8.5`
-# specifier) onto the in-repo workspace package at vendor/nstructjs. Without this
-# pnpm 10 (link-workspace-packages=false) resolves path.ux's non-`workspace:`
-# range to the published registry copy, so engine fixes in vendor/nstructjs would
-# never reach the path.ux bundle the app imports.
 overrides:
   nstructjs: workspace:*
+
+patchedDependencies:
+  cmake-js@8.0.0: patches/cmake-js@8.0.0.patch
+  eslint-plugin-prettier: patches/eslint-plugin-prettier.patch

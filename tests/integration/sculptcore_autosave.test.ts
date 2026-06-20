@@ -1,7 +1,7 @@
 /**
  * Autosave round-trip integration test (plan §3/§5, M1–M3).
  *
- * Boots the real Electron app headlessly per backend on the spherified
+ * Boots the real NW.js app headlessly per backend on the spherified
  * `litemesh-cube`, then drives `__autosaveTest()` (scripts/lite-mesh/
  * litemesh_autosavetest_support.ts) via `--eval`: ~5 seconds of randomly-placed
  * dyntopo DRAW strokes with two randomly-timed autosaves through the real
@@ -14,7 +14,7 @@
  * dump. The legs are wall-clock-bound (~5s each) on top of boot, so the jest
  * timeouts are generous.
  *
- * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`pnpm build`). The native leg additionally needs the N-API addon
  * (`make.mjs node`); without it only the WASM leg runs.
  */
@@ -66,10 +66,10 @@ interface AutosaveTestResult {
   saves?: SaveRecord[]
 }
 
-function resolveElectronExe(): string | undefined {
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -79,15 +79,14 @@ function resolveElectronExe(): string | undefined {
 }
 
 /** Boot headlessly under `backend`, run __autosaveTest(), return its result. */
-function runAutosaveTest(electronExe: string, backend: 'wasm' | 'native'): AutosaveTestResult {
+function runAutosaveTest(nwExe: string, backend: 'wasm' | 'native'): AutosaveTestResult {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'scautosave-')), `${backend}.json`)
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -110,14 +109,14 @@ function runAutosaveTest(electronExe: string, backend: 'wasm' | 'native'): Autos
   return dump.autosavetest
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -136,7 +135,7 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore autosave round-trip (%
   let r: AutosaveTestResult
 
   beforeAll(() => {
-    r = runAutosaveTest(electronExe!, backend)
+    r = runAutosaveTest(nwExe!, backend)
   }, 120000)
 
   test('driver ran cleanly through the 5s stroke loop', () => {

@@ -199,7 +199,7 @@ or recursion). Port **Worley** end-to-end first; it's the worst case.
 - **GPU readback flakiness.** `canvas.toDataURL` is best-effort for a GPU
   canvas without `preserveDrawingBuffer` (`test_harness.ts:193`); prefer the
   `debug_app` Dawn-harness readback (as `webgpu-verify` does) for deterministic
-  bake images, and chrome-devtools-mcp for in-app screenshots.
+  bake images, and `node nwjs/cdp.mjs shot <out>` over CDP for in-app screenshots.
 
 ## New / touched files
 

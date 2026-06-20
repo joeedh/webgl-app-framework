@@ -143,6 +143,7 @@ export class UniformBindings {
   readonly device: GPUDevice
   readonly groups: ReadonlyMap<number, GroupState>
   private readonly bindGroupCache = new Map<GPURenderPipeline, Map<number, GPUBindGroup>>()
+  private readonly emptyCache = new Map<GPURenderPipeline, Map<number, GPUBindGroup>>()
 
   constructor(device: GPUDevice, wgsl: string, label?: string) {
     this.device = device
@@ -252,13 +253,62 @@ export class UniformBindings {
     return this.buildBindGroup(pipeline, gs, uniforms ?? ({} as IUniformsBlock))
   }
 
+  /** Highest group index the shader actually uses (−1 if none). */
+  get maxGroup(): number {
+    let m = -1
+    for (const g of this.groups.keys()) if (g > m) m = g
+    return m
+  }
+
+  // A shader that uses e.g. @group(0) + @group(2) (skipping @group(1)) still
+  // gets a CONTIGUOUS auto-layout (groups 0,1,2) where the gap is an empty
+  // bind-group layout — and WebGPU requires every slot 0..max to be set before
+  // a draw. Provide a cached empty bind group for those gap indices; some Dawn
+  // backends (notably the software/fallback adapter) enforce this strictly while
+  // others tolerated the gap.
+  private emptyBindGroup(pipeline: GPURenderPipeline, group: number): GPUBindGroup {
+    let perPipeline = this.emptyCache.get(pipeline)
+    if (!perPipeline) {
+      perPipeline = new Map()
+      this.emptyCache.set(pipeline, perPipeline)
+    }
+    let bg = perPipeline.get(group)
+    if (!bg) {
+      bg = this.device.createBindGroup({
+        label : `UniformBindings.empty.g${group}`,
+        layout: pipeline.getBindGroupLayout(group),
+        entries: [],
+      })
+      perPipeline.set(group, bg)
+    }
+    return bg
+  }
+
+  /**
+   * Bind groups for a draw: this shader's real groups plus empty fillers for any
+   * gap indices it skips. Returns `{group, bindGroup}` for every slot 0..max so
+   * the caller sets a contiguous range (see `bind` and litemesh's drawQGPU).
+   */
+  bindGroupList(pipeline: GPURenderPipeline, uniforms: IUniformsBlock): {group: number; bindGroup: GPUBindGroup}[] {
+    this.write(uniforms)
+    const out: {group: number; bindGroup: GPUBindGroup}[] = []
+    const max = this.maxGroup
+    for (let group = 0; group <= max; group++) {
+      if (this.groups.has(group)) {
+        const bg = this.getBindGroup(pipeline, group, uniforms)
+        if (bg) out.push({group, bindGroup: bg})
+      } else {
+        out.push({group, bindGroup: this.emptyBindGroup(pipeline, group)})
+      }
+    }
+    return out
+  }
+
   // Caller still owns `setPipeline`, vertex/index buffers, and any
   // material (`@group(1)`) bind group that holds textures.
   bind(pass: GPURenderPassEncoder, pipeline: GPURenderPipeline, uniforms: IUniformsBlock): void {
-    this.write(uniforms)
-    for (const group of this.groups.keys()) {
-      const bg = this.getBindGroup(pipeline, group, uniforms)
-      if (bg) pass.setBindGroup(group, bg)
+    for (const {group, bindGroup} of this.bindGroupList(pipeline, uniforms)) {
+      pass.setBindGroup(group, bindGroup)
     }
   }
 
@@ -267,5 +317,6 @@ export class UniformBindings {
       for (const s of gs.uniforms) s.buffer.destroy()
     }
     this.bindGroupCache.clear()
+    this.emptyCache.clear()
   }
 }

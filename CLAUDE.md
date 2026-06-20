@@ -195,25 +195,45 @@ conventions:
   `scripts/data_api/api_define.ts`. To resolve which path/binding an icon feeds,
   see [documentation/datapath-bindings.md](documentation/datapath-bindings.md).
 
-## Electron test harness / CLI
+## NW.js test harness / CLI
 
-The Electron shell takes CLI args to boot the real app and build/save/dump
-deterministic test scenes headlessly — the orchestration layer for the
-sculptcore native-addon work. See
+The desktop shell is **NW.js** (the `nwjs/` workspace; `electron/` was removed).
+NW.js merges the Node + browser contexts into one window, so there is no main
+process — `require`, `process`, `nw.Menu`, `nw.Window`, and file dialogs are all
+reachable directly in the renderer. Launch with `pnpm run nwjs` (which runs
+`node nwjs/launch.mjs --backend native`); the launcher resolves the NW.js binary
+via the `nw` SDK package (`nw.findpath()`) and spawns `nw <repo-root> <args>`.
+
+The **NW.js app root is the repo root** (its `package.json` is the manifest, with
+`main: nwjs/window.html`, `window`, and `chromium-args`). This is required because
+NW.js serves the app directory as the `chrome-extension://` root and **cannot
+reach files outside it** — so `build/`, `scripts/`, and `assets/` must live under
+the app root. `nwjs/window.html` loads `../build/entry_point.js` (i.e.
+`<root>/build/...`). `nwjs/` itself just holds `window.html` + `launch.mjs`; it is
+**not** a workspace package (the `nw` devDependency lives in the root
+`package.json`).
+
+The shell takes CLI args to boot the real app and build/save/dump deterministic
+test scenes headlessly — the orchestration layer for the sculptcore native-addon
+work. See
 [documentation/plans/native-electron-test-harness.md](documentation/plans/native-electron-test-harness.md)
 for the full flag reference. Key conventions:
 
-- `electron/main.js` does NOT get args into the renderer via `process.argv`
-  (Electron drops them). It forwards them as a base64 `--apptest-argv=<…>`
-  token in `webPreferences.additionalArguments`; `scripts/core/app_argv.ts`
-  decodes it (falling back to the legacy `arguments.txt`). The browser build
+- App args reach the renderer directly as `nw.App.argv` (no IPC / no base64
+  token); `scripts/core/app_argv.ts` reads them. The browser build (no `nw`)
   sees an empty arg list, so the harness is inert there.
-- Main-process-only flags are parsed in `main.js` (they act before the window
-  exists): `--remote-debug[=PORT]` (CDP endpoint for chrome-devtools-mcp),
-  `--headless`, `--no-devtools`. Renderer flags are parsed in
-  `scripts/core/test_harness.ts`: `--gen-scene <name>`, `--scene-arg k=v`,
-  `--eval "<js>"`, `--run "tool.path(...)"`, `--save`, `--dump`, `--screenshot`,
-  `--backend`, `--list-scenes`, `--exit`. None set → normal launch, unaffected.
+- `nwjs/launch.mjs` translates two ergonomic CLI flags before spawning:
+  `--remote-debug[=PORT]` → the Chromium `--remote-debugging-port` +
+  `--remote-allow-origins=*` switches (the CDP endpoint a direct client like
+  `nwjs/cdp.mjs` connects to), and `--headless` → the app-only
+  `--apptest-headless` (because `--headless` is
+  a real Chromium switch NW.js would intercept). The `nwjs/window.html`
+  bootstrap keeps the window hidden under `--apptest-headless` (the manifest
+  starts it `show:false`) and opens devtools unless `--no-devtools`. All other
+  flags are parsed in `scripts/core/test_harness.ts`: `--gen-scene <name>`,
+  `--scene-arg k=v`, `--eval "<js>"`, `--run "tool.path(...)"`, `--save`,
+  `--dump`, `--screenshot`, `--backend`, `--list-scenes`, `--exit`. None set →
+  normal launch, unaffected. `--exit` quits via `nw.App.quit()`.
 - Test scenes live in a name→builder registry (`scripts/core/test_scenes.ts`,
   mirroring `core/default_file.ts`'s single-builder hook). Builders register
   **downward** into this core registry from the layer that owns their deps —
@@ -226,10 +246,17 @@ for the full flag reference. Key conventions:
   ignored and the scene is exactly what the builder produced. LiteMesh
   serialization is still stubbed, so scenes are built procedurally, not loaded
   from `.wproj`.
-- `--remote-debug` exposes a standard CDP endpoint; point the chrome-devtools
-  plugin at it with a separate `chrome-devtools-electron` MCP server (`.mcp.json`,
-  `npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222`). Adding
-  an MCP server requires a Claude Code restart to take effect.
+- `--remote-debug` exposes a standard CDP endpoint (NW.js SDK build, default port
+  `9222`). Drive the live app over it with the dependency-free **`nwjs/cdp.mjs`**
+  helper — `node nwjs/cdp.mjs list` / `eval "<js>"` / `shot <out.png>` — which
+  fetches `http://127.0.0.1:9222/json/list`, opens the page's
+  `webSocketDebuggerUrl`, and issues `Runtime.evaluate` (the eval runs in the
+  renderer realm where `CTX` / `_appstate` / `__nativeManager` live). **Use direct
+  CDP, not an MCP server**: a chrome-devtools MCP server binds its browser
+  connection once, at Claude-Code startup, so it can only attach to a browser
+  already running on the port at that moment — and any NW.js launched as a child
+  of the agent dies when the agent exits, so it can never satisfy that ordering.
+  `nwjs/cdp.mjs` connects on demand, in-session, to whatever is live.
 
 ## Debug context API (`CTX.debug`)
 
@@ -239,8 +266,8 @@ renderer-JS eval context as **`CTX.debug`** (the `CTX` window global is
 `_appstate.ctx`, defined in `entry_point.js`), or as `ctx.debug` in app code.
 
 For the full map of window globals, `CTX`/`CTX.api`/`CTX.debug` surfaces, and
-`window.DEBUG` toggles reachable from `evaluate_script` (chrome-devtools MCP /
-CDP) when live-debugging the browser or Electron build, see
+`window.DEBUG` toggles reachable over CDP (`nwjs/cdp.mjs eval` / a page
+`evaluate`) when live-debugging the browser or NW.js build, see
 [documentation/debugSurface.md](documentation/debugSurface.md).
 
 - `CTX.debug.listEditorTypes()` — every registered editor's `define()` metadata,
@@ -276,9 +303,10 @@ behavior changes with the active area.
   )
   // MaterialEditor is now ctx.editor → node.* ToolOps auto-fill nodeEditorPath
   ```
-- **chrome-devtools-mcp (Electron via `--remote-debug`)** — the CDP
-  `evaluate_script` tool calls `CTX.debug.*` the same way over the endpoint.
-- **Headless harness (`electron/main.js` + `--run`/`--dump`)** — `--run` only
+- **Direct CDP (NW.js via `--remote-debug`)** — `node nwjs/cdp.mjs eval
+  "return CTX.debug.showEditor({editorType:'MaterialEditor', minVisibleWidth:400})"`
+  runs `CTX.debug.*` the same way over the endpoint, no MCP server needed.
+- **Headless harness (`pnpm run nwjs` / `nwjs/launch.mjs` + `--run`/`--dump`)** — `--run` only
   runs ToolOps, so reaching `CTX.debug` needs the harness's **`--eval "<expr>"`**
   flag (`scripts/core/test_harness.ts`): it evals each expression in global scope
   (where `CTX`/`_appstate` live) after the scene is built and before the `--run`
@@ -295,17 +323,20 @@ behavior changes with the active area.
 `sculptcore` runs from the TS app through **two interchangeable backends behind
 one `IWasmInterface`** (`sculptcore/typescript/api/wasm.ts`): **WASM** (browser;
 TS runtime over linear memory, 32-bit, `HEAP32[ptr>>shift]`) and **native
-N-API** (Electron; a C++ reflection runtime in `sculptcore/source/napi/` that
+N-API** (NW.js; a C++ reflection runtime in `sculptcore/source/napi/` that
 reads `litestl::binding` descriptors directly and dereferences real `void*`s).
 See [documentation/native-napi-electron.md](documentation/native-napi-electron.md)
 for the full model, and [documentation/plans/native-electron.md](documentation/plans/native-electron.md)
 for status. Key conventions:
 
-- Build the addon with `node sculptcore/make.mjs node [--smoke]` →
+- Build the addon with `node sculptcore/make.mjs node [--smoke]` (defaults to
+  `--runtime nw`; reads the NW.js version from `nwjs/package.json`'s `nw` dep) →
   `build/native-node/sculptcore_node.node`. It's a CMake `MODULE` in the **root**
   `CMakeLists.txt` gated on `DEFINED CMAKE_JS_VERSION`; cmake-js does *configure*
-  (Electron headers + `node.lib`), clang builds it into `build/native-node/`
-  (untouching `build/native`). Re-run after an Electron bump to ABI-rebuild.
+  (NW.js headers + import lib via `-r nw`), clang builds it into
+  `build/native-node/` (untouching `build/native`). Re-run after an NW.js bump to
+  ABI-rebuild. `--smoke` loads the result in a hidden NW.js window via the shared
+  `source/napi/napi_smoke.cjs` body.
   Entry: `source/napi/napi_entry.cc`. **Raw C N-API** (`node_api.h`), **not**
   node-addon-api (its `CallbackInfo` miscompiles under this clang toolchain).
 - The native path is **opt-in**: `--backend native` (test harness) sets
@@ -318,7 +349,7 @@ for status. Key conventions:
   `IWasmInterface` helpers (`getBoundVector`, `Mesh_*`, `bufferBytes`/`bufferKey`
   via `pointerBytes`/`objectAddress`). The WASM `typescriptRuntime/*` stays
   unchanged (wasm32/number-based).
-- **No zero-copy bulk reads natively.** Electron's V8 sandbox forbids external
+- **No zero-copy bulk reads natively.** The V8 sandbox forbids external
   ArrayBuffers (`napi_no_external_buffers_allowed`), so `vectorView`/
   `pointerBytes` **copy** into a sandbox-internal buffer (read-only; one memcpy
   per buffer). **Never throw on the bulk-data seam** — return an empty

@@ -1,6 +1,6 @@
 /**
  * Integration-test support for the boundary constraint system. Exposes
- * `globalThis.__boundaryTest()`, which the Electron headless harness drives
+ * `globalThis.__boundaryTest()`, which the NW.js headless harness drives
  * from `--eval` (see `tests/integration/sculptcore_boundary.test.ts`); the
  * result is reflected into the `--dump` JSON as `boundarytest`.
  *

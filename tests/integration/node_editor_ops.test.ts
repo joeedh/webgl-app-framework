@@ -6,7 +6,7 @@
  * The node editor is UI/app-coupled (path.ux widgets, the data API), so its code
  * can't be loaded in the jsdom unit harness — vectormath/path.ux don't transform
  * there (see tests/unit/isect_frustum.test.ts). Instead we drive the *real*
- * Electron app headlessly, the same mechanism as sculptcore_parity.test.ts.
+ * NW.js app headlessly, the same mechanism as sculptcore_parity.test.ts.
  *
  * To stay independent of the GPU (headless WebGPU rendering of a real mesh is
  * flaky on some hosts), this builds the empty scene and creates a standalone
@@ -22,7 +22,7 @@
  *   - --eval CTX.debug... + CTX.api.execTool(...)      the `--eval` → `CTX`
  *     test bridge from CLAUDE.md (reflection + driving a ToolOp from JS).
  *
- * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`build/entry_point.js`, `pnpm build`). The native sculptcore addon is
  * NOT required — the ops are pure-JS graph edits on the WASM backend.
  */
@@ -45,10 +45,10 @@ interface Dump {
   materials: DumpMaterial[]
 }
 
-function resolveElectronExe(): string | undefined {
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -63,10 +63,9 @@ function resolveElectronExe(): string | undefined {
  * execFileSync passes args as an array (no shell), so the eval/tool strings need
  * no escaping.
  */
-function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: string[]; runTools?: string[]}): Dump {
+function runHarness(nwExe: string, {evals = [], runTools = []}: {evals?: string[]; runTools?: string[]}): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'nodeops-')), 'dump.json')
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
 
   // `--eval=<expr>` (single token), NOT `--eval <expr>`: a bare `<expr>` token
   // is parsed by headless Chromium as a positional URL and can abort the launch
@@ -76,10 +75,10 @@ function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: s
   const runArgs = runTools.flatMap((t) => ['--run', t])
 
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       'wasm',
@@ -99,24 +98,24 @@ function runHarness(electronExe: string, {evals = [], runTools = []}: {evals?: s
 }
 
 /** A run that creates one material then runs `extraTools`; returns that material. */
-function runOps(electronExe: string, extraTools: string[]): DumpMaterial {
+function runOps(nwExe: string, extraTools: string[]): DumpMaterial {
   // material.new always runs first (creates the graph the other ops target).
-  const dump = runHarness(electronExe, {runTools: ['material.new()', ...extraTools]})
+  const dump = runHarness(nwExe, {runTools: ['material.new()', ...extraTools]})
   if (!Array.isArray(dump.materials) || dump.materials.length !== 1) {
     throw new Error(`expected exactly one datalib material, got ${JSON.stringify(dump.materials)}`)
   }
   return dump.materials[0]
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 const maybe = canRun ? describe : describe.skip
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -131,12 +130,12 @@ maybe('node-editor ToolOps mutate the shader graph (headless)', () => {
   let afterDeleteAll: DumpMaterial
 
   beforeAll(() => {
-    baseline = runOps(electronExe!, [])
+    baseline = runOps(nwExe!, [])
     // The material's lib_id is deterministic across these identical boots, so we
     // can target its graph path from the baseline run.
     const g = `graphPath='library.material[${baseline.libId}].graph' graphClass='shader'`
-    afterAdd = runOps(electronExe!, [`node.add_node(${g} nodeClass='DiffuseNode')`])
-    afterDeleteAll = runOps(electronExe!, [`node.toggle_select_all(${g} mode='ADD')`, `node.delete_selected(${g})`])
+    afterAdd = runOps(nwExe!, [`node.add_node(${g} nodeClass='DiffuseNode')`])
+    afterDeleteAll = runOps(nwExe!, [`node.toggle_select_all(${g} mode='ADD')`, `node.delete_selected(${g})`])
   }, 300000)
 
   test('material.new yields the 3-node makeDefaultMaterial graph', () => {
@@ -160,7 +159,7 @@ maybe('CTX.debug via the --eval harness bridge', () => {
     // tools (see CLAUDE.md's "Debug context API" guide). Two evals: the first
     // exercises CTX.debug reflection (and throws — aborting the second — if it's
     // broken), the second drives a ToolOp whose effect is observable in --dump.
-    dump = runHarness(electronExe!, {
+    dump = runHarness(nwExe!, {
       evals: [
         "if (CTX.debug.listEditorTypes().filter(e => e.areaname === 'MaterialEditor').length !== 1)" +
           " throw new Error('MaterialEditor missing from CTX.debug.listEditorTypes()')",

@@ -40,7 +40,7 @@ sees an empty arg list, so nothing here affects it.
 
 | Flag | Effect |
 |---|---|
-| `--remote-debug[=PORT]` | Enable the Chrome DevTools Protocol endpoint (default `9222`) + `--remote-allow-origins=*`. For the chrome-devtools-mcp plugin. |
+| `--remote-debug[=PORT]` | Enable the Chrome DevTools Protocol endpoint (default `9222`) + `--remote-allow-origins=*`. Drive it with the direct-CDP client `nwjs/cdp.mjs` (no MCP server). |
 | `--headless` | Create the window with `show:false` (CI / batch generation). |
 | `--no-devtools` | Don't auto-open DevTools. |
 
@@ -86,48 +86,35 @@ $ELECTRON electron/main.js --gen-scene litemesh-cube --dump out.json --exit
 # Higher-res cube, no light, save a project file:
 $ELECTRON electron/main.js --gen-scene litemesh-cube --scene-arg subdiv=240 --scene-arg light=0 --save cube.wproj --exit
 
-# Interactive + scriptable over CDP for the chrome-devtools plugin:
-$ELECTRON electron/main.js --gen-scene litemesh-cube --remote-debug
+# Interactive + scriptable over CDP (drive with nwjs/cdp.mjs):
+node nwjs/launch.mjs --gen-scene litemesh-cube --remote-debug
 ```
 
 The harness publishes its outcome on `window.__apptestResult`, so an external
-driver (or `chrome-devtools-mcp`'s `evaluate_script`) can read structured
-results.
+driver (`node nwjs/cdp.mjs eval "return window.__apptestResult"`) can read
+structured results.
 
-## Connecting chrome-devtools-mcp to the live Electron renderer
+## Connecting to the live NW.js renderer over CDP
 
-Electron is Chromium, so `--remote-debug` exposes a standard CDP endpoint
-(verified: `GET http://127.0.0.1:9222/json/version` returns the Electron build
-and a `page` target for `window.html`, plus the sculptcore wasm workers). The
-chrome-devtools-mcp plugin connects to a running browser with
-`--browserUrl`/`-u`.
+NW.js is Chromium, so `--remote-debug` exposes a standard CDP endpoint
+(`GET http://127.0.0.1:9222/json/version` returns the build and a `page` target
+for `window.html`). Drive it with the dependency-free **`nwjs/cdp.mjs`** client
+(Node 22+, global `fetch` + `WebSocket`):
 
-The plugin's bundled config (`…/chrome-devtools-mcp/<ver>/.mcp.json`) launches
-its **own** Chrome with no `--browserUrl`, so it can't see Electron. To point a
-chrome-devtools-mcp server at Electron, add a project-level `.mcp.json` (repo
-root) defining a separate `chrome-devtools-electron` server — this is a
-deliberate opt-in because it registers a new MCP server in your Claude Code
-config:
-
-```json
-{
-  "mcpServers": {
-    "chrome-devtools-electron": {
-      "command": "npx",
-      "args": ["chrome-devtools-mcp@latest", "--browserUrl", "http://127.0.0.1:9222"]
-    }
-  }
-}
+```bash
+node nwjs/cdp.mjs list                                  # CDP targets
+node nwjs/cdp.mjs eval "return _appstate.ctx.scene.objects.length"
+node nwjs/cdp.mjs eval "return globalThis.__nativeManager.addon.version()"
+node nwjs/cdp.mjs shot out.png                          # screenshot the page
 ```
 
-Workflow:
+It fetches `/json/list`, opens the page's `webSocketDebuggerUrl`, and issues
+`Runtime.evaluate` in the renderer realm (where `CTX` / `_appstate` /
+`__nativeManager` live).
 
-1. Launch Electron with `--remote-debug` (port `9222`).
-2. **Restart Claude Code** once so it picks up the new MCP server (MCP servers
-   bind at startup). Its tools then appear as `mcp__chrome-devtools-electron__*`.
-3. The server connects to Electron lazily on the first tool call, so the order
-   of (1) and the first tool use doesn't matter, but Electron must be up by then.
-
-The connection itself is proven independently of the restart: a raw CDP
-`Runtime.evaluate` against the endpoint reads `window.__apptestResult` and
-`_appstate` from the live renderer.
+**Why not a chrome-devtools MCP server:** an MCP server binds its browser
+connection once, at Claude-Code startup, so it can only attach to a browser
+already running on the port at that moment. Any NW.js launched as a child of the
+agent dies when the agent exits, so it can never be up *before* the next
+Claude-Code start — the ordering can't be satisfied. `nwjs/cdp.mjs` connects on
+demand, in-session, to whatever is live on the port, with no restart dance.

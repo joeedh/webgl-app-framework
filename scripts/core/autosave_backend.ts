@@ -3,12 +3,12 @@
  *
  * The manager produces the bytes; a backend rotates them onto durable storage
  * atomically and tracks a single global "latest" recovery pointer so the next
- * launch can offer to recover. Electron writes rotating files (next to the
+ * launch can offer to recover. NW.js writes rotating files (next to the
  * project, or under `.sculptcore/autosave/`); browser builds write to OPFS /
  * IndexedDB (see autosave_backend_browser.ts, wired in by the factory).
  *
  * Writes are async on purpose: even M1's disk I/O runs off the UI thread (on
- * libuv's pool in Electron, via the async OPFS API in the browser).
+ * libuv's pool in NW.js, via the async OPFS API in the browser).
  */
 
 import * as cconst from './const'
@@ -35,7 +35,7 @@ export interface AutosaveLatest {
 }
 
 export interface AutosaveBackend {
-  readonly kind: 'electron' | 'opfs' | 'indexeddb'
+  readonly kind: 'nwjs' | 'opfs' | 'indexeddb'
   /** Write @p bytes to the next rotating slot and update the latest pointer. */
   writeBackup(bytes: Uint8Array, opts: AutosaveWriteOpts): Promise<AutosaveLatest>
   /** The newest recovery pointer, or undefined if none exists. */
@@ -72,8 +72,8 @@ interface RotationManifest {
 
 const LATEST_NAME = 'latest.json'
 
-class ElectronAutosaveBackend implements AutosaveBackend {
-  readonly kind = 'electron'
+class NwjsAutosaveBackend implements AutosaveBackend {
+  readonly kind = 'nwjs'
   private fsp: NodeFsPromises
   private path: NodePath
   private storeDir: string
@@ -209,17 +209,17 @@ export function getAutosaveBackend(): AutosaveBackend | null {
   }
 
   const req = (globalThis as {require?: (m: string) => unknown}).require
-  const haveElectron = (globalThis as {haveElectron?: boolean}).haveElectron
+  const haveNwjs = (globalThis as {haveNwjs?: boolean}).haveNwjs
   const storage = getAppStorage()
 
-  if (haveElectron && typeof req === 'function' && storage.isFileBacked && storage.baseDir) {
+  if (haveNwjs && typeof req === 'function' && storage.isFileBacked && storage.baseDir) {
     try {
       const fsp = (req('fs') as {promises: NodeFsPromises}).promises
       const path = req('path') as NodePath
-      _backend = new ElectronAutosaveBackend(fsp, path, storage.baseDir)
+      _backend = new NwjsAutosaveBackend(fsp, path, storage.baseDir)
       return _backend
     } catch (err) {
-      console.warn('autosave: Electron fs backend unavailable', err)
+      console.warn('autosave: NW.js fs backend unavailable', err)
     }
   }
 

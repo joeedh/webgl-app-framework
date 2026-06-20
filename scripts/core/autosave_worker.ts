@@ -1,6 +1,6 @@
 /**
  * Autosave compression worker (plan §5.4). A module Web Worker — works in both
- * the browser and the Electron renderer — that lz4-frames raw mesh payloads off
+ * the browser and the NW.js renderer — that lz4-frames raw mesh payloads off
  * the main thread. It carries ONLY the dependency-free lz4 codec; it never loads
  * the sculptcore addon (which is main-thread-only) or touches the filesystem.
  *

@@ -1,9 +1,10 @@
-# Debug surface (for live debugging via chrome-devtools / CDP)
+# Debug surface (for live debugging via CDP)
 
-This is a quick map of what an agent can reach from `evaluate_script` (the
-chrome-devtools MCP eval bridge) when debugging the **browser build** or the
-**Electron build** (`--remote-debug`/CDP). Everything below lives in the page
-realm and is present once the app has booted (`appstate.init()` has run).
+This is a quick map of what an agent can reach from a renderer-realm eval — a
+page `evaluate` (browser build) or `node nwjs/cdp.mjs eval "<js>"` over the CDP
+endpoint (NW.js build, `--remote-debug`) — when debugging the **browser build**
+or the **NW.js build**. Everything below lives in the page realm and is present
+once the app has booted (`appstate.init()` has run).
 
 See also: the **Debug context API (`CTX.debug`)** and **Electron test harness**
 sections of [../CLAUDE.md](../CLAUDE.md), and
@@ -87,9 +88,10 @@ Flip live to enable diagnostic logging without a rebuild: `paranoidEvents`,
   no GPU-readback hook to inspect.
 - **Headless boot is the fragile path**: `--eval` reaches `CTX`/`_appstate`, but
   anything needing a laid-out screen (`showEditor`, most editor accessors) can
-  crash a windowless boot. Use browser/Playwright or windowed-Electron CDP for
-  those; in bare headless prefer reflection or explicit-`graphPath` ops.
-- **`evaluate_script` serializes return values** (structure-clone), so returning
+  crash a windowless boot. Use browser/Playwright or a windowed NW.js over CDP
+  (`nwjs/cdp.mjs`) for those; in bare headless prefer reflection or
+  explicit-`graphPath` ops.
+- **CDP `Runtime.evaluate` serializes return values** (structure-clone), so returning
   a live `CTX.mesh` gives a flattened view — return primitives / hand-picked
   fields (counts, ids, bbox), not whole live objects.
 - **Never throw on the bulk-data seam natively** — a throw there is swallowed as a

@@ -1975,17 +1975,12 @@ export class LiteMesh extends SceneObjectData {
             bindingsCache.set(pipeline, bindings)
           }
           const uniforms = self.gpuUniforms!
-          bindings.write(uniforms)
-          // Bind every @group the shader declares — the basic spatial shaders
-          // use only @group(0), but a material draw shader spans @group 0/1/2
-          // (frame / lights / object). Missing/declined groups are skipped (a
-          // throw on the render seam is swallowed as a drawObjects warning and
-          // silently aborts the whole pass).
-          const groups: CommandBindGroup[] = []
-          for (const group of bindings.groups.keys()) {
-            const bg = bindings.getBindGroup(pipeline.handle, group, uniforms)
-            if (bg) groups.push({group, bindGroup: bg})
-          }
+          // Bind every @group the shader declares — basic spatial shaders use
+          // only @group(0), a material draw shader spans @group 0/1/2 (frame /
+          // lights / object). bindGroupList fills empty fillers for any gap
+          // index the shader skips (WebGPU requires a contiguous 0..max range;
+          // strict Dawn backends reject a missing intermediate group).
+          const groups: CommandBindGroup[] = bindings.bindGroupList(pipeline.handle, uniforms)
           if (groups.length === 0) {
             console.error('litemesh: spatial pipeline declares no uniform bind groups')
             return null

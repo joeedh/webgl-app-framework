@@ -1,11 +1,18 @@
 {
   "name": "webgl-app-framework",
   "version": "1.0.0",
+  "main": "nwjs/window.html",
+  "window": {
+    "width": 1400,
+    "height": 900,
+    "show": false
+  },
+  "chromium-args": "--enable-features=SharedArrayBuffer,WebGPU --allow-running-insecure-content --ignore-gpu-blocklist --enable-unsafe-webgpu",
   "scripts": {
     "build": "node tools/esbuilder.js",
     "setup-sculptcore": "cd sculptcore && node make.mjs install-emsdk && node make.mjs fetch-wgpu-native && node make.mjs install-tools",
     "configure-all": "cd sculptcore && node make.mjs configure && node make.mjs configure native && node make.mjs codegen",
-    "build-all": "cd sculptcore && node make.mjs codegen && node make.mjs build && node make.mjs build native && node make.mjs node && cd .. && node tools/esbuilder.js",
+    "build-all": "cd sculptcore && node make.mjs codegen && node make.mjs build && node make.mjs build native && node make.mjs node --runtime nw && cd .. && node tools/esbuilder.js",
     "watch": "node tools/esbuilder.js --watch",
     "cyclecheck": "node tools/circular-ref-finder/dist/index.js scripts/core/AppState.ts",
     "check:layers": "node tools/check-layers.js",
@@ -13,7 +20,7 @@
     "typecheck": "node tools/gen-datapaths.mjs && turbo typecheck",
     "test": "turbo test",
     "watch-typecheck": "npx tsgo --watch",
-    "electron": "pnpm --filter @webgl-app-framework/electron_app exec electron --enable-logging main.js --backend native",
+    "nwjs": "node nwjs/launch.mjs --backend native",
     "serv": "node tools/serv.js",
     "serv:restart": "node tools/serv-restart.js",
     "serv:test": "node tools/serv.js 5099",
@@ -42,6 +49,7 @@
     "jest": "^30.2.0",
     "markdown-toc": "^1.2.0",
     "nstructjs": "workspace:*",
+    "nw": "0.112.0-sdk",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
     "typescript-language-server": "^5.1.3"

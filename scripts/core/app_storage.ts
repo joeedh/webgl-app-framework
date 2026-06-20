@@ -2,16 +2,15 @@
  * Persistence backend for the startup file and user settings.
  *
  * Browser builds keep using `localStorage` (blobs base64-encoded under their
- * existing keys, so web behavior is unchanged). The Electron build instead
- * writes discrete files under a `.sculptcore` directory: `<repo>/.sculptcore`
- * when running from source, `~/.sculptcore` when packaged. The base dir is
- * resolved by the main process and forwarded via `--sculptcore-dir=<path>`
- * (electron/main.js → app_argv).
+ * existing keys, so web behavior is unchanged). The NW.js build instead writes
+ * discrete files under a `.sculptcore` directory at `<cwd>/.sculptcore` (the
+ * repo root when launched via `pnpm run nwjs` or the test harness). The
+ * renderer computes this itself — NW.js merges the Node + browser contexts, so
+ * `require('fs')`/`require('path')` and `process.cwd()` are available directly.
  *
- * The API is synchronous on purpose: the Electron renderer has
- * `nodeIntegration` so `fs.*Sync` is available, letting the existing sync
- * save/load call sites stay sync. Electron starts fresh from `.sculptcore`;
- * it does not migrate old `localStorage` data.
+ * The API is synchronous on purpose: `fs.*Sync` is available under NW.js,
+ * letting the existing sync save/load call sites stay sync. NW.js starts fresh
+ * from `.sculptcore`; it does not migrate old `localStorage` data.
  */
 
 import * as util from '../util/util'
@@ -78,7 +77,7 @@ interface NodePath {
   join(...parts: string[]): string
 }
 
-class ElectronAppStorage implements AppStorage {
+class NwjsAppStorage implements AppStorage {
   readonly isFileBacked = true
   readonly baseDir: string
   private fs: NodeFsSync
@@ -126,38 +125,28 @@ class ElectronAppStorage implements AppStorage {
 
 let _storage: AppStorage | undefined
 
-// The base dir is forwarded as its own `webPreferences.additionalArguments`
-// token (electron/main.js), which lands in the renderer's process.argv — not
-// in the base64 `--apptest-argv` user-arg blob, so read process.argv directly.
-function readBaseDir(): string | undefined {
-  const argv = (globalThis as {process?: {argv?: string[]}}).process?.argv
-  if (!argv) return undefined
-  const flag = '--sculptcore-dir='
-  for (const a of argv) {
-    if (a.startsWith(flag)) return a.slice(flag.length)
-  }
-  return undefined
-}
-
 function buildStorage(): AppStorage {
   const req = (globalThis as {require?: (m: string) => unknown}).require
-  const haveElectron = (globalThis as {haveElectron?: boolean}).haveElectron
-  const baseDir = readBaseDir()
+  const haveNwjs = (globalThis as {haveNwjs?: boolean}).haveNwjs
 
-  if (haveElectron && typeof req === 'function' && baseDir) {
+  if (haveNwjs && typeof req === 'function') {
     try {
       const fs = req('fs') as NodeFsSync
       const pathlib = req('path') as NodePath
-      return new ElectronAppStorage(baseDir, fs, pathlib)
+      const proc = (globalThis as {process?: {cwd(): string}}).process
+      // <cwd>/.sculptcore — the repo root when launched via `pnpm run nwjs` or
+      // the test harness (NW.js inherits the launcher's cwd, never chdir's).
+      const baseDir = pathlib.join(proc!.cwd(), '.sculptcore')
+      return new NwjsAppStorage(baseDir, fs, pathlib)
     } catch (err) {
-      console.warn('app_storage: Electron fs backend unavailable, using localStorage', err)
+      console.warn('app_storage: NW.js fs backend unavailable, using localStorage', err)
     }
   }
 
   return new BrowserAppStorage()
 }
 
-/** The active persistence backend (localStorage in the browser, files in Electron). */
+/** The active persistence backend (localStorage in the browser, files in NW.js). */
 export function getAppStorage(): AppStorage {
   if (_storage === undefined) {
     _storage = buildStorage()

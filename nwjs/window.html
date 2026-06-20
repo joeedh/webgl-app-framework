@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+      body {
+          overflow : hidden;
+      }
+  </style>
+  <script type="module">
+    window.haveNwjs = true;
+    window.__baseModulePath = "../scripts";
+
+    // NW.js merges the Node + browser contexts, so there is no separate main
+    // process: drive the window straight from the renderer. The manifest starts
+    // the window hidden (show:false); reveal it unless --apptest-headless, and
+    // open devtools unless --apptest-headless / --no-devtools (NW.js does not
+    // auto-open them). NOTE: we use --apptest-headless, not --headless, because
+    // --headless is a real Chromium switch that NW.js intercepts (it never
+    // reaches nw.App.argv and breaks the window model).
+    const argv = (globalThis.nw && nw.App.argv) || [];
+    const hasFlag = (name) => argv.some((a) => a === "--" + name || a.startsWith("--" + name + "="));
+    if (globalThis.nw) {
+      const win = nw.Window.get();
+      if (!hasFlag("apptest-headless")) {
+        win.show();
+        win.focus();
+        if (!hasFlag("no-devtools")) {
+          win.showDevTools();
+        }
+      }
+    }
+
+    let start;
+
+    import('../build/entry_point.js').then((app) => {
+      start = () => {
+        console.log("init!", app);
+        app.init();
+      }
+    });
+
+    window.oninit = function() {
+      let timer = window.setInterval(() => {
+        if (start) {
+          window.clearInterval(timer);
+
+          start();
+        }
+      }, 25)
+    }
+  </script>
+</head>
+<body onload='oninit()'>
+<img id="iconsheet" style="display:none" src="../assets/iconsheet.svg"></img>
+</body>
+</html>

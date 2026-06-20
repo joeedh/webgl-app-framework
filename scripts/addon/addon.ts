@@ -211,7 +211,7 @@ export class AddonManager {
    * index.json bundle. Non-fatal on any failure.
    */
   private async collectIndexSources(): Promise<void> {
-    const indexUrl = window.haveElectron ? '../build/addons/index.json' : './build/addons/index.json'
+    const indexUrl = window.haveNwjs ? '../build/addons/index.json' : './build/addons/index.json'
 
     let json: unknown
     try {
@@ -227,7 +227,7 @@ export class AddonManager {
       return
     }
 
-    const baseUrl = window.haveElectron ? '../build/addons' : './build/addons'
+    const baseUrl = window.haveNwjs ? '../build/addons' : './build/addons'
 
     for (const raw of json) {
       let m: IAddonManifest
@@ -594,18 +594,18 @@ export async function startAddons(autoEnable: boolean = true): Promise<void> {
 }
 
 /**
- * Picks a default storage backend: NodeFs (via Electron IPC) when running
- * inside Electron, IndexedDB when in a real browser, or undefined in any
+ * Picks a default storage backend: NodeFs (direct require) when running
+ * inside NW.js, IndexedDB when in a real browser, or undefined in any
  * environment that has neither. Hosts that need a different backend (e.g.
  * tests) should bypass this and call manager.setStorage() directly.
  */
 async function initAddonStorage(): Promise<AddonStorage | undefined> {
-  if (window.haveElectron) {
+  if (window.haveNwjs) {
     try {
-      const {createElectronAddonStorage} = await import('./storage_electron.js')
-      return await createElectronAddonStorage()
+      const {createNwjsAddonStorage} = await import('./storage_nwjs.js')
+      return await createNwjsAddonStorage()
     } catch (err) {
-      console.warn('Electron addon storage init failed:', err)
+      console.warn('NW.js addon storage init failed:', err)
       return undefined
     }
   }

@@ -2,7 +2,7 @@
  * Boundary-constraint integration test (ImmediateTODOs: polyline-graph
  * invariance under brush strokes with/without dyntopo, plus undo/redo).
  *
- * Drives the real Electron app headlessly per backend on the spherified
+ * Drives the real NW.js app headlessly per backend on the spherified
  * `litemesh-cube` scene, runs `__boundaryTest()` (scripts/lite-mesh/
  * litemesh_boundarytest_support.ts) via `--eval`, and asserts the structured
  * result reflected into the `--dump` JSON as `boundarytest`. The driver marks
@@ -12,7 +12,7 @@
  * component count are invariant under feature-preserving remeshing, so a
  * change in either means a brush stroke damaged the constraint network.
  *
- * Prerequisites (else self-skips, logged): a resolvable Electron and the app
+ * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`pnpm build`). The native leg additionally needs the N-API addon
  * (`make.mjs node`); without it only the WASM leg runs.
  */
@@ -62,11 +62,11 @@ interface BoundaryTestResult {
   leavesAfterDyntopo?: number
 }
 
-/** Resolve the Electron executable via the electron/ workspace package. */
-function resolveElectronExe(): string | undefined {
+/** Resolve the NW.js executable via the nwjs/ workspace package. */
+function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-p', "require('electron')"], {
-      cwd     : Path.join(REPO_ROOT, 'electron'),
+    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
+      cwd     : REPO_ROOT,
       encoding: 'utf-8',
     }).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
@@ -76,15 +76,14 @@ function resolveElectronExe(): string | undefined {
 }
 
 /** Boot headlessly under `backend`, run __boundaryTest(), return its result. */
-function runBoundaryTest(electronExe: string, backend: 'wasm' | 'native'): BoundaryTestResult {
+function runBoundaryTest(nwExe: string, backend: 'wasm' | 'native'): BoundaryTestResult {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'scbound-')), `${backend}.json`)
   const env = {...process.env}
-  delete env.ELECTRON_RUN_AS_NODE // else electron runs as plain node, no window
   execFileSync(
-    electronExe,
+    nwExe,
     [
-      Path.join(REPO_ROOT, 'electron', 'main.js'),
-      '--headless',
+      REPO_ROOT,
+      '--apptest-headless',
       '--no-devtools',
       '--backend',
       backend,
@@ -108,14 +107,14 @@ function runBoundaryTest(electronExe: string, backend: 'wasm' | 'native'): Bound
   return dump.boundarytest
 }
 
-const electronExe = resolveElectronExe()
+const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!electronExe && haveBundle
+const canRun = !!nwExe && haveBundle
 
 if (!canRun) {
   const why = [
-    !electronExe && 'electron not resolvable (electron/ workspace)',
+    !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
   ]
     .filter(Boolean)
@@ -134,7 +133,7 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore boundary constraints (
   let r: BoundaryTestResult
 
   beforeAll(() => {
-    r = runBoundaryTest(electronExe!, backend)
+    r = runBoundaryTest(nwExe!, backend)
   }, 180000)
 
   test('driver ran cleanly', () => {

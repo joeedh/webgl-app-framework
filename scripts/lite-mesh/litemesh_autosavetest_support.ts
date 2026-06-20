@@ -1,7 +1,7 @@
 /**
  * Integration-test support for the autosave split-serialization pipeline under
  * a live dyntopo sculpt. Exposes `globalThis.__autosaveTest()`, an async driver
- * the Electron headless harness awaits from `--eval` (see
+ * the NW.js headless harness awaits from `--eval` (see
  * `tests/integration/sculptcore_autosave.test.ts`); its result is reflected
  * into the `--dump` JSON as `autosavetest`.
  *

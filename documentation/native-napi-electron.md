@@ -1,5 +1,12 @@
 # Native N-API sculptcore backend (vs. WASM)
 
+> **Shell update:** the desktop shell is now **NW.js** (the `nwjs/` workspace),
+> not Electron. The native addon is built for the NW.js ABI
+> (`node sculptcore/make.mjs node` → default `--runtime nw`, cmake-js `-r nw`);
+> detection keys off `process.versions.nw` alongside `.electron`. The N-API
+> model below is unchanged — "Electron" references describe the original design
+> and apply equally to NW.js (both embed Node + V8 with the same sandbox rules).
+
 `sculptcore` (the C++20 mesh/sculpt engine under `sculptcore/`) is consumed
 from the TypeScript app through **two interchangeable runtime backends behind a
 single JS API**:
