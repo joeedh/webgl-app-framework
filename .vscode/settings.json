@@ -129,6 +129,8 @@
     "VERTS",
     "vieworigin",
     "viewvec",
+    "wproj",
+    "wsum",
     "ymid"
   ],
   "search.exclude": {
