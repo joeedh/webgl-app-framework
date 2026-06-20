@@ -249,7 +249,7 @@ layer is a hook, not yet wired.
 ## Build / verify
 
 - WASM (+ regenerates the TS binding interfaces via genTS): `node make.mjs build wasm`.
-- Native N-API addon: `node make.mjs node`. App bundle: `pnpm build` (repo root).
+- Native N-API addon: `node make.mjs build node`. App bundle: `pnpm build` (repo root).
 - Typecheck: `npx tsgo --noEmit` (baseline 106 errors).
 - Cross-backend: `node make.mjs sbrush-validate wgsl` (each kernel compiles to
   valid WGSL) and `node make.mjs sbrush-verify` (CPU vs GPU bit-identical;

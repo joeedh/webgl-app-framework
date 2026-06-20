@@ -2,7 +2,7 @@
 
 > **Shell:** the desktop shell is **NW.js** (the `nwjs/` workspace); the Electron
 > shell was removed. The native addon is built for the NW.js ABI
-> (`node sculptcore/make.mjs node` → default `--runtime nw`, cmake-js `-r nw`);
+> (`node sculptcore/make.mjs build node` → default `--runtime nw`, cmake-js `-r nw`);
 > detection keys off `process.versions.nw`. The N-API model is shell-agnostic —
 > NW.js and Electron both embed Node + V8 with the same sandbox rules — so the
 > original Electron-era design carried over unchanged.
@@ -64,15 +64,16 @@ path adds a **second runtime implemented in C++** that reuses the existing
 | Method call | marshal args into heap + `LSTL_Method_Invoke` | `methodInvoker` marshals args → C++, calls the descriptor's `MethodThunk` |
 | Bulk data (vertex buffers) | `new Uint8Array(HEAPU8.buffer, ptr, len)` — true zero-copy view | one-shot **copy** into a sandbox-internal ArrayBuffer (see V8 sandbox below) |
 | Object identity key | the numeric `.ptr` | `objectAddress(obj)` — C++ address as an opaque key |
-| Tooling | Emscripten, `make.mjs build wasm` | cmake-js + raw C N-API, `make.mjs node` |
+| Tooling | Emscripten, `make.mjs build wasm` | cmake-js + raw C N-API, `make.mjs build node` |
 
 ---
 
 ## Build
 
 ```
-node sculptcore/make.mjs node            # build build/native-node/sculptcore_node.node
-node sculptcore/make.mjs node --smoke    # build, then load in NW.js and call version()/bindingCount()
+node sculptcore/make.mjs configure node  # cmake-js configure into build/native-node/ (also run on demand by `build node`)
+node sculptcore/make.mjs build node       # build build/native-node/sculptcore_node.node
+node sculptcore/make.mjs build node --smoke  # build, then load in NW.js and call version()/bindingCount()
 ```
 
 How it differs from the plain native build (`make.mjs build native` →
@@ -82,13 +83,15 @@ How it differs from the plain native build (`make.mjs build native` →
   `CMakeLists.txt`, gated on `DEFINED CMAKE_JS_VERSION` so a plain
   `make.mjs configure native` never sees it. Entry point:
   `sculptcore/source/napi/napi_entry.cc`.
-- `make.mjs node` uses **cmake-js** for *configure* only (`-r nw`) — it provides
-  the NW.js N-API headers + `node.lib` and injects the `CMAKE_JS_*` variables —
-  then builds just `--target sculptcore_node` with the clang toolchain into a
-  separate `build/native-node/` dir (cmake-js's `/MT` CRT, kept consistent
-  within the addon, leaving `build/native` untouched).
+- `make.mjs configure node` uses **cmake-js** for *configure* (`-r nw`) — it
+  provides the NW.js N-API headers + `node.lib` and injects the `CMAKE_JS_*`
+  variables — then `make.mjs build node` builds just `--target sculptcore_node`
+  with the clang toolchain into a separate `build/native-node/` dir (cmake-js's
+  `/MT` CRT, kept consistent within the addon, leaving `build/native`
+  untouched). `build node` runs the configure step itself if the dir isn't
+  configured yet.
 - The NW.js version is read from the repo-root `package.json` `nw` dep. Re-run
-  `make.mjs node` after an NW.js bump to ABI-rebuild against the new headers.
+  `make.mjs build node` after an NW.js bump to ABI-rebuild against the new headers.
 - **NW.js header provisioning:** cmake-js's built-in NW.js download points at the
   legacy `node-webkit.s3.amazonaws.com` mirror, which 404s for current releases
   (leaving an empty `nw.lib` the linker rejects). `make.mjs`'s `provisionNwjsCache`
@@ -116,7 +119,7 @@ How it differs from the plain native build (`make.mjs build native` →
 ```
 napi_entry.cc      NAPI_MODULE entry: initBindings(); new NapiRuntime(env, getBindingManager()); installExports()
 napi_runtime.h/cc  the reflection runtime (the bulk of the work)
-napi_smoke.cjs     shared smoke-test body, loaded in a hidden NW.js window by `make.mjs node --smoke`
+napi_smoke.cjs     shared smoke-test body, loaded in a hidden NW.js window by `make.mjs build node --smoke`
 ```
 
 At module init (`napi_entry.cc`):

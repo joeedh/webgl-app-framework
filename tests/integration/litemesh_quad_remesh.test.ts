@@ -21,7 +21,7 @@
  * (`test_remesh_extract`), not re-proven here.
  *
  * Self-skips (logged) without the app bundle (`pnpm build`) + native addon
- * (`make.mjs node`) + a resolvable NW.js, so CI without the native toolchain
+ * (`make.mjs build node`) + a resolvable NW.js, so CI without the native toolchain
  * stays green — same prerequisites as sculptcore_parity.test.ts.
  */
 
@@ -151,7 +151,7 @@ if (!canRun) {
   const why = [
     !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
-    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs node)`,
+    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs build node)`,
   ]
     .filter(Boolean)
     .join('; ')

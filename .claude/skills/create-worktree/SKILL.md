@@ -99,7 +99,7 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] \
    one. Without it the native build fails with
    `'../kernels/generated/draw.brush.gen.h' file not found`.
 
-   The node-addon build (`node make.mjs node`) uses the same toolchain and is
+   The node-addon build (`node make.mjs build node`) uses the same toolchain and is
    cached too. WASM builds are not cached (emcc runs through a python wrapper).
 
 ## Getting a feature branch's submodule commits into a new worktree

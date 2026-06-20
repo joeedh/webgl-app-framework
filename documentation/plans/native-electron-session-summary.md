@@ -25,7 +25,7 @@ the existing WASM path for browsers. Use raw C N-API (`node_api.h`) — the
   `documentation/plans/native-electron-test-harness.md`.
 - **Spike A.5 — DONE (PASSED).** clang-on-Windows (MSVC ABI) links against
   Electron's `node.lib`; native addon builds + loads in Electron.
-- **Workstream A — DONE (verified).** `node make.mjs node --smoke` builds
+- **Workstream A — DONE (verified).** `node make.mjs build node --smoke` builds
   `build/native-node/sculptcore_node.node` (~1.5 MB, links full engine via
   `sculptcore_core` + module libs, gated on `DEFINED CMAKE_JS_VERSION`), loads
   in Electron 41.1.1, reports `{"version":"…Workstream A","bindingCount":103,"ok":true}`.
@@ -57,7 +57,7 @@ not have compiled. Completing the class-instance fix:
   prototype. Per-instance base ptr in the `napi_wrap`'d `ArrayInstData`;
   `arrayGetter`/`arraySetter` unwrap `this` for `base` and index straight into
   C++ memory. `arrayCache_`/`ArrayElemCtx` removed.
-- Verified: `node make.mjs node --smoke` → `float2.vec` round-trips `[1.5,3.0]`
+- Verified: `node make.mjs build node --smoke` → `float2.vec` round-trips `[1.5,3.0]`
   with `firstElementOk` + `allOk` true.
 - `documentation/plans/native-electron.md` "Known bug" section rewritten to
   "Fixed". The smoke test (`source/napi/electron_smoke.cjs`) was also rewritten
@@ -95,7 +95,7 @@ audit; E = Electron 41→42 upgrade; F = parity tests. Workstream B is still
 
 ## Build / run quick reference
 
-- Native addon: `cd sculptcore && node make.mjs node [--smoke]` →
+- Native addon: `cd sculptcore && node make.mjs build node [--smoke]` →
   `build/native-node/sculptcore_node.node`. Build goes through
   `node configureEnv.mjs` (MSVC vcvars), cmake-js configure with
   `-G Ninja --CDCMAKE_TOOLCHAIN_FILE=…native-clang.cmake -r electron -v <ver> -a x64`,

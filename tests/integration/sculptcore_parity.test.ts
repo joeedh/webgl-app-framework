@@ -19,7 +19,7 @@
  * Prerequisites (else the test self-skips with a logged reason, so CI without
  * the native clang/cmake-js toolchain stays green): the app bundle
  * (`build/entry_point.js`, `pnpm build`) and the native addon
- * (`sculptcore/build/native-node/sculptcore_node.node`, `make.mjs node`).
+ * (`sculptcore/build/native-node/sculptcore_node.node`, `make.mjs build node`).
  */
 
 import fs from 'node:fs'
@@ -96,7 +96,7 @@ if (!canRun) {
   const why = [
     !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
-    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs node)`,
+    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs build node)`,
   ]
     .filter(Boolean)
     .join('; ')

@@ -14,7 +14,7 @@
  *
  * Prerequisites (else self-skips, logged): a resolvable NW.js and the app
  * bundle (`pnpm build`). The native leg additionally needs the N-API addon
- * (`make.mjs node`); without it only the WASM leg runs.
+ * (`make.mjs build node`); without it only the WASM leg runs.
  */
 
 import {execFileSync} from 'node:child_process'
@@ -109,7 +109,7 @@ if (!canRun) {
   console.warn(`[sculptcore-undomem] skipped: ${why}`)
 } else if (!haveNative) {
   // eslint-disable-next-line no-console
-  console.warn('[sculptcore-undomem] native leg skipped: addon missing (run make.mjs node)')
+  console.warn('[sculptcore-undomem] native leg skipped: addon missing (run make.mjs build node)')
 }
 
 const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']

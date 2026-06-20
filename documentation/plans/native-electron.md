@@ -77,7 +77,7 @@ The native CMake tree already exists and builds `libsculptcore` as `SHARED`
 (`sculptcore/CMakeLists.txt:127`), driven by `make.mjs native` with the
 clang toolchain `build_files/native-clang.cmake`, into `build/native`.
 
-**Status: ✅ DONE.** `node make.mjs node [--smoke]` builds
+**Status: ✅ DONE.** `node make.mjs build node [--smoke]` builds
 `build/native-node/sculptcore_node.node` for the Electron ABI and (with
 `--smoke`) loads it in Electron. Verified: the full engine links and runs
 natively — `bindingCount()` calls `initBindings()` and reports **103** registered
@@ -87,7 +87,7 @@ napi_entry.cc`) uses the raw C N-API per spike A.5; only `cmake-js` was added as
 a dev dep. (2) The `sculptcore_node` MODULE target lives in the root
 `CMakeLists.txt`, gated on `DEFINED CMAKE_JS_VERSION` so a plain
 `make.mjs configure native` never sees it; it links `sculptcore_core ${LIB}`.
-(3) `make.mjs node` uses cmake-js for *configure* (Electron header/`node.lib`
+(3) `make.mjs build node` uses cmake-js for *configure* (Electron header/`node.lib`
 download + `CMAKE_JS_*`) then builds only `--target sculptcore_node` with the
 clang toolchain into a separate `build/native-node` dir (cmake-js's `/MT` CRT,
 so it stays consistent within the addon and leaves `build/native` untouched).
@@ -448,7 +448,7 @@ Because native pointers stay in C++, this is **not** a bigint conversion of
 
 **Status: ✅ DONE (2026-05-28).** Bumped to `^42.2.0` (pnpm resolves **42.3.0**,
 Chromium 148 / Node 24). The native addon rebuilds clean against the v42.2.0
-N-API headers (`make.mjs node` → `cmake-js -r electron -v 42.2.0`; clean-rebuild
+N-API headers (`make.mjs build node` → `cmake-js -r electron -v 42.2.0`; clean-rebuild
 recompiles `napi_entry.cc`/`napi_runtime.cc` and links) and **loads under
 42.3.0**: smoke test green (`bindingCount:103`, sculpt-stroke
 `geometryChanged:true`), and the full app boots with `--backend native
@@ -537,7 +537,7 @@ built procedurally rather than loaded from `.wproj`.
 1. **Spike** (A.5): trivial Electron N-API addon built via cmake-js with the
    clang toolchain — de-risk the link/ABI question first. ✅ **DONE**
    (`sculptcore/spike/napi/RESULTS.md`).
-2. Addon build target wired into `make.mjs` (A). ✅ **DONE** (`make.mjs node`).
+2. Addon build target wired into `make.mjs` (A). ✅ **DONE** (`make.mjs build node`).
 3. C++ N-API runtime: structs/members/methods/getBoundPointer (B core).
    🟡 structs/members/getBoundPointer/construct **DONE** (B1) + methods **DONE**
    (B2). Remaining B: bulk-data fast path, Vector, strings.

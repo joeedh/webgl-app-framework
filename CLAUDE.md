@@ -329,10 +329,11 @@ See [documentation/native-napi-electron.md](documentation/native-napi-electron.m
 for the full model, and [documentation/plans/native-electron.md](documentation/plans/native-electron.md)
 for status. Key conventions:
 
-- Build the addon with `node sculptcore/make.mjs node [--smoke]` (defaults to
-  `--runtime nw`; reads the NW.js version from `nwjs/package.json`'s `nw` dep) →
+- Build the addon with `node sculptcore/make.mjs build node [--smoke]` (defaults
+  to `--runtime nw`; reads the NW.js version from `nwjs/package.json`'s `nw` dep) →
   `build/native-node/sculptcore_node.node`. It's a CMake `MODULE` in the **root**
-  `CMakeLists.txt` gated on `DEFINED CMAKE_JS_VERSION`; cmake-js does *configure*
+  `CMakeLists.txt` gated on `DEFINED CMAKE_JS_VERSION`; the configure step
+  (`make.mjs configure node`, also run on demand by `build node`) uses cmake-js
   (NW.js headers + import lib via `-r nw`), clang builds it into
   `build/native-node/` (untouching `build/native`). Re-run after an NW.js bump to
   ABI-rebuild. `--smoke` loads the result in a hidden NW.js window via the shared

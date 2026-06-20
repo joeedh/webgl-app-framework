@@ -18,7 +18,7 @@
  *
  * Self-skips (so CI without the native clang/cmake-js toolchain stays green) if
  * `nw` isn't resolvable, the app bundle is missing (`pnpm build`), or the native
- * addon is missing (`sculptcore/make.mjs node`).
+ * addon is missing (`sculptcore/make.mjs build node`).
  */
 import {execFileSync} from 'node:child_process'
 import fs from 'node:fs'
@@ -40,7 +40,7 @@ if (!canRun) {
   const why = [
     !nwExe && 'nw not resolvable (nwjs/ workspace)',
     !haveBundle && `app bundle missing (${Path.relative(REPO_ROOT, BUNDLE)}; run pnpm build)`,
-    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs node)`,
+    !haveNative && `native addon missing (${Path.relative(REPO_ROOT, NATIVE_ADDON)}; run make.mjs build node)`,
   ]
     .filter(Boolean)
     .join('; ')
