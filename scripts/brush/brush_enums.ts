@@ -35,6 +35,7 @@ export enum SculptTools {
   POLYGROUP = 18,
   BSMOOTH = 19,
   KELVINLET = 20,
+  FEATURE_ALIGN = 21,
   PAINT = 128,
   PAINT_SMOOTH = 129,
   COLOR_BOUNDARY = 130,

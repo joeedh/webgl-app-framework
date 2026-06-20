@@ -27,6 +27,7 @@ import {
   BrushSpacingModes,
   PlaneNormalModes,
   DynTopoOverridesSC,
+  DynTopoFlagsSC,
 } from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
@@ -382,6 +383,7 @@ const ACCUMULATE_DEFAULT_TOOLS = [
   SculptTools.PAINT_SMOOTH,
   SculptTools.INFLATE,
   SculptTools.CLAY,
+  SculptTools.FEATURE_ALIGN,
 ]
 
 export function makeDefaultBrushes() {
@@ -488,6 +490,18 @@ export function makeDefaultBrushes() {
 
   brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
   brush.dynamics.strength.useDynamics = false
+
+  brush = bmap[SculptTools.FEATURE_ALIGN]
+  brush.strength = 0.6
+  // Full rake bias by default — the brush's whole purpose is aligning edge flow.
+  brush.rake = 1.0
+  brush.rakeCurvatureFactor = 1.0
+  // Tangential sliding (don't inflate) so the rake redistributes verts in-surface.
+  brush.smoothProj = 0.5
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
+  // Designed to be used with dyntopo — enable it by default on this brush.
+  brush.dynTopoSC.overrideMask |= DynTopoOverridesSC.ENABLED
+  brush.dynTopoSC.flag |= DynTopoFlagsSC.ENABLED
 
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
