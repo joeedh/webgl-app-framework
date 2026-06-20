@@ -3945,6 +3945,7 @@
         "POLYGROUP",
         "BSMOOTH",
         "KELVINLET",
+        "FEATURE_ALIGN",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -4263,6 +4264,7 @@
         "COLOR",
         "POLYGROUP",
         "KELVINLET",
+        "FEATURE_ALIGN",
         "PAINT_SMOOTH"
       ]
     },
