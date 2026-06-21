@@ -149,6 +149,13 @@ and per-edge-snapshot undo. They flag the source-of-truth `boundary::EDGE_SEAM` 
 toolmode `drawFeatureOverlay`, default on) draws all boundary-flagged edges in
 distinct colors. See [documentation/feature-marking.md](documentation/feature-marking.md).
 
+How those source flags are summarized per-vertex (`boundary::recomputeDirty` →
+the `.boundary.vert.class` bitmask) and consumed downstream — the boundary-aware
+smooth brushes (`bsmooth` / `featurealign`, sharp-crease vs. tangent-plane
+relax) and the dyntopo feature-preserving remesher (`featureCollapseOk`) — is
+the **boundary-constraint system**, documented in
+[sculptcore/documentation/boundaryConstraints.md](sculptcore/documentation/boundaryConstraints.md).
+
 ## Node editor
 
 The node-graph editor lives in `scripts/editors/node/`. See
