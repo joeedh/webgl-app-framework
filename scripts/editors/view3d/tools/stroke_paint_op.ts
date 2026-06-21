@@ -29,6 +29,7 @@ import {
   FlagProperty,
   keymap,
   Mat4Property,
+  Matrix4,
   ToolOp,
   PropertySlots,
 } from '../../../path.ux/scripts/pathux.js'
@@ -77,6 +78,13 @@ export abstract class StrokeDriverOp<
   /** Override to drive even spacing in world units instead of screen pixels. */
   getSpaceMode(): StrokeSpaceMode {
     return StrokeSpaceMode.SCREEN
+  }
+
+  /** Object local->world matrix so the driver emits object-local PaintSamples
+   * (positions + view vectors in the sculpt mesh's own space). Return undefined
+   * to keep samples in world space (the default). */
+  getObjectMatrix(): Matrix4 | undefined {
+    return undefined
   }
 
   getInvertFromEvent(e: PointerEvent): boolean {
@@ -163,10 +171,11 @@ export abstract class StrokeDriverOp<
     this.lastEvent = undefined
 
     this.driver = new BrushStrokeDriver({
-      projection: this.makeProjection(),
-      getParams : this.makeParamProvider(),
-      spaceMode : this.getSpaceMode(),
-      rayCast   : this.makeRayCast(),
+      projection  : this.makeProjection(),
+      getParams   : this.makeParamProvider(),
+      spaceMode   : this.getSpaceMode(),
+      rayCast     : this.makeRayCast(),
+      objectMatrix: () => this.getObjectMatrix(),
     })
 
     if (this.timer !== undefined) {

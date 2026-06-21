@@ -124,7 +124,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   ensureExecutor(ctx: ToolContext): CommandExecutor {
     const brush = this.inputs.brush.getValue()
     const result = builSculptcoreBrush({
-      wasm     : getWasmImmediate()!,
+      wasm: getWasmImmediate()!,
       brush,
       mesh     : ctx.object!.data as LiteMesh,
       radius   : this.calcRadius(brush.radius),
@@ -242,6 +242,17 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     return this.dynTopoParams
   }
 
+  /** Emit object-local PaintSamples from the driver (positions + view vectors in
+   * the LiteMesh's own space), so applyDabOne can raycast the mesh and run the
+   * brush kernel without a per-dab world->local conversion. */
+  getObjectMatrix(): Matrix4 | undefined {
+    const ob = this.modal_ctx?.object
+    if (!ob) {
+      return undefined
+    }
+    return new Matrix4(ob.outputs.matrix.getValue())
+  }
+
   /** World-space ray cast for the stroke driver's control points: world
    * origin/dir -> object-local -> mesh.rayCast -> hit back in world space. */
   makeRayCast(): StrokeRayCast {
@@ -298,12 +309,11 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.applyDabOne(ctx, ps, undefined, 0)
 
     const sym = this.getSymmetryAxes(ctx)
-    if (sym === 0) {
-      return
-    }
-    const muls = SymAxisMap[sym]
-    for (let i = 0; i < muls.length; i++) {
-      this.applyDabOne(ctx, ps, muls[i], i + 1)
+    if (sym !== 0) {
+      const muls = SymAxisMap[sym]
+      for (let i = 0; i < muls.length; i++) {
+        this.applyDabOne(ctx, ps, muls[i], i + 1)
+      }
     }
 
     // When the poly-group edge overlay is enabled, refresh its boundaries each
@@ -332,33 +342,25 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   private applyDabOne(
     ctx: ViewContext | ToolContext,
     ps: PaintSample,
-    mul: Vector3 | undefined,
+    mirrorFlips: Vector3 | undefined,
     mirrorIdx: number
   ): void {
     const toolmode = ctx.toolmode as SculptCorePaintMode
+
+    if (mirrorFlips !== undefined) {
+      console.log('1', ps)
+      ps = ps.copy()
+      console.log('2', ps)
+      ps.mirror(mirrorFlips)
+    }
 
     const {brush, wasmExec, wasmBrush} = this.getBrush(ctx, ps)
     const wasm = getWasmImmediate()!
 
     const mesh = ctx.object!.data as LiteMesh
 
-    const imatrix = new Matrix4(ctx.object!.outputs.matrix.getValue())
-    imatrix.invert()
-
-    // Local copies — never mutate the shared ps, so every mirror image reflects
-    // the same original ray (A.3).
     const origin = new Vector3(ps.vieworigin)
     const viewvec = new Vector3(ps.viewvec)
-    viewvec.multVecMatrix(imatrix)
-    origin.multVecMatrix(imatrix)
-
-    if (mul !== undefined) {
-      // Reflect about the local origin planes: a point reflection through 0 is
-      // the same pure component sign-flip as a direction reflection.
-      origin.mul(mul)
-      viewvec.mul(mul)
-    }
-
     const isect = mesh.rayCast(origin, viewvec)
 
     let radius = this.calcRadius(ps.radius)
@@ -448,8 +450,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // images (mirrorIdx > 0) reuse it so every symmetric side remeshes on the
       // same samples. Updating lastDynTopoS per-image would make the primary dab
       // consume the budget and starve the mirror dabs of dyntopo (#38).
-      const dynTopoDue =
-        mirrorIdx === 0 ? ps.strokeS - this.lastDynTopoS >= dt.dynTopoSpacing : this._dabDynTopoDue
+      const dynTopoDue = mirrorIdx === 0 ? ps.strokeS - this.lastDynTopoS >= dt.dynTopoSpacing : this._dabDynTopoDue
       if (mirrorIdx === 0) {
         this._dabDynTopoDue = dynTopoDue
       }
@@ -530,7 +531,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // One unified dab: dyntopo pre-pass (if params != null), node filter,
       // deform, and per-dab topo-chunk seal — all in the executor, one order
       // shared by every client. The seed only matters when dyntopo is on.
-      wasmExec.applyDab(prog, wasm.float3(dabCenter), wasm.float3(dabNormal), filterRadius, params ?? (0 as never), dt.enabled ? this.dabSeed++ : 0)
+      wasmExec.applyDab(
+        prog,
+        wasm.float3(dabCenter),
+        wasm.float3(dabNormal),
+        filterRadius,
+        params ?? (0 as never),
+        dt.enabled ? this.dabSeed++ : 0
+      )
 
       if (dt.enabled) {
         // Accumulate stats for the debug HUD (lastDynTopoStats holds this dab's
@@ -696,9 +704,9 @@ export function runSculptcoreStroke(opts: {
     for (let i = 0; i < muls.length; i++) {
       const mul = muls[i]
       images.push({
-        p: [dab.p[0] * mul[0], dab.p[1] * mul[1], dab.p[2] * mul[2]],
+        p     : [dab.p[0] * mul[0], dab.p[1] * mul[1], dab.p[2] * mul[2]],
         normal: [dab.normal[0] * mul[0], dab.normal[1] * mul[1], dab.normal[2] * mul[2]],
-        image: i + 1,
+        image : i + 1,
       })
     }
 
@@ -763,8 +771,7 @@ export function runSculptcoreStroke(opts: {
           gt[1] = img.p[1] - a[1]
           gt[2] = img.p[2] - a[2]
           dabCenter = a
-          filterRadius =
-            radius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
+          filterRadius = radius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
           wasmExec.setGrabAccumAdd(img.image > 0)
         }
       }

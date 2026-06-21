@@ -1,5 +1,6 @@
 import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
 import {Matrix4, Vector2, Vector3, Vector4, nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {view3dProject, view3dUnproject} from '../view3d_base'
 
 export class PaintSample {
   static STRUCT = nstructjs.inlineRegister(
@@ -179,44 +180,61 @@ PaintSample {
     return tot
   }
 
-  mirror(mul: Vector4 = new Vector4([1, 1, 1, 1])): this {
-    this.p.mul(mul)
-    this.dp.mul(mul)
-    this.origp.mul(mul)
+  mirror(mul: Vector3 = new Vector3([1, 1, 1])): this {
+    const mul4 = new Vector4().load3(mul)
+    mul4[3] = 1
 
-    //this.sp.mulScalar(mul);
-    this.dScreenP.mul(mul)
-    this.viewvec.mul(mul)
-    this.viewPlane.mul(mul)
+    this.p.mul(mul4)
+    this.dp.mul(mul4)
+    this.origp.mul(mul4)
 
-    this.vec.mul(mul)
-    this.dvec.mul(mul)
 
-    this.angle *= mul[0] * mul[1] * mul[2]
-    this.futureAngle *= mul[0] * mul[1] * mul[2]
+    // s1 = (p * flip) * screenMatrix
+    // s2 = s1 + one_pixel_offset
+    // radius_scale = distance(unproject(s2), unproject(s1))
+    // radius_scale should be same regardless of which components of flip are 1 or -1
+    //
+    // Folding R = diag(flip) into rendermat (-> R·rendermat) gives exactly that:
+    // (p*flip)·(R·rendermat) == p·rendermat, so the projection always lands at the
+    // un-flipped (primary) depth and the per-pixel radius_scale is flip-invariant.
+    const refl = new Matrix4()
+    refl.scale(mul4[0], mul4[1], mul4[2])
+    this.rendermat.multiply(refl) // Matrix4.multiply(B) = B·this
+    this.irendermat.load(this.rendermat).invert()
+
+    this.curve?.mirror(mul)
+
+    this.screenP.load(this.p)
+    view3dProject(this.screenP, this.view3dSize, this.rendermat)
+
+    // derive mirrored screen delta
+    this.dScreenP.load(this.p).sub(this.dp)
+    view3dProject(this.dScreenP, this.view3dSize, this.rendermat)
+    this.dScreenP.sub(this.screenP)
+
+    this.viewvec.mul(mul4)
+    this.viewPlane.mul(mul4)
+    this.vieworigin.mul(mul4)
+
+    this.vec.mul(mul4)
+    this.dvec.mul(mul4)
+
+    this.angle *= mul4[0] * mul4[1] * mul4[2]
+    this.futureAngle *= mul4[0] * mul4[1] * mul4[2]
 
     this.mirrored = !this.mirrored
-
     return this
   }
 
   copyTo(b: PaintSample): void {
-    b.smoothProj = this.smoothProj
-    b.futureAngle = this.futureAngle
     b.curve = this.curve?.clone()
-    b.pressure = this.pressure
 
     b.strokeS = this.strokeS
     b.dstrokeS = this.dstrokeS
     b.sharp = this.sharp
-
-    b.viewPlane.load(this.viewPlane)
-    b.viewvec.load(this.viewvec)
-    b.vieworigin.load(this.vieworigin)
-    b.angle = this.angle
-    b.invert = this.invert
-
-    b.origp.load(this.origp)
+    b.tiltX = this.tiltX
+    b.tiltY = this.tiltY
+    b.twist = this.twist
 
     b.screenP.load(this.screenP)
     b.dScreenP.load(this.dScreenP)
@@ -224,14 +242,13 @@ PaintSample {
     b.vec.load(this.vec)
     b.dvec.load(this.dvec)
 
+    b.origp.load(this.origp)
     b.p.load(this.p)
     b.dp.load(this.dp)
-    b.autosmoothInflate = this.autosmoothInflate
 
     b.w = this.w
     b.esize = this.esize
 
-    b.color.load(this.color)
     b.isInterp = this.isInterp
     b.mirrored = this.mirrored
     b.hit = this.hit
@@ -239,7 +256,17 @@ PaintSample {
     b.rendermat.load(this.rendermat)
     b.irendermat.load(this.irendermat)
     b.view3dSize.load(this.view3dSize)
+    b.viewPlane.load(this.viewPlane)
+    b.viewvec.load(this.viewvec)
+    b.vieworigin.load(this.vieworigin)
 
+    b.invert = this.invert
+    b.color.load(this.color)
+    b.angle = this.angle
+    b.futureAngle = this.futureAngle
+    b.smoothProj = this.smoothProj
+    b.pressure = this.pressure
+    b.autosmoothInflate = this.autosmoothInflate
     b.pinch = this.pinch
     b.rake = this.rake
     b.strength = this.strength

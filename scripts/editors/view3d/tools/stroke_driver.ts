@@ -79,6 +79,14 @@ export interface StrokeDriverOptions {
   spaceMode: StrokeSpaceMode
   /** required for WORLD mode; optional for SCREEN */
   rayCast?: StrokeRayCast
+  /** Object local->world matrix. When provided, emitted PaintSamples are in
+   * object-local space: positions (`p`, `vieworigin`), view/normal directions
+   * (`viewvec`, `viewPlane`, `vec`) and the stroke `curve` are converted, and
+   * `rendermat`/`irendermat` become local->clip / clip->local so a screen-px
+   * radius measured against them lands in the object's own units. The driver's
+   * internal control-point / spacing / raycast math stays in world space.
+   * Absent => samples stay world space (identity conversion). */
+  objectMatrix?: () => Matrix4 | undefined
 }
 
 interface ControlPoint {
@@ -115,6 +123,12 @@ export class BrushStrokeDriver {
   private _irendermat = new Matrix4()
   private _view3dSize = new Vector2()
   private _tmp4 = new Vector4()
+  // Object transform snapshot for the current batch (see StrokeDriverOptions
+  // .objectMatrix). Identity when no object => world-space emit.
+  private _iobmat = new Matrix4() // world->local
+  private _localRendermat = new Matrix4() // local->clip
+  private _localIrendermat = new Matrix4() // clip->local
+  private _tmpV3 = new Vector3()
 
   constructor(opts: StrokeDriverOptions) {
     this.opts = opts
@@ -165,6 +179,21 @@ export class BrushStrokeDriver {
     this._view3dSize.load(this.opts.projection.size())
     this._irendermat.load(this._rendermat)
     this._irendermat.invert()
+
+    // Snapshot the object transform (constant over a stroke); identity when no
+    // object matrix, so samples stay world-space. localRendermat = local->clip so
+    // the consumer can project a local point directly for its screen-px radius.
+    const obmat = this.opts.objectMatrix?.()
+    this._iobmat.makeIdentity()
+    this._localRendermat.load(this._rendermat)
+    if (obmat) {
+      this._iobmat.load(obmat)
+      this._iobmat.invert()
+      this._localRendermat.load(obmat)
+      this._localRendermat.multiply(this._rendermat)
+    }
+    this._localIrendermat.load(this._localRendermat)
+    this._localIrendermat.invert()
 
     while (this.inQueue.length > 0) {
       this.ingest(this.inQueue.shift()!)
@@ -334,7 +363,14 @@ export class BrushStrokeDriver {
       }
 
       const slice = subCubic(worldB, t - SLICE_HALF, t + SLICE_HALF)
-      ps.curve = new Bezier(slice[0], slice[1], slice[2], slice[3]).createQuads()
+      // Convert the per-dab curve slice to object-local (no-op without an object
+      // matrix) so ps.curve matches the rest of the local-space sample.
+      ps.curve = new Bezier(
+        this.toLocal(slice[0]),
+        this.toLocal(slice[1]),
+        this.toLocal(slice[2]),
+        this.toLocal(slice[3])
+      ).createQuads()
       ps.futureAngle = ps.angle
 
       this.prevEmitted = ps
@@ -355,6 +391,16 @@ export class BrushStrokeDriver {
     return (radiusPx / Math.max(gl[0], gl[1])) * Math.abs(w)
   }
 
+  /** World point -> object-local point via the batch's world->local snapshot
+   * (identity when no object matrix). */
+  private toLocal(p: Vec | Vector3): Vec {
+    this._tmpV3[0] = p[0] as number
+    this._tmpV3[1] = p[1] as number
+    this._tmpV3[2] = p[2] as number
+    this._tmpV3.multVecMatrix(this._iobmat)
+    return [this._tmpV3[0], this._tmpV3[1], this._tmpV3[2]]
+  }
+
   /** Fill the position / view / interpolated-param fields of a PaintSample. */
   private makeSample(
     worldP: Vec,
@@ -373,27 +419,37 @@ export class BrushStrokeDriver {
     p[1] = worldP[1]
     p[2] = worldP[2]
     p[3] = 1.0
+    // World projection w (depth/scale hint); kept as-is regardless of space.
     const w = proj.project(p, this._rendermat)
 
-    ps.p[0] = worldP[0]
-    ps.p[1] = worldP[1]
-    ps.p[2] = worldP[2]
+    // position: world -> object-local (point)
+    const lp = this.toLocal(worldP)
+    ps.p[0] = lp[0]
+    ps.p[1] = lp[1]
+    ps.p[2] = lp[2]
     ps.p[3] = w
     ps.w = w
     ps.screenP[0] = screenP[0]
     ps.screenP[1] = screenP[1]
 
+    // surface normal + view ray: world -> local (multVecMatrix point transform
+    // on the normalized world vectors).
     setNorm(ps.vec, normalP)
+    ps.vec.multVecMatrix(this._iobmat)
     const viewvec = lerpV(cpA.viewvec, cpB.viewvec, t)
     setNorm(ps.viewvec, viewvec)
+    ps.viewvec.multVecMatrix(this._iobmat)
     setNorm(ps.viewPlane, viewvec)
+    ps.viewPlane.multVecMatrix(this._iobmat)
 
-    const origin = proj.cameraPos()
-    ps.vieworigin[0] = origin[0]
-    ps.vieworigin[1] = origin[1]
-    ps.vieworigin[2] = origin[2]
-    ps.rendermat.load(this._rendermat)
-    ps.irendermat.load(this._irendermat)
+    // camera origin: world -> local (point)
+    const lo = this.toLocal(proj.cameraPos())
+    ps.vieworigin[0] = lo[0]
+    ps.vieworigin[1] = lo[1]
+    ps.vieworigin[2] = lo[2]
+    // local->clip / clip->local so the consumer's screen-px radius is in local units
+    ps.rendermat.load(this._localRendermat)
+    ps.irendermat.load(this._localIrendermat)
     ps.view3dSize.load(this._view3dSize)
 
     ps.radius = lerpNum(cpA.params.radius, cpB.params.radius, t)

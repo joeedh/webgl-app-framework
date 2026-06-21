@@ -47,12 +47,12 @@ let closestrets = new util.cachering(() => {
 let _tmp = new Vector2()
 
 export function closest_bez3_v2(p, a, b, c) {
-  let x1 = a[0] - p[0],
-    y1 = a[1] - p[1]
-  let x2 = b[0] - p[0],
-    y2 = b[1] - p[1]
-  let x3 = c[0] - p[0],
-    y3 = c[1] - p[1]
+  let x1 = a[0] - p[0]
+  let y1 = a[1] - p[1]
+  let x2 = b[0] - p[0]
+  let y2 = b[1] - p[1]
+  let x3 = c[0] - p[0]
+  let y3 = c[1] - p[1]
 
   let sqr =
     -2.0 * ((y1 * y3 - 2.0 * y2 ** 2) * x3 + 2.0 * x2 * y2 * y3) * x1 +
@@ -72,7 +72,8 @@ export function closest_bez3_v2(p, a, b, c) {
 
   let r1 = (A - B) / C
   let r2 = (A + B) / C
-  let r, dis
+  let r
+  let dis
 
   if (r2 < 0 || r2 > 1.0) {
     r = r1
@@ -204,9 +205,9 @@ export class Quad {
   evaluate(t) {
     let co = quad_eval_rets.next()
 
-    let a = this.a,
-      b = this.b,
-      c = this.c
+    let a = this.a
+    let b = this.b
+    let c = this.c
 
     for (let i = 0; i < 3; i++) {
       co[i] = bez3(a[i], b[i], c[i], t)
@@ -221,7 +222,8 @@ export class Quad {
     let dv = quad_closest_tmps3.next().load(this.c).sub(this.a)
     dv.abs()
 
-    let axis1, axis2
+    let axis1
+    let axis2
 
     if (dv[0] >= dv[1] && dv[0] >= dv[2]) {
       axis1 = 1
@@ -287,11 +289,28 @@ export class Bezier {
     this.quads = []
   }
 
+  mirror(mirrorFlips) {
+    this.a.mul(mirrorFlips)
+    this.b.mul(mirrorFlips)
+    this.c.mul(mirrorFlips)
+    this.d.mul(mirrorFlips)
+    for (const quad of this.quads) {
+      quad.a.mul(mirrorFlips)
+      quad.b.mul(mirrorFlips)
+      quad.c.mul(mirrorFlips)
+    }
+    return this
+  }
+
   copyTo(b) {
     b.a.load(this.a)
     b.b.load(this.b)
     b.c.load(this.c)
     b.d.load(this.d)
+
+    for (const quad of this.quads) {
+      b.quads.push(new Quad(quad.a, quad.b, quad.c))
+    }
   }
 
   clone() {
@@ -302,10 +321,10 @@ export class Bezier {
 
   derivative(s) {
     let dv = dv_rets.next()
-    let a = this.a,
-      b = this.b,
-      c = this.c,
-      d = this.d
+    let a = this.a
+    let b = this.b
+    let c = this.c
+    let d = this.d
 
     for (let i = 0; i < 3; i++) {
       dv[i] = dbez4(a[i], b[i], c[i], d[i], s)
@@ -316,10 +335,10 @@ export class Bezier {
 
   derivative2(s) {
     let dv = dv_rets.next()
-    let a = this.a,
-      b = this.b,
-      c = this.c,
-      d = this.d
+    let a = this.a
+    let b = this.b
+    let c = this.c
+    let d = this.d
 
     for (let i = 0; i < 3; i++) {
       dv[i] = d2bez4(a[i], b[i], c[i], d[i], s)
@@ -333,8 +352,8 @@ export class Bezier {
       let steps = 64
       let ret = quad_rets.next()
 
-      let s = 0.0,
-        ds = 1.0 / (steps - 1)
+      let s = 0.0
+      let ds = 1.0 / (steps - 1)
 
       for (let i = 0; i < steps; i++, s += ds) {
         let p2 = this.evaluate(s)
@@ -351,7 +370,8 @@ export class Bezier {
       return ret
     }
 
-    let mindis, minp
+    let mindis
+    let minp
 
     for (let q of this.quads) {
       let p2 = q.closestPoint(p)
@@ -368,10 +388,10 @@ export class Bezier {
 
   derivative3(s) {
     let dv = dv_rets.next()
-    let a = this.a,
-      b = this.b,
-      c = this.c,
-      d = this.d
+    let a = this.a
+    let b = this.b
+    let c = this.c
+    let d = this.d
 
     for (let i = 0; i < 3; i++) {
       dv[i] = d3bez4(a[i], b[i], c[i], d[i], s)
@@ -389,10 +409,10 @@ export class Bezier {
 
   evaluate(s) {
     let co = eval_rets.next()
-    let a = this.a,
-      b = this.b,
-      c = this.c,
-      d = this.d
+    let a = this.a
+    let b = this.b
+    let c = this.c
+    let d = this.d
 
     for (let i = 0; i < 3; i++) {
       co[i] = bez4(a[i], b[i], c[i], d[i], s)
@@ -504,8 +524,8 @@ export function testInit() {
     let p = new Vector2()
 
     let steps = 12
-    let ds = 1.0 / (steps - 1),
-      s = 0
+    let ds = 1.0 / (steps - 1)
+    let s = 0
 
     function evalbez(p, s) {
       p[0] = bez3(bez[0][0], bez[1][0], bez[2][0], s)
