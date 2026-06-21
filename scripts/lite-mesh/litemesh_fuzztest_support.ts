@@ -17,7 +17,7 @@
 
 import {SculptTools} from '../brush/brush_base'
 import {DynTopoFlagsSC} from '../brush/brush_base'
-import type {SculptBrush} from '../brush/index'
+import {DefaultBrushes, type SculptBrush} from '../brush/index'
 import {runSculptcoreStroke} from '../editors/view3d/tools/sculptcore_ops'
 import {TOOL_TO_SCULPTBRUSH, isGrabTool} from '../editors/view3d/tools/sculptcore_bindings'
 import {LiteMesh} from './litemesh'
@@ -99,18 +99,15 @@ function fuzzTest(opts: {iters?: number; seed?: number; maxMs?: number} = {}): F
   try {
     const g = globalThis as unknown as {
       _appstate?: {ctx?: {object?: {data?: unknown}}}
-      _DefaultBrushes?: Record<string, SculptBrush>
     }
     const mesh = g._appstate?.ctx?.object?.data
     if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
-    const brushes = g._DefaultBrushes
-    if (!brushes) throw new Error('no default brushes')
-    const need = (tool: number): SculptBrush | undefined => {
-      for (const k in brushes) {
-        const b = brushes[k]
-        if (b && b.tool === tool) return b
+    const slotMap = DefaultBrushes.slotMap
+    const need = (tool: number): SculptBrush => {
+      if (slotMap[tool]) {
+        return slotMap[tool]
       }
-      return undefined
+      throw new Error(`no default brush for tool ${tool}`)
     }
 
     // Recover the pole distance R from live verts, derive a brush radius.

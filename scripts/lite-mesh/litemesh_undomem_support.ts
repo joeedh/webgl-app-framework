@@ -16,7 +16,7 @@
  */
 
 import {DynTopoFlagsSC, SculptTools} from '../brush/brush_base'
-import type {SculptBrush} from '../brush/index'
+import {DefaultBrushes, type SculptBrush} from '../brush/index'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {Vector3} from '../path.ux/scripts/pathux.js'
 import {LiteMesh} from './litemesh'
@@ -67,7 +67,6 @@ function undoMemTest(): UndoMemTestResult {
         _syncSettings: (ctx: unknown) => void
       }
     }
-    _DefaultBrushes?: Record<string, SculptBrush>
   }
   try {
     const app = g._appstate
@@ -77,8 +76,8 @@ function undoMemTest(): UndoMemTestResult {
     if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
 
     let draw: SculptBrush | undefined
-    for (const k in g._DefaultBrushes ?? {}) {
-      const b = g._DefaultBrushes![k]
+    for (const k in DefaultBrushes.brushes) {
+      const b = DefaultBrushes.brushes[k]
       if (b && b.tool === SculptTools.DRAW) draw = b
     }
     if (!draw) throw new Error('no default DRAW brush')
@@ -205,13 +204,12 @@ function undoMemTest(): UndoMemTestResult {
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   ;(globalThis as {__undoMemTestResult?: UndoMemTestResult}).__undoMemTestResult = result
   return result
 }
 
 ;(globalThis as {__undoMemTest?: typeof undoMemTest}).__undoMemTest = undoMemTest
-
 
 export {undoMemTest}

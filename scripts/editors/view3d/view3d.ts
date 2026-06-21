@@ -87,13 +87,7 @@ export function getWebGL() {
   return window._gl
 }
 
-//window._getShaderSource = function (shader: string) {
-//  return window._gl!.getExtension('WEBGL_debug_shaders')!.getTranslatedShaderSource(shader)
-//}
-
 export function initWebGL() {
-  console.warn('initWebGL called')
-
   const canvas = document.createElement('canvas')
   const dpi = UIBase.getDPI()
   let w: number

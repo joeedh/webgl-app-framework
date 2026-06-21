@@ -1038,7 +1038,7 @@ export class AppState {
   }
 
   mergeDefaultBrushes(datalib: Library = this.datalib): void {
-    for (const k in DefaultBrushes) {
+    for (const k in DefaultBrushes.brushes) {
       const b1 = datalib.get(k)
 
       if (!b1 || !(b1 instanceof SculptBrush)) {
@@ -1052,13 +1052,10 @@ export class AppState {
         continue
       }
 
-      if (
-        b1.equals(b2Block, false, true) &&
-        !b1.equals(DefaultBrushes[k as keyof typeof DefaultBrushes], false, true)
-      ) {
+      if (b1.equals(b2Block, false, true) && !b1.equals(DefaultBrushes.brushes[k], false, true)) {
         console.log('Found unmodified default brush ' + b1.name)
         console.log(b1, b2Block)
-        const defaultBrush = DefaultBrushes[k as keyof typeof DefaultBrushes]
+        const defaultBrush = DefaultBrushes.brushes[k]
         console.log(
           'hashes (b1, b2, default):',
           b1.calcHashKey(),
@@ -1071,8 +1068,8 @@ export class AppState {
         const radius = b1.radius
         const strength = b1.strength
 
-        DefaultBrushes[k as keyof typeof DefaultBrushes].copyTo(b1, false)
-        DefaultBrushes[k as keyof typeof DefaultBrushes].copyTo(b2Block, false)
+        DefaultBrushes.brushes[k].copyTo(b1, false)
+        DefaultBrushes.brushes[k].copyTo(b2Block, false)
 
         console.log('hash4', b1.calcHashKey(), b2Block.calcHashKey())
 

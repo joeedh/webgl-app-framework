@@ -123,13 +123,13 @@ export class LoadDefaultBrush<
     }
 
     let brush2: SculptBrush | undefined
-    const comb = DefaultBrushes['Comb']
+    const comb = DefaultBrushes.brushes['Comb']
 
     if (brush.name === comb?.name && brush.tool === comb?.tool) {
       brush2 = comb
     } else {
       for (const k in DefaultBrushes) {
-        const brush3 = DefaultBrushes[k]
+        const brush3 = DefaultBrushes.brushes[k]
 
         if (brush3.tool === brush.tool) {
           brush2 = brush3
@@ -137,8 +137,6 @@ export class LoadDefaultBrush<
         }
       }
     }
-
-    console.log(brush2, brush.tool, DefaultBrushes)
 
     if (!brush2) {
       console.warn('No default brush found for tool:', brush.tool)

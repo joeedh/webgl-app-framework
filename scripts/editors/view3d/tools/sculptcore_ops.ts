@@ -6,7 +6,7 @@ import {StrokeDriverOp} from './stroke_paint_op'
 import {IStrokeHit, StrokeRayCast} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
-import type {SculptBrush} from '../../../brush/index'
+import {DefaultBrushes, type SculptBrush} from '../../../brush/index'
 import {
   builSculptcoreBrush,
   toolToSculptBrush,
@@ -348,9 +348,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     const toolmode = ctx.toolmode as SculptCorePaintMode
 
     if (mirrorFlips !== undefined) {
-      console.log('1', ps)
       ps = ps.copy()
-      console.log('2', ps)
       ps.mirror(mirrorFlips)
     }
 
@@ -817,7 +815,7 @@ export function runSculptcoreStroke(opts: {
   if (!(mesh instanceof LiteMesh)) {
     return {error: 'active object is not a LiteMesh'}
   }
-  const brush = g._DefaultBrushes?.[toolInt] as SculptBrush | undefined
+  const brush = DefaultBrushes.slotMap[toolInt] as SculptBrush | undefined
   if (!brush) {
     return {error: `no default brush for tool ${toolInt}`}
   }

@@ -1,5 +1,50 @@
 # Crashpad crash reporting for the NW.js app
 
+## Status — IMPLEMENTED & VERIFIED (2026-06-21)
+
+End-to-end working: a native C++ crash in sculptcore is captured by Crashpad and
+symbolicated by the toolkit to **function + source file:line**. Verified walk of
+a real native crash:
+
+```
+Access violation - code c0000005
+sculptcore_node!sculptcore::napi::NapiRuntime::CrashTest+0x4
+   [C:\dev\webgl-app-framework\sculptcore\source\napi\napi_runtime.cc @ 2051]
+ ← node!napi... ← nw!v8::Function::Call
+```
+
+Two findings corrected the original plan during implementation:
+
+1. **NW.js 0.112 has no `nw.App.setCrashDumpDir`** (the documented API is stale —
+   confirmed by introspecting the live `nw.App`). There is **no way to redirect
+   the dir**, so dumps land in the Chromium default
+   `%LOCALAPPDATA%\<manifest-name>\User Data\Crashpad\reports\*.dmp`
+   (`<manifest-name>` = `webgl-app-framework`). The toolkit reads from there;
+   `$SC_CRASHDUMP_DIR` overrides. Crashpad itself **is on by default** — no
+   enabling needed.
+2. **`--crash-test` is a real Chromium switch** NW.js intercepts (it breakpoints
+   the browser process at startup, exactly like `--headless`). The self-test flag
+   is therefore **`--apptest-crash`** (the established `--apptest-` prefix
+   pattern), wired in `test_harness.ts`.
+
+What shipped:
+- CodeView PDB for the addon (`sculptcore/CMakeLists.txt`, clang `-gcodeview` +
+  `/DEBUG` + `/PDB`), auto-archived per-build into the content-addressed store
+  `build/crashdumps/syms/<pdb>/<GUID>/` (`make.mjs` `buildNodeAddon` →
+  `archivePdb` in the toolkit).
+- Crash-dump toolkit `sculptcore/crash/dump.mjs`
+  (`list/walk/info/threads/open/eval/package/symcheck/prune`, `--json`,
+  `--public-syms`); PE/RSDS parser produces the symstore key.
+- JS crash-net in `nwjs/window.html` (`error`/`unhandledrejection`/
+  `uncaughtException` → `console.error`).
+- Crashpad self-test: native `crashTest()` export (`napi_runtime.cc`) driven by
+  the harness `--apptest-crash` flag (builds the litemesh scene to load the
+  addon, then null-derefs in native code).
+
+Everything below is the original plan, kept for rationale; where it says
+`setCrashDumpDir` / `build/crashdumps` (as the dump dir) / `--crash-test`, read
+the corrections above.
+
 ## Context
 
 When the native **sculptcore** N-API addon crashes (a C++ segfault / bad deref
@@ -45,11 +90,32 @@ if (globalThis.nw) {
 
 - Resolve the dir relative to the app root (repo root) using `nw.App.startPath`
   / `process.cwd()` + `require('path')`, and `fs.mkdirSync(dir,{recursive:true})`.
+  The docs explicitly warn the dir must already exist or no dump is written, so
+  the `mkdirSync` is load-bearing, not defensive.
 - Minidumps land as `*.dmp`. Add `build/crashdumps/` to `.gitignore`.
-- **Verify the exact API name/signature at implementation time** against NW.js
-  0.112 (`nw.App.setCrashDumpDir(dir)` and test triggers
-  `nw.App.crashRenderer()` / `nw.App.crashBrowser()` are the documented surface;
-  confirm before relying on them).
+
+**API surface — verified** against the official NW.js crash-dump docs (signatures
+confirmed, not assumed):
+
+- `nw.App.setCrashDumpDir(dir)` — sets the minidump output dir. Equivalent to
+  `require('nw.gui').App.setCrashDumpDir(dir)` (`nw.App` *is* `gui.App`). Must be
+  called **before** the crash; a crash before it runs writes to the default
+  location instead — so call it in the earliest bootstrap, before
+  `import('../build/entry_point.js')`.
+- Test triggers `nw.App.crashRenderer()` / `nw.App.crashBrowser()` (since
+  NW.js 0.8.0) — the renderer one is what we want (the `.node` runs in the
+  renderer).
+- **Default location if we don't override** (Windows, modern Chromium/NW.js):
+  `%LOCALAPPDATA%\<name-in-manifest>\User Data\CrashPad` (older builds used the
+  system temp dir). Our `setCrashDumpDir` redirects this to `build/crashdumps/`.
+
+**Risk to watch:** several NW.js issues (#2906, #3226, #3831) report *no dump
+file generated* on Windows under modern Chromium even with the dir set — the
+embedded Crashpad handler sometimes keeps writing to `User Data\CrashPad` and
+ignores `setCrashDumpDir`. So the **first** implementation step is the smoke
+test (Verification §2): set the dir, call `crashRenderer()`, confirm a `.dmp`
+actually lands in `build/crashdumps/`. If it doesn't, fall back to pointing the
+toolkit (§4) at the real `User Data\CrashPad` dir instead of fighting the API.
 
 Critical file: `nwjs/window.html` (and `.gitignore`).
 
@@ -87,7 +153,67 @@ they share one stream with native logs:
 - Route through the existing `sc_napi` console sink path so JS + native logs
   interleave in DevTools.
 
-### 4. (Optional, defer) C++ breadcrumb
+### 4. Crash-dump toolkit — analyze & manipulate (`sculptcore/crash/dump.mjs`)
+
+A minidump on disk is inert; the value is in being able to walk, inspect, and
+manage them with **one ergonomic CLI** instead of remembering raw `cdb` flags.
+Build a single dependency-free Node script, `sculptcore/crash/dump.mjs`, that
+wraps the Windows SDK debugger (`cdb.exe`) and the local build artifacts. It is
+the "easy way" the rest of the workflow leans on.
+
+**Symbol-path resolution (shared by every subcommand).** A `resolveSymPath()`
+helper builds the `-y` path once: the archived `build/native-node/` dir (holds
+`sculptcore_node.pdb`), the latest *packaged* PDB for older dumps (see
+`package` below), and optionally `srv*<cache>*https://msdl.microsoft.com/...`
+for system DLLs (gated behind `--public-syms`, off by default for offline use).
+A `findCdb()` helper locates `cdb.exe` under the Windows SDK
+(`C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\`) and prints an install
+hint if absent rather than throwing.
+
+**Subcommands** (each takes a dump path or, if omitted, the newest dump in
+`build/crashdumps/`):
+
+- `list` — table of dumps in `build/crashdumps/`: filename, mtime, size, and a
+  cached one-line top-of-stack summary (the faulting frame). Newest first.
+- `walk [dump]` — symbolicated stack of the **faulting thread**
+  (`cdb -z <dump> -y <syms> -c ".lines; kn; q"`). The default everyday command.
+- `info [dump]` — exception record (code + address), faulting module, register
+  dump, and a **PDB-match check** for `sculptcore_node` (GUID/age vs the on-disk
+  PDB) so a silent symbol mismatch is caught immediately.
+- `threads [dump]` — all thread stacks (`~*kn`) for deadlock / cross-thread
+  crashes.
+- `open [dump]` — launch the dump **interactively** in WinDbg (or `cdb`) with the
+  symbol path already wired, for hands-on poking (`dx`, `dt`, memory reads).
+- `eval [dump] "<cdb cmds>"` — escape hatch: run an arbitrary `cdb` command
+  string against the dump (this is the "manipulate" primitive — anything the
+  fixed subcommands don't cover).
+- `package [dump]` — zip the dump **plus the matching `sculptcore_node.pdb`**
+  plus a small `build-info.json` (git SHA, NW.js version, build type) into
+  `build/crashdumps/<name>.zip`. This is what makes a dump survive a rebuild and
+  what you hand to someone else — without the contemporaneous PDB an old dump is
+  unsymbolizable.
+- `symcheck [dump]` — standalone GUID/age verification; exits non-zero on
+  mismatch so it can gate CI / scripts.
+- `prune [--keep N]` — delete all but the newest N dumps (and their `.zip`s).
+
+**Scriptability.** Every read subcommand accepts `--json` and emits a structured
+record (exception, top frames as `{module, symbol, file, line}`, module list,
+pdb-match bool) instead of raw `cdb` text, so dumps can be triaged
+programmatically (e.g. bucketing crashes by faulting function). `walk`/`info`
+parse `cdb`'s output into that shape; the raw text stays available without
+`--json`.
+
+**PDB archival hook.** For `package` and old-dump symbolication to work, each
+addon build must keep its PDB. Have `buildNodeAddon()` in `make.mjs` copy
+`sculptcore_node.pdb` into a content-addressed store
+(`build/crashdumps/syms/<pdb-guid>/`) after a successful build; `resolveSymPath`
+adds that store to `-y`. Cheap, and it decouples "which PDB matches this dump"
+from "what's currently built".
+
+Critical files: new `sculptcore/crash/dump.mjs`; `sculptcore/make.mjs`
+(`buildNodeAddon` PDB-archival step); `.gitignore` (`build/crashdumps/`).
+
+### 5. (Optional, defer) C++ breadcrumb
 
 Crashpad already installs the OS exception handler, so no custom handler is
 required. A thin `std::set_terminate` / SEH breadcrumb in
@@ -102,11 +228,12 @@ the console sink before Crashpad takes over is a nice-to-have — skip in v1.
    `--crash-test` (parse in `scripts/core/test_harness.ts`) that calls
    `nw.App.crashRenderer()` after boot — confirm a `*.dmp` appears in
    `build/crashdumps/`.
-3. Symbolicate: open the dump with `cdb.exe -z <dump>.dmp -y <path-to-pdb;nw-syms>`
-   (Windows SDK Debuggers) and confirm sculptcore C++ frames resolve to function
-   names + source lines. Provide a small wrapper
-   `node sculptcore/crash/walk.mjs <dump>` that shells to `cdb` with the right
-   `-y` symbol path.
+3. Symbolicate via the toolkit: `node sculptcore/crash/dump.mjs list` then
+   `node sculptcore/crash/dump.mjs walk` (newest dump) and confirm sculptcore
+   C++ frames resolve to function names + source lines. Run
+   `node sculptcore/crash/dump.mjs info` and confirm the `sculptcore_node`
+   PDB-match check passes (GUID/age match). Exercise `package` and re-`walk` the
+   archived copy to prove an old dump stays symbolizable after a rebuild.
 4. Trigger a *real* native crash via a known-bad path (or temporarily inject a
    null-deref behind a flag) and confirm the stack points into the right
    sculptcore function.

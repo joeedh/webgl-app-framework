@@ -11,7 +11,7 @@ import {
   TexUserFlags,
   TexUserModes,
 } from '../texture/proceduralTex'
-import {nstructjs, Number4} from '../path.ux/pathux.js'
+import {nstructjs, Number4, ToolProperty} from '../path.ux/pathux.js'
 import type {Scene} from '../scene/scene.js'
 import type {ToolContext} from '../core/context'
 import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
@@ -391,18 +391,16 @@ export function makeDefaultBrushes() {
   const bmap = {} as {[k: string]: SculptBrush}
 
   for (const k in SculptTools) {
-    if (typeof k !== 'string') {
+    if (typeof k === 'string' && isNaN(parseInt(k))) {
       continue
     }
 
-    let name = k[0] + k.slice(1, k.length).toLowerCase()
-    name = name.replace(/_/g, ' ').trim()
-
-    const brush = (brushes[name] = new SculptBrush())
+    const name = ToolProperty.makeUIName(SculptTools[k] as string)
+    const brush = new SculptBrush()
     brush.name = name
-    brush.tool = SculptTools[k] as unknown as SculptTools
-
-    bmap[SculptTools[k]] = brush
+    brush.tool = parseInt(k) as SculptTools
+    brushes[name] = brush
+    bmap[parseInt(k)] = brush
   }
 
   // Smoothing, inflate and clay brushes accumulate by default.
@@ -430,7 +428,7 @@ export function makeDefaultBrushes() {
   brush.strength = 0.75
   brush.dynamics.autosmooth.useDynamics = true
   brush.dynamics.strength.useDynamics = true
-  brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SHARP)
+  brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
 
   brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE
   brush.spacing = 0.2
@@ -461,7 +459,7 @@ export function makeDefaultBrushes() {
   pat.mode = CombModes.STEP
   brush.flag |= BlockFlags.FAKE_USER
 
-  brushes[brush.name] = brush
+  brushes['Comb'] = brush
 
   brush = bmap[SculptTools.FILL]
   brush.autosmooth = 0.5
@@ -608,18 +606,11 @@ export function makeDefaultBrushes() {
   brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
   brush.flag &= ~BrushFlags.ACCUMULATE
 
-  brush = bmap[SculptTools.FEATURE_ALIGN]
-  brush.rake = 1.0
-  brush.rakeCurvatureFactor = 1.0
-  brush.flag |= BrushFlags.ACCUMULATE
-  brush.strength = 1.0
-
-  return brushes
+  return {brushes, slotMap: bmap}
 }
 
 export function makeDefaultBrushes_MediumRes() {
-  const brushes = {} as {[k: string]: SculptBrush}
-  const bmap = {} as {[k: string]: SculptBrush}
+  const {brushes, slotMap: bmap} = makeDefaultBrushes()
 
   for (const k in SculptTools) {
     if (typeof k !== 'string') {
@@ -664,7 +655,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.strength = 0.75
   brush.dynamics.autosmooth.useDynamics = true
   brush.dynamics.strength.useDynamics = true
-  brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SHARP)
+  brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
   brush.rake = 0.0
   brush.rakeCurvatureFactor = 1.0
 
@@ -844,7 +835,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
   brush.flag &= ~BrushFlags.ACCUMULATE
 
-  return brushes
+  return {brushes, slotMap: bmap}
 }
 
 export class PaintToolSlot {
@@ -909,10 +900,7 @@ export enum BrushSets {
 }
 
 export const BrushSetFactories = [makeDefaultBrushes, makeDefaultBrushes_MediumRes]
-
-export var DefaultBrushes = makeDefaultBrushes()
-;(window as unknown as any)._DefaultBrushes = DefaultBrushes
-
+export const DefaultBrushes = makeDefaultBrushes()
 export var brushSet = BrushSets.DEFAULT
 
 export function setBrushSet(set: BrushSets | string) {
@@ -939,12 +927,9 @@ export function setBrushSet(set: BrushSets | string) {
 
   if (update) {
     console.log('Loading brush set ' + set)
-
-    DefaultBrushes = (window as unknown as any)._DefaultBrushes = BrushSetFactories[set as any]()
+    Object.assign(DefaultBrushes, BrushSetFactories[set as number]())
   }
 }
-
-;(window as unknown as any)._setBrushSet = setBrushSet
 
 /**
  Ensures that at least one brush instance of each brush tool type
@@ -953,12 +938,12 @@ export function setBrushSet(set: BrushSets | string) {
 export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
   const brushes = ctx.datalib.brush
 
-  for (const k in DefaultBrushes) {
+  for (const k in DefaultBrushes.brushes) {
     let found: SculptBrush | undefined = undefined
-    let b = DefaultBrushes[k]
+    let b = DefaultBrushes.brushes[k]
 
     for (const b2 of brushes) {
-      if (b2.tool === b.tool && b2.name === b.name) {
+      if (b2.tool === b.tool) {
         found = b2
         break
       }

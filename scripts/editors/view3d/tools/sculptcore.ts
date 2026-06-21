@@ -120,6 +120,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     let panel2
 
     const settings = col.panel('Brush Settings')
+    settings.closed = true
     strip = settings.row().strip()
     strip.useIcons(false)
     strip.label('Spacing')
@@ -348,10 +349,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip = row.strip()
     strip.prop(path + '.dynamics.radius.useDynamics')
     strip.prop(`scene.tools.${name}.brushRadius`)
+    strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
 
     strip.prop(path + '.dynamics.strength.useDynamics')
     strip.prop(path + '.strength')
-    strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
 
     strip = row.strip()
     strip.pathlabel('object.data.faceCount', 'Faces')

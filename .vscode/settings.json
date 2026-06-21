@@ -9,6 +9,7 @@
     "areaname",
     "arraytype",
     "ASAN",
+    "bmap",
     "boxverts",
     "bsmooth",
     "cachering",

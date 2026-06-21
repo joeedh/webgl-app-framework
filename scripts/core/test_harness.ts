@@ -25,6 +25,11 @@
  *   --backend native|wasm   record the requested sculptcore backend
  *   --list-scenes           print the registered scene names and quit
  *   --exit                  quit the app once the scenario completes
+ *   --apptest-crash         (temp) call sculptcore_node.crashTest() after boot to
+ *                           verify Crashpad writes a symbolizable *.dmp. NOT
+ *                           --crash-test: that is a real Chromium switch NW.js
+ *                           intercepts (breakpoints the browser process), like
+ *                           --headless. See crashpad.md.
  *
  * Nothing here runs unless one of these flags is present, so a normal launch
  * (`pnpm run nwjs`) is unaffected.
@@ -86,6 +91,7 @@ export interface HarnessOptions {
   backend?: string
   listScenes: boolean
   exit: boolean
+  crashTest: boolean
   active: boolean
 }
 
@@ -108,6 +114,7 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
     backend   : getArg('backend', argv) || undefined,
     listScenes: hasArg('list-scenes', argv),
     exit      : hasArg('exit', argv),
+    crashTest : hasArg('apptest-crash', argv),
     active    : false,
   }
 
@@ -119,7 +126,8 @@ export function parseHarnessArgs(argv: string[] = getAppArgv()): HarnessOptions 
     opts.save ||
     opts.dump ||
     opts.screenshot ||
-    opts.listScenes
+    opts.listScenes ||
+    opts.crashTest
   )
   return opts
 }
@@ -399,6 +407,34 @@ export async function runTestHarness(argv: string[] = getAppArgv()): Promise<voi
     if (opts.backend !== 'wasm' && opts.backend !== 'native') {
       console.warn(`${TAG} unknown backend "${opts.backend}"; expected "wasm" or "native"`)
     }
+  }
+
+  if (opts.crashTest) {
+    // Crashpad self-test: build the litemesh scene so sculptcore_node is loaded,
+    // then call its crashTest() export, which null-derefs INSIDE sculptcore.
+    // Crashpad catches the access violation and writes a minidump whose faulting
+    // stack is in sculptcore_node — verifying end to end that the CodeView PDB
+    // symbolicates native frames. The dump lands in NW.js's default Crashpad dir
+    // (NW.js 0.112 has no setCrashDumpDir); read it with sculptcore/crash/dump.mjs.
+    // NOTE: the flag is --apptest-crash, NOT --crash-test (a real Chromium switch
+    // NW.js intercepts, like --headless). See documentation/plans/crashpad.md.
+    const req = nodeRequire()
+    buildScene('litemesh-cube', {})
+    let addon: {crashTest?: () => void} | undefined
+    for (const p of [
+      'sculptcore/build/native-node/sculptcore_node.node',
+      '../sculptcore/build/native-node/sculptcore_node.node',
+    ]) {
+      try {
+        addon = req?.(p) as {crashTest?: () => void}
+        if (addon?.crashTest) break
+      } catch {
+        /* try next candidate */
+      }
+    }
+    console.log(`${TAG} --apptest-crash: scene built; calling native crashTest() in 1s (addon=${!!addon})`)
+    setTimeout(() => addon?.crashTest?.(), 1000)
+    return
   }
 
   if (!opts.active && !opts.exit) return

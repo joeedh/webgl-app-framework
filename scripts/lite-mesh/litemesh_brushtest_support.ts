@@ -20,7 +20,7 @@
 
 import {Vector4} from '../path.ux/scripts/pathux.js'
 import {BrushFlags, SculptTools} from '../brush/brush_base'
-import type {SculptBrush} from '../brush/index'
+import {DefaultBrushes, type SculptBrush} from '../brush/index'
 import {runSculptcoreStroke} from '../editors/view3d/tools/sculptcore_ops'
 import {AttrDomain, AttrUseFlags, LiteMesh} from './litemesh'
 import {AttrType} from './litemesh_base'
@@ -321,7 +321,13 @@ function strokeAndMeasure(
  * surface follows. `axis = [1,0,0]` makes `meanAlongNormal` the mean pull in
  * the stroke direction.
  */
-function grabStrokeAndMeasure(mesh: LiteMesh, brush: SculptBrush, tool: SculptTools, R: number, radius: number): StrokeMetrics {
+function grabStrokeAndMeasure(
+  mesh: LiteMesh,
+  brush: SculptBrush,
+  tool: SculptTools,
+  R: number,
+  radius: number
+): StrokeMetrics {
   const step = radius * 0.3
   const dabs = [
     {p: [0, 0, R], normal: [0, 0, 1]},
@@ -379,17 +385,13 @@ function brushTest(): BrushTestResult {
         ctx?: {object?: {data?: unknown}}
         toolstack?: {execTool: (ctx: unknown, op: unknown) => void}
       }
-      _DefaultBrushes?: Record<string, SculptBrush>
     }
     const mesh = g._appstate?.ctx?.object?.data
     if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
-    const brushes = g._DefaultBrushes
-    if (!brushes) throw new Error('no default brushes')
-    // _DefaultBrushes is keyed by display name; resolve by the tool enum.
+    const slotMap = DefaultBrushes.slotMap
     const need = (tool: number): SculptBrush => {
-      for (const k in brushes) {
-        const b = brushes[k]
-        if (b && b.tool === tool) return b
+      if (slotMap[tool]) {
+        return slotMap[tool]
       }
       throw new Error(`no default brush for tool ${tool}`)
     }
@@ -587,7 +589,7 @@ function brushTest(): BrushTestResult {
     result.nonFiniteCount = bad
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   ;(globalThis as {__brushTestResult?: BrushTestResult}).__brushTestResult = result
   return result

@@ -29,14 +29,11 @@
  */
 
 import {AutosaveManager} from '../core/autosave'
-import {
-  isAutosaveContainer,
-  parseAutosaveContainer,
-} from '../core/autosave_format'
+import {isAutosaveContainer, parseAutosaveContainer} from '../core/autosave_format'
 import {SplitSerializer} from '../core/autosave_serialize'
 import {setDeferredBlobResolver} from '../core/serialize_cache'
 import {DynTopoFlagsSC, SculptTools} from '../brush/brush_base'
-import type {SculptBrush} from '../brush/index'
+import {SculptBrush, DefaultBrushes} from '../brush/index'
 import {runSculptcoreStroke} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
 
@@ -184,7 +181,6 @@ async function autosaveTest(): Promise<AutosaveTestResult> {
   try {
     const g = globalThis as unknown as {
       _appstate?: {ctx?: {object?: {data?: unknown}}; settings: Record<string, unknown>}
-      _DefaultBrushes?: Record<string, SculptBrush>
     }
     const app = g._appstate
     if (!app) throw new Error('no _appstate')
@@ -192,8 +188,8 @@ async function autosaveTest(): Promise<AutosaveTestResult> {
     if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
 
     let draw: SculptBrush | undefined
-    for (const k in g._DefaultBrushes ?? {}) {
-      const b = g._DefaultBrushes![k]
+    for (const k in DefaultBrushes.brushes) {
+      const b = DefaultBrushes.brushes[k]
       if (b && b.tool === SculptTools.DRAW) draw = b
     }
     if (!draw) throw new Error('no default DRAW brush')
@@ -274,7 +270,7 @@ async function autosaveTest(): Promise<AutosaveTestResult> {
         firedAtMs,
         strokesBefore,
         backupKey: null,
-        bytesLen: bytes?.length ?? 0,
+        bytesLen : bytes?.length ?? 0,
         sigAtSave,
       })
     }
@@ -354,7 +350,7 @@ async function autosaveTest(): Promise<AutosaveTestResult> {
     setStage('done')
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   ;(globalThis as {__autosaveTestResult?: AutosaveTestResult}).__autosaveTestResult = result
   return result
