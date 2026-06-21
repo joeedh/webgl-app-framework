@@ -316,12 +316,12 @@ node.NodeViewer {
       p[1] += canvas.height * 0.5
     }
 
-    const p = new Vector2(),
-      p2 = new Vector2(),
-      p3 = new Vector2()
+    const p = new Vector2()
+    const p2 = new Vector2()
+    const p3 = new Vector2()
     const s = new Vector2()
 
-    function find_sock_key(node: {inputs: {[k: string]: unknown}}, sock: unknown): string | undefined {
+    function find_sock_key(node: AnyNode, sock: unknown): string | undefined {
       for (const k in node.inputs) {
         if (node.inputs[k] === sock) {
           return k
@@ -335,27 +335,26 @@ node.NodeViewer {
     if (!graph) {
       return
     }
-    const idmap = graph.node_idmap as unknown as {[graph_id: number]: AnyNode}
+    const idmap = graph.node_idmap
     let rebuild = false
 
     for (const k1 in this.nodes) {
       const node = this.nodes[k1]
 
       p.load(node.pos)
-      const node2 = idmap[node.graph_id]
+      const node2 = idmap.get(node.graph_id)
 
       if (node2 === undefined) {
         rebuild = true
         continue
       }
 
-      const inputs2 = (node2 as unknown as {inputs: {[k: string]: {edges: AnyNode[]}}}).inputs
+      const inputs2 = node2.inputs
       for (const k in inputs2) {
         const sock = inputs2[k]
 
         for (let sock2 of sock.edges) {
-          let node3 = this.node_idmap[(sock2 as unknown as {node: {graph_id: number}}).node.graph_id]
-          sock2 = find_sock_key(sock2 as unknown as {inputs: {[k: string]: unknown}}, undefined) as unknown as AnyNode
+          let node3 = this.node_idmap[sock2.node.graph_id]
           node3 = this.node_idmap[node3.graph_id]
 
           const lsock1 = node.inputs[k]
