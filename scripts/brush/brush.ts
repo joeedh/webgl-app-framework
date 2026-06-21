@@ -608,6 +608,12 @@ export function makeDefaultBrushes() {
   brush.dynTopoSC.flag &= ~DynTopoFlags.ENABLED
   brush.flag &= ~BrushFlags.ACCUMULATE
 
+  brush = bmap[SculptTools.FEATURE_ALIGN]
+  brush.rake = 1.0
+  brush.rakeCurvatureFactor = 1.0
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.strength = 1.0
+
   return brushes
 }
 

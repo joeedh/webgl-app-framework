@@ -114,6 +114,16 @@ export class LiteMeshAttrItem {
     public layerIndex: number = -1
   ) {}
 
+  equals(b: this) {
+    return (
+      this.attrName === b.attrName &&
+      this.domain === b.domain &&
+      this.attrType === b.attrType &&
+      this.use === b.use &&
+      this.layerIndex === b.layerIndex
+    )
+  }
+
   get name(): string {
     const dom = ATTR_DOMAIN_LABEL[this.domain] ?? '?'
     const ty = ATTR_TYPE_LABEL[this.attrType] ?? '?'
@@ -344,8 +354,9 @@ export class LiteMesh extends SceneObjectData {
     this,
     `
     litemesh.LiteMesh {
-      _data     : arraybuffer(byte) | this.serialize();
-      repairLog : array(string);
+      _data             : arraybuffer(byte) | this.serialize();
+      repairLog         : array(string);
+      _displayColorMode : int;
     }
     `
   )
@@ -380,12 +391,12 @@ export class LiteMesh extends SceneObjectData {
   }
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    let mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true)) as DataStruct<
+    const mstruct = SceneObjectData.defineAPI(api, struct ?? api.mapStruct(this, true)) as DataStruct<
       ViewContext,
       LiteMesh
     >
 
-    let def = mstruct
+    const def = mstruct
       .flags(
         'displayColorMode',
         'displayColorMode',
@@ -405,10 +416,10 @@ export class LiteMesh extends SceneObjectData {
       .string('', 'faceCount', 'Face Count', '')
       .readOnly()
       .customGet(function () {
-        let count = '' + this.dataref.mesh.f.count
+        const count = '' + this.dataref.mesh.f.count
         let s = ''
         for (let i = 0; i < count.length; i++) {
-          let i2 = count.length - i
+          const i2 = count.length - i
           if (i2 % 3 === 0 && i2 > 0) s += ','
           s += count[i]
         }
@@ -437,7 +448,7 @@ export class LiteMesh extends SceneObjectData {
         window.redraw_all?.()
       })
 
-    let astruct = api.mapStruct(LiteMeshAttrItem, true)
+    const astruct = api.mapStruct(LiteMeshAttrItem, true)
     astruct.string('attrName', 'attrName', 'Name').readOnly()
 
     // list(valueProp, apiPathSegment, funcs): value read from mesh.attrItems,
@@ -511,8 +522,8 @@ export class LiteMesh extends SceneObjectData {
     // per the valid-categories table and lets C++ assign a unique name; Remove
     // deletes the selected layer (C++ refuses builtins). Args are the AttrDomain
     // / AttrType / AttrUseFlags ints.
-    const C = AttrDomain.VERTEX,
-      F = AttrDomain.FACE
+    const C = AttrDomain.VERTEX
+    const F = AttrDomain.FACE
     attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float4} use=${AttrUseFlags.COLOR})`, {label: 'Add Color'})
     attrs.tool(`litemesh.add_attr(domain=${C} type=${AttrType.Float2} use=${AttrUseFlags.UV})`, {label: 'Add UV'})
     attrs.tool(`litemesh.add_attr(domain=${F} type=${AttrType.Int} use=${AttrUseFlags.POLYGROUP})`, {
@@ -582,6 +593,7 @@ export class LiteMesh extends SceneObjectData {
   /** Persistent seam-edge overlay (EDGE_SEAM) line batch + its rebuild flag.
    * Rebuilt only when the seam set or geometry changes (see markSeamsDirty). */
   seamBatch?: DrawBatch
+  private lastAttrItems: LiteMeshAttrItem[] = []
   _seamsDirty = true
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
@@ -652,6 +664,7 @@ export class LiteMesh extends SceneObjectData {
   private _initSpatial(): void {
     this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 32, 1 << 13)
     this.spatial.update(this.wasm.gpu)
+    this.spatial.setColorDisplayMode(this._displayColorMode)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
   }
@@ -840,7 +853,7 @@ export class LiteMesh extends SceneObjectData {
     const collector = getDeferredBlobCollector()
     if (collector) {
       this._flushRevision()
-      if (this._blobCache && this._blobCache.revision === this.meshRevision) {
+      if (this._blobCache?.revision === this.meshRevision) {
         return makeBlobPlaceholder(collector.add({state: 'compressed', bytes: this._blobCache.blob}))
       }
       const revision = this.meshRevision
@@ -857,7 +870,7 @@ export class LiteMesh extends SceneObjectData {
 
     if (getSerializeCacheMode()) {
       this._flushRevision()
-      if (this._blobCache && this._blobCache.revision === this.meshRevision) {
+      if (this._blobCache?.revision === this.meshRevision) {
         return this._blobCache.blob
       }
     }
@@ -1647,7 +1660,18 @@ export class LiteMesh extends SceneObjectData {
         items.push(new LiteMeshAttrItem(a.name, domain, a.type, a.use, i))
       }
     }
-    return items
+    const last = this.lastAttrItems
+    if (last.length !== items.length) {
+      this.lastAttrItems = items
+      return items
+    }
+    for (let i = 0; i < items.length; i++) {
+      if (!items[i].equals(last[i])) {
+        this.lastAttrItems = items
+        return items
+      }
+    }
+    return last
   }
 
   /**
@@ -1808,7 +1832,7 @@ export class LiteMesh extends SceneObjectData {
     const drawBVH = toolmode?.drawBVH
     // Default on: only an explicit `drawFeatureOverlay === false` hides it (other
     // tool modes have no such field and should still show seams).
-    const drawFeatures = toolmode?.drawFeatureOverlay !== false
+    const drawFeatures = toolmode?.drawFeatureOverlay
     // Poly-group boundary edges are a separate, opt-in overlay (#28).
     const drawPolyGroupEdges = !!(toolmode as unknown as {drawPolyGroupEdges?: boolean})?.drawPolyGroupEdges
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
@@ -1935,7 +1959,7 @@ export class LiteMesh extends SceneObjectData {
    */
   private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean, drawFeatures = true): void {
     const ctx = getActiveWebGpuContext()
-    if (!ctx || !ctx.currentPass) return
+    if (!ctx?.currentPass) return
     const pass = ctx.currentPass
     const surfaceFormat = navigator.gpu.getPreferredCanvasFormat()
 
