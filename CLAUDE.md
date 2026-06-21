@@ -380,6 +380,39 @@ for status. Key conventions:
   `__boundaryTest()`) run via `--eval` and assert per backend (brush semantics;
   boundary polyline-graph invariance under dyntopo + both undo stacks).
 
+## Crash reporting (Crashpad)
+
+Native sculptcore (`.node`) C++ crashes are captured as Crashpad minidumps and
+symbolicated offline to function + `napi_runtime.cc:line`. See
+[documentation/plans/crashpad.md](documentation/plans/crashpad.md) (implemented +
+verified 2026-06-21). Key conventions:
+
+- **Crashpad is on by default in NW.js 0.112** and there is **no
+  `nw.App.setCrashDumpDir`** (the official docs are stale — introspect the live
+  `nw.App` to confirm; only `crashRenderer()`/`crashBrowser()` exist). Dumps land
+  in `%LOCALAPPDATA%\webgl-app-framework\User Data\Crashpad\reports\*.dmp` (keyed
+  on the manifest `name`); override the toolkit's read dir with `$SC_CRASHDUMP_DIR`.
+- **CodeView PDB** for the addon: `sculptcore/CMakeLists.txt` adds clang
+  `-g -gcodeview` (dir-scope, gated `CMAKE_JS_VERSION AND WIN32 AND NOT MSVC`, set
+  before `add_subdirectory` so all module CodeView lands in one PDB) +
+  `LINKER:/DEBUG` + an explicit `/PDB`. clang defaults `-g` to DWARF, which `cdb`
+  can't walk. `make.mjs` archives each node build's PDB into the
+  content-addressed store `build/crashdumps/syms/<pdb>/<GUID>/` (PE/RSDS parser →
+  symstore key) via `archivePdb` from the toolkit.
+- **Toolkit `sculptcore/crash/dump.mjs`** (dependency-free, wraps the Windows SDK
+  `cdb.exe` at `C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe`):
+  `list/walk/info/threads/open/eval/package/symcheck/prune`, plus `--json` /
+  `--public-syms`. Uses `.ecxr` to land on the faulting thread; packaged zips +
+  the PDB store live under `build/crashdumps`.
+- **Self-test:** the native `crashTest()` export (`napi_runtime.{h,cc}`)
+  null-derefs inside sculptcore; the harness flag is **`--apptest-crash`** (NOT
+  `--crash-test`, which is a real Chromium switch NW.js intercepts, exactly like
+  `--headless`). It builds the litemesh scene first so the addon is loaded before
+  the fault. Re-verify after an NW.js/toolchain bump:
+  `node sculptcore/make.mjs build node` →
+  `node nwjs/launch.mjs --backend native --apptest-crash` →
+  `node sculptcore/crash/dump.mjs symcheck` (→ OK) + `walk` (→ CrashTest frame).
+
 ## Dynamic topology
 
 Geometry under a sculpt dab is subdivided/collapsed on the fly to track a target
