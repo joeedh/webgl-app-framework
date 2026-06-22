@@ -169,6 +169,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     if (SculptPaintOp.meshLog) {
       const mesh = ctx.object!.data! as LiteMesh
       SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+      mesh.regenBounds()
       window.redraw_viewport()
     }
   }
@@ -177,6 +178,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     if (SculptPaintOp.meshLog) {
       const mesh = ctx.object!.data! as LiteMesh
       SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
+      mesh.regenBounds()
       window.redraw_viewport()
     }
   }
@@ -537,6 +539,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         params ?? (0 as never),
         dt.enabled ? this.dabSeed++ : 0
       )
+      mesh.regenBounds()
 
       if (dt.enabled) {
         // Accumulate stats for the debug HUD (lastDynTopoStats holds this dab's
@@ -797,6 +800,106 @@ export function runSculptcoreStroke(opts: {
   wasmExec.endStep()
   mesh.regenTreeBatch()
   return {dabs: opts.dabs.length, skipped: false}
+}
+
+window._sculptcoreStrokeDriver = {
+  get ctx() {
+    return _appstate.ctx
+  },
+
+  get meshLog() {
+    return SculptPaintOp.meshLog
+  },
+
+  get mesh(): LiteMesh | undefined {
+    const data = this.ctx.object?.data
+    return data instanceof LiteMesh ? data : undefined
+  },
+
+  /** frames the mesh in the active viewport */
+  frameMeshInCamera() {
+    // implement me
+  },
+
+  getBrush({
+    sculptTool = SculptTools.CLAY,
+    brushSettings,
+  }: {
+    sculptTool?: SculptTools
+    brushSettings: Partial<SculptBrush>
+  }) {
+    let brush = DefaultBrushes.slotMap[sculptTool]
+    if (brush === undefined) {
+      throw new Error(`invalid sculpt tool ${sculptTool}`)
+    }
+
+    brush = brush.copy()
+
+    // disable all input dynamics by default
+    for (const dyn of brush.dynamics.channels) {
+      dyn.useDynamics = false
+    }
+
+    for (const k in brushSettings) {
+      if (!(k in brush)) {
+        throw new Error(`invalid brush setting ${k}`)
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyBrush = brush as any
+      anyBrush[k] = brushSettings[k as keyof SculptBrush]
+    }
+
+    return brush
+  },
+
+  /**
+   * Runs the stroke, mpoints are normalized screen-space points (normalized to 0-1)
+   * in each axis.  you can get a default brush with this.getBrush.
+   *
+   */
+  runStroke({
+    points,
+    symmetryAxes = 0,
+    radius,
+    brush,
+  }: {
+    points: ArrayLike<number>[] //
+    symmetryAxes?: number
+    radius: number
+    brushSettings: Record<keyof SculptBrush, any>
+    sculptTool?: SculptTools
+    brush: SculptBrush
+  }) {
+    // implement me
+
+    // create brush
+
+    // stroke tool op
+    const tool = new SculptPaintOp()
+    tool.inputs.brush.setValue(brush)
+
+    this.ctx.toolstack.execTool(this.ctx, tool)
+    // abort modal mode
+    tool.modalEnd(true)
+
+    // create PaintSamples with the stroke driver
+    // note that you'll have to multiply each point by
+    // this.ctx.view3d.size
+
+    // assign PaintSamples to tool.inputs.samples
+
+    // note: you may need to call beginStep again,
+    // done here by invoking tool.undoPre
+    tool.undoPre(this.ctx)
+
+    // manually invoke tool.exec
+    tool.exec(this.ctx)
+    tool.execPost(this.ctx)
+
+    // return tool for inspection
+    return {tool, redrawPromise: window.redraw_viewport_p(true)}
+  },
 }
 
 // Headless/CDP-friendly entry point:

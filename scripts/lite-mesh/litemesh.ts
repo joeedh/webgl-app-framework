@@ -584,6 +584,9 @@ export class LiteMesh extends SceneObjectData {
     this._data = undefined
   }
 
+  private needsBoundsUpdate = true
+  private cachedBounds = [new Vector3(), new Vector3()]
+
   // Assigned in the constructor, or (deferInit path) in loadSTRUCT.
   mesh!: WasmMesh
   spatial!: SpatialTree
@@ -978,6 +981,26 @@ export class LiteMesh extends SceneObjectData {
         this.wasm.gpu,
         includePolyGroup
       ) ?? undefined
+  }
+
+  regenBounds(): void {
+    this.needsBoundsUpdate = true
+  }
+
+  getBoundingBox(): [Vector3, Vector3] {
+    if (this.needsBoundsUpdate) {
+      this.needsBoundsUpdate = false
+      const min = this.wasm.float3([0, 0, 0])
+      const max = this.wasm.float3([0, 0, 0])
+      this.mesh.calcAABB(min, max)
+
+      const [vmin, vmax] = this.cachedBounds
+      for (let i = 0; i < 3; i++) {
+        vmin[i] = min.vec[i]
+        vmax[i] = max.vec[i]
+      }
+    }
+    return this.cachedBounds as [Vector3, Vector3]
   }
 
   /** The shortest edge-path's vertex positions as flat xyz triples (for drawing

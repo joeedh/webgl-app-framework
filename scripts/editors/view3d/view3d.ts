@@ -1806,8 +1806,6 @@ window.redraw_viewport = (ResetRender = false, DrawCount = 1) => {
   animreq = requestAnimationFrame(f)
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 window.redraw_viewport_p = (ResetRender = false, DrawCount = 1) => {
   return new Promise((accept, reject) => {
     rcbs.push(accept as () => void)

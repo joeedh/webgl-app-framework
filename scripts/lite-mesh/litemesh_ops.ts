@@ -25,7 +25,13 @@ export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends Prope
   Outputs,
   ToolContext,
   ViewContext
-> {}
+> {
+  execPost(ctx: ToolContext) {
+    const mesh = ctx.object!.data! as LiteMesh
+    mesh.regenBounds()
+    window.redraw_viewport()
+  }
+}
 
 export class AddLiteMeshCubeOp extends LiteMeshOp<{
   //
@@ -454,7 +460,12 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
   /** Project the cached feature verts to screen; if one lands within SNAP_PX of
    * the cursor, return its index + world position (object-space already applied).
    * Returns vert -1 when nothing snaps. */
-  private _snapVert(view3d: MarkPathView3D, obmatrix: Matrix4, mx: number, my: number): {vert: number; world?: Vector3} {
+  private _snapVert(
+    view3d: MarkPathView3D,
+    obmatrix: Matrix4,
+    mx: number,
+    my: number
+  ): {vert: number; world?: Vector3} {
     let best = -1
     let bestD = SNAP_PX
     let bestWorld: Vector3 | undefined
@@ -834,6 +845,7 @@ export class ReorderLocalityOp extends LiteMeshAttrOp {
     if (mesh && SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
       mesh.refreshAfterReorder()
+      mesh.regenBounds()
       window.redraw_all?.()
     }
   }
@@ -843,6 +855,7 @@ export class ReorderLocalityOp extends LiteMeshAttrOp {
     if (mesh && SculptPaintOp.meshLog) {
       SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
       mesh.refreshAfterReorder()
+      mesh.regenBounds()
       window.redraw_all?.()
     }
   }
@@ -1262,46 +1275,46 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     return {
       toolpath: 'litemesh.quad_remesh',
       uiname  : 'Quad Remesh',
-      inputs  : {
-        targetQuadCount : new IntProperty(15000).setRange(1, 1000000).noUnits(),
+      inputs: {
+        targetQuadCount          : new IntProperty(15000).setRange(1, 1000000).noUnits(),
         // 0 = derive the edge length from targetQuadCount (count mode).
-        targetEdgeLength: new FloatProperty(0.0).setRange(0.0, 10.0),
-        useCurvature    : new BoolProperty(true),
-        useSharpFeatures: new BoolProperty(false),
-        sharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
-        useDensity      : new BoolProperty(false),
-        reproject       : new BoolProperty(false),
-        smoothIterations: new IntProperty(2).setRange(0, 20).noUnits(),
-        smoothStrength  : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
-        seed            : new IntProperty(1).setRange(0, 1 << 30).noUnits(),
-        triage          : new BoolProperty(true),
-        triageWeldRel   : new FloatProperty(1e-5).setRange(0.0, 1e-3).noUnits(),
-        triageMinComponentFrac: new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
-        curvatureSmoothIters: new IntProperty(0).setRange(0, 20).noUnits(),
-        curvatureSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
-        fieldSmoothness : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
-        curvatureWeight : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
-        singularityCancel: new BoolProperty(true),
-        singularityCancelMaxSep: new FloatProperty(1.5).setRange(0.5, 4.0).noUnits(),
-        autoDensity     : new BoolProperty(false),
-        densityMin      : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
-        densityMax      : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
-        densityGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
-        densityGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
-        preRemesh       : new BoolProperty(false),
-        preRemeshTarget : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
-        preRemeshIters  : new IntProperty(0).setRange(0, 20).noUnits(),
-        preRemeshDensity: new BoolProperty(true),
-        preRemeshGradation: new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
-        preRemeshGradationIters: new IntProperty(10).setRange(1, 30).noUnits(),
-        preRemeshAlign  : new FloatProperty(1.0).setRange(0.0, 1.0).noUnits(),
-        preRemeshFieldCadence: new IntProperty(2).setRange(1, 8).noUnits(),
-        preRemeshBootstrapIters: new IntProperty(-1).setRange(-1, 8).noUnits(),
-        preRemeshSmoothIters: new IntProperty(5).setRange(0, 20).noUnits(),
-        preRemeshSmoothLambda: new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
-        preRemeshConvergeEps: new FloatProperty(0.05).setRange(0.0, 0.2).noUnits(),
+        targetEdgeLength         : new FloatProperty(0.0).setRange(0.0, 10.0),
+        useCurvature             : new BoolProperty(true),
+        useSharpFeatures         : new BoolProperty(false),
+        sharpAngle               : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
+        useDensity               : new BoolProperty(false),
+        reproject                : new BoolProperty(false),
+        smoothIterations         : new IntProperty(2).setRange(0, 20).noUnits(),
+        smoothStrength           : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        seed                     : new IntProperty(1).setRange(0, 1 << 30).noUnits(),
+        triage                   : new BoolProperty(true),
+        triageWeldRel            : new FloatProperty(1e-5).setRange(0.0, 1e-3).noUnits(),
+        triageMinComponentFrac   : new FloatProperty(0.0).setRange(0.0, 0.5).noUnits(),
+        curvatureSmoothIters     : new IntProperty(0).setRange(0, 20).noUnits(),
+        curvatureSmoothLambda    : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        fieldSmoothness          : new FloatProperty(1.0).setRange(0.1, 8.0).noUnits(),
+        curvatureWeight          : new FloatProperty(1.0).setRange(0.0, 8.0).noUnits(),
+        singularityCancel        : new BoolProperty(true),
+        singularityCancelMaxSep  : new FloatProperty(1.5).setRange(0.5, 4.0).noUnits(),
+        autoDensity              : new BoolProperty(false),
+        densityMin               : new FloatProperty(0.25).setRange(0.05, 1.0).noUnits(),
+        densityMax               : new FloatProperty(4.0).setRange(1.0, 16.0).noUnits(),
+        densityGradation         : new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
+        densityGradationIters    : new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemesh                : new BoolProperty(false),
+        preRemeshTarget          : new FloatProperty(0.0).setRange(0.0, 10.0).noUnits(),
+        preRemeshIters           : new IntProperty(0).setRange(0, 20).noUnits(),
+        preRemeshDensity         : new BoolProperty(true),
+        preRemeshGradation       : new FloatProperty(0.5).setRange(0.0, 2.0).noUnits(),
+        preRemeshGradationIters  : new IntProperty(10).setRange(1, 30).noUnits(),
+        preRemeshAlign           : new FloatProperty(1.0).setRange(0.0, 1.0).noUnits(),
+        preRemeshFieldCadence    : new IntProperty(2).setRange(1, 8).noUnits(),
+        preRemeshBootstrapIters  : new IntProperty(-1).setRange(-1, 8).noUnits(),
+        preRemeshSmoothIters     : new IntProperty(5).setRange(0, 20).noUnits(),
+        preRemeshSmoothLambda    : new FloatProperty(0.5).setRange(0.0, 1.0).noUnits(),
+        preRemeshConvergeEps     : new FloatProperty(0.05).setRange(0.0, 0.2).noUnits(),
         preRemeshPreserveFeatures: new BoolProperty(true),
-        preRemeshSharpAngle: new FloatProperty(0.7853982).setRange(0.0, Math.PI),
+        preRemeshSharpAngle      : new FloatProperty(0.7853982).setRange(0.0, Math.PI),
       },
     }
   }
@@ -1321,44 +1334,44 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     }
     const i = this.getInputs()
     const changed = mesh.quadRemesh({
-      targetQuadCount : i.targetQuadCount,
-      targetEdgeLength: i.targetEdgeLength,
-      useCurvature    : i.useCurvature,
-      useSharpFeatures: i.useSharpFeatures,
-      sharpAngle      : i.sharpAngle,
-      useDensity      : i.useDensity,
-      reproject       : i.reproject,
-      smoothIterations: i.smoothIterations,
-      smoothStrength  : i.smoothStrength,
-      seed            : i.seed,
-      triage          : i.triage,
-      triageWeldRel   : i.triageWeldRel,
-      triageMinComponentFrac: i.triageMinComponentFrac,
-      curvatureSmoothIters: i.curvatureSmoothIters,
-      curvatureSmoothLambda: i.curvatureSmoothLambda,
-      fieldSmoothness : i.fieldSmoothness,
-      curvatureWeight : i.curvatureWeight,
-      singularityCancel: i.singularityCancel,
-      singularityCancelMaxSep: i.singularityCancelMaxSep,
-      autoDensity     : i.autoDensity,
-      densityMin      : i.densityMin,
-      densityMax      : i.densityMax,
-      densityGradation: i.densityGradation,
-      densityGradationIters: i.densityGradationIters,
-      preRemesh       : i.preRemesh,
-      preRemeshTarget : i.preRemeshTarget,
-      preRemeshIters  : i.preRemeshIters,
-      preRemeshDensity: i.preRemeshDensity,
-      preRemeshGradation: i.preRemeshGradation,
-      preRemeshGradationIters: i.preRemeshGradationIters,
-      preRemeshAlign  : i.preRemeshAlign,
-      preRemeshFieldCadence: i.preRemeshFieldCadence,
-      preRemeshBootstrapIters: i.preRemeshBootstrapIters,
-      preRemeshSmoothIters: i.preRemeshSmoothIters,
-      preRemeshSmoothLambda: i.preRemeshSmoothLambda,
-      preRemeshConvergeEps: i.preRemeshConvergeEps,
+      targetQuadCount          : i.targetQuadCount,
+      targetEdgeLength         : i.targetEdgeLength,
+      useCurvature             : i.useCurvature,
+      useSharpFeatures         : i.useSharpFeatures,
+      sharpAngle               : i.sharpAngle,
+      useDensity               : i.useDensity,
+      reproject                : i.reproject,
+      smoothIterations         : i.smoothIterations,
+      smoothStrength           : i.smoothStrength,
+      seed                     : i.seed,
+      triage                   : i.triage,
+      triageWeldRel            : i.triageWeldRel,
+      triageMinComponentFrac   : i.triageMinComponentFrac,
+      curvatureSmoothIters     : i.curvatureSmoothIters,
+      curvatureSmoothLambda    : i.curvatureSmoothLambda,
+      fieldSmoothness          : i.fieldSmoothness,
+      curvatureWeight          : i.curvatureWeight,
+      singularityCancel        : i.singularityCancel,
+      singularityCancelMaxSep  : i.singularityCancelMaxSep,
+      autoDensity              : i.autoDensity,
+      densityMin               : i.densityMin,
+      densityMax               : i.densityMax,
+      densityGradation         : i.densityGradation,
+      densityGradationIters    : i.densityGradationIters,
+      preRemesh                : i.preRemesh,
+      preRemeshTarget          : i.preRemeshTarget,
+      preRemeshIters           : i.preRemeshIters,
+      preRemeshDensity         : i.preRemeshDensity,
+      preRemeshGradation       : i.preRemeshGradation,
+      preRemeshGradationIters  : i.preRemeshGradationIters,
+      preRemeshAlign           : i.preRemeshAlign,
+      preRemeshFieldCadence    : i.preRemeshFieldCadence,
+      preRemeshBootstrapIters  : i.preRemeshBootstrapIters,
+      preRemeshSmoothIters     : i.preRemeshSmoothIters,
+      preRemeshSmoothLambda    : i.preRemeshSmoothLambda,
+      preRemeshConvergeEps     : i.preRemeshConvergeEps,
       preRemeshPreserveFeatures: i.preRemeshPreserveFeatures,
-      preRemeshSharpAngle: i.preRemeshSharpAngle,
+      preRemeshSharpAngle      : i.preRemeshSharpAngle,
     })
     // Clean failure leaves the mesh untouched, so there's nothing to undo.
     if (!changed) {
@@ -1372,6 +1385,7 @@ export class QuadRemeshLiteMeshOp extends LiteMeshAttrOp<{
     if (mesh && this._undoBlob) {
       const wasm = getWasmImmediate()!
       mesh._replaceMesh(wasm.Mesh_deserialize(this._undoBlob))
+      mesh.regenBounds()
       window.redraw_all?.()
     }
   }
