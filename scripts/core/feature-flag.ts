@@ -156,6 +156,12 @@ const featureFlags = [
     type       : 'bool',
     value      : true,
   },
+  {
+    key        : 'sculptcore.auto_defrag',
+    description: 'Auto-compact mesh DRAM layout at stroke end when fragmented (dyntopo)',
+    type       : 'bool',
+    value      : false,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */
