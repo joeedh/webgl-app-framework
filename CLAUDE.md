@@ -379,6 +379,14 @@ for status. Key conventions:
   path for behavior: scripted stroke drivers (`__brushTest()` /
   `__boundaryTest()`) run via `--eval` and assert per backend (brush semantics;
   boundary polyline-graph invariance under dyntopo + both undo stacks).
+- **Writing headless stroke tests** (the main way to exercise brushes / dyntopo /
+  undo end-to-end) is documented in
+  [documentation/debugStrokeGuide.md](documentation/debugStrokeGuide.md): the two
+  stroke drivers (low-level world-space `runSculptcoreStroke` vs. the real-op-path
+  `window._sculptcoreStrokeTester` over normalized screen points), the
+  `--eval`/`__evalTestResult` report-back seam, measuring displacement via GPU
+  buffers vs. bounding box, and the per-backend skip pattern. Note: the headless
+  boot is a *hidden real* window, so `view3d` is laid out and WebGPU works.
 
 ## Crash reporting (Crashpad)
 

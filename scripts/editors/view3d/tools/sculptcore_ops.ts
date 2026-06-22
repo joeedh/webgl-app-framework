@@ -3,7 +3,7 @@ import type {ToolContext, ViewContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
 import {StrokeDriverOp} from './stroke_paint_op'
-import {IStrokeHit, StrokeRayCast} from './stroke_driver'
+import {BrushStrokeDriver, IStrokeHit, StrokeInput, StrokeRayCast} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {DefaultBrushes, type SculptBrush} from '../../../brush/index'
@@ -15,11 +15,22 @@ import {
   configureDynTopoParams,
   isGrabTool,
 } from './sculptcore_bindings'
-import {BrushFlags, SculptTools, resolvePlaneDabNormal} from '../../../brush/brush_base'
+import {
+  BrushFlags,
+  DynTopoEdgeModeSC,
+  DynTopoFlagsSC,
+  SculptTools,
+  resolvePlaneDabNormal,
+} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 import {SymAxisMap} from './pbvh_base'
 import type {View3D} from '../view3d'
 import {view3dProject, view3dUnproject} from '../view3d_base'
+import {FeatureFlags} from '../../../core/feature-flag'
+
+/** Vert page-spread ratio above which the opt-in stroke-end auto-defrag
+ * (`sculptcore.auto_defrag`) compacts the mesh layout. 1.0 = perfectly compact. */
+const AUTO_DEFRAG_VERT_RATIO = 3.0
 
 export interface IGetBrushRet {
   brush: SculptBrush
@@ -570,8 +581,19 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // Release the stroke-long topology thaw the dyntopo path held (no-op if the
     // executor never ran a dyntopo dab).
     this.executor?.endDynTopoStroke()
+    const mesh = ctx.object?.data
     if (SculptPaintOp.meshLog && this.inStep) {
       this.inStep = false
+      // Mechanism B (opt-in): fold an incremental DRAM-layout compaction into the
+      // still-open stroke step when dyntopo churn has fragmented the layout past
+      // the threshold. Undo then reverts stroke + compaction as one step.
+      if (
+        mesh instanceof LiteMesh &&
+        this.inputs.brush.getValue().dynTopoSC.enabled &&
+        FeatureFlags.get('sculptcore.auto_defrag')
+      ) {
+        SculptPaintOp.meshLog.compactIfFragmented(mesh.spatial, AUTO_DEFRAG_VERT_RATIO)
+      }
       // The executor closes the step it opened in undoPre (forwards to meshLog).
       this.executor?.endStep()
     }
@@ -584,7 +606,6 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       this.dynTopoParams = undefined
     }
     // Dyntopo changes the seam/feature topology; refresh the overlay batch.
-    const mesh = ctx.object?.data
     if (mesh instanceof LiteMesh) {
       mesh.markSeamsDirty()
     }
@@ -802,12 +823,65 @@ export function runSculptcoreStroke(opts: {
   return {dabs: opts.dabs.length, skipped: false}
 }
 
-window._sculptcoreStrokeDriver = {
-  get ctx() {
+export interface SculptcoreStrokeRunResult {
+  /** the executed op, on the toolstack — inspect or undo/redo it */
+  tool: SculptPaintOp
+  /** number of evenly-spaced dabs the driver emitted (after interpolation) */
+  dabs: number
+  /** resolves once the post-stroke viewport redraw completes */
+  redrawPromise: Promise<void>
+}
+
+/** Enable dynamic topology on the tester's brush. `true` uses the brush default
+ * detail; an object overrides the per-dab target edge length as a percentage of
+ * the brush radius (PERCENT edge mode) — smaller = finer = more churn. */
+export type StrokeTesterDyntopo = boolean | {edgeSizePercent?: number}
+
+export interface SculptcoreStrokeTester {
+  readonly ctx: ViewContext
+  readonly meshLog: MeshLog | undefined
+  readonly mesh: LiteMesh | undefined
+  frameMeshInCamera(): void
+  getBrush(opts: {
+    sculptTool?: SculptTools
+    brushSettings?: Partial<SculptBrush>
+    dyntopo?: StrokeTesterDyntopo
+  }): SculptBrush
+  runStroke(opts: {
+    points: ArrayLike<number>[]
+    symmetryAxes?: number
+    radius?: number
+    pressure?: number
+    sculptTool?: SculptTools
+    brushSettings?: Partial<SculptBrush>
+    dyntopo?: StrokeTesterDyntopo
+    brush?: SculptBrush
+  }): SculptcoreStrokeRunResult
+  undo(): void
+  redo(): void
+}
+
+declare global {
+  interface Window {
+    _sculptcoreStrokeTester: SculptcoreStrokeTester
+  }
+}
+
+/**
+ * Headless/CDP test driver for sculptcore strokes that goes through the *real*
+ * `SculptPaintOp` + `BrushStrokeDriver` pipeline (projection, raycast,
+ * object-local sample emission, even spacing, mirroring, undo logging) — the
+ * programmatic counterpart to dragging the brush. Reach it as
+ * `window._sculptcoreStrokeTester` over `--eval` / CDP. The active object must
+ * be a `LiteMesh` and the sculpt tool mode active (the dab overlay path expects
+ * `SculptCorePaintMode`).
+ */
+window._sculptcoreStrokeTester = {
+  get ctx(): ViewContext {
     return _appstate.ctx
   },
 
-  get meshLog() {
+  get meshLog(): MeshLog | undefined {
     return SculptPaintOp.meshLog
   },
 
@@ -816,89 +890,179 @@ window._sculptcoreStrokeDriver = {
     return data instanceof LiteMesh ? data : undefined
   },
 
-  /** frames the mesh in the active viewport */
-  frameMeshInCamera() {
-    // implement me
+  /** Frame the active mesh's bounding box in the viewport camera, so subsequent
+   * normalized stroke points land on the surface. */
+  frameMeshInCamera(): void {
+    const view3d = this.ctx.view3d as View3D | undefined
+    view3d?.viewSelected(this.ctx.object)
   },
 
+  /** Resolve a brush for `sculptTool` (default CLAY) from the default-brush set,
+   * with input dynamics disabled (deterministic) and `brushSettings` applied. */
   getBrush({
     sculptTool = SculptTools.CLAY,
-    brushSettings,
+    brushSettings = {},
+    dyntopo = false,
   }: {
     sculptTool?: SculptTools
-    brushSettings: Partial<SculptBrush>
-  }) {
+    brushSettings?: Partial<SculptBrush>
+    dyntopo?: StrokeTesterDyntopo
+  }): SculptBrush {
     let brush = DefaultBrushes.slotMap[sculptTool]
     if (brush === undefined) {
       throw new Error(`invalid sculpt tool ${sculptTool}`)
     }
 
     brush = brush.copy()
+    brush.tool = sculptTool
 
-    // disable all input dynamics by default
+    // disable all input dynamics by default so dabs are deterministic
     for (const dyn of brush.dynamics.channels) {
       dyn.useDynamics = false
+    }
+
+    if (dyntopo) {
+      // Flip on the sculptcore dyntopo flag the stroke path reads
+      // (brush.dynTopoSC.enabled) so strokes remesh — and finishStroke's auto-
+      // defrag trigger engages.
+      brush.dynTopoSC.flag |= DynTopoFlagsSC.ENABLED
+      if (typeof dyntopo === 'object' && dyntopo.edgeSizePercent !== undefined) {
+        brush.dynTopoSC.edgeMode = DynTopoEdgeModeSC.PERCENT
+        brush.dynTopoSC.edgeSize = dyntopo.edgeSizePercent
+      }
     }
 
     for (const k in brushSettings) {
       if (!(k in brush)) {
         throw new Error(`invalid brush setting ${k}`)
       }
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyBrush = brush as any
-      anyBrush[k] = brushSettings[k as keyof SculptBrush]
+      ;(brush as any)[k] = brushSettings[k as keyof SculptBrush]
     }
 
     return brush
   },
 
   /**
-   * Runs the stroke, mpoints are normalized screen-space points (normalized to 0-1)
-   * in each axis.  you can get a default brush with this.getBrush.
-   *
+   * Run a stroke through `SculptPaintOp`. `points` are normalized screen-space
+   * positions (0..1 over the viewport, [x,y] each); they are fed to the real
+   * `BrushStrokeDriver`, which raycasts the mesh and emits evenly-spaced,
+   * object-local `PaintSample`s exactly like an interactive drag. `radius` (px)
+   * and `brushSettings`/`sculptTool` override the brush; pass an explicit `brush`
+   * to skip resolution. The op runs non-modally through the toolstack, so it is
+   * a normal undoable entry (`undo()`/`redo()` below, or ctrl-Z).
    */
   runStroke({
     points,
     symmetryAxes = 0,
     radius,
+    pressure = 1,
+    sculptTool,
+    brushSettings,
+    dyntopo,
     brush,
   }: {
-    points: ArrayLike<number>[] //
+    points: ArrayLike<number>[]
     symmetryAxes?: number
-    radius: number
-    brushSettings: Record<keyof SculptBrush, any>
+    radius?: number
+    pressure?: number
     sculptTool?: SculptTools
-    brush: SculptBrush
-  }) {
-    // implement me
+    brushSettings?: Partial<SculptBrush>
+    dyntopo?: StrokeTesterDyntopo
+    brush?: SculptBrush
+  }): SculptcoreStrokeRunResult {
+    const ctx = this.ctx
+    const view3d = ctx.view3d as View3D | undefined
+    if (!view3d) {
+      throw new Error('_sculptcoreStrokeTester.runStroke: no active view3d')
+    }
+    const mesh = this.mesh
+    if (!mesh) {
+      throw new Error('_sculptcoreStrokeTester.runStroke: active object is not a LiteMesh')
+    }
+    if (points.length === 0) {
+      throw new Error('_sculptcoreStrokeTester.runStroke: need at least one point')
+    }
 
-    // create brush
+    const resolvedBrush: SculptBrush = brush ?? this.getBrush({sculptTool, brushSettings, dyntopo})
+    if (radius !== undefined) {
+      resolvedBrush.radius = radius
+    }
 
-    // stroke tool op
     const tool = new SculptPaintOp()
-    tool.inputs.brush.setValue(brush)
+    tool.inputs.brush.setValue(resolvedBrush)
+    tool.inputs.symmetryAxes.setValue(symmetryAxes)
 
-    this.ctx.toolstack.execTool(this.ctx, tool)
-    // abort modal mode
-    tool.modalEnd(true)
+    // modal_ctx feeds makeProjection / makeRayCast / getObjectMatrix while we
+    // build samples below; we still run the op non-modally (see is_modal=false).
+    tool.modal_ctx = ctx
 
-    // create PaintSamples with the stroke driver
-    // note that you'll have to multiply each point by
-    // this.ctx.view3d.size
+    const driver = new BrushStrokeDriver({
+      projection  : tool.makeProjection(),
+      getParams   : tool.makeParamProvider(),
+      spaceMode   : tool.getSpaceMode(),
+      rayCast     : tool.makeRayCast(),
+      objectMatrix: () => tool.getObjectMatrix(),
+    })
 
-    // assign PaintSamples to tool.inputs.samples
+    // Normalized (0..1) viewport coords -> window/client coords, undoing the
+    // offset getLocalMouse() will re-subtract (client rect when present, else pos).
+    const size = view3d.size!
+    const rect = view3d.getClientRects()[0]
+    const offX = rect ? rect.x : (view3d.pos?.[0] ?? 0)
+    const offY = rect ? rect.y : (view3d.pos?.[1] ?? 0)
 
-    // note: you may need to call beginStep again,
-    // done here by invoking tool.undoPre
-    tool.undoPre(this.ctx)
+    const samples: PaintSample[] = []
+    const drain = () => {
+      for (const ps of driver.poll()) {
+        samples.push(ps)
+      }
+    }
 
-    // manually invoke tool.exec
-    tool.exec(this.ctx)
-    tool.execPost(this.ctx)
+    const invert = (resolvedBrush.flag & BrushFlags.INVERT) !== 0
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]
+      const input: StrokeInput = {
+        x          : offX + p[0] * size[0],
+        y          : offY + p[1] * size[1],
+        pressure,
+        tiltX      : 0,
+        tiltY      : 0,
+        twist      : 0,
+        invert,
+        useAltBrush: false,
+        time       : i,
+        pointerType: 'mouse',
+      }
+      driver.push(input)
+      drain()
+    }
+    driver.end()
+    drain()
 
-    // return tool for inspection
-    return {tool, redrawPromise: window.redraw_viewport_p(true)}
+    tool.inputs.samples.setValue(samples)
+
+    // Run non-modally: execTool then does undoPre -> exec -> execPost
+    // synchronously (exec replays inputs.samples through applyDab and closes the
+    // meshlog step), as a normal undoable toolstack entry.
+    tool.is_modal = false
+    ctx.toolstack.execTool(ctx, tool)
+
+    // The interactive path leans on the render loop to refresh the spatial tree;
+    // do it explicitly so headless callers see up-to-date geometry immediately.
+    mesh.regenTreeBatch()
+
+    return {tool, dabs: samples.length, redrawPromise: window.redraw_viewport_p(true)}
+  },
+
+  /** Undo the last stroke through the toolstack (the real ctrl-Z path). */
+  undo(): void {
+    this.ctx.toolstack.undo()
+  },
+
+  /** Redo the last undone stroke through the toolstack. */
+  redo(): void {
+    this.ctx.toolstack.redo()
   },
 }
 
