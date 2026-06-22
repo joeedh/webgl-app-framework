@@ -1,7 +1,7 @@
 import {CommandExecutor, MeshLog, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
 import type {ToolContext, ViewContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
-import {Matrix4, ToolOp, Vector3, Vector4} from '../../../path.ux/pathux'
+import {Matrix4, ToolOp, Vector2, Vector3, Vector4} from '../../../path.ux/pathux'
 import {StrokeDriverOp} from './stroke_paint_op'
 import {BrushStrokeDriver, IStrokeHit, StrokeInput, StrokeRayCast} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
@@ -891,10 +891,26 @@ window._sculptcoreStrokeTester = {
   },
 
   /** Frame the active mesh's bounding box in the viewport camera, so subsequent
-   * normalized stroke points land on the surface. */
+   * normalized stroke points land on the surface.
+   *
+   * Forces a canonical projection size + camera orientation FIRST: the headless
+   * screen layout is non-deterministic (the View3D area width and the inherited
+   * camera orbit vary across boots), so without this the same normalized stroke
+   * points project to different world positions and the screen-space dab spacing
+   * changes — yielding bimodal (~2.4x) geometry. Pinning size + view direction
+   * makes the tester reproducible. */
   frameMeshInCamera(): void {
     const view3d = this.ctx.view3d as View3D | undefined
-    view3d?.viewSelected(this.ctx.object)
+    if (!view3d) {
+      return
+    }
+    view3d.size = new Vector2([1024, 768])
+    const cam = view3d.activeCamera
+    cam.pos.loadXYZ(20, 0, 10)
+    cam.target.loadXYZ(0, 0, 0)
+    cam.up.loadXYZ(0, 0, 1)
+    cam.regen_mats()
+    view3d.viewSelected(this.ctx.object)
   },
 
   /** Resolve a brush for `sculptTool` (default CLAY) from the default-brush set,
