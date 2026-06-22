@@ -95,28 +95,31 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
   }
 
   private merge() {
-    const flags = this.flags.map((f) => ({...f}))
-
-    const existing = getAppStorage().getText(this.LSKEY)
-    if (existing === undefined) {
-      getAppStorage().setText(this.LSKEY, JSON.stringify(flags, undefined, 2))
-      return
-    }
-
-    const existingFlags = JSON.parse(existing) as StoredFeatureFlag[]
-
-    for (const flag of existingFlags) {
-      const f = flags.find((f) => f.key === flag.key)
-      if (f && f.mtime < flag.mtime) {
-        f.value = flag.value
-        f.mtime = flag.mtime
-      } else {
-        flags.push(flag)
+    /* Merge in-memory flags with whatever's on disk, keyed by `key` with the
+     * newest mtime winning. Deduping by key is essential: the previous version
+     * pushed a duplicate for every flag whose stored copy wasn't newer, so the
+     * array grew on every save until JSON.stringify blew the string-length limit.
+     * Building a Map also collapses any duplicates already on disk. */
+    const byKey = new Map<string, StoredFeatureFlag>()
+    const consider = (flag: StoredFeatureFlag) => {
+      const prev = byKey.get(flag.key)
+      if (!prev || prev.mtime < flag.mtime) {
+        byKey.set(flag.key, {...flag})
       }
     }
 
-    this.flags = flags
-    getAppStorage().setText(this.LSKEY, JSON.stringify(flags, undefined, 2))
+    for (const f of this.flags) {
+      consider(f)
+    }
+    const existing = getAppStorage().getText(this.LSKEY)
+    if (existing !== undefined) {
+      for (const f of JSON.parse(existing) as StoredFeatureFlag[]) {
+        consider(f)
+      }
+    }
+
+    this.flags = [...byKey.values()]
+    getAppStorage().setText(this.LSKEY, JSON.stringify(this.flags, undefined, 2))
   }
 
   static defineAPI(api: DataAPI, st?: DataStruct): DataStruct {
