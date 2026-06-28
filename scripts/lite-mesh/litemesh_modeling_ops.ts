@@ -141,9 +141,7 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
       toolpath: 'litemesh.select_all',
       uiname  : 'Select All',
       inputs: {
-        // ALL=0 select everything, NONE=1 clear, AUTO=2 toggle by current count.
-        // Invoked with numeric / no args — path.ux aborts toolpaths that carry an
-        // enum *name* arg (it can't resolve the name at parse time).
+        // ALL select everything, NONE clear, AUTO toggle by current count.
         mode: new EnumProperty(2, {ALL: 0, NONE: 1, AUTO: 2}),
       },
     }
@@ -156,11 +154,7 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     }
     const log = this._log()
     const domains = this._domains(ctx)
-    // A toolpath enum arg (`mode=ALL`) arrives as the key string, a programmatic
-    // setValue as the number — accept both.
-    const raw = this.inputs.mode.getValue() as unknown
-    const MODE_MAP: Record<string, number> = {ALL: 0, NONE: 1, AUTO: 2}
-    let mode = typeof raw === 'number' ? raw : (MODE_MAP[String(raw)] ?? 2)
+    let mode = this.inputs.mode.getValue()
     if (mode === 2) {
       // auto: select-all unless something is already selected in any domain.
       let any = 0

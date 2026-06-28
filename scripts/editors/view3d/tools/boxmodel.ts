@@ -75,9 +75,7 @@ export class BoxModelToolMode extends ToolMode {
     const row = addHeaderRow()
     strip = row.strip()
     strip.useIcons(true)
-    // No-arg select_all = AUTO toggle. (path.ux toolpaths can't carry an enum
-    // *name* arg, so explicit modes use the numeric value: 0=ALL, 1=NONE.)
-    strip.tool('litemesh.select_all()')
+    strip.tool('litemesh.select_all(mode=AUTO)')
     strip.tool('litemesh.select_box()')
     strip.tool('litemesh.select_circle()')
     strip.tool('litemesh.select_path()')
@@ -87,8 +85,8 @@ export class BoxModelToolMode extends ToolMode {
 
   defineKeyMap(): void {
     this.keymap = new KeyMap([
-      new HotKey('A', [], 'litemesh.select_all(mode=0)'),
-      new HotKey('A', ['alt'], 'litemesh.select_all(mode=1)'),
+      new HotKey('A', [], 'litemesh.select_all(mode=AUTO)'),
+      new HotKey('A', ['alt'], 'litemesh.select_all(mode=NONE)'),
       new HotKey('B', [], 'litemesh.select_box()'),
       new HotKey('C', [], 'litemesh.select_circle()'),
     ])
