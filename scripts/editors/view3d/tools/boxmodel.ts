@@ -89,6 +89,12 @@ export class BoxModelToolMode extends ToolMode {
       new HotKey('A', ['alt'], 'litemesh.select_all(mode=NONE)'),
       new HotKey('B', [], 'litemesh.select_box()'),
       new HotKey('C', [], 'litemesh.select_circle()'),
+      // Transform the current selection via the shared transform modal — the
+      // LiteMeshTransType bridge (litemesh_transtype.ts) supplies the movable
+      // verts, so constraints / numeric entry / snapping all come for free.
+      new HotKey('G', [], 'view3d.translate()'),
+      new HotKey('R', [], 'view3d.rotate()'),
+      new HotKey('S', [], 'view3d.scale()'),
     ])
   }
 }

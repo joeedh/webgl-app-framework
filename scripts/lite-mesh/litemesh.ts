@@ -1315,6 +1315,42 @@ export class LiteMesh extends SceneObjectData {
     return {vec, read}
   }
 
+  /** Float sibling of _intVecOut ('float' is the manager's registry key). */
+  private _floatVecOut() {
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
+    ).findVectorClass('float')
+    const ctor = cls.findDefaultConstructor()
+    const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    return {vec, read}
+  }
+
+  /** Gather the box-modeling "movable" vert set (every vertex touched by any
+   * selected element) plus their object-local positions — the transform bridge's
+   * read at grab start. Returns the bound index vector (reused by
+   * markVertsMovedGPU each modal step) alongside JS copies. */
+  gatherMovableVerts(): {idxVec: unknown; idx: number[]; co: number[]} {
+    const idxOut = this._intVecOut()
+    ;(this.mesh as unknown as {movableVerts(o: never): void}).movableVerts(idxOut.vec as never)
+    const idx = Array.from(idxOut.read())
+    const coOut = this._floatVecOut()
+    ;(this.mesh as unknown as {gatherVertCos(i: never, o: never): void}).gatherVertCos(
+      idxOut.vec as never,
+      coOut.vec as never
+    )
+    const co = Array.from(coOut.read())
+    return {idxVec: idxOut.vec, idx, co}
+  }
+
+  /** Flag the spatial leaves of the given verts (the bound vec from
+   * gatherMovableVerts) for GPU regen after a direct setVertCo edit, so the next
+   * draw reflects the move without a full spatial rebuild (the transform bridge's
+   * per-step GPU update). */
+  markVertsMovedGPU(idxVec: unknown): void {
+    ;(this.spatial as unknown as {markVertsMoved(v: never): void}).markVertsMoved(idxVec as never)
+  }
+
   /** Unproject the view cone (near→far through the cursor, in object-local
    * space) for a circle/brush query, exactly as the WebGL BVH brush path does.
    * Shared by castScreenCircle (picking) and selectCircle (box-modeling). */
