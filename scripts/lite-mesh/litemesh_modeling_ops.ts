@@ -18,7 +18,10 @@
 import {
   EnumProperty,
   FloatProperty,
+  BoolProperty,
+  Mat4Property,
   PropertySlots,
+  ToolMacro,
   ToolOp,
   Vector2,
   Vector3,
@@ -30,8 +33,10 @@ import type {SceneObject} from '../sceneobject/sceneobject'
 import type {View3D} from '../editors/view3d/view3d'
 import {SelMask, SelToolModes} from '../editors/view3d/selectmode'
 import {SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
+import {TranslateOp} from '../editors/view3d/transform/transform_ops'
 import {LiteMesh, IMeshLogSelect} from './litemesh'
 import {LiteMeshOp} from './litemesh_ops'
+import {Icons} from '../editors/icon_enum.js'
 
 /** Map a SelMask bitmask (VERTEX=1/EDGE=2/FACE=4) to the C++ domain codes
  * (0/1/2). Defaults to vertex when nothing is set. */
@@ -547,6 +552,189 @@ export class SelectPathLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumProper
   exec(_ctx: ToolContext) {}
 }
 
+/**
+ * Shared base for box-modeling topology ops. The C++ macro-op runs inside one
+ * MeshLog step (so it's one undo press); since topology changes wholesale, the
+ * spatial tree is rebuilt after exec/undo/redo (a perf follow-up is the
+ * incremental dyntopo tree path). Undo/redo route through MeshLog.
+ */
+export abstract class LiteMeshTopoOpBase<
+  Inputs extends PropertySlots = {},
+  Outputs extends PropertySlots = {},
+> extends LiteMeshOp<Inputs, Outputs> {
+  _logStepId = -1
+
+  _getMesh(ctx: ToolContext): LiteMesh | undefined {
+    const data = ctx.scene?.objects?.active?.data
+    return data instanceof LiteMesh ? data : undefined
+  }
+
+  _log(): IMeshLogSelect {
+    return SculptPaintOp.ensureMeshLog() as unknown as IMeshLogSelect
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+
+  calcUndoMem(_ctx: ToolContext): number {
+    const log = SculptPaintOp.meshLog
+    return log && this._logStepId >= 0 ? log.stepMemSize(this._logStepId) : 0
+  }
+
+  onUndoDestroy(): void {
+    const log = SculptPaintOp.meshLog
+    if (log && this._logStepId >= 0) {
+      log.freeStep(this._logStepId)
+      this._logStepId = -1
+    }
+  }
+
+  /** Rebuild the tree + normals + overlay after a topology change. */
+  _afterTopoChange(mesh: LiteMesh): void {
+    mesh.rebuildSpatialFromEdit()
+    mesh.recalcNormals()
+    mesh.regenBounds()
+    const log = this._log()
+    mesh.markSelectionDirty(log.activeVert(), log.activeEdge(), log.activeFace())
+    window.redraw_viewport()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    const log = SculptPaintOp.meshLog
+    if (mesh && log) {
+      log.undo(mesh.mesh, mesh.spatial)
+      this._afterTopoChange(mesh)
+    }
+  }
+
+  redo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    const log = SculptPaintOp.meshLog
+    if (mesh && log) {
+      log.redo(mesh.mesh, mesh.spatial)
+      this._afterTopoChange(mesh)
+    }
+  }
+}
+
+/** Build the geom-op + TranslateOp macro for a "T" tool (one undo unit). The
+ * geom op's `normalSpace` output is wired to the translate's constraint space and
+ * the constraint is locked to that space's Z (the extrude normal). */
+function makeTransformMacro(tool: ToolOp): ToolMacro<ToolContext> {
+  const macro = new ToolMacro<ToolContext>()
+  macro.add(tool)
+  const translate = new TranslateOp()
+  translate.inputs.selmask.setValue(SelMask.GEOM)
+  translate.inputs.constraint.setValue([0, 0, 1])
+  macro.add(translate)
+  macro.connect(tool, 'normalSpace', translate, 'constraint_space')
+  return macro
+}
+
+/** Extrude the selected face region, then (with transform=1) grab the new region
+ * along its averaged normal. */
+export class LiteMeshExtrudeRegionOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat4Property}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.extrude_region',
+      uiname  : 'Extrude Region',
+      icon    : Icons.EXTRUDE,
+      // transform=1 chains a modal grab via a ToolMacro (one undo unit).
+      inputs  : {transform: new BoolProperty(false).private()},
+      outputs : {normalSpace: new Mat4Property()},
+    }
+  }
+
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): ToolOp {
+    const tool = super.invoke(ctx, args) as unknown as LiteMeshExtrudeRegionOp
+    if (args['transform']) {
+      return makeTransformMacro(tool) as unknown as ToolOp
+    }
+    return tool as unknown as ToolOp
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = this._log()
+    const no = mesh.extrudeRegion(log)
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+    const n = new Vector3(no.length === 3 ? no : [0, 0, 1])
+    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(n))
+  }
+}
+
+/** Extrude each selected face individually (split adjacent faces), then grab. */
+export class LiteMeshExtrudeIndividualOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat4Property}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.extrude_individual',
+      uiname  : 'Extrude Individual Faces',
+      icon    : Icons.EXTRUDE,
+      inputs  : {transform: new BoolProperty(false).private()},
+      outputs : {normalSpace: new Mat4Property()},
+    }
+  }
+
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): ToolOp {
+    const tool = super.invoke(ctx, args) as unknown as LiteMeshExtrudeIndividualOp
+    if (args['transform']) {
+      return makeTransformMacro(tool) as unknown as ToolOp
+    }
+    return tool as unknown as ToolOp
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = this._log()
+    const no = mesh.extrudeIndividual(log)
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+    const n = new Vector3(no.length === 3 ? no : [0, 0, 1])
+    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(n))
+  }
+}
+
+/** Extrude selected verts as wires, then (with transform=1) grab the duplicates. */
+export class LiteMeshExtrudeWireOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat4Property}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.extrude_wire',
+      uiname  : 'Extrude Wire',
+      icon    : Icons.EXTRUDE,
+      inputs  : {transform: new BoolProperty(false).private()},
+      outputs : {normalSpace: new Mat4Property()},
+    }
+  }
+
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): ToolOp {
+    const tool = super.invoke(ctx, args) as unknown as LiteMeshExtrudeWireOp
+    if (args['transform']) {
+      return makeTransformMacro(tool) as unknown as ToolOp
+    }
+    return tool as unknown as ToolOp
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = this._log()
+    const no = mesh.extrudeWireVerts(log)
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+    const n = new Vector3(no.length === 3 ? no : [0, 0, 1])
+    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(n))
+  }
+}
+
 export const BoxModelSelectOps = [
   SelectAllLiteMeshOp,
   SelectBoxLiteMeshOp,
@@ -555,7 +743,12 @@ export const BoxModelSelectOps = [
   SelectPathLiteMeshOp,
 ]
 
+export const BoxModelTopoOps = [LiteMeshExtrudeRegionOp, LiteMeshExtrudeIndividualOp, LiteMeshExtrudeWireOp]
+
 for (const op of BoxModelSelectOps) {
+  ToolOp.register(op)
+}
+for (const op of BoxModelTopoOps) {
   ToolOp.register(op)
 }
 

@@ -72,13 +72,21 @@ export class BoxModelToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawSelectionOverlay`)
     strip.prop(`scene.tools.${name}.xray`)
 
-    const row = addHeaderRow()
+    let row = addHeaderRow()
     strip = row.strip()
     strip.useIcons(true)
     strip.tool('litemesh.select_all(mode=AUTO)')
     strip.tool('litemesh.select_box()')
     strip.tool('litemesh.select_circle()')
     strip.tool('litemesh.select_path()')
+
+    // Modeling tools (the "T" tools auto-chain a transform via transform=true).
+    row = addHeaderRow()
+    strip = row.strip()
+    strip.useIcons(true)
+    strip.tool('litemesh.extrude_region(transform=true)')
+    strip.tool('litemesh.extrude_individual(transform=true)')
+    strip.tool('litemesh.extrude_wire(transform=true)')
 
     header.flushUpdate()
   }
@@ -95,6 +103,7 @@ export class BoxModelToolMode extends ToolMode {
       new HotKey('G', [], 'view3d.translate()'),
       new HotKey('R', [], 'view3d.rotate()'),
       new HotKey('S', [], 'view3d.scale()'),
+      new HotKey('E', [], 'litemesh.extrude_region(transform=true)'),
     ])
   }
 }

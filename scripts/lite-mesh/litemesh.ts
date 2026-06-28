@@ -1351,6 +1351,32 @@ export class LiteMesh extends SceneObjectData {
     ;(this.spatial as unknown as {markVertsMoved(v: never): void}).markVertsMoved(idxVec as never)
   }
 
+  /** Extrude the selected face region (creates the cap + bridge side-quads in the
+   * given MeshLog step, leaves the new region selected). Returns the averaged,
+   * object-local face normal for the chained transform's constraint axis. Caller
+   * rebuilds the spatial tree afterward (topology changed wholesale). */
+  extrudeRegion(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeRegion(m: unknown, o: unknown): void}).extrudeRegion(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Extrude each selected face individually (no boundary merge — adjacent faces
+   * split apart). Returns the averaged face normal. */
+  extrudeIndividual(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeIndividual(m: unknown, o: unknown): void}).extrudeIndividual(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Extrude selected verts as wires (duplicate + edge to original; the duplicate
+   * is the movable selection). Returns a placeholder normal. */
+  extrudeWireVerts(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeWireVerts(m: unknown, o: unknown): void}).extrudeWireVerts(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
   /** Unproject the view cone (near→far through the cursor, in object-local
    * space) for a circle/brush query, exactly as the WebGL BVH brush path does.
    * Shared by castScreenCircle (picking) and selectCircle (box-modeling). */
