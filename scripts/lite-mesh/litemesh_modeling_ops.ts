@@ -142,6 +142,8 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
       uiname  : 'Select All',
       inputs: {
         // ALL=0 select everything, NONE=1 clear, AUTO=2 toggle by current count.
+        // Invoked with numeric / no args — path.ux aborts toolpaths that carry an
+        // enum *name* arg (it can't resolve the name at parse time).
         mode: new EnumProperty(2, {ALL: 0, NONE: 1, AUTO: 2}),
       },
     }
@@ -154,7 +156,11 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     }
     const log = this._log()
     const domains = this._domains(ctx)
-    let mode = this.inputs.mode.getValue()
+    // A toolpath enum arg (`mode=ALL`) arrives as the key string, a programmatic
+    // setValue as the number — accept both.
+    const raw = this.inputs.mode.getValue() as unknown
+    const MODE_MAP: Record<string, number> = {ALL: 0, NONE: 1, AUTO: 2}
+    let mode = typeof raw === 'number' ? raw : (MODE_MAP[String(raw)] ?? 2)
     if (mode === 2) {
       // auto: select-all unless something is already selected in any domain.
       let any = 0
@@ -230,7 +236,7 @@ export class SelectBoxLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
   on_pointerup(_e: PointerEvent): void {
     const ctx = this._ctx()
     if (this.mdown && ctx) {
-      this.exec(ctx as unknown as ToolContext)
+      this._apply(ctx as unknown as ToolContext)
     }
     this.mdown = false
     ctx?.view3d?.overdraw?.clear()
@@ -257,7 +263,9 @@ export class SelectBoxLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     view3d.overdraw.line([a[0], b[1]], [a[0], a[1]], 'white')
   }
 
-  exec(ctx: ToolContext) {
+  /** Apply the box selection in one MeshLog step (run once, from on_pointerup —
+   * not exec, so the framework can't double-create the step). */
+  private _apply(ctx: ToolContext): void {
     const mesh = this._getMesh(ctx)
     const view3d = (ctx as unknown as SelModalCtx).view3d
     const object = (ctx as unknown as SelModalCtx).object
@@ -277,6 +285,9 @@ export class SelectBoxLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     this._logStepId = log.lastStepId()
     this._refreshOverlay(mesh, log)
   }
+
+  // Work happens live in the modal; redo replays via MeshLog.
+  exec(_ctx: ToolContext) {}
 }
 
 /**
