@@ -735,6 +735,170 @@ export class LiteMeshExtrudeWireOp extends LiteMeshTopoOpBase<{}, {normalSpace: 
   }
 }
 
+/**
+ * Parametric inset of the selected face region. Builds the inset ring up front
+ * (one open MeshLog step), then the mouse drags the inset width —
+ * `co = base + width·tangent` per inset vert (the C++ op emits each vert's base
+ * position + inward in-plane tangent). Topology + final positions are one undo
+ * step (the op holds the step open across the drag). Left-click / Enter confirms;
+ * right-click / Esc cancels (undoes the topology). The custom-TransType
+ * integration the draft sketches (§3c) is a later refinement — this dedicated
+ * modal gives the same single-undo parametric behavior.
+ */
+export class LiteMeshInsetOp extends LiteMeshTopoOpBase {
+  private _inStep = false
+  private _mesh?: LiteMesh
+  private _idx: number[] = []
+  private _idxVec: unknown
+  private _base: number[] = []
+  private _tan: number[] = []
+  private _startX = 0
+  private _haveStart = false
+  private _scale = 0.01
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.inset_region',
+      uiname  : 'Inset Faces',
+      icon    : Icons.EXTRUDE,
+      is_modal: true,
+      inputs  : {},
+    }
+  }
+
+  _ctx(): SelModalCtx | undefined {
+    return this.modal_ctx as unknown as SelModalCtx | undefined
+  }
+
+  modalStart(ctx: ViewContext) {
+    const mesh = this._getMesh(ctx as unknown as ToolContext)
+    this._mesh = mesh
+    this._haveStart = false
+    if (mesh) {
+      const log = this._log()
+      log.selectionBeginStep()
+      const data = mesh.insetRegion(log)
+      this._idx = data.idx
+      this._idxVec = data.idxVec
+      this._base = data.base
+      this._tan = data.tangent
+      mesh.rebuildSpatialFromEdit()
+      mesh.markSelectionDirty(log.activeVert(), log.activeEdge(), log.activeFace())
+      this._inStep = true
+      this._scale = this._computeScale()
+      window.redraw_viewport()
+    }
+    return super.modalStart(ctx as never)
+  }
+
+  /** object-local units per screen pixel near the region (drag → width map). */
+  private _computeScale(): number {
+    const c = this._ctx()
+    if (!c?.view3d || !c.object) {
+      return 0.01
+    }
+    const obmat = c.object.outputs.matrix.getValue()
+    const imat = new Matrix4(obmat)
+    imat.multiply(c.view3d.activeCamera.rendermat)
+    imat.invert()
+    const d = 0.5
+    const p1 = new Vector4([0, 0, d, 1.0])
+    c.view3d.unproject(p1, imat)
+    const p2 = new Vector4([100, 0, d, 1.0])
+    c.view3d.unproject(p2, imat)
+    return new Vector3(p1).vectorDistance(new Vector3(p2)) / 100
+  }
+
+  private _applyInset(width: number): void {
+    const mesh = this._mesh
+    if (!mesh) {
+      return
+    }
+    for (let i = 0; i < this._idx.length; i++) {
+      const bx = this._base[i * 3] ?? 0
+      const by = this._base[i * 3 + 1] ?? 0
+      const bz = this._base[i * 3 + 2] ?? 0
+      const tx = this._tan[i * 3] ?? 0
+      const ty = this._tan[i * 3 + 1] ?? 0
+      const tz = this._tan[i * 3 + 2] ?? 0
+      mesh.setVertCo(this._idx[i], bx + width * tx, by + width * ty, bz + width * tz)
+    }
+    if (this._idxVec) {
+      mesh.markVertsMovedGPU(this._idxVec)
+    }
+    mesh.recalcNormals()
+    mesh.regenBounds()
+    window.redraw_viewport()
+  }
+
+  on_pointermove(e: PointerEvent): void {
+    const c = this._ctx()
+    if (!c?.view3d) {
+      return
+    }
+    const m = c.view3d.getLocalMouse(e.x, e.y)
+    if (!this._haveStart) {
+      this._startX = m[0]
+      this._haveStart = true
+      return
+    }
+    this._applyInset((m[0] - this._startX) * this._scale)
+  }
+
+  on_pointerdown(e: PointerEvent): void {
+    if (e.button === 2) {
+      this._cancel()
+      this.modalEnd(true)
+      return
+    }
+    if (e.button === 0) {
+      this._confirm()
+      this.modalEnd(false)
+    }
+  }
+
+  on_keydown(e: KeyboardEvent): void {
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      this._confirm()
+      this.modalEnd(false)
+    } else if (e.code === 'Escape') {
+      this._cancel()
+      this.modalEnd(true)
+    }
+  }
+
+  private _confirm(): void {
+    if (!this._inStep) {
+      return
+    }
+    const log = this._log()
+    log.selectionEndStep()
+    this._logStepId = log.lastStepId()
+    this._inStep = false
+  }
+
+  private _cancel(): void {
+    if (!this._inStep) {
+      return
+    }
+    const log = this._log()
+    log.selectionEndStep()
+    const mesh = this._mesh
+    if (mesh && SculptPaintOp.meshLog) {
+      SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+      mesh.rebuildSpatialFromEdit()
+      mesh.recalcNormals()
+      mesh.regenBounds()
+      mesh.markSelectionDirty(-1, -1, -1)
+      window.redraw_viewport()
+    }
+    this._inStep = false
+  }
+
+  // Topology + drag happen live in the modal; redo replays via MeshLog.
+  exec(_ctx: ToolContext) {}
+}
+
 export const BoxModelSelectOps = [
   SelectAllLiteMeshOp,
   SelectBoxLiteMeshOp,
@@ -743,7 +907,12 @@ export const BoxModelSelectOps = [
   SelectPathLiteMeshOp,
 ]
 
-export const BoxModelTopoOps = [LiteMeshExtrudeRegionOp, LiteMeshExtrudeIndividualOp, LiteMeshExtrudeWireOp]
+export const BoxModelTopoOps = [
+  LiteMeshExtrudeRegionOp,
+  LiteMeshExtrudeIndividualOp,
+  LiteMeshExtrudeWireOp,
+  LiteMeshInsetOp,
+]
 
 for (const op of BoxModelSelectOps) {
   ToolOp.register(op)
