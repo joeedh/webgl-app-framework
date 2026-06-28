@@ -102,6 +102,51 @@ can own **multiple lists** (`l.next`) to model **holes**. So:
 - "N-gon rendering" is only a **display fan-triangulation** concern in the spatial
   GPU draw path — not a data-model or policy decision.
 
+## Dependencies: triangulation / constrained Delaunay
+
+A **constrained Delaunay triangulator (CDT)** is planned separately. It is **not a
+prerequisite** for this plan — the two run as parallel tracks. What exists today:
+
+- `mesh/utils/triangulate.h` (`triangulateFaceFanCb` / `triangulateMesh`) —
+  fan-triangulates single-outer-loop n-gons, threading `MeshCallbacks` so spatial
+  + meshlog stay in sync. **No-ops on multi-loop (holed) faces.** Covers convex
+  single-loop n-gons, which is everything the early tools produce.
+- `mesh/utils/delaunay.h` — an **unconstrained** Bowyer-Watson triangulation of a
+  vertex set projected to a best-fit plane. It does **not** respect constraint
+  (boundary/hole) edges. The planned work is the *constrained* upgrade of this.
+
+The whole topology/selection/transform/overlay surface needs **no** triangulator:
+the macro-operators are pure Euler ops emitting quads/n-gons, and convex n-gon
+display already works via the fan path. The **only** coupling is robust
+triangulation of **holed and strongly-concave faces** — which neither the fan
+path (skips holes) nor the unconstrained Delaunay (ignores hole boundaries) can
+do — and it bites in exactly two late places:
+
+- **Display** of a holed/concave face (a naive fan renders it wrong).
+- **Feeding** such a face into sculpt/dyntopo/multires or any triangle-consuming
+  mode.
+
+Holed/concave faces are not produced by the milestone 0–2 tools (they appear with
+dissolve / inset-to-hole / explicit hole creation), so the CDT becomes a
+dependency around the inset/bevel/dissolve tier, not at the start.
+
+**Sequencing rule:**
+
+- Start the box-modeling foundation now; it does not wait on the CDT (no reverse
+  dependency either — the CDT is lower-level and needs nothing from this plan).
+- Route holed/concave-face **display tessellation and sculpt-feed through the CDT
+  once it lands**, replacing the fan path + a multi-loop guard. If box modeling
+  reaches holed-face display before the CDT is ready, **gate the hole-producing
+  ops** until it lands rather than writing a throwaway ear-clipper.
+- Synergy: building selection + overlays first gives the CDT a ready-made
+  interactive test/visualization harness (select a face → triangulate → view), and
+  the CDT is the natural backend for the general case of pattern subdivision.
+
+One item to confirm when implementation starts: exactly how the spatial GPU draw
+batch (`source/mesh/gpu/mesh_drawbatch.cc` / the spatial GPU node) tessellates a
+face for display today (it assumes a convex fan) — that is the seam the CDT later
+plugs into for non-convex/holed faces.
+
 ## Where code lives
 
 Extend the existing **lite-mesh addon** (the tools are intrinsic to editing a
