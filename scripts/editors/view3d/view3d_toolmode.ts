@@ -23,6 +23,7 @@ import type {Mesh} from '../../../addons/builtin/mesh/src/mesh'
 import type {MeshDrawInterface} from './view3d_draw'
 import type {BoundingBox} from './view3d_utils'
 import type {StructReader} from '../../path.ux/scripts/util/nstructjs'
+import {updateToolModeAPI} from '../../scene/scene_utils'
 
 export interface IToolModeDefine {
   name: string
@@ -204,6 +205,10 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     if (cls.toolModeDefine === this.toolModeDefine) {
       throw new Error('cls is missing its toolModeDefine')
     }
+    // eslint-disable-next-line no-prototype-builtins
+    if (!cls.hasOwnProperty('STRUCT') || cls.STRUCT === this.STRUCT) {
+      throw new Error('cls lacks its own STRUCT script')
+    }
 
     ToolModes.push(cls)
     messageBus.emitSync(undefined, ToolMode, 'REGISTER', cls)
@@ -267,7 +272,7 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
   getWidgetWithKey(key: string) {
     const widget = this.ctx.scene.widgets.getWidgetWithKey(key)
 
-    if (widget && !widget.isDead && this.widgets.indexOf(widget) >= 0) {
+    if (widget && !widget.isDead && this.widgets.includes(widget)) {
       return widget
     }
 
@@ -422,7 +427,7 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
   onActive() {}
 
   clearWidgets() {
-    if (!this.ctx || !this.ctx.scene) {
+    if (!this.ctx?.scene) {
       return
     }
 

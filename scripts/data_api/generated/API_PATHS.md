@@ -382,154 +382,9 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tool.type` | prop | StringProperty | Type |  |
 | `scene.toolmode` | prop | EnumProperty | Tool Mode | enum {object, pan, sculptcore, boxmodel} |
 | `scene.tools` | struct |  |  |  |
-| `scene.tools.boxmodel` | struct |  |  |  |
-| `scene.tools.boxmodel.boxModelSelMode` | prop | FlagProperty | Box Model Sel Mode | enum {VERTEX, EDGE, FACE} |
-| `scene.tools.boxmodel.drawPoints` | prop | BoolProperty | Vertex Points |  |
-| `scene.tools.boxmodel.drawSelectionOverlay` | prop | BoolProperty | Selection Overlay |  |
-| `scene.tools.boxmodel.drawWireframe` | prop | BoolProperty | Wireframe |  |
-| `scene.tools.boxmodel.selectRadius` | prop | FloatProperty | Select Radius | range 1..500 |
-| `scene.tools.boxmodel.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
-| `scene.tools.boxmodel.type` | prop | StringProperty | Type |  |
-| `scene.tools.boxmodel.xray` | prop | BoolProperty | X-Ray |  |
-| `scene.tools.object` | struct |  |  |  |
-| `scene.tools.object.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE, translate, scale, rotate} |
-| `scene.tools.object.type` | prop | StringProperty | Type |  |
-| `scene.tools.pan` | struct |  |  |  |
-| `scene.tools.pan.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
-| `scene.tools.pan.type` | prop | StringProperty | Type |  |
-| `scene.tools.sculptcore` | struct |  |  |  |
-| `scene.tools.sculptcore.brush` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
-| `scene.tools.sculptcore.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |
-| `scene.tools.sculptcore.brush.bgcolor` | prop | Vec4Property | Secondary Color | range 0..1 |
-| `scene.tools.sculptcore.brush.color` | prop | Vec4Property | Primary Color | range 0..1 |
-| `scene.tools.sculptcore.brush.concaveFilter` | prop | FloatProperty | Concave Wash | range 0..1 |
-| `scene.tools.sculptcore.brush.dynTopo` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynTopo.decimateFactor` | prop | FloatProperty | Decimate Factor | range 0..1 |
-| `scene.tools.sculptcore.brush.dynTopo.edgeCount` | prop | IntProperty | Edge Count | range 1..2048 |
-| `scene.tools.sculptcore.brush.dynTopo.edgeMode` | prop | EnumProperty | Mode | enum {SCREEN, WORLD} |
-| `scene.tools.sculptcore.brush.dynTopo.edgeSize` | prop | FloatProperty | Edge Length | range 0.25..40 |
-| `scene.tools.sculptcore.brush.dynTopo.flag` | prop | FlagProperty | Flag | enum {SUBDIVIDE, COLLAPSE, ENABLED, FANCY_EDGE_WEIGHTS, QUAD_COLLAPSE, ALLOW_VALENCE4, DRAW_TRIS_AS_QUADS, ADAPTIVE} |
-| `scene.tools.sculptcore.brush.dynTopo.maxDepth` | prop | IntProperty | Max Depth | range 0..15 |
-| `scene.tools.sculptcore.brush.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {SUBDIVIDE, COLLAPSE, ENABLED, FANCY_EDGE_WEIGHTS, QUAD_COLLAPSE, ALLOW_VALENCE4, DRAW_TRIS_AS_QUADS, ADAPTIVE, VALENCE_GOAL, EDGE_SIZE, DECIMATE_FACTOR, SUBDIVIDE_FACTOR, MAX_DEPTH, EDGE_COUNT, NONE, REPEAT, SPACING_MODE, SPACING, EDGEMODE, SUBDIV_MODE, EVERYTHING} |
-| `scene.tools.sculptcore.brush.dynTopo.repeat` | prop | IntProperty | Repeat | range 1..25 |
-| `scene.tools.sculptcore.brush.dynTopo.spacing` | prop | FloatProperty | Spacing | range 0.01..12 |
-| `scene.tools.sculptcore.brush.dynTopo.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
-| `scene.tools.sculptcore.brush.dynTopo.subdivMode` | prop | EnumProperty | Subdiv Mode | enum {SIMPLE, SMART} |
-| `scene.tools.sculptcore.brush.dynTopo.subdivideFactor` | prop | FloatProperty | Subdivision Factor | range 0..1 |
-| `scene.tools.sculptcore.brush.dynTopo.valenceGoal` | prop | IntProperty | Valence Goal | range 0..12 |
-| `scene.tools.sculptcore.brush.dynTopoSC` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynTopoSC.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
-| `scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing` | prop | FloatProperty | Remesh Spacing | range 0..2 |
-| `scene.tools.sculptcore.brush.dynTopoSC.edgeMode` | prop | EnumProperty | Detail Mode | enum {WORLD, PERCENT, PIXELS} |
-| `scene.tools.sculptcore.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
-| `scene.tools.sculptcore.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
-| `scene.tools.sculptcore.brush.dynTopoSC.grade` | prop | FloatProperty | Grade | range 0..8 |
-| `scene.tools.sculptcore.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
-| `scene.tools.sculptcore.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
-| `scene.tools.sculptcore.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
-| `scene.tools.sculptcore.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
-| `scene.tools.sculptcore.brush.dynamics` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmooth` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmooth.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmooth.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmoothInflate` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmoothInflate.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.autosmoothInflate.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.concaveFilter` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.concaveFilter.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.concaveFilter.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.pinch` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.pinch.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.pinch.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.radius` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.radius.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.radius.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.rake` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.rake.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.rake.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.sharp` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.sharp.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.sharp.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.smoothProj` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.smoothProj.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.smoothProj.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.dynamics.strength` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.dynamics.strength.curve` | prop | Curve1DProperty | Curve |  |
-| `scene.tools.sculptcore.brush.dynamics.strength.useDynamics` | prop | BoolProperty | Use Dynamics |  |
-| `scene.tools.sculptcore.brush.falloff` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculptcore.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE} |
-| `scene.tools.sculptcore.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
-| `scene.tools.sculptcore.brush.graph_id` | prop | IntProperty | Graph ID |  |
-| `scene.tools.sculptcore.brush.inputs` | list |  |  |  |
-| `scene.tools.sculptcore.brush.lib_flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, SELECT, HIDE, FAKE_USER, NO_SAVE} |
-| `scene.tools.sculptcore.brush.lib_id` | prop | IntProperty | Lib ID |  |
-| `scene.tools.sculptcore.brush.name` | prop | StringProperty | name |  |
-| `scene.tools.sculptcore.brush.normalfac` | prop | FloatProperty | Normal Fac | range 0..1 |
-| `scene.tools.sculptcore.brush.outputs` | list |  |  |  |
-| `scene.tools.sculptcore.brush.pinch` | prop | FloatProperty | Pinch | range 0..1 |
-| `scene.tools.sculptcore.brush.planeNormalMode` | prop | EnumProperty | Plane Normal | enum {VIEW, SURFACE} |
-| `scene.tools.sculptcore.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
-| `scene.tools.sculptcore.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
-| `scene.tools.sculptcore.brush.rake` | prop | FloatProperty | Rake | range 0..1 |
-| `scene.tools.sculptcore.brush.rakeCurvatureFactor` | prop | FloatProperty | Curvature Factor | range 0..1 |
-| `scene.tools.sculptcore.brush.sharp` | prop | FloatProperty | Sharpening | range 0..1 |
-| `scene.tools.sculptcore.brush.smoothProj` | prop | FloatProperty | Projection | range 0..0.97 |
-| `scene.tools.sculptcore.brush.smoothRadiusMul` | prop | FloatProperty | Smooth Radius | range 0.125..15 |
-| `scene.tools.sculptcore.brush.spacing` | prop | FloatProperty | Spacing | range 0.01..12 |
-| `scene.tools.sculptcore.brush.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
-| `scene.tools.sculptcore.brush.strength` | prop | FloatProperty | Strength | range 0.001..2 |
-| `scene.tools.sculptcore.brush.texUser` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.texUser.flag` | prop | FlagProperty | flag | enum {1, 2, 4, 8, 16, 32, SELECT, RAKE, CONSTANT_SIZE, FANCY_RAKE, ORIGINAL_CO, CURVED} |
-| `scene.tools.sculptcore.brush.texUser.mode` | prop | EnumProperty | Mode | enum {0, 1, 2, GLOBAL, VIEWPLANE, VIEW_REPEAT} |
-| `scene.tools.sculptcore.brush.texUser.pinch` | prop | FloatProperty | Tex Pinch | range -1..1 |
-| `scene.tools.sculptcore.brush.texUser.scale` | prop | FloatProperty | Scale | range 0.0001..1000 |
-| `scene.tools.sculptcore.brush.texUser.texture` | struct |  |  |  |
-| `scene.tools.sculptcore.brush.texUser.texture.brightness` | prop | FloatProperty | Brightness | range -5..5 |
-| `scene.tools.sculptcore.brush.texUser.texture.contrast` | prop | FloatProperty | Contrast | range 0.001..100 |
-| `scene.tools.sculptcore.brush.texUser.texture.generator` | dynamicStruct |  |  | dynamic |
-| `scene.tools.sculptcore.brush.texUser.texture.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
-| `scene.tools.sculptcore.brush.texUser.texture.graph_id` | prop | IntProperty | Graph ID |  |
-| `scene.tools.sculptcore.brush.texUser.texture.inputs` | list |  |  |  |
-| `scene.tools.sculptcore.brush.texUser.texture.lib_flag` | prop | FlagProperty | Flag | enum {1, 2, 4, 8, SELECT, HIDE, FAKE_USER, NO_SAVE} |
-| `scene.tools.sculptcore.brush.texUser.texture.lib_id` | prop | IntProperty | Lib ID |  |
-| `scene.tools.sculptcore.brush.texUser.texture.mode` | prop | EnumProperty | Mode | enum {SimpleNoise, MoireNoise, CombPattern, GaborNoise} |
-| `scene.tools.sculptcore.brush.texUser.texture.name` | prop | StringProperty | name |  |
-| `scene.tools.sculptcore.brush.texUser.texture.outputs` | list |  |  |  |
-| `scene.tools.sculptcore.brush.texUser.texture.power` | prop | FloatProperty | Exp | range 0.001..100 |
-| `scene.tools.sculptcore.brush.texUser.texture.scale` | prop | FloatProperty | Scale | range 0.001..2000 |
-| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, FEATURE_ALIGN, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
-| `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
-| `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |
-| `scene.tools.sculptcore.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
-| `scene.tools.sculptcore.drawFeatureOverlay` | prop | BoolProperty | Feature Overlay |  |
-| `scene.tools.sculptcore.drawFlat` | prop | BoolProperty | Draw Flat |  |
-| `scene.tools.sculptcore.drawMask` | prop | BoolProperty | Draw Mask |  |
-| `scene.tools.sculptcore.drawNodeIds` | prop | BoolProperty | Draw BVH Vertex IDs |  |
-| `scene.tools.sculptcore.drawPolyGroupEdges` | prop | BoolProperty | Poly Group Edges |  |
-| `scene.tools.sculptcore.drawWireframe` | prop | BoolProperty | Draw Wireframe |  |
-| `scene.tools.sculptcore.dynTopo` | struct |  |  |  |
-| `scene.tools.sculptcore.dynTopo.collapseRatio` | prop | FloatProperty | Collapse Ratio | range 0.05..0.95 |
-| `scene.tools.sculptcore.dynTopo.dynTopoSpacing` | prop | FloatProperty | Remesh Spacing | range 0..2 |
-| `scene.tools.sculptcore.dynTopo.edgeMode` | prop | EnumProperty | Detail Mode | enum {WORLD, PERCENT, PIXELS} |
-| `scene.tools.sculptcore.dynTopo.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
-| `scene.tools.sculptcore.dynTopo.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
-| `scene.tools.sculptcore.dynTopo.grade` | prop | FloatProperty | Grade | range 0..8 |
-| `scene.tools.sculptcore.dynTopo.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
-| `scene.tools.sculptcore.dynTopo.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
-| `scene.tools.sculptcore.dynTopo.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
-| `scene.tools.sculptcore.dynTopo.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
-| `scene.tools.sculptcore.dynTopoStatsLabel` | prop | StringProperty | DynTopo Stats |  |
-| `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
-| `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
-| `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
-| `scene.tools.sculptcore.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
-| `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, GRAB, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, KELVINLET, FEATURE_ALIGN, PAINT_SMOOTH} |
-| `scene.tools.sculptcore.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
-| `scene.tools.sculptcore.type` | prop | StringProperty | Type |  |
+| `scene.tools.name` | struct |  |  |  |
+| `scene.tools.name.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
+| `scene.tools.name.type` | prop | StringProperty | Type |  |
 
 ## screen
 
@@ -626,6 +481,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.bvh.hole_filler.viewportSize` | prop | Vec2Property | Viewport Size |  |
 | `toolDefaults.bvh.paint` | struct |  |  |  |
 | `toolDefaults.bvh.paint.brush` | prop | BrushProperty | Brush |  |
+| `toolDefaults.bvh.paint.clear_mask` | struct |  |  |  |
+| `toolDefaults.bvh.paint.clear_mask.value` | prop | FloatProperty | Value |  |
 | `toolDefaults.bvh.paint.drawFaceSet` | prop | IntProperty | Draw Face Set |  |
 | `toolDefaults.bvh.paint.dynTopoDepth` | prop | IntProperty | Dyn Topo Depth |  |
 | `toolDefaults.bvh.paint.dynTopoLength` | prop | FloatProperty | Dyn Topo Length |  |
@@ -691,6 +548,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.image.open.fileName` | prop | StringProperty | File Name |  |
 | `toolDefaults.light` | struct |  |  |  |
 | `toolDefaults.light.new` | struct |  |  |  |
+| `toolDefaults.light.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
+| `toolDefaults.light.new.name` | prop | StringProperty | Name |  |
 | `toolDefaults.light.new.position` | prop | Vec3Socket | Vector |  |
 | `toolDefaults.light.new.type` | prop | EnumProperty | Type | enum {POINT, SUN, AREA_DISK, AREA_RECT} |
 | `toolDefaults.listbox` | struct |  |  |  |
@@ -758,6 +617,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.select_all.mode` | prop | EnumProperty | Mode | enum {ALL, NONE, AUTO} |
 | `toolDefaults.litemesh.select_circle` | struct |  |  |  |
 | `toolDefaults.litemesh.select_circle.radius` | prop | FloatProperty | Radius | range 1..500 |
+| `toolDefaults.litemesh.subdivide` | struct |  |  |  |
+| `toolDefaults.litemesh.subdivide.numCuts` | prop | IntProperty | Num Cuts | range 1..32 |
 | `toolDefaults.litemesh.symmetrize` | struct |  |  |  |
 | `toolDefaults.litemesh.symmetrize.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
 | `toolDefaults.litemesh.symmetrize.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |
@@ -770,6 +631,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
 | `toolDefaults.material.new.name` | prop | StringProperty | Name |  |
+| `toolDefaults.material.new.position` | prop | Vec3Socket | Vector |  |
+| `toolDefaults.material.new.type` | prop | EnumProperty | Type | enum {POINT, SUN, AREA_DISK, AREA_RECT} |
 | `toolDefaults.material.unlink` | struct |  |  |  |
 | `toolDefaults.material.unlink.dataPathToUnset` | prop | StringProperty | Data Path To Unset |  |
 | `toolDefaults.node` | struct |  |  |  |
@@ -798,6 +661,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
 | `toolDefaults.node.selectone.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.selectone.nodeId` | prop | IntProperty | Node Id |  |
+| `toolDefaults.node.selectone.setActive` | prop | BoolProperty | Set Active |  |
 | `toolDefaults.node.toggle_select_all` | struct |  |  |  |
 | `toolDefaults.node.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.node.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
@@ -808,26 +672,66 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.translate.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.translate.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.translate.offset` | prop | Vec2Property | Offset |  |
+| `toolDefaults.node.translate.propEnabled` | prop | BoolProperty | Prop Enabled |  |
+| `toolDefaults.node.translate.propMode` | prop | EnumProperty | Prop mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
+| `toolDefaults.node.translate.propradius` | prop | FloatProperty | Prop radius |  |
+| `toolDefaults.node.translate.snapMode` | prop | EnumProperty | Snap Mode | enum {NONE, SURFACE} |
+| `toolDefaults.node.translate.value` | prop | Vec3Property | Value |  |
 | `toolDefaults.object` | struct |  |  |  |
 | `toolDefaults.object.apply_transform` | struct |  |  |  |
 | `toolDefaults.object.apply_transform.mode` | prop | FlagProperty | Mode | enum {LOC, ROT, SCALE, ALL} |
 | `toolDefaults.object.select_box` | struct |  |  |  |
 | `toolDefaults.object.select_box.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
 | `toolDefaults.object.selectone` | struct |  |  |  |
+| `toolDefaults.object.selectone.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.object.selectone.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.object.selectone.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, UNIQUE} |
+| `toolDefaults.object.selectone.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
+| `toolDefaults.object.selectone.nodeId` | prop | IntProperty | Node Id |  |
 | `toolDefaults.object.selectone.setActive` | prop | BoolProperty | Set Active |  |
 | `toolDefaults.object.toggle_select_all` | struct |  |  |  |
+| `toolDefaults.object.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.object.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.object.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
+| `toolDefaults.object.toggle_select_all.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.paint` | struct |  |  |  |
+| `toolDefaults.paint.brush` | prop | BrushProperty | Brush |  |
 | `toolDefaults.paint.clear_mask` | struct |  |  |  |
 | `toolDefaults.paint.clear_mask.value` | prop | FloatProperty | Value |  |
+| `toolDefaults.paint.drawFaceSet` | prop | IntProperty | Draw Face Set |  |
+| `toolDefaults.paint.dynTopoDepth` | prop | IntProperty | Dyn Topo Depth |  |
+| `toolDefaults.paint.dynTopoLength` | prop | FloatProperty | Dyn Topo Length |  |
+| `toolDefaults.paint.falloff` | prop | Curve1DProperty | Falloff |  |
+| `toolDefaults.paint.grabCo` | prop | Vec3Property | Grab Co |  |
+| `toolDefaults.paint.grabData` | prop | FloatArrayProperty | Grab Data |  |
+| `toolDefaults.paint.grabRadiusFactor` | prop | FloatProperty | Grab Radius Factor |  |
+| `toolDefaults.paint.grabTh` | prop | FloatProperty | Grab Th |  |
+| `toolDefaults.paint.rendermat` | prop | Mat4Property | Rendermat |  |
+| `toolDefaults.paint.reprojectCustomData` | prop | BoolProperty | Reproject Custom Data |  |
+| `toolDefaults.paint.samples` | prop | PaintSampleProperty | Samples |  |
+| `toolDefaults.paint.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
+| `toolDefaults.paint.useDynTopo` | prop | BoolProperty | Use Dyn Topo |  |
+| `toolDefaults.paint.useMultiResDepth` | prop | BoolProperty | Use Multi Res Depth |  |
+| `toolDefaults.paint.viewportSize` | prop | Vec2Property | Viewport Size |  |
 | `toolDefaults.sculptcore` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint` | struct |  |  |  |
 | `toolDefaults.sculptcore.paint.brush` | prop | BrushProperty | Brush |  |
+| `toolDefaults.sculptcore.paint.clear_mask` | struct |  |  |  |
+| `toolDefaults.sculptcore.paint.clear_mask.value` | prop | FloatProperty | Value |  |
+| `toolDefaults.sculptcore.paint.drawFaceSet` | prop | IntProperty | Draw Face Set |  |
+| `toolDefaults.sculptcore.paint.dynTopoDepth` | prop | IntProperty | Dyn Topo Depth |  |
+| `toolDefaults.sculptcore.paint.dynTopoLength` | prop | FloatProperty | Dyn Topo Length |  |
 | `toolDefaults.sculptcore.paint.falloff` | prop | Curve1DProperty | Falloff |  |
+| `toolDefaults.sculptcore.paint.grabCo` | prop | Vec3Property | Grab Co |  |
+| `toolDefaults.sculptcore.paint.grabData` | prop | FloatArrayProperty | Grab Data |  |
+| `toolDefaults.sculptcore.paint.grabRadiusFactor` | prop | FloatProperty | Grab Radius Factor |  |
+| `toolDefaults.sculptcore.paint.grabTh` | prop | FloatProperty | Grab Th |  |
 | `toolDefaults.sculptcore.paint.rendermat` | prop | Mat4Property | Rendermat |  |
+| `toolDefaults.sculptcore.paint.reprojectCustomData` | prop | BoolProperty | Reproject Custom Data |  |
 | `toolDefaults.sculptcore.paint.samples` | prop | PaintSampleProperty | Samples |  |
 | `toolDefaults.sculptcore.paint.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
+| `toolDefaults.sculptcore.paint.useDynTopo` | prop | BoolProperty | Use Dyn Topo |  |
+| `toolDefaults.sculptcore.paint.useMultiResDepth` | prop | BoolProperty | Use Multi Res Depth |  |
 | `toolDefaults.sculptcore.paint.viewportSize` | prop | Vec2Property | Viewport Size |  |
 | `toolDefaults.strand` | struct |  |  |  |
 | `toolDefaults.strand.create` | struct |  |  |  |
@@ -877,6 +781,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.view3d.transform_inset.snapMode` | prop | EnumProperty | Snap Mode | enum {NONE, SURFACE} |
 | `toolDefaults.view3d.transform_inset.value` | prop | Vec3Property | Value |  |
 | `toolDefaults.view3d.translate` | struct |  |  |  |
+| `toolDefaults.view3d.translate.graphClass` | prop | StringProperty | Graph Class |  |
+| `toolDefaults.view3d.translate.graphPath` | prop | StringProperty | Graph Path |  |
+| `toolDefaults.view3d.translate.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
+| `toolDefaults.view3d.translate.offset` | prop | Vec2Property | Offset |  |
 | `toolDefaults.view3d.translate.propEnabled` | prop | BoolProperty | Prop Enabled |  |
 | `toolDefaults.view3d.translate.propMode` | prop | EnumProperty | Prop mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
 | `toolDefaults.view3d.translate.propradius` | prop | FloatProperty | Prop radius |  |

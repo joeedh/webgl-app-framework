@@ -460,6 +460,8 @@ export function drawMeshElements(
 ) {
   uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {}
 
+  console.warn('drawMeshElements')
+
   if (!uniforms.active_color) {
     uniforms.active_color = [1.0, 0.8, 0.2, 1.0]
   }

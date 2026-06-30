@@ -8,13 +8,27 @@
  * holds the small amount of view/tool state the C++ side and the LiteMesh draw
  * path read (`boxModelSelMode`, `drawSelectionOverlay`, `xray`, `selectRadius`).
  */
-import {Container, DataAPI, DataStruct, HotKey, KeyMap} from '../../../path.ux/pathux'
+import {Container, DataAPI, DataStruct, HotKey, KeyMap, nstructjs} from '../../../path.ux/pathux'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import type {ViewContext} from '../../../core/context'
 
 export class BoxModelToolMode extends ToolMode {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+BoxModelToolMode {
+    boxModelSelMode      : int;
+    drawSelectionOverlay : bool;
+    drawWireframe        : bool;
+    drawPoints           : bool;
+    xray                 : bool;
+    selectRadius         : float;
+}
+    `
+  )
+
   /** Active element-selection domains (SelMask.VERTEX|EDGE|FACE bitmask). The
    * selection ops read this to decide which `select` layers to write. */
   boxModelSelMode = SelMask.VERTEX
@@ -33,7 +47,7 @@ export class BoxModelToolMode extends ToolMode {
     return {
       name        : 'boxmodel',
       uiname      : 'Box Model',
-      icon        : Icons.EXTRUDE,
+      icon        : Icons.BOX_MODEL,
       flag        : 0,
       description : 'Traditional box modeling (select / extrude / inset / loop cut)',
       selectMode  : SelMask.OBJECT,
@@ -57,12 +71,15 @@ export class BoxModelToolMode extends ToolMode {
       .description('Selection mode (shift-click to add domains)')
 
     st.bool('drawSelectionOverlay', 'drawSelectionOverlay', 'Selection Overlay')
+      .icon(Icons.SELECTION_OVERLAY)
       .description('Highlight selected / active elements')
     st.bool('drawWireframe', 'drawWireframe', 'Wireframe')
+      .icon(Icons.DRAW_SCULPT_WIREFRAME)
       .description('Draw all edges as a dim wireframe overlay')
     st.bool('drawPoints', 'drawPoints', 'Vertex Points')
+      .icon(Icons.VERTEX_POINTS)
       .description('Draw every vertex as a billboard point')
-    st.bool('xray', 'xray', 'X-Ray').description('Draw the overlays through the mesh')
+    st.bool('xray', 'xray', 'X-Ray').icon(Icons.XRAY).description('Draw the overlays through the mesh')
     st.float('selectRadius', 'selectRadius', 'Select Radius').noUnits().range(1, 500).step(1.0)
 
     return st

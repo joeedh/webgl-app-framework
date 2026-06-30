@@ -228,6 +228,7 @@ export {DrawLine, DrawQuad}
 type CanvasWithExtra = (HTMLCanvasElement | OffscreenCanvas) & {dpi: number}
 
 export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
+  _busSub: unknown
   widgettool?: WidgetBase
   widget?: WidgetBase
   drawline_mesh?: SimpleMesh
@@ -887,6 +888,38 @@ View3D {
     }
   }
 
+  busSubscribe() {
+    if (this._busSub !== undefined) {
+      return
+    }
+
+    console.log('view3d busSubscribe')
+    // rebuild header, we will have missed toolmode registration events
+    // while disconnected from the dom
+    this.doOnce(this.rebuildHeader)
+
+    const busgetter = () => {
+      //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
+
+      if (!this.isConnected) {
+        this._busSub = undefined
+        return undefined
+      }
+
+      return this
+      //not working!!!! -> return document.getElementById(id);
+    }
+
+    this._busSub = this.ctx.messagebus.subscribe(
+      busgetter,
+      ToolMode,
+      (msg: BusMessage) => {
+        this.doOnce(this.rebuildHeader)
+      },
+      ['REGISTER', 'UNREGISTER']
+    )
+  }
+
   init() {
     super.init()
 
@@ -905,27 +938,6 @@ View3D {
       }
     })
 
-    const id = this.getAttribute('id')
-    const busgetter = () => {
-      //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
-
-      if (!this.isConnected) {
-        return undefined
-      }
-
-      return this
-      //not working!!!! -> return document.getElementById(id);
-    }
-
-    this.ctx.messagebus.subscribe(
-      busgetter,
-      ToolMode,
-      (msg: BusMessage) => {
-        this.doOnce(this.rebuildHeader)
-      },
-      ['REGISTER', 'UNREGISTER']
-    )
-
     this.overdraw = document.createElement('overdraw-x') as Overdraw
     this.overdraw.ctx = this.ctx
 
@@ -940,6 +952,7 @@ View3D {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const eventdom = this //this.overdraw;
 
+    this.busSubscribe()
     this.makeGraphNodes()
     this.rebuildHeader()
 
@@ -1176,6 +1189,7 @@ View3D {
       this.ctx.screen.regenBorders()
     }
 
+    this.busSubscribe()
     this.checkCamera()
 
     //TODO have limits for how many samplers to render
@@ -1314,6 +1328,7 @@ View3D {
     this.glInit()
 
     this.makeGraphNodes()
+    this.busSubscribe()
   }
 
   drawCameraView = function (this: View3D<OPT & {started: true}>) {

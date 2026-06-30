@@ -2746,65 +2746,12 @@
       "indexed": false,
       "dynamic": false
     },
-    "scene.tools.boxmodel": {
+    "scene.tools.name": {
       "kind": "struct",
       "indexed": false,
       "dynamic": false
     },
-    "scene.tools.boxmodel.boxModelSelMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Box Model Sel Mode",
-      "description": "Selection mode (shift-click to add domains)",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VERTEX",
-        "EDGE",
-        "FACE"
-      ]
-    },
-    "scene.tools.boxmodel.drawPoints": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Vertex Points",
-      "description": "Draw every vertex as a billboard point",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.boxmodel.drawSelectionOverlay": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Selection Overlay",
-      "description": "Highlight selected / active elements",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.boxmodel.drawWireframe": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Wireframe",
-      "description": "Draw all edges as a dim wireframe overlay",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.boxmodel.selectRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Select Radius",
-      "range": [
-        1,
-        500
-      ],
-      "decimalPlaces": 4,
-      "step": 1
-    },
-    "scene.tools.boxmodel.transformWidget": {
+    "scene.tools.name.transformWidget": {
       "kind": "prop",
       "indexed": false,
       "propType": "EnumProperty",
@@ -2815,1559 +2762,7 @@
         "NONE"
       ]
     },
-    "scene.tools.boxmodel.type": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Type",
-      "description": "Tool Mode Type",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.boxmodel.xray": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "X-Ray",
-      "description": "Draw the overlays through the mesh",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.object": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.object.transformWidget": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Transform Widget",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE",
-        "translate",
-        "scale",
-        "rotate"
-      ]
-    },
-    "scene.tools.object.type": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Type",
-      "description": "Tool Mode Type",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.pan": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.pan.transformWidget": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Transform Widget",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE"
-      ]
-    },
-    "scene.tools.pan.type": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "Type",
-      "description": "Tool Mode Type",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.autosmooth": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Autosmooth",
-      "range": [
-        0,
-        2
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.autosmoothInflate": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Inflation",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.bgcolor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec4Property",
-      "uiname": "Secondary Color",
-      "description": "Secondary Color",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.color": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Vec4Property",
-      "uiname": "Primary Color",
-      "description": "Primary Color",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.concaveFilter": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Concave Wash",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynTopo.decimateFactor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Decimate Factor",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.edgeCount": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Edge Count",
-      "description": "Number of edges to split/collapse per run",
-      "range": [
-        1,
-        2048
-      ],
-      "decimalPlaces": 4,
-      "step": 5
-    },
-    "scene.tools.sculptcore.brush.dynTopo.edgeMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SCREEN",
-        "WORLD"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopo.edgeSize": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Edge Length",
-      "description": "Edge length (in pixels)",
-      "range": [
-        0.25,
-        40
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SUBDIVIDE",
-        "COLLAPSE",
-        "ENABLED",
-        "FANCY_EDGE_WEIGHTS",
-        "QUAD_COLLAPSE",
-        "ALLOW_VALENCE4",
-        "DRAW_TRIS_AS_QUADS",
-        "ADAPTIVE"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopo.maxDepth": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Max Depth",
-      "description": "Maximum quad tree grid subdivision level",
-      "range": [
-        0,
-        15
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.overrides": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Overrides",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SUBDIVIDE",
-        "COLLAPSE",
-        "ENABLED",
-        "FANCY_EDGE_WEIGHTS",
-        "QUAD_COLLAPSE",
-        "ALLOW_VALENCE4",
-        "DRAW_TRIS_AS_QUADS",
-        "ADAPTIVE",
-        "VALENCE_GOAL",
-        "EDGE_SIZE",
-        "DECIMATE_FACTOR",
-        "SUBDIVIDE_FACTOR",
-        "MAX_DEPTH",
-        "EDGE_COUNT",
-        "NONE",
-        "REPEAT",
-        "SPACING_MODE",
-        "SPACING",
-        "EDGEMODE",
-        "SUBDIV_MODE",
-        "EVERYTHING"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopo.repeat": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Repeat",
-      "description": "Number of times to run topology engine",
-      "range": [
-        1,
-        25
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.spacing": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Spacing",
-      "range": [
-        0.01,
-        12
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.spacingMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Spacing Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE",
-        "EVEN"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopo.subdivMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Subdiv Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SIMPLE",
-        "SMART"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopo.subdivideFactor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Subdivision Factor",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopo.valenceGoal": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Valence Goal",
-      "description": "Number of edges around vertices to aim for",
-      "range": [
-        0,
-        12
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.collapseRatio": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Collapse Ratio",
-      "description": "Collapse edges shorter than this fraction of the target",
-      "range": [
-        0.05,
-        0.95
-      ],
-      "decimalPlaces": 3,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.dynTopoSpacing": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Remesh Spacing",
-      "description": "How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)",
-      "range": [
-        0,
-        2
-      ],
-      "decimalPlaces": 3,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.edgeMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Detail Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "WORLD",
-        "PERCENT",
-        "PIXELS"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.edgeSize": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Detail Size",
-      "description": "Target edge length (units depend on Detail Mode)",
-      "range": [
-        0.0001,
-        200
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ENABLED",
-        "DO_FLIPS",
-        "DO_SMOOTH",
-        "PRESERVE_FEATURES"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.grade": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Grade",
-      "description": "Relax the target outward from the brush center (0 = uniform)",
-      "range": [
-        0,
-        8
-      ],
-      "decimalPlaces": 2,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Max Rounds",
-      "description": "Max independent-set rounds per dab",
-      "range": [
-        1,
-        200
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.maxSplits": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Split Budget",
-      "description": "Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)",
-      "range": [
-        0,
-        200000
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Refine Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SUBDIVIDE",
-        "COLLAPSE",
-        "BOTH"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.overrides": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Overrides",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ENABLED",
-        "DO_FLIPS",
-        "DO_SMOOTH",
-        "PRESERVE_FEATURES",
-        "DYNTOPO_SPACING",
-        "EDGE_MODE",
-        "EDGE_SIZE",
-        "COLLAPSE_RATIO",
-        "GRADE",
-        "MODE",
-        "SMOOTH_LAMBDA",
-        "MAX_SPLITS",
-        "MAX_ROUNDS",
-        "NONE",
-        "EVERYTHING"
-      ]
-    },
-    "scene.tools.sculptcore.brush.dynTopoSC.smoothLambda": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Smooth Amount",
-      "description": "Tangential smoothing step (0..1)",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.dynamics": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmooth": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmooth.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmooth.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmoothInflate": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmoothInflate.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.autosmoothInflate.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.concaveFilter": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.concaveFilter.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.concaveFilter.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.pinch": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.pinch.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.pinch.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.radius": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.radius.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.radius.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.rake": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.rake.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.rake.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.sharp": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.sharp.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.sharp.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.smoothProj": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.smoothProj.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.smoothProj.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.strength": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.dynamics.strength.curve": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Curve",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.dynamics.strength.useDynamics": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Use Dynamics",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.falloff": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Falloff",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.falloff2": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "Curve1DProperty",
-      "uiname": "Falloff",
-      "description": "Inbetween Falloff",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SELECT",
-        "SHARED_SIZE",
-        "DYNTOPO",
-        "INVERT_CONCAVE_FILTER",
-        "MULTIGRID_SMOOTH",
-        "PLANAR_SMOOTH",
-        "CURVE_RAKE_ONLY_POS_X",
-        "INVERT",
-        "LINE_FALLOFF",
-        "SQUARE",
-        "USE_LINE_CURVE",
-        "ACCUMULATE"
-      ]
-    },
-    "scene.tools.sculptcore.brush.graph_flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Graph Flags",
-      "description": "Flags",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "384",
-        "SELECT",
-        "UPDATE",
-        "SORT_TAG",
-        "CYCLE_TAG",
-        "DISABLED",
-        "ZOMBIE",
-        "SAVE_PROXY",
-        "FORCE_SOCKET_INHERIT",
-        "FORCE_FLAG_INHERIT",
-        "FORCE_INHERIT"
-      ]
-    },
-    "scene.tools.sculptcore.brush.graph_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Graph ID",
-      "description": "Unique graph ID",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.inputs": {
-      "kind": "list",
-      "indexed": false
-    },
-    "scene.tools.sculptcore.brush.lib_flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "SELECT",
-        "HIDE",
-        "FAKE_USER",
-        "NO_SAVE"
-      ]
-    },
-    "scene.tools.sculptcore.brush.lib_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Lib ID",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.name": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "name",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.normalfac": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Normal Fac",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.outputs": {
-      "kind": "list",
-      "indexed": false
-    },
-    "scene.tools.sculptcore.brush.pinch": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Pinch",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.planeNormalMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Plane Normal",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "VIEW",
-        "SURFACE"
-      ]
-    },
-    "scene.tools.sculptcore.brush.planeoff": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "planeoff",
-      "range": [
-        -3.5,
-        3.5
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.radius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Radius",
-      "range": [
-        0.1,
-        350
-      ],
-      "decimalPlaces": 4,
-      "step": 1
-    },
-    "scene.tools.sculptcore.brush.rake": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Rake",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.rakeCurvatureFactor": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Curvature Factor",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.sharp": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Sharpening",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.015
-    },
-    "scene.tools.sculptcore.brush.smoothProj": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Projection",
-      "description": "How much smoothing should project to surface",
-      "range": [
-        0,
-        0.97
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.smoothRadiusMul": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Smooth Radius",
-      "description": "Multiply brush radius by this factor for smoothing",
-      "range": [
-        0.125,
-        15
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.spacing": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Spacing",
-      "range": [
-        0.01,
-        12
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.spacingMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Spacing Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE",
-        "EVEN"
-      ]
-    },
-    "scene.tools.sculptcore.brush.strength": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Strength",
-      "range": [
-        0.001,
-        2
-      ],
-      "decimalPlaces": 4,
-      "step": 0.015
-    },
-    "scene.tools.sculptcore.brush.texUser": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.texUser.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16",
-        "32",
-        "SELECT",
-        "RAKE",
-        "CONSTANT_SIZE",
-        "FANCY_RAKE",
-        "ORIGINAL_CO",
-        "CURVED"
-      ]
-    },
-    "scene.tools.sculptcore.brush.texUser.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "0",
-        "1",
-        "2",
-        "GLOBAL",
-        "VIEWPLANE",
-        "VIEW_REPEAT"
-      ]
-    },
-    "scene.tools.sculptcore.brush.texUser.pinch": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Tex Pinch",
-      "range": [
-        -1,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.scale": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Scale",
-      "range": [
-        0.0001,
-        1000
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.brightness": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Brightness",
-      "range": [
-        -5,
-        5
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.contrast": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Contrast",
-      "range": [
-        0.001,
-        100
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.generator": {
-      "kind": "dynamicStruct",
-      "indexed": false,
-      "dynamic": true
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.graph_flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Graph Flags",
-      "description": "Flags",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16",
-        "32",
-        "64",
-        "128",
-        "256",
-        "384",
-        "SELECT",
-        "UPDATE",
-        "SORT_TAG",
-        "CYCLE_TAG",
-        "DISABLED",
-        "ZOMBIE",
-        "SAVE_PROXY",
-        "FORCE_SOCKET_INHERIT",
-        "FORCE_FLAG_INHERIT",
-        "FORCE_INHERIT"
-      ]
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.graph_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Graph ID",
-      "description": "Unique graph ID",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.inputs": {
-      "kind": "list",
-      "indexed": false
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.lib_flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "SELECT",
-        "HIDE",
-        "FAKE_USER",
-        "NO_SAVE"
-      ]
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.lib_id": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Lib ID",
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SimpleNoise",
-        "MoireNoise",
-        "CombPattern",
-        "GaborNoise"
-      ]
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.name": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "name",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.outputs": {
-      "kind": "list",
-      "indexed": false
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.power": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Exp",
-      "range": [
-        0.001,
-        100
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.texUser.texture.scale": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Scale",
-      "range": [
-        0.001,
-        2000
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.brush.tool": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Tool",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "CLAY",
-        "FILL",
-        "SCRAPE",
-        "SMOOTH",
-        "DRAW",
-        "SHARP",
-        "INFLATE",
-        "SNAKE",
-        "TOPOLOGY",
-        "GRAB",
-        "HOLE_FILLER",
-        "MASK_PAINT",
-        "WING_SCRAPE",
-        "PINCH",
-        "DIRECTIONAL_FAIR",
-        "SLIDE_RELAX",
-        "BVH_DEFORM",
-        "COLOR",
-        "POLYGROUP",
-        "BSMOOTH",
-        "KELVINLET",
-        "FEATURE_ALIGN",
-        "PAINT",
-        "PAINT_SMOOTH",
-        "COLOR_BOUNDARY",
-        "TEXTURE_PAINT",
-        "FACE_SET_DRAW"
-      ]
-    },
-    "scene.tools.sculptcore.brushRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Radius",
-      "range": [
-        0,
-        450
-      ],
-      "decimalPlaces": 2,
-      "step": 1
-    },
-    "scene.tools.sculptcore.drawBVH": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw BVH",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawColPatches": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw Color Patches",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawFeatureOverlay": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Feature Overlay",
-      "description": "Draw seam / sharp / UV-chart boundaries",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawFlat": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw Flat",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawMask": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw Mask",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawNodeIds": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw BVH Vertex IDs",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawPolyGroupEdges": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Poly Group Edges",
-      "description": "Draw poly-group boundary edges (off by default; updates each dab)",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.drawWireframe": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Draw Wireframe",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.dynTopo": {
-      "kind": "struct",
-      "indexed": false,
-      "dynamic": false
-    },
-    "scene.tools.sculptcore.dynTopo.collapseRatio": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Collapse Ratio",
-      "description": "Collapse edges shorter than this fraction of the target",
-      "range": [
-        0.05,
-        0.95
-      ],
-      "decimalPlaces": 3,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.dynTopoSpacing": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Remesh Spacing",
-      "description": "How often dyntopo remeshes along the stroke, independent of brush dab spacing (fraction of 2·radius; 0 = every dab)",
-      "range": [
-        0,
-        2
-      ],
-      "decimalPlaces": 3,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.edgeMode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Detail Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "WORLD",
-        "PERCENT",
-        "PIXELS"
-      ]
-    },
-    "scene.tools.sculptcore.dynTopo.edgeSize": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Detail Size",
-      "description": "Target edge length (units depend on Detail Mode)",
-      "range": [
-        0.0001,
-        200
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.flag": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Flag",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ENABLED",
-        "DO_FLIPS",
-        "DO_SMOOTH",
-        "PRESERVE_FEATURES"
-      ]
-    },
-    "scene.tools.sculptcore.dynTopo.grade": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Grade",
-      "description": "Relax the target outward from the brush center (0 = uniform)",
-      "range": [
-        0,
-        8
-      ],
-      "decimalPlaces": 2,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.maxRounds": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Max Rounds",
-      "description": "Max independent-set rounds per dab",
-      "range": [
-        1,
-        200
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.maxSplits": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "IntProperty",
-      "uiname": "Split Budget",
-      "description": "Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)",
-      "range": [
-        0,
-        200000
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopo.mode": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Refine Mode",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "SUBDIVIDE",
-        "COLLAPSE",
-        "BOTH"
-      ]
-    },
-    "scene.tools.sculptcore.dynTopo.overrides": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Overrides",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "ENABLED",
-        "DO_FLIPS",
-        "DO_SMOOTH",
-        "PRESERVE_FEATURES",
-        "DYNTOPO_SPACING",
-        "EDGE_MODE",
-        "EDGE_SIZE",
-        "COLLAPSE_RATIO",
-        "GRADE",
-        "MODE",
-        "SMOOTH_LAMBDA",
-        "MAX_SPLITS",
-        "MAX_ROUNDS",
-        "NONE",
-        "EVERYTHING"
-      ]
-    },
-    "scene.tools.sculptcore.dynTopo.smoothLambda": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Smooth Amount",
-      "description": "Tangential smoothing step (0..1)",
-      "range": [
-        0,
-        1
-      ],
-      "decimalPlaces": 4,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.dynTopoStatsLabel": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "StringProperty",
-      "uiname": "DynTopo Stats",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.inheritDynTopo": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Inherit Everything",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.reprojectCustomData": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "BoolProperty",
-      "uiname": "Reproject UVs & colors",
-      "decimalPlaces": 4,
-      "step": 0.05
-    },
-    "scene.tools.sculptcore.sharedBrushRadius": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FloatProperty",
-      "uiname": "Shared Radius",
-      "range": [
-        0,
-        450
-      ],
-      "decimalPlaces": 2,
-      "step": 0.1
-    },
-    "scene.tools.sculptcore.symmetryAxes": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "FlagProperty",
-      "uiname": "Symmetry Axes",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "X",
-        "Y",
-        "Z"
-      ]
-    },
-    "scene.tools.sculptcore.tool": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Tool",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "CLAY",
-        "FILL",
-        "SCRAPE",
-        "SMOOTH",
-        "DRAW",
-        "SHARP",
-        "INFLATE",
-        "SNAKE",
-        "GRAB",
-        "MASK_PAINT",
-        "WING_SCRAPE",
-        "PINCH",
-        "COLOR",
-        "POLYGROUP",
-        "KELVINLET",
-        "FEATURE_ALIGN",
-        "PAINT_SMOOTH"
-      ]
-    },
-    "scene.tools.sculptcore.transformWidget": {
-      "kind": "prop",
-      "indexed": false,
-      "propType": "EnumProperty",
-      "uiname": "Transform Widget",
-      "decimalPlaces": 4,
-      "step": 0.05,
-      "enumItems": [
-        "NONE"
-      ]
-    },
-    "scene.tools.sculptcore.type": {
+    "scene.tools.name.type": {
       "kind": "prop",
       "indexed": false,
       "propType": "StringProperty",
@@ -4961,6 +3356,20 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.bvh.paint.clear_mask": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.bvh.paint.clear_mask.value": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Value",
+      "description": "Value",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.bvh.paint.drawFaceSet": {
       "kind": "prop",
       "indexed": false,
@@ -5499,6 +3908,24 @@
       "kind": "struct",
       "indexed": false,
       "dynamic": false
+    },
+    "toolDefaults.light.new.dataPathToSet": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Data Path To Set",
+      "description": "Data Path To Set",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.light.new.name": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Name",
+      "description": "Name",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.light.new.position": {
       "kind": "prop",
@@ -6200,6 +4627,24 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.litemesh.subdivide": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.subdivide.numCuts": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Num Cuts",
+      "description": "Num Cuts",
+      "range": [
+        1,
+        32
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.litemesh.symmetrize": {
       "kind": "struct",
       "indexed": false,
@@ -6317,6 +4762,28 @@
       "description": "Name",
       "decimalPlaces": 4,
       "step": 0.05
+    },
+    "toolDefaults.material.new.position": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec3Socket",
+      "uiname": "Vector",
+      "description": "Vector"
+    },
+    "toolDefaults.material.new.type": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Type",
+      "description": "Type",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "POINT",
+        "SUN",
+        "AREA_DISK",
+        "AREA_RECT"
+      ]
     },
     "toolDefaults.material.unlink": {
       "kind": "struct",
@@ -6551,6 +5018,15 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.node.selectone.setActive": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Set Active",
+      "description": "Set Active",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.toggle_select_all": {
       "kind": "struct",
       "indexed": false,
@@ -6638,6 +5114,63 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.node.translate.propEnabled": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Prop Enabled",
+      "description": "Prop Enabled",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.translate.propMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Prop mode",
+      "description": "Proportional (magnet) mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "SMOOTH",
+        "SHARP",
+        "EXTRA_SHARP",
+        "SPHERE",
+        "LINEAR",
+        "CONSTANT"
+      ]
+    },
+    "toolDefaults.node.translate.propradius": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Prop radius",
+      "description": "Proportional radius",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.translate.snapMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Snap Mode",
+      "description": "Snap Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NONE",
+        "SURFACE"
+      ]
+    },
+    "toolDefaults.node.translate.value": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec3Property",
+      "uiname": "Value",
+      "description": "Value",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.object": {
       "kind": "struct",
       "indexed": false,
@@ -6687,6 +5220,24 @@
       "indexed": false,
       "dynamic": false
     },
+    "toolDefaults.object.selectone.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.object.selectone.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.object.selectone.mode": {
       "kind": "prop",
       "indexed": false,
@@ -6700,6 +5251,24 @@
         "SUB",
         "UNIQUE"
       ]
+    },
+    "toolDefaults.object.selectone.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.object.selectone.nodeId": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Node Id",
+      "description": "Node Id",
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.object.selectone.setActive": {
       "kind": "prop",
@@ -6715,6 +5284,24 @@
       "indexed": false,
       "dynamic": false
     },
+    "toolDefaults.object.toggle_select_all.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.object.toggle_select_all.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.object.toggle_select_all.mode": {
       "kind": "prop",
       "indexed": false,
@@ -6729,10 +5316,28 @@
         "AUTO"
       ]
     },
+    "toolDefaults.object.toggle_select_all.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.paint": {
       "kind": "struct",
       "indexed": false,
       "dynamic": false
+    },
+    "toolDefaults.paint.brush": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BrushProperty",
+      "uiname": "Brush",
+      "description": "Brush",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.paint.clear_mask": {
       "kind": "struct",
@@ -6745,6 +5350,146 @@
       "propType": "FloatProperty",
       "uiname": "Value",
       "description": "Value",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.drawFaceSet": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Draw Face Set",
+      "description": "Draw Face Set",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.dynTopoDepth": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Dyn Topo Depth",
+      "description": "Dyn Topo Depth",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.dynTopoLength": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Dyn Topo Length",
+      "description": "Dyn Topo Length",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.falloff": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Curve1DProperty",
+      "uiname": "Falloff",
+      "description": "Falloff",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.grabCo": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec3Property",
+      "uiname": "Grab Co",
+      "description": "Grab Co",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.grabData": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatArrayProperty",
+      "uiname": "Grab Data",
+      "description": "Grab Data",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.grabRadiusFactor": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grab Radius Factor",
+      "description": "Grab Radius Factor",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.grabTh": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grab Th",
+      "description": "Grab Th",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.paint.rendermat": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Mat4Property",
+      "uiname": "Rendermat",
+      "description": "Rendermat",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.reprojectCustomData": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Reproject Custom Data",
+      "description": "Reproject Custom Data",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.samples": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "PaintSampleProperty",
+      "uiname": "Samples",
+      "description": "Samples",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.symmetryAxes": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Symmetry Axes",
+      "description": "Symmetry Axes",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "X",
+        "Y",
+        "Z"
+      ]
+    },
+    "toolDefaults.paint.useDynTopo": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Dyn Topo",
+      "description": "Use Dyn Topo",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.useMultiResDepth": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Multi Res Depth",
+      "description": "Use Multi Res Depth",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.paint.viewportSize": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Viewport Size",
+      "description": "Viewport Size",
       "decimalPlaces": 4,
       "step": 0.1
     },
@@ -6767,6 +5512,47 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.sculptcore.paint.clear_mask": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.sculptcore.paint.clear_mask.value": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Value",
+      "description": "Value",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.sculptcore.paint.drawFaceSet": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Draw Face Set",
+      "description": "Draw Face Set",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.sculptcore.paint.dynTopoDepth": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Dyn Topo Depth",
+      "description": "Dyn Topo Depth",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.sculptcore.paint.dynTopoLength": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Dyn Topo Length",
+      "description": "Dyn Topo Length",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.sculptcore.paint.falloff": {
       "kind": "prop",
       "indexed": false,
@@ -6776,12 +5562,57 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.sculptcore.paint.grabCo": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec3Property",
+      "uiname": "Grab Co",
+      "description": "Grab Co",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.sculptcore.paint.grabData": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatArrayProperty",
+      "uiname": "Grab Data",
+      "description": "Grab Data",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.sculptcore.paint.grabRadiusFactor": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grab Radius Factor",
+      "description": "Grab Radius Factor",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.sculptcore.paint.grabTh": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Grab Th",
+      "description": "Grab Th",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.sculptcore.paint.rendermat": {
       "kind": "prop",
       "indexed": false,
       "propType": "Mat4Property",
       "uiname": "Rendermat",
       "description": "Rendermat",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.sculptcore.paint.reprojectCustomData": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Reproject Custom Data",
+      "description": "Reproject Custom Data",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -6807,6 +5638,24 @@
         "Y",
         "Z"
       ]
+    },
+    "toolDefaults.sculptcore.paint.useDynTopo": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Dyn Topo",
+      "description": "Use Dyn Topo",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.sculptcore.paint.useMultiResDepth": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Multi Res Depth",
+      "description": "Use Multi Res Depth",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.sculptcore.paint.viewportSize": {
       "kind": "prop",
@@ -7256,6 +6105,42 @@
       "kind": "struct",
       "indexed": false,
       "dynamic": false
+    },
+    "toolDefaults.view3d.translate.graphClass": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Class",
+      "description": "Graph Class",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.view3d.translate.graphPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Graph Path",
+      "description": "Graph Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.view3d.translate.nodeEditorPath": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Node Editor Path",
+      "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.view3d.translate.offset": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "Vec2Property",
+      "uiname": "Offset",
+      "description": "Offset",
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.view3d.translate.propEnabled": {
       "kind": "prop",

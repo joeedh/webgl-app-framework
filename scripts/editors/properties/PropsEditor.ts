@@ -1201,7 +1201,16 @@ PropsEditor {
     if (toolmode.ctx && toolmode.ctx !== this.workspaceTab.ctx) {
       this.workspaceTab.ctx = toolmode.ctx
     }
-    toolmode.constructor.buildSettings(this.workspaceTab)
+
+    try {
+      toolmode.constructor.buildSettings(this.workspaceTab)
+    } catch (error) {
+      console.error((error as Error).stack)
+      console.error((error as Error).message)
+      console.warn('failed to build toolmode settings', this.ctx?.toolmode)
+      // try to build again later
+      this._last_toolmode = undefined
+    }
   }
 
   update() {
