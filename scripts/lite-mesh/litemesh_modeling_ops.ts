@@ -146,6 +146,7 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     return {
       toolpath: 'litemesh.select_all',
       uiname  : 'Select All',
+      icon    : Icons.TOGGLE_SEL_ALL,
       inputs: {
         // ALL select everything, NONE clear, AUTO toggle by current count.
         mode: new EnumProperty(2, {ALL: 0, NONE: 1, AUTO: 2}),
@@ -194,6 +195,7 @@ export class SelectBoxLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
     return {
       toolpath: 'litemesh.select_box',
       uiname  : 'Box Select',
+      icon    : Icons.SELECT_BOX,
       is_modal: true,
       inputs: {
         mode: new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
@@ -303,6 +305,7 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
     return {
       toolpath: 'litemesh.select_circle',
       uiname  : 'Circle Select',
+      icon    : Icons.CIRCLE_SEL,
       is_modal: true,
       inputs: {
         radius: new FloatProperty(25).setRange(1, 500).noUnits().saveLastValue(),
@@ -403,6 +406,7 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPro
     return {
       toolpath: 'litemesh.select_nearest',
       uiname  : 'Select',
+      icon    : Icons.CURSOR_ARROW,
       is_modal: true,
       inputs: {
         mode: new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
@@ -485,6 +489,7 @@ export class SelectPathLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumProper
     return {
       toolpath: 'litemesh.select_path',
       uiname  : 'Select Shortest Path',
+      icon    : Icons.SELECT_PATH,
       is_modal: true,
       inputs: {
         mode: new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
@@ -677,7 +682,7 @@ export class LiteMeshExtrudeIndividualOp extends LiteMeshTopoOpBase<{}, {normalS
     return {
       toolpath: 'litemesh.extrude_individual',
       uiname  : 'Extrude Individual Faces',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.EXTRUDE_INDIVIDUAL,
       inputs  : {transform: new BoolProperty(false).private()},
       outputs : {normalSpace: new Mat4Property()},
     }
@@ -711,7 +716,7 @@ export class LiteMeshExtrudeWireOp extends LiteMeshTopoOpBase<{}, {normalSpace: 
     return {
       toolpath: 'litemesh.extrude_wire',
       uiname  : 'Extrude Wire',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.EXTRUDE_WIRE,
       inputs  : {transform: new BoolProperty(false).private()},
       outputs : {normalSpace: new Mat4Property()},
     }
@@ -746,7 +751,7 @@ export class LiteMeshSplitOffOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat
     return {
       toolpath: 'litemesh.split_off',
       uiname  : 'Split Faces Off',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.SPLIT_FACES_OFF,
       inputs  : {transform: new BoolProperty(false).private()},
       outputs : {normalSpace: new Mat4Property()},
     }
@@ -804,7 +809,7 @@ export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase<{numCuts: IntPropert
     return {
       toolpath: 'litemesh.subdivide',
       uiname  : 'Subdivide',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.SUBDIVIDE,
       inputs  : {
         numCuts: new IntProperty(1).setRange(1, 32).noUnits().saveLastValue(),
       },
@@ -832,7 +837,7 @@ export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
     return {
       toolpath: 'litemesh.loop_cut',
       uiname  : 'Loop Cut',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.EDGECUT,
       is_modal: true,
       inputs  : {},
     }
@@ -906,7 +911,7 @@ export class LiteMeshInsetOp extends LiteMeshTopoOpBase {
     return {
       toolpath: 'litemesh.inset_region',
       uiname  : 'Inset Faces',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.INSET,
       is_modal: true,
       inputs  : {},
     }
@@ -1065,7 +1070,7 @@ export class LiteMeshBevelOp extends LiteMeshInsetOp {
     return {
       toolpath: 'litemesh.bevel_verts',
       uiname  : 'Bevel Vertices',
-      icon    : Icons.EXTRUDE,
+      icon    : Icons.BEVEL,
       is_modal: true,
       inputs  : {},
     }
