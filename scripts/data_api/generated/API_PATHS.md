@@ -380,8 +380,16 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tool` | dynamicStruct |  |  | dynamic |
 | `scene.tool.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
 | `scene.tool.type` | prop | StringProperty | Type |  |
-| `scene.toolmode` | prop | EnumProperty | Tool Mode | enum {object, pan, sculptcore} |
+| `scene.toolmode` | prop | EnumProperty | Tool Mode | enum {object, pan, sculptcore, boxmodel} |
 | `scene.tools` | struct |  |  |  |
+| `scene.tools.boxmodel` | struct |  |  |  |
+| `scene.tools.boxmodel.boxModelSelMode` | prop | FlagProperty | Box Model Sel Mode | enum {VERTEX, EDGE, FACE} |
+| `scene.tools.boxmodel.drawSelectionOverlay` | prop | BoolProperty | Selection Overlay |  |
+| `scene.tools.boxmodel.drawWireframe` | prop | BoolProperty | Wireframe |  |
+| `scene.tools.boxmodel.selectRadius` | prop | FloatProperty | Select Radius | range 1..500 |
+| `scene.tools.boxmodel.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE} |
+| `scene.tools.boxmodel.type` | prop | StringProperty | Type |  |
+| `scene.tools.boxmodel.xray` | prop | BoolProperty | X-Ray |  |
 | `scene.tools.object` | struct |  |  |  |
 | `scene.tools.object.transformWidget` | prop | EnumProperty | Transform Widget | enum {NONE, translate, scale, rotate} |
 | `scene.tools.object.type` | prop | StringProperty | Type |  |
@@ -745,6 +753,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.quad_remesh.useCurvature` | prop | BoolProperty | Use Curvature |  |
 | `toolDefaults.litemesh.quad_remesh.useDensity` | prop | BoolProperty | Use Density |  |
 | `toolDefaults.litemesh.quad_remesh.useSharpFeatures` | prop | BoolProperty | Use Sharp Features |  |
+| `toolDefaults.litemesh.select_all` | struct |  |  |  |
+| `toolDefaults.litemesh.select_all.mode` | prop | EnumProperty | Mode | enum {ALL, NONE, AUTO} |
+| `toolDefaults.litemesh.select_circle` | struct |  |  |  |
+| `toolDefaults.litemesh.select_circle.radius` | prop | FloatProperty | Radius | range 1..500 |
 | `toolDefaults.litemesh.symmetrize` | struct |  |  |  |
 | `toolDefaults.litemesh.symmetrize.axes` | prop | FlagProperty | Axes | enum {X, Y, Z} |
 | `toolDefaults.litemesh.symmetrize.direction` | prop | EnumProperty | Direction | enum {NEGATIVE, POSITIVE} |

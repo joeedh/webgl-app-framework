@@ -211,6 +211,14 @@ export type GeneratedDataPath =
   | "scene.tool.type"
   | "scene.toolmode"
   | "scene.tools"
+  | "scene.tools.boxmodel"
+  | "scene.tools.boxmodel.boxModelSelMode"
+  | "scene.tools.boxmodel.drawSelectionOverlay"
+  | "scene.tools.boxmodel.drawWireframe"
+  | "scene.tools.boxmodel.selectRadius"
+  | "scene.tools.boxmodel.transformWidget"
+  | "scene.tools.boxmodel.type"
+  | "scene.tools.boxmodel.xray"
   | "scene.tools.object"
   | "scene.tools.object.transformWidget"
   | "scene.tools.object.type"
@@ -542,6 +550,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.quad_remesh.useCurvature"
   | "toolDefaults.litemesh.quad_remesh.useDensity"
   | "toolDefaults.litemesh.quad_remesh.useSharpFeatures"
+  | "toolDefaults.litemesh.select_all"
+  | "toolDefaults.litemesh.select_all.mode"
+  | "toolDefaults.litemesh.select_circle"
+  | "toolDefaults.litemesh.select_circle.radius"
   | "toolDefaults.litemesh.symmetrize"
   | "toolDefaults.litemesh.symmetrize.axes"
   | "toolDefaults.litemesh.symmetrize.direction"
@@ -889,6 +901,14 @@ declare module "@framework/pathux" {
     "scene.tool.type": true;
     "scene.toolmode": true;
     "scene.tools": true;
+    "scene.tools.boxmodel": true;
+    "scene.tools.boxmodel.boxModelSelMode": true;
+    "scene.tools.boxmodel.drawSelectionOverlay": true;
+    "scene.tools.boxmodel.drawWireframe": true;
+    "scene.tools.boxmodel.selectRadius": true;
+    "scene.tools.boxmodel.transformWidget": true;
+    "scene.tools.boxmodel.type": true;
+    "scene.tools.boxmodel.xray": true;
     "scene.tools.object": true;
     "scene.tools.object.transformWidget": true;
     "scene.tools.object.type": true;
@@ -1220,6 +1240,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.quad_remesh.useCurvature": true;
     "toolDefaults.litemesh.quad_remesh.useDensity": true;
     "toolDefaults.litemesh.quad_remesh.useSharpFeatures": true;
+    "toolDefaults.litemesh.select_all": true;
+    "toolDefaults.litemesh.select_all.mode": true;
+    "toolDefaults.litemesh.select_circle": true;
+    "toolDefaults.litemesh.select_circle.radius": true;
     "toolDefaults.litemesh.symmetrize": true;
     "toolDefaults.litemesh.symmetrize.axes": true;
     "toolDefaults.litemesh.symmetrize.direction": true;

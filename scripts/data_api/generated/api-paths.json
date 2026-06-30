@@ -2737,13 +2737,92 @@
       "enumItems": [
         "object",
         "pan",
-        "sculptcore"
+        "sculptcore",
+        "boxmodel"
       ]
     },
     "scene.tools": {
       "kind": "struct",
       "indexed": false,
       "dynamic": false
+    },
+    "scene.tools.boxmodel": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "scene.tools.boxmodel.boxModelSelMode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Box Model Sel Mode",
+      "description": "Selection mode (shift-click to add domains)",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "VERTEX",
+        "EDGE",
+        "FACE"
+      ]
+    },
+    "scene.tools.boxmodel.drawSelectionOverlay": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Selection Overlay",
+      "description": "Highlight selected / active elements",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.boxmodel.drawWireframe": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Wireframe",
+      "description": "Draw all edges as a dim wireframe overlay",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.boxmodel.selectRadius": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Select Radius",
+      "range": [
+        1,
+        500
+      ],
+      "decimalPlaces": 4,
+      "step": 1
+    },
+    "scene.tools.boxmodel.transformWidget": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Transform Widget",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NONE"
+      ]
+    },
+    "scene.tools.boxmodel.type": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "Type",
+      "description": "Tool Mode Type",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.boxmodel.xray": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "X-Ray",
+      "description": "Draw the overlays through the mesh",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "scene.tools.object": {
       "kind": "struct",
@@ -6074,6 +6153,43 @@
       "description": "Use Sharp Features",
       "decimalPlaces": 4,
       "step": 0.05
+    },
+    "toolDefaults.litemesh.select_all": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.select_all.mode": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ALL",
+        "NONE",
+        "AUTO"
+      ]
+    },
+    "toolDefaults.litemesh.select_circle": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.select_circle.radius": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Radius",
+      "description": "Radius",
+      "range": [
+        1,
+        500
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.litemesh.symmetrize": {
       "kind": "struct",

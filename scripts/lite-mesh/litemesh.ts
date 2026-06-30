@@ -647,8 +647,18 @@ export class LiteMesh extends SceneObjectData {
   private _selActive: [number, number, number] = [-1, -1, -1]
   private lastAttrItems: LiteMeshAttrItem[] = []
   _seamsDirty = true
+  /** Box-modeling wireframe overlay batch (every edge as a dim line). Rebuilt
+   * when the mesh geometry/topology revision advances (see `_wireframeRev`). */
+  wireframeBatch?: DrawBatch
+  private _wireframeRev = -1
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
+  /** Separate GPU executor for the box-modeling overlays (selection / wireframe /
+   * points) so they can honor the toolmode xray toggle independently of the tree
+   * surface: depthCompare 'always' (see-through) vs 'less-equal'. Rebuilt when the
+   * xray state flips (`_overlayXray`). */
+  private overlayExecutorGPU?: WebGPUBatchExecutor
+  private _overlayXray = false
   private gpuUniforms?: IUniformsBlock
   /** Per-pipeline reflected uniform bindings for the GPU draw path. Kept on the
    * instance (not a closure WeakMap) so `setDrawShader` can dispose them when a
@@ -766,6 +776,11 @@ export class LiteMesh extends SceneObjectData {
       this.selectionBatch = undefined
       this._selectionDirty = true
     }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
+    }
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -857,6 +872,11 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.selectionBatch, true, true)
       this.selectionBatch = undefined
       this._selectionDirty = true
+    }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
     }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
@@ -1045,6 +1065,24 @@ export class LiteMesh extends SceneObjectData {
           buildSelectionBatch(g: unknown, av: number, ae: number, af: number): DrawBatch | undefined
         }
       ).buildSelectionBatch(this.wasm.gpu, this._selActive[0], this._selActive[1], this._selActive[2]) ?? undefined
+  }
+
+  /** Rebuild the wireframe batch when the geometry/topology revision changed
+   * (box modeling isn't the sculpt hot loop, so an all-edges rebuild on edit is
+   * fine). Tracks `meshRevision` so it follows every topology op. */
+  private _ensureWireframeBatch(): void {
+    if (this._wireframeRev === this.meshRevision && this.wireframeBatch) {
+      return
+    }
+    this._wireframeRev = this.meshRevision
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+    }
+    this.wireframeBatch =
+      (this.spatial as unknown as {buildWireframeBatch(g: unknown): DrawBatch | undefined}).buildWireframeBatch(
+        this.wasm.gpu
+      ) ?? undefined
   }
 
   /** Last `includePolyGroup` the seam batch was built with, so toggling the
@@ -2150,6 +2188,11 @@ export class LiteMesh extends SceneObjectData {
       this.selectionBatch = undefined
       this._selectionDirty = true
     }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
+    }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
 
@@ -2176,6 +2219,9 @@ export class LiteMesh extends SceneObjectData {
     // Box-modeling selection overlay (only the boxmodel toolmode carries this
     // field; other modes leave it undefined → off).
     const drawSelection = !!(toolmode as unknown as {drawSelectionOverlay?: boolean})?.drawSelectionOverlay
+    // Wireframe overlay + xray (box-modeling toolmode only; undefined elsewhere).
+    const drawWireframe = !!(toolmode as unknown as {drawWireframe?: boolean})?.drawWireframe
+    const xray = !!(toolmode as unknown as {xray?: boolean})?.xray
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
     // unchanged, so pushing every frame is cheap.
     const drawMask = (toolmode as unknown as {drawMask?: boolean})?.drawMask !== false
@@ -2200,6 +2246,9 @@ export class LiteMesh extends SceneObjectData {
     this._ensureSeamBatch(drawPolyGroupEdges)
     if (drawSelection) {
       this._ensureSelectionBatch()
+    }
+    if (drawWireframe) {
+      this._ensureWireframeBatch()
     }
 
     if (drawBVH && !this.treeBatch) {
@@ -2271,7 +2320,7 @@ export class LiteMesh extends SceneObjectData {
     }
 
     if (isWebGPU()) {
-      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection)
+      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection, drawWireframe, xray)
       return
     }
 
@@ -2290,6 +2339,9 @@ export class LiteMesh extends SceneObjectData {
       if (this.seamBatch && drawFeatures) {
         exec.dispatch(this.seamBatch, uniforms2)
       }
+      if (this.wireframeBatch && drawWireframe) {
+        exec.dispatch(this.wireframeBatch, uniforms2)
+      }
       if (this.selectionBatch && drawSelection) {
         exec.dispatch(this.selectionBatch, uniforms2)
       }
@@ -2304,7 +2356,14 @@ export class LiteMesh extends SceneObjectData {
    * `UniformBindings` and returns the `@group(0)` bind group with
    * `drawMatrix`/`normalMatrix`/`uColor` already written.
    */
-  private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean, drawFeatures = true, drawSelection = false): void {
+  private drawQGPU(
+    uniforms: IUniformsBlock,
+    drawBVH: boolean,
+    drawFeatures = true,
+    drawSelection = false,
+    drawWireframe = false,
+    xray = false
+  ): void {
     const ctx = getActiveWebGpuContext()
     if (!ctx?.currentPass) return
     const pass = ctx.currentPass
@@ -2316,61 +2375,80 @@ export class LiteMesh extends SceneObjectData {
     // frame's values.
     this.gpuUniforms = uniforms
 
-    let exec = this.drawBatchExecutorGPU
-    if (exec === undefined) {
-      const bindingsCache = this.gpuBindingsCache
-      const self: LiteMesh = this
-      exec = new WebGPUBatchExecutor({
-        device             : ctx.device,
-        wasm               : this.wasm,
-        pipelineCache      : ctx.pipelineCache,
-        wgslForShader      : wgslForSpatialShader,
-        colorTargets: [
-          {
-            format: surfaceFormat,
-            blend: {
-              color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-              alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-            },
-          },
-        ],
-        depthStencil: {
-          format           : 'depth24plus',
-          depthWriteEnabled: true,
-          depthCompare     : 'less-equal',
-        },
-        bindGroupForCommand: (_cmd, pipeline) => {
-          let bindings = bindingsCache.get(pipeline)
-          if (!bindings) {
-            bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
-            bindingsCache.set(pipeline, bindings)
-          }
-          const uniforms = self.gpuUniforms!
-          // Bind every @group the shader declares — basic spatial shaders use
-          // only @group(0), a material draw shader spans @group 0/1/2 (frame /
-          // lights / object). bindGroupList fills empty fillers for any gap
-          // index the shader skips (WebGPU requires a contiguous 0..max range;
-          // strict Dawn backends reject a missing intermediate group).
-          const groups: CommandBindGroup[] = bindings.bindGroupList(pipeline.handle, uniforms)
-          if (groups.length === 0) {
-            console.error('litemesh: spatial pipeline declares no uniform bind groups')
-            return null
-          }
-          return groups
-        },
-      })
-      this.drawBatchExecutorGPU = exec
+    // The tree surface writes depth and tests less-equal.
+    if (this.drawBatchExecutorGPU === undefined) {
+      this.drawBatchExecutorGPU = this._makeGPUExecutor(ctx, surfaceFormat, true, 'less-equal')
     }
+    // The box-modeling overlays ride above the surface (no depth write) and honor
+    // xray by switching the depth test to 'always'. Rebuild when xray flips, since
+    // depthCompare is baked into each executor's pipelines.
+    if (this.overlayExecutorGPU === undefined || this._overlayXray !== xray) {
+      this.overlayExecutorGPU = this._makeGPUExecutor(ctx, surfaceFormat, false, xray ? 'always' : 'less-equal')
+      this._overlayXray = xray
+    }
+    const main = this.drawBatchExecutorGPU
+    const overlay = this.overlayExecutorGPU
 
     // Match the active pass's color attachment format — in SHOW_RENDER the
     // engine draws us into the offscreen rgba16float Normal/Base passes, in
     // solid mode into the bgra8unorm canvas pass.
-    exec.setColorFormats(ctx.currentColorFormats ?? [surfaceFormat])
+    const fmts = ctx.currentColorFormats ?? [surfaceFormat]
+    main.setColorFormats(fmts)
+    overlay.setColorFormats(fmts)
 
-    if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
-    if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
-    if (this.seamBatch && drawFeatures) exec.dispatch(this.seamBatch, pass)
-    if (this.selectionBatch && drawSelection) exec.dispatch(this.selectionBatch, pass)
+    if (this.drawBatch) main.dispatch(this.drawBatch, pass)
+    if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
+    if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
+    if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)
+    if (this.selectionBatch && drawSelection) overlay.dispatch(this.selectionBatch, pass)
+  }
+
+  /** Build a WebGPU batch executor for the spatial overlays with the given depth
+   * config (shared bind-group/uniform plumbing; only depth differs between the
+   * tree-surface executor and the xray-aware overlay executor). */
+  private _makeGPUExecutor(
+    ctx: NonNullable<ReturnType<typeof getActiveWebGpuContext>>,
+    surfaceFormat: GPUTextureFormat,
+    depthWriteEnabled: boolean,
+    depthCompare: GPUCompareFunction
+  ): WebGPUBatchExecutor {
+    const bindingsCache = this.gpuBindingsCache
+    const self: LiteMesh = this
+    return new WebGPUBatchExecutor({
+      device       : ctx.device,
+      wasm         : this.wasm,
+      pipelineCache: ctx.pipelineCache,
+      wgslForShader: wgslForSpatialShader,
+      colorTargets : [
+        {
+          format: surfaceFormat,
+          blend: {
+            color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+            alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+          },
+        },
+      ],
+      depthStencil: {format: 'depth24plus', depthWriteEnabled, depthCompare},
+      bindGroupForCommand: (_cmd, pipeline) => {
+        let bindings = bindingsCache.get(pipeline)
+        if (!bindings) {
+          bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
+          bindingsCache.set(pipeline, bindings)
+        }
+        const uniforms = self.gpuUniforms!
+        // Bind every @group the shader declares — basic spatial shaders use only
+        // @group(0), a material draw shader spans @group 0/1/2 (frame / lights /
+        // object). bindGroupList fills empty fillers for any gap index the shader
+        // skips (WebGPU requires a contiguous 0..max range; strict Dawn backends
+        // reject a missing intermediate group).
+        const groups: CommandBindGroup[] = bindings.bindGroupList(pipeline.handle, uniforms)
+        if (groups.length === 0) {
+          console.error('litemesh: spatial pipeline declares no uniform bind groups')
+          return null
+        }
+        return groups
+      },
+    })
   }
 
   regenRender() {

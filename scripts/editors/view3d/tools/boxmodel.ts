@@ -20,7 +20,9 @@ export class BoxModelToolMode extends ToolMode {
   boxModelSelMode = SelMask.VERTEX
   /** Draw the selection overlay (selected verts/edges/faces + active). */
   drawSelectionOverlay = true
-  /** When set, the overlay ignores depth (see-through). Wired in M5. */
+  /** Draw the full wireframe overlay (every edge, dim). */
+  drawWireframe = false
+  /** When set, the box-modeling overlays ignore depth (see-through). */
   xray = false
   /** Circle/brush-select radius (screen px). */
   selectRadius = 25
@@ -54,7 +56,9 @@ export class BoxModelToolMode extends ToolMode {
 
     st.bool('drawSelectionOverlay', 'drawSelectionOverlay', 'Selection Overlay')
       .description('Highlight selected / active elements')
-    st.bool('xray', 'xray', 'X-Ray').description('Draw the overlay through the mesh')
+    st.bool('drawWireframe', 'drawWireframe', 'Wireframe')
+      .description('Draw all edges as a dim wireframe overlay')
+    st.bool('xray', 'xray', 'X-Ray').description('Draw the overlays through the mesh')
     st.float('selectRadius', 'selectRadius', 'Select Radius').noUnits().range(1, 500).step(1.0)
 
     return st
@@ -70,6 +74,7 @@ export class BoxModelToolMode extends ToolMode {
     // Vertex / edge / face selection-mode chips (multi-select via the flag prop).
     strip.prop(`scene.tools.${name}.boxModelSelMode`)
     strip.prop(`scene.tools.${name}.drawSelectionOverlay`)
+    strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.xray`)
 
     let row = addHeaderRow()
