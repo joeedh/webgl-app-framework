@@ -1470,20 +1470,7 @@ export class TestSplitFaceOp extends MeshOp<{
     console.warn('mesh.test_split_face')
 
     for (const mesh of this.getMeshes(ctx)) {
-      const vs = new Set()
-      let es = new Set()
-
-      /*
-      for (let v of vs) {
-        for (let e of v.edges) {
-          if (vs.has(e.otherVertex(v))) {
-            es.add(e);
-          }
-        }
-      }*/
-
-      es = new Set(mesh.edges.selected.editable)
-
+      const es = new Set(mesh.edges.selected.editable)
       const lctx = new LogContext()
 
       lctx.onnew = (e) => {
@@ -2222,8 +2209,8 @@ export class GridsTestOp extends MeshOp<{
           const doneset = new WeakSet()
 
           const grid = l.customData[cd_grid] as QuadTreeGrid
-          const ns = grid.nodes,
-            ps = grid.points
+          const ns = grid.nodes
+          const ps = grid.points
 
           const patches = new Map()
 
@@ -2759,8 +2746,8 @@ export class ConnectVertsOp extends MeshOp {
       const vs = Array.from(mesh.verts.selected.editable)
 
       if (vs.length === 2) {
-        const v1 = vs[0],
-          v2 = vs[1]
+        const v1 = vs[0]
+        const v2 = vs[1]
 
         connectVerts(mesh, v1, v2)
         const e = mesh.getEdge(v1, v2)
@@ -3613,7 +3600,7 @@ export class TestSolverOp extends SolverOpBase<{
       const err = v1.co.vectorDistance(v2.co) - rlen
 
       for (let _j = 0; _j < 3; _j++) {
-        let j = _j as Number3
+        const j = _j as Number3
         g1[j] = (v2.co[j] - v1.co[j]) * err * sk
         g2[j] = (v1.co[j] - v2.co[j]) * err * sk
       }
@@ -3621,7 +3608,7 @@ export class TestSolverOp extends SolverOpBase<{
       debug(g1, g2)
     }
 
-    function spring_c_acc(_params: any, klst: number, hlst: Array<Array<number>>): void {
+    function spring_c_acc(_params: any, klst: number, hlst: number[][]): void {
       const [v1, v2, rlen, sk] = _params as [Vertex, Vertex, number, number]
 
       const [h1, h2] = hlst

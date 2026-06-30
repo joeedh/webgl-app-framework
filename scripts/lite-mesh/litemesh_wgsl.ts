@@ -100,10 +100,56 @@ fn fs_main(in : VsOut) -> @location(0) vec4f {
 }
 `
 
+/** Billboard point-sprite overlay (box-modeling vertex points). Mirrors
+ * sculptcore/source/spatial/shaders/point_sprite.wgsl — keep them in sync. */
+export const SPATIAL_POINT_SPRITE_WGSL = `
+struct PointUniforms {
+  drawMatrix   : mat4x4f,
+  uColor       : vec4f,
+  viewportSize : vec4f,
+};
+@group(0) @binding(0) var<uniform> u : PointUniforms;
+
+struct VsIn {
+  @location(0) position : vec3f,
+  @location(1) corner   : vec2f,
+  @location(2) color    : vec4f,
+};
+
+struct VsOut {
+  @builtin(position) clipPos : vec4f,
+  @location(0) vColor  : vec4f,
+  @location(1) vCorner : vec2f,
+};
+
+const PT_HALF_PX : f32 = 4.0;
+
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  var clip = u.drawMatrix * vec4f(in.position, 1.0);
+  let ndcPerPx = vec2f(2.0, 2.0) / max(u.viewportSize.xy, vec2f(1.0, 1.0));
+  clip = vec4f(clip.xy + in.corner * PT_HALF_PX * ndcPerPx * clip.w, clip.zw);
+  out.clipPos = clip;
+  out.vColor = in.color;
+  out.vCorner = in.corner;
+  return out;
+}
+
+@fragment
+fn fs_main(in : VsOut) -> @location(0) vec4f {
+  if (dot(in.vCorner, in.vCorner) > 1.0) {
+    discard;
+  }
+  return u.uColor * in.vColor;
+}
+`
+
 export function wgslForSpatialShader(sdef: ShaderDef): string {
   const name = sdef.name
   if (name === 'Basic Mesh Shader') return SPATIAL_BASIC_MESH_WGSL
   if (name === 'Basic Line Shader') return SPATIAL_BASIC_LINE_WGSL
+  if (name === 'Basic Point Shader') return SPATIAL_POINT_SPRITE_WGSL
   // The tree's dynamic material draw shader (SpatialTree.setDrawShader, M6):
   // the renderengine compiled the material's WGSL and C++ stored it on the
   // ShaderDef's `wgslSource`. Read it straight back — the attr layout in

@@ -9,6 +9,7 @@ import './view3d_panmode'
 import './pbvh.js'
 import './pbvh_base.js'
 import './sculptcore.js'
+import './boxmodel.js'
 
 // sculptcore_ops still needs to be imported for ToolOp side-effect registrations
 // — those are addon-owned but the operator classes aren't currently routed

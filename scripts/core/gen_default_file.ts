@@ -100,7 +100,7 @@ export class BasicFileOp extends ToolOp {
     // toolmode (e.g. sculptcore for the litemesh sphere); fall back to 'object'
     // if that mode isn't registered (its addon disabled).
     const wantMode = getDefaultToolMode()
-    scene.switchToolMode(scene.toolModeProp.values[wantMode] !== undefined ? wantMode : 'object')
+    scene.switchToolMode(Scene.toolModeProp.values[wantMode] !== undefined ? wantMode : 'object')
     // note: switchToolMode sets the select mask, we set it
     // to VERTEX here
     scene.selectMask = SelMask.VERTEX

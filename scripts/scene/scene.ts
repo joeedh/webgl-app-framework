@@ -16,14 +16,13 @@ import {
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject'
 import {DependSocket, FloatSocket} from '../core/graphsockets.js'
 import {Light} from '../light/light.js'
-
-//import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {Icons} from '../editors/icon_enum.js'
 import {PropModes} from '../editors/view3d/transform/transform_base.js'
 import {Collection} from './collection'
 import {SceneObjectData} from '../sceneobject/sceneobject_base'
 import {SceneBVH} from '../sceneobject/scenebvh.js'
+import {toolModeStruct, updateToolModeAPI} from './scene_utils'
 
 export enum EnvLightFlags {
   USE_AO = 1,
@@ -88,9 +87,9 @@ export class EnvLight {
   }
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    let estruct = struct ?? api.mapStruct(this)
+    const estruct = struct ?? api.mapStruct(this)
 
-    let onchange = () => {
+    const onchange = () => {
       window.redraw_viewport()
     }
 
@@ -178,7 +177,7 @@ export class ObjectList extends Array {
   }
 
   has(ob: SceneObject): boolean {
-    return this.indexOf(ob) >= 0
+    return this.includes(ob)
   }
 
   clearSelection(): void {
@@ -386,7 +385,7 @@ propIslandOnly : bool;
   toolmodes: ToolMode[] = [] //we cache toolmode instances, these are saved in files too
   toolmode_map: {[k: string]: ToolMode} = {}
   toolmode_namemap: {[k: string]: ToolMode} = {}
-  toolModeProp = makeToolModeEnum()
+  static toolModeProp = makeToolModeEnum()
   toolmode_i: number
 
   envlight = new EnvLight()
@@ -429,19 +428,21 @@ propIslandOnly : bool;
       }
     }
 
-    this.toolmode_i = this.toolModeProp.values['object'] as number
+    this.toolmode_i = Scene.toolModeProp.values['object'] as number
 
     const busgetter = () => {
-      if (!window._appstate || !window._appstate.datalib) {
-        return undefined
+      if (!window._appstate?.datalib) {
+        // app state is still bootstrapping
+        return this
       }
 
       //check if scene is still in datalib
       const block = window._appstate.datalib.get(this.lib_id)
       if (block !== this) {
-        return undefined
+        //  return undefined
       }
 
+      console.warn('GETTER ENUM')
       return this
     }
 
@@ -449,25 +450,14 @@ propIslandOnly : bool;
       busgetter,
       ToolMode,
       () => {
-        const key = this.toolModeProp.keys[this.toolmode_i]
+        console.warn('UPDATE ENUM')
 
-        this.toolModeProp = makeToolModeEnum()
-        this.toolmode_i = this.toolModeProp.values[key] as number
+        // Scene.toolModeProp should have been updated already
+        const key = Scene.toolModeProp.keys[this.toolmode_i]
+        this.toolmode_i = Scene.toolModeProp.values[key] as number
 
         if (this.toolmode_i === undefined) {
           this.switchToolMode(0)
-        }
-
-        //update enum property in data api
-        if (window._appstate && window._appstate.api) {
-          const st = this.ctx?.api?.mapStruct(Scene, false)
-          if (st === undefined) {
-            console.warn('failed to get scene api struct')
-            return
-          }
-
-          const prop = st.pathmap.toolmode.data as unknown as EnumProperty
-          prop.updateDefinition(this.toolModeProp)
         }
       },
       ['REGISTER', 'UNREGISTER'],
@@ -648,7 +638,7 @@ propIslandOnly : bool;
       mode = mode ? 1 : 0
     }
 
-    const i = typeof mode == 'number' ? mode : (this.toolModeProp.values[mode] as number)
+    const i = typeof mode == 'number' ? mode : (Scene.toolModeProp.values[mode] as number)
 
     if (i === undefined) {
       throw new Error('invalid tool mode ' + mode)
@@ -720,7 +710,7 @@ propIslandOnly : bool;
   }
 
   remove(ob: SceneObject) {
-    if (ob === undefined || this.objects.indexOf(ob) < 0) {
+    if (ob === undefined || !this.objects.includes(ob)) {
       console.log('object not in scene', ob)
       return
     }
@@ -780,7 +770,7 @@ propIslandOnly : bool;
   }
 
   static defineAPI(api: DataAPI, struct?: DataStruct): DataStruct {
-    let sstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
+    const sstruct = DataBlock.defineAPI(api, struct ?? api.mapStruct(this, true))
 
     sstruct.struct('envlight', 'envlight', 'Ambient Light', EnvLight.defineAPI(api))
     sstruct.bool('propEnabled', 'propEnabled', 'Magnet Mode').icon(Icons.MAGNET)
@@ -788,31 +778,32 @@ propIslandOnly : bool;
     sstruct.float('propRadius', 'propRadius', 'Magnet Radius').noUnits().range(0.01, 1000000)
     sstruct.bool('propIslandOnly', 'propIslandOnly', 'Island Only')
 
-    let prop = makeToolModeEnum()
+    const prop = makeToolModeEnum()
 
-    let def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
+    const def = sstruct.enum('toolmode_i', 'toolmode', prop, 'ToolMode', 'ToolMode')
     def.on('change', function (this: {dataref: Scene}, newval: any, oldval: any) {
-      let scene = this.dataref
+      const scene = this.dataref
 
       scene.toolmode_i = oldval
       scene.switchToolMode(newval)
       window.redraw_viewport()
     })
 
-    let base = ToolMode.defineAPI(api)
+    const base = ToolMode.defineAPI(api)
     sstruct.dynamicStruct('toolmode', 'tool', 'Active Tool', base)
 
-    let struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data')
+    const struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data', toolModeStruct)
     struct2.name = 'ToolModes'
+    updateToolModeAPI(api, [ToolMode])
 
-    for (let cls of ToolModes) {
-      let tdef = cls.toolModeDefine()
-
-      let struct3 = cls.defineAPI(api)
-
-      struct2.struct(tdef.name, tdef.name, tdef.uiname, struct3)
-    }
-
+    messageBus.subscribe(
+      () => Scene,
+      ToolMode,
+      () => {
+        updateToolModeAPI(api, ToolModes)
+      },
+      ['REGISTER', 'UNREGISTER']
+    )
     return sstruct
   }
 
@@ -859,7 +850,7 @@ propIslandOnly : bool;
 
     //detected dead toolmodes
     this.toolmodes = this.toolmodes.filter((mode) => mode.setManager)
-    this.toolmode_i = this.toolModeProp.values[this.toolmode_i] as number
+    this.toolmode_i = Scene.toolModeProp.values[this.toolmode_i] as number
 
     //sanity check
     if (this.toolmode_i === undefined) {
@@ -870,7 +861,7 @@ propIslandOnly : bool;
       mode.setManager(this.widgets)
 
       const def = (mode.constructor as unknown as {toolModeDefine(): {name: string}}).toolModeDefine()
-      const i = this.toolModeProp.values[def.name]
+      const i = Scene.toolModeProp.values[def.name]
 
       if (i === this.toolmode_i) {
         found = 1
@@ -914,7 +905,7 @@ propIslandOnly : bool;
   updateWidgets() {
     const ctx = this.widgets.ctx
 
-    if (ctx === undefined || ctx.scene === undefined) {
+    if (ctx?.scene === undefined) {
       return
     }
 
@@ -947,3 +938,20 @@ propIslandOnly : bool;
 
 DataBlock.register(Scene)
 registerDataAPI(Scene)
+
+messageBus.subscribe(
+  () => Scene,
+  ToolMode,
+  () => {
+    Scene.toolModeProp = makeToolModeEnum()
+
+    //update enum property in data api
+    if (window._appstate?.api?.hasStruct(Scene)) {
+      const st = window._appstate?.api.mapStruct(Scene)
+      const prop = st.pathmap.toolmode.data as unknown as EnumProperty
+      prop.updateDefinition(Scene.toolModeProp)
+    }
+  },
+  ['REGISTER', 'UNREGISTER'],
+  1
+)

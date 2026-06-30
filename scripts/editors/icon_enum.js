@@ -136,5 +136,16 @@ export let Icons = {
   REPROJECT_CUSTOM_DATA   : 130,
   SQUARE_BRUSH            : 131,
   MARK_SHARP_ANGLE        : 132,
+  BOX_MODEL               : 133,
+  SELECT_BOX              : 134,
+  SELECT_PATH             : 135,
+  EXTRUDE_INDIVIDUAL      : 136,
+  EXTRUDE_WIRE            : 137,
+  SPLIT_FACES_OFF         : 138,
+  INSET                   : 139,
+  BEVEL                   : 140,
+  XRAY                    : 141,
+  VERTEX_POINTS           : 142,
+  SELECTION_OVERLAY       : 143,
 }
 setIconMap(Icons)

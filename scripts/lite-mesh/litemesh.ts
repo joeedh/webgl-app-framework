@@ -349,6 +349,49 @@ export interface QuadRemeshOptions {
   preRemeshSharpAngle?: number
 }
 
+/** The box-modeling selection surface of the shared C++ MeshLog (bound methods
+ * added to `sculptcore::meshlog::MeshLog`). Declared here because the generated
+ * `@sculptcore/api` MeshLog handle type isn't regenerated until `genTS` runs;
+ * the selection ops and LiteMesh.select* cast the shared meshLog to this. The
+ * `m`/`tree`/`co`/`ray` args are opaque bound handles (Mesh / SpatialTree /
+ * float3). `domain` is 0 = vertex, 1 = edge, 2 = face. */
+export interface IMeshLogSelect {
+  selectionBeginStep(): void
+  selectionEndStep(): void
+  selectOne(m: unknown, domain: number, idx: number, state: boolean): void
+  selectAllElems(m: unknown, domain: number, state: number): void
+  selectShortestPath(m: unknown, vEnd: number, state: number): number
+  selectScreenCircle(
+    m: unknown,
+    tree: unknown,
+    co: unknown,
+    ray: unknown,
+    r1: number,
+    r2: number,
+    domain: number,
+    state: number
+  ): void
+  selectScreenRect(
+    m: unknown,
+    tree: unknown,
+    near0: unknown,
+    near1: unknown,
+    near2: unknown,
+    near3: unknown,
+    far0: unknown,
+    far1: unknown,
+    far2: unknown,
+    far3: unknown,
+    domain: number,
+    state: number
+  ): void
+  setActiveElem(domain: number, idx: number): void
+  activeVert(): number
+  activeEdge(): number
+  activeFace(): number
+  lastStepId(): number
+}
+
 export class LiteMesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -596,10 +639,30 @@ export class LiteMesh extends SceneObjectData {
   /** Persistent seam-edge overlay (EDGE_SEAM) line batch + its rebuild flag.
    * Rebuilt only when the seam set or geometry changes (see markSeamsDirty). */
   seamBatch?: DrawBatch
+  /** Box-modeling selection overlay batch (selected verts/edges/faces + active)
+   * + its rebuild flag and cached active-element indices. Rebuilt only when the
+   * selection or active element changes (see markSelectionDirty). */
+  selectionBatch?: DrawBatch
+  _selectionDirty = true
+  private _selActive: [number, number, number] = [-1, -1, -1]
   private lastAttrItems: LiteMeshAttrItem[] = []
   _seamsDirty = true
+  /** Box-modeling wireframe overlay batch (every edge as a dim line). Rebuilt
+   * when the mesh geometry/topology revision advances (see `_wireframeRev`). */
+  wireframeBatch?: DrawBatch
+  private _wireframeRev = -1
+  /** Box-modeling billboard vertex-point overlay batch. Rebuilt on revision
+   * change, like the wireframe. */
+  pointsBatch?: DrawBatch
+  private _pointsRev = -1
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
+  /** Separate GPU executor for the box-modeling overlays (selection / wireframe /
+   * points) so they can honor the toolmode xray toggle independently of the tree
+   * surface: depthCompare 'always' (see-through) vs 'less-equal'. Rebuilt when the
+   * xray state flips (`_overlayXray`). */
+  private overlayExecutorGPU?: WebGPUBatchExecutor
+  private _overlayXray = false
   private gpuUniforms?: IUniformsBlock
   /** Per-pipeline reflected uniform bindings for the GPU draw path. Kept on the
    * instance (not a closure WeakMap) so `setDrawShader` can dispose them when a
@@ -712,6 +775,21 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
       this.seamBatch = undefined
     }
+    if (this.selectionBatch) {
+      this.wasm.gpu.destroyBatch(this.selectionBatch, true, true)
+      this.selectionBatch = undefined
+      this._selectionDirty = true
+    }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
+    }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
+    }
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -798,6 +876,21 @@ export class LiteMesh extends SceneObjectData {
     if (this.seamBatch) {
       this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
       this.seamBatch = undefined
+    }
+    if (this.selectionBatch) {
+      this.wasm.gpu.destroyBatch(this.selectionBatch, true, true)
+      this.selectionBatch = undefined
+      this._selectionDirty = true
+    }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
+    }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
     }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
@@ -958,6 +1051,68 @@ export class LiteMesh extends SceneObjectData {
   /** Flag the seam overlay for rebuild (e.g. after a topology/seam change). */
   markSeamsDirty(): void {
     this._seamsDirty = true
+  }
+
+  /** Flag the box-modeling selection overlay for rebuild and update the cached
+   * active-element indices (per domain, -1 = none). Called by the selection /
+   * modeling ops after any select or active-element change (and on undo/redo). */
+  markSelectionDirty(activeVert = -1, activeEdge = -1, activeFace = -1): void {
+    this._selectionDirty = true
+    this._selActive = [activeVert, activeEdge, activeFace]
+    this.meshRevision++
+  }
+
+  /** Rebuild the selection overlay batch if the selection / active element
+   * changed. Returns undefined (no batch) when nothing is selected. */
+  private _ensureSelectionBatch(): void {
+    if (!this._selectionDirty) {
+      return
+    }
+    this._selectionDirty = false
+    if (this.selectionBatch) {
+      this.wasm.gpu.destroyBatch(this.selectionBatch, true, true)
+      this.selectionBatch = undefined
+    }
+    this.selectionBatch =
+      (
+        this.spatial as unknown as {
+          buildSelectionBatch(g: unknown, av: number, ae: number, af: number): DrawBatch | undefined
+        }
+      ).buildSelectionBatch(this.wasm.gpu, this._selActive[0], this._selActive[1], this._selActive[2]) ?? undefined
+  }
+
+  /** Rebuild the wireframe batch when the geometry/topology revision changed
+   * (box modeling isn't the sculpt hot loop, so an all-edges rebuild on edit is
+   * fine). Tracks `meshRevision` so it follows every topology op. */
+  private _ensureWireframeBatch(): void {
+    if (this._wireframeRev === this.meshRevision && this.wireframeBatch) {
+      return
+    }
+    this._wireframeRev = this.meshRevision
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+    }
+    this.wireframeBatch =
+      (this.spatial as unknown as {buildWireframeBatch(g: unknown): DrawBatch | undefined}).buildWireframeBatch(
+        this.wasm.gpu
+      ) ?? undefined
+  }
+
+  /** Rebuild the billboard vertex-point batch on geometry-revision change. */
+  private _ensurePointsBatch(): void {
+    if (this._pointsRev === this.meshRevision && this.pointsBatch) {
+      return
+    }
+    this._pointsRev = this.meshRevision
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+    }
+    this.pointsBatch =
+      (this.spatial as unknown as {buildPointsBatch(g: unknown): DrawBatch | undefined}).buildPointsBatch(
+        this.wasm.gpu
+      ) ?? undefined
   }
 
   /** Last `includePolyGroup` the seam batch was built with, so toggling the
@@ -1228,21 +1383,156 @@ export class LiteMesh extends SceneObjectData {
     return {vec, read}
   }
 
-  castScreenCircle(
-    _ctx: ViewContext,
+  /** Float sibling of _intVecOut ('float' is the manager's registry key). */
+  private _floatVecOut() {
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}}
+    ).findVectorClass('float')
+    const ctor = cls.findDefaultConstructor()
+    const vec = (this.wasm.manager as {constructWith(c: unknown): unknown}).constructWith(ctor)
+    const read = () => this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    return {vec, read}
+  }
+
+  /** Gather the box-modeling "movable" vert set (every vertex touched by any
+   * selected element) plus their object-local positions — the transform bridge's
+   * read at grab start. Returns the bound index vector (reused by
+   * markVertsMovedGPU each modal step) alongside JS copies. */
+  gatherMovableVerts(): {idxVec: unknown; idx: number[]; co: number[]} {
+    const idxOut = this._intVecOut()
+    ;(this.mesh as unknown as {movableVerts(o: never): void}).movableVerts(idxOut.vec as never)
+    const idx = Array.from(idxOut.read())
+    const coOut = this._floatVecOut()
+    ;(this.mesh as unknown as {gatherVertCos(i: never, o: never): void}).gatherVertCos(
+      idxOut.vec as never,
+      coOut.vec as never
+    )
+    const co = Array.from(coOut.read())
+    return {idxVec: idxOut.vec, idx, co}
+  }
+
+  /** Flag the spatial leaves of the given verts (the bound vec from
+   * gatherMovableVerts) for GPU regen after a direct setVertCo edit, so the next
+   * draw reflects the move without a full spatial rebuild (the transform bridge's
+   * per-step GPU update). */
+  markVertsMovedGPU(idxVec: unknown): void {
+    ;(this.spatial as unknown as {markVertsMoved(v: never): void}).markVertsMoved(idxVec as never)
+  }
+
+  /** Extrude the selected face region (creates the cap + bridge side-quads in the
+   * given MeshLog step, leaves the new region selected). Returns the averaged,
+   * object-local face normal for the chained transform's constraint axis. Caller
+   * rebuilds the spatial tree afterward (topology changed wholesale). */
+  extrudeRegion(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeRegion(m: unknown, o: unknown): void}).extrudeRegion(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Extrude each selected face individually (no boundary merge — adjacent faces
+   * split apart). Returns the averaged face normal. */
+  extrudeIndividual(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeIndividual(m: unknown, o: unknown): void}).extrudeIndividual(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Extrude selected verts as wires (duplicate + edge to original; the duplicate
+   * is the movable selection). Returns a placeholder normal. */
+  extrudeWireVerts(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {extrudeWireVerts(m: unknown, o: unknown): void}).extrudeWireVerts(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Detach the selected face region (duplicate its boundary so it disconnects;
+   * the whole region is left selected for a translate). Returns the averaged
+   * face normal. Caller rebuilds the spatial tree. */
+  splitFacesOff(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {splitFacesOff(m: unknown, o: unknown): void}).splitFacesOff(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Subdivide the selected edges (or, if none, the selected faces' edges) with
+   * `numCuts` cuts each (Blender-style: numCuts+1 segments). Fully-cut quads
+   * become an (numCuts+1)² grid, two-opposite-cut quads a strip; partially-cut
+   * neighbors keep one face with the cut verts inserted (no T-junction). Returns
+   * the new cut verts (left selected). Caller rebuilds the tree. */
+  subdivideEdges(log: unknown, numCuts: number): number[] {
+    const out = this._intVecOut()
+    ;(log as {subdivideEdges(m: unknown, n: number, o: unknown): void}).subdivideEdges(this.mesh, numCuts, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Loop-cut the quad strip under the cursor ray (object-local origin/dir): the
+   * C++ side casts against the spatial tree, seeds from the hit face's nearest
+   * edge, and cuts the whole ring at its midpoint. Returns the new loop's vert
+   * indices (empty if the ray missed); the loop is left selected. */
+  loopCutAtRay(log: unknown, origin: Vector3, dir: Vector3): number[] {
+    const out = this._intVecOut()
+    const o3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+    const d3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+    ;(
+      log as {loopCutAtRay(m: unknown, t: unknown, o: unknown, d: unknown, v: unknown): void}
+    ).loopCutAtRay(this.mesh, this.spatial, o3, d3, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Build the inset ring for the selected face region in the CURRENTLY OPEN
+   * MeshLog step (the parametric modal op brackets it). Returns the inset vert
+   * indices (also a reusable bound vec for markVertsMoved), their base/boundary
+   * positions, and per-vert inward tangents (flat xyz). The modal then drives
+   * `co = base + width·tangent`. */
+  insetRegion(log: unknown): {idxVec: unknown; idx: number[]; base: number[]; tangent: number[]} {
+    const idxV = this._intVecOut()
+    const baseV = this._floatVecOut()
+    const tanV = this._floatVecOut()
+    ;(
+      log as {insetRegion(m: unknown, i: unknown, b: unknown, t: unknown): void}
+    ).insetRegion(this.mesh, idxV.vec, baseV.vec, tanV.vec)
+    return {
+      idxVec : idxV.vec,
+      idx    : Array.from(idxV.read()),
+      base   : Array.from(baseV.read()),
+      tangent: Array.from(tanV.read()),
+    }
+  }
+
+  /** Bevel the selected verts in the CURRENTLY OPEN MeshLog step (the parametric
+   * modal brackets it, like insetRegion). Each selected interior-manifold vert is
+   * replaced by an offset vert per incident edge plus a cap n-gon; the offset
+   * verts are returned with base coords + per-vert edge tangents, and the modal
+   * drives `co = base + width·tangent`. */
+  bevelVerts(log: unknown): {idxVec: unknown; idx: number[]; base: number[]; tangent: number[]} {
+    const idxV = this._intVecOut()
+    const baseV = this._floatVecOut()
+    const tanV = this._floatVecOut()
+    ;(
+      log as {bevelVerts(m: unknown, i: unknown, b: unknown, t: unknown): void}
+    ).bevelVerts(this.mesh, idxV.vec, baseV.vec, tanV.vec)
+    return {
+      idxVec : idxV.vec,
+      idx    : Array.from(idxV.read()),
+      base   : Array.from(baseV.read()),
+      tangent: Array.from(tanV.read()),
+    }
+  }
+
+  /** Unproject the view cone (near→far through the cursor, in object-local
+   * space) for a circle/brush query, exactly as the WebGL BVH brush path does.
+   * Shared by castScreenCircle (picking) and selectCircle (box-modeling). */
+  private _coneParams(
     view3d: View3D,
     object: SceneObject,
-    selmask: number,
     mpos: Vector2,
     radius: number
-  ): ScreenPickResult {
+  ): {origin: Vector3; ray: Vector3; radius1: number; radius2: number} {
     const obmatrix = object.outputs.matrix.getValue()
     const imat = new Matrix4(obmatrix)
     imat.multiply(view3d.activeCamera.rendermat)
     imat.invert()
 
-    // Build the view cone (near→far through the cursor) in object-local space,
-    // exactly as the WebGL BVH brush path does.
     const x = ~~mpos[0]
     const y = ~~mpos[1]
     const d = 0.9999
@@ -1279,6 +1569,19 @@ export class LiteMesh extends SceneObjectData {
     view3d.unproject(p2, imat)
     const radius2 = (new Vector3(p2).vectorDistance(dest) * radius) / Math.sqrt(2)
 
+    return {origin, ray, radius1, radius2}
+  }
+
+  castScreenCircle(
+    _ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    mpos: Vector2,
+    radius: number
+  ): ScreenPickResult {
+    const {origin, ray, radius1, radius2} = this._coneParams(view3d, object, mpos, radius)
+
     const faces = this._intVecOut()
     const verts = this._intVecOut()
 
@@ -1294,21 +1597,15 @@ export class LiteMesh extends SceneObjectData {
     return this._buildPickResult(object, faces.read(), verts.read(), selmask)
   }
 
-  castScreenRect(
-    _ctx: ViewContext,
-    view3d: View3D,
-    object: SceneObject,
-    selmask: number,
-    min: Vector2,
-    max: Vector2
-  ): ScreenPickResult {
+  /** Unproject the 4 screen-rect corners at the near + far clip planes → 8
+   * object-local corners (the SpatialTree builds + orients the frustum planes).
+   * Shared by castScreenRect (picking) and selectRect (box-modeling). */
+  private _rectCorners(view3d: View3D, object: SceneObject, min: Vector2, max: Vector2): Vector3[] {
     const obmatrix = object.outputs.matrix.getValue()
     const imat = new Matrix4(obmatrix)
     imat.multiply(view3d.activeCamera.rendermat)
     imat.invert()
 
-    // Unproject the 4 rect corners at the near and far clip planes → 8
-    // object-local corners (the SpatialTree builds + orients the planes).
     const corners2d = [
       [min[0], min[1]],
       [max[0], min[1]],
@@ -1328,7 +1625,18 @@ export class LiteMesh extends SceneObjectData {
       view3d.unproject(pf, imat)
       local.push(new Vector3(pf))
     }
+    return local
+  }
 
+  castScreenRect(
+    _ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selmask: number,
+    min: Vector2,
+    max: Vector2
+  ): ScreenPickResult {
+    const local = this._rectCorners(view3d, object, min, max)
     const f3 = (v: Vector3) => this.wasm.float3([v[0], v[1], v[2]]) as never
 
     const faces = this._intVecOut()
@@ -1387,6 +1695,77 @@ export class LiteMesh extends SceneObjectData {
     }
 
     return {elements, elementObjects, elementDists}
+  }
+
+  /* ----- Box-modeling selection (overrides write the `select` attr through the
+   * shared C++ MeshLog so they ride undo). The caller (a modeling ToolOp)
+   * brackets the MeshLog step via `log.selectionBeginStep/EndStep`; these just
+   * issue the pick + select. `domain` is 0 = vertex, 1 = edge, 2 = face. ----- */
+
+  /** Resolve a ray to the mesh face it hits (-1 on a miss). Vertex sibling of
+   * pickVert; used by face-mode nearest pick. */
+  pickFace(origin: Vector3, dir: Vector3): number {
+    const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    try {
+      const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+      const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+      const hit = this.spatial.castRay(originF3, dirF3, isectOut)
+      return hit ? (isectOut as unknown as {faceIndex: number}).faceIndex : -1
+    } finally {
+      ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
+  }
+
+  /** Cone (circle/brush) select through the cursor: pick + select happen in C++
+   * (no index array crosses the binding). The op brackets the step. */
+  selectCircle(
+    view3d: View3D,
+    object: SceneObject,
+    mpos: Vector2,
+    radius: number,
+    domain: number,
+    state: number,
+    log: IMeshLogSelect
+  ): void {
+    const {origin, ray, radius1, radius2} = this._coneParams(view3d, object, mpos, radius)
+    log.selectScreenCircle(
+      this.mesh,
+      this.spatial,
+      this.wasm.float3([origin[0], origin[1], origin[2]]),
+      this.wasm.float3([ray[0], ray[1], ray[2]]),
+      radius1,
+      radius2,
+      domain,
+      state
+    )
+  }
+
+  /** Box (frustum) select over a screen rectangle: pick + select in C++. */
+  selectRect(
+    view3d: View3D,
+    object: SceneObject,
+    min: Vector2,
+    max: Vector2,
+    domain: number,
+    state: number,
+    log: IMeshLogSelect
+  ): void {
+    const local = this._rectCorners(view3d, object, min, max)
+    const f3 = (v: Vector3) => this.wasm.float3([v[0], v[1], v[2]])
+    log.selectScreenRect(
+      this.mesh,
+      this.spatial,
+      f3(local[0]),
+      f3(local[1]),
+      f3(local[2]),
+      f3(local[3]),
+      f3(local[4]),
+      f3(local[5]),
+      f3(local[6]),
+      f3(local[7]),
+      domain,
+      state
+    )
   }
 
   regenTreeBatch() {
@@ -1835,6 +2214,21 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.seamBatch, true, true)
       this.seamBatch = undefined
     }
+    if (this.selectionBatch) {
+      this.wasm.gpu.destroyBatch(this.selectionBatch, true, true)
+      this.selectionBatch = undefined
+      this._selectionDirty = true
+    }
+    if (this.wireframeBatch) {
+      this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
+      this.wireframeBatch = undefined
+      this._wireframeRev = -1
+    }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
+    }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
 
@@ -1858,6 +2252,14 @@ export class LiteMesh extends SceneObjectData {
     const drawFeatures = toolmode?.drawFeatureOverlay
     // Poly-group boundary edges are a separate, opt-in overlay (#28).
     const drawPolyGroupEdges = !!(toolmode as unknown as {drawPolyGroupEdges?: boolean})?.drawPolyGroupEdges
+    // Box-modeling selection overlay (only the boxmodel toolmode carries this
+    // field; other modes leave it undefined → off).
+    const drawSelection = !!(toolmode as unknown as {drawSelectionOverlay?: boolean})?.drawSelectionOverlay
+    // Wireframe / points overlays + xray (box-modeling toolmode only; undefined
+    // elsewhere).
+    const drawWireframe = !!(toolmode as unknown as {drawWireframe?: boolean})?.drawWireframe
+    const drawPoints = !!(toolmode as unknown as {drawPoints?: boolean})?.drawPoints
+    const xray = !!(toolmode as unknown as {xray?: boolean})?.xray
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
     // unchanged, so pushing every frame is cheap.
     const drawMask = (toolmode as unknown as {drawMask?: boolean})?.drawMask !== false
@@ -1880,6 +2282,15 @@ export class LiteMesh extends SceneObjectData {
     // seam *topology*, not live vert motion mid-stroke (refreshed on next seam
     // edit) — an acceptable trade for not thawing every frame.
     this._ensureSeamBatch(drawPolyGroupEdges)
+    if (drawSelection) {
+      this._ensureSelectionBatch()
+    }
+    if (drawWireframe) {
+      this._ensureWireframeBatch()
+    }
+    if (drawPoints) {
+      this._ensurePointsBatch()
+    }
 
     if (drawBVH && !this.treeBatch) {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -1899,6 +2310,12 @@ export class LiteMesh extends SceneObjectData {
       drawMatrix,
       normalMatrix,
     } as IUniformsBlock & Record<string, unknown>
+
+    // The point-sprite overlay sizes billboards in constant pixels, so it needs
+    // the framebuffer size (xy of a vec4 for std140 alignment).
+    if (uniforms2.viewportSize === undefined) {
+      uniforms2.viewportSize = [view3d.glSize[0], view3d.glSize[1], 0, 0]
+    }
 
     // When a material WGSL is the draw shader, the spatial mesh batch needs the
     // renderengine's full uniform schema (FrameUniforms @group0, lights @group1,
@@ -1950,7 +2367,7 @@ export class LiteMesh extends SceneObjectData {
     }
 
     if (isWebGPU()) {
-      this.drawQGPU(uniforms2, drawBVH, drawFeatures)
+      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection, drawWireframe, drawPoints, xray)
       return
     }
 
@@ -1969,6 +2386,15 @@ export class LiteMesh extends SceneObjectData {
       if (this.seamBatch && drawFeatures) {
         exec.dispatch(this.seamBatch, uniforms2)
       }
+      if (this.wireframeBatch && drawWireframe) {
+        exec.dispatch(this.wireframeBatch, uniforms2)
+      }
+      if (this.pointsBatch && drawPoints) {
+        exec.dispatch(this.pointsBatch, uniforms2)
+      }
+      if (this.selectionBatch && drawSelection) {
+        exec.dispatch(this.selectionBatch, uniforms2)
+      }
     })
   }
 
@@ -1980,7 +2406,15 @@ export class LiteMesh extends SceneObjectData {
    * `UniformBindings` and returns the `@group(0)` bind group with
    * `drawMatrix`/`normalMatrix`/`uColor` already written.
    */
-  private drawQGPU(uniforms: IUniformsBlock, drawBVH: boolean, drawFeatures = true): void {
+  private drawQGPU(
+    uniforms: IUniformsBlock,
+    drawBVH: boolean,
+    drawFeatures = true,
+    drawSelection = false,
+    drawWireframe = false,
+    drawPoints = false,
+    xray = false
+  ): void {
     const ctx = getActiveWebGpuContext()
     if (!ctx?.currentPass) return
     const pass = ctx.currentPass
@@ -1992,60 +2426,81 @@ export class LiteMesh extends SceneObjectData {
     // frame's values.
     this.gpuUniforms = uniforms
 
-    let exec = this.drawBatchExecutorGPU
-    if (exec === undefined) {
-      const bindingsCache = this.gpuBindingsCache
-      const self: LiteMesh = this
-      exec = new WebGPUBatchExecutor({
-        device             : ctx.device,
-        wasm               : this.wasm,
-        pipelineCache      : ctx.pipelineCache,
-        wgslForShader      : wgslForSpatialShader,
-        colorTargets: [
-          {
-            format: surfaceFormat,
-            blend: {
-              color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-              alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
-            },
-          },
-        ],
-        depthStencil: {
-          format           : 'depth24plus',
-          depthWriteEnabled: true,
-          depthCompare     : 'less-equal',
-        },
-        bindGroupForCommand: (_cmd, pipeline) => {
-          let bindings = bindingsCache.get(pipeline)
-          if (!bindings) {
-            bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
-            bindingsCache.set(pipeline, bindings)
-          }
-          const uniforms = self.gpuUniforms!
-          // Bind every @group the shader declares — basic spatial shaders use
-          // only @group(0), a material draw shader spans @group 0/1/2 (frame /
-          // lights / object). bindGroupList fills empty fillers for any gap
-          // index the shader skips (WebGPU requires a contiguous 0..max range;
-          // strict Dawn backends reject a missing intermediate group).
-          const groups: CommandBindGroup[] = bindings.bindGroupList(pipeline.handle, uniforms)
-          if (groups.length === 0) {
-            console.error('litemesh: spatial pipeline declares no uniform bind groups')
-            return null
-          }
-          return groups
-        },
-      })
-      this.drawBatchExecutorGPU = exec
+    // The tree surface writes depth and tests less-equal.
+    if (this.drawBatchExecutorGPU === undefined) {
+      this.drawBatchExecutorGPU = this._makeGPUExecutor(ctx, surfaceFormat, true, 'less-equal')
     }
+    // The box-modeling overlays ride above the surface (no depth write) and honor
+    // xray by switching the depth test to 'always'. Rebuild when xray flips, since
+    // depthCompare is baked into each executor's pipelines.
+    if (this.overlayExecutorGPU === undefined || this._overlayXray !== xray) {
+      this.overlayExecutorGPU = this._makeGPUExecutor(ctx, surfaceFormat, false, xray ? 'always' : 'less-equal')
+      this._overlayXray = xray
+    }
+    const main = this.drawBatchExecutorGPU
+    const overlay = this.overlayExecutorGPU
 
     // Match the active pass's color attachment format — in SHOW_RENDER the
     // engine draws us into the offscreen rgba16float Normal/Base passes, in
     // solid mode into the bgra8unorm canvas pass.
-    exec.setColorFormats(ctx.currentColorFormats ?? [surfaceFormat])
+    const fmts = ctx.currentColorFormats ?? [surfaceFormat]
+    main.setColorFormats(fmts)
+    overlay.setColorFormats(fmts)
 
-    if (this.drawBatch) exec.dispatch(this.drawBatch, pass)
-    if (drawBVH && this.treeBatch) exec.dispatch(this.treeBatch, pass)
-    if (this.seamBatch && drawFeatures) exec.dispatch(this.seamBatch, pass)
+    if (this.drawBatch) main.dispatch(this.drawBatch, pass)
+    if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
+    if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
+    if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)
+    if (this.pointsBatch && drawPoints) overlay.dispatch(this.pointsBatch, pass)
+    if (this.selectionBatch && drawSelection) overlay.dispatch(this.selectionBatch, pass)
+  }
+
+  /** Build a WebGPU batch executor for the spatial overlays with the given depth
+   * config (shared bind-group/uniform plumbing; only depth differs between the
+   * tree-surface executor and the xray-aware overlay executor). */
+  private _makeGPUExecutor(
+    ctx: NonNullable<ReturnType<typeof getActiveWebGpuContext>>,
+    surfaceFormat: GPUTextureFormat,
+    depthWriteEnabled: boolean,
+    depthCompare: GPUCompareFunction
+  ): WebGPUBatchExecutor {
+    const bindingsCache = this.gpuBindingsCache
+    const self: LiteMesh = this
+    return new WebGPUBatchExecutor({
+      device       : ctx.device,
+      wasm         : this.wasm,
+      pipelineCache: ctx.pipelineCache,
+      wgslForShader: wgslForSpatialShader,
+      colorTargets : [
+        {
+          format: surfaceFormat,
+          blend: {
+            color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+            alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+          },
+        },
+      ],
+      depthStencil: {format: 'depth24plus', depthWriteEnabled, depthCompare},
+      bindGroupForCommand: (_cmd, pipeline) => {
+        let bindings = bindingsCache.get(pipeline)
+        if (!bindings) {
+          bindings = new UniformBindings(ctx.device, pipeline.descriptor.wgsl, pipeline.descriptor.label)
+          bindingsCache.set(pipeline, bindings)
+        }
+        const uniforms = self.gpuUniforms!
+        // Bind every @group the shader declares — basic spatial shaders use only
+        // @group(0), a material draw shader spans @group 0/1/2 (frame / lights /
+        // object). bindGroupList fills empty fillers for any gap index the shader
+        // skips (WebGPU requires a contiguous 0..max range; strict Dawn backends
+        // reject a missing intermediate group).
+        const groups: CommandBindGroup[] = bindings.bindGroupList(pipeline.handle, uniforms)
+        if (groups.length === 0) {
+          console.error('litemesh: spatial pipeline declares no uniform bind groups')
+          return null
+        }
+        return groups
+      },
+    })
   }
 
   regenRender() {

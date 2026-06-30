@@ -174,7 +174,7 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
       is_modal: true,
 
       inputs: {
-        types           : TransDataType.buildTypesProp(['mesh', 'object']).private(),
+        types           : TransDataType.buildTypesProp(['mesh', 'object', 'litemesh']).private(),
         value           : new Vec3Property(),
         space           : new Mat4Property().private(),
         snapMode        : new EnumProperty(SnapModes.NONE, SnapModes),
