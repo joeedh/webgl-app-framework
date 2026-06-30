@@ -213,6 +213,7 @@ export type GeneratedDataPath =
   | "scene.tools"
   | "scene.tools.boxmodel"
   | "scene.tools.boxmodel.boxModelSelMode"
+  | "scene.tools.boxmodel.drawPoints"
   | "scene.tools.boxmodel.drawSelectionOverlay"
   | "scene.tools.boxmodel.drawWireframe"
   | "scene.tools.boxmodel.selectRadius"
@@ -903,6 +904,7 @@ declare module "@framework/pathux" {
     "scene.tools": true;
     "scene.tools.boxmodel": true;
     "scene.tools.boxmodel.boxModelSelMode": true;
+    "scene.tools.boxmodel.drawPoints": true;
     "scene.tools.boxmodel.drawSelectionOverlay": true;
     "scene.tools.boxmodel.drawWireframe": true;
     "scene.tools.boxmodel.selectRadius": true;

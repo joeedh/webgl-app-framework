@@ -651,6 +651,10 @@ export class LiteMesh extends SceneObjectData {
    * when the mesh geometry/topology revision advances (see `_wireframeRev`). */
   wireframeBatch?: DrawBatch
   private _wireframeRev = -1
+  /** Box-modeling billboard vertex-point overlay batch. Rebuilt on revision
+   * change, like the wireframe. */
+  pointsBatch?: DrawBatch
+  private _pointsRev = -1
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   /** Separate GPU executor for the box-modeling overlays (selection / wireframe /
@@ -781,6 +785,11 @@ export class LiteMesh extends SceneObjectData {
       this.wireframeBatch = undefined
       this._wireframeRev = -1
     }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
+    }
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -877,6 +886,11 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.wireframeBatch, true, true)
       this.wireframeBatch = undefined
       this._wireframeRev = -1
+    }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
     }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
@@ -1081,6 +1095,22 @@ export class LiteMesh extends SceneObjectData {
     }
     this.wireframeBatch =
       (this.spatial as unknown as {buildWireframeBatch(g: unknown): DrawBatch | undefined}).buildWireframeBatch(
+        this.wasm.gpu
+      ) ?? undefined
+  }
+
+  /** Rebuild the billboard vertex-point batch on geometry-revision change. */
+  private _ensurePointsBatch(): void {
+    if (this._pointsRev === this.meshRevision && this.pointsBatch) {
+      return
+    }
+    this._pointsRev = this.meshRevision
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+    }
+    this.pointsBatch =
+      (this.spatial as unknown as {buildPointsBatch(g: unknown): DrawBatch | undefined}).buildPointsBatch(
         this.wasm.gpu
       ) ?? undefined
   }
@@ -2193,6 +2223,11 @@ export class LiteMesh extends SceneObjectData {
       this.wireframeBatch = undefined
       this._wireframeRev = -1
     }
+    if (this.pointsBatch) {
+      this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
+      this.pointsBatch = undefined
+      this._pointsRev = -1
+    }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
 
@@ -2219,8 +2254,10 @@ export class LiteMesh extends SceneObjectData {
     // Box-modeling selection overlay (only the boxmodel toolmode carries this
     // field; other modes leave it undefined → off).
     const drawSelection = !!(toolmode as unknown as {drawSelectionOverlay?: boolean})?.drawSelectionOverlay
-    // Wireframe overlay + xray (box-modeling toolmode only; undefined elsewhere).
+    // Wireframe / points overlays + xray (box-modeling toolmode only; undefined
+    // elsewhere).
     const drawWireframe = !!(toolmode as unknown as {drawWireframe?: boolean})?.drawWireframe
+    const drawPoints = !!(toolmode as unknown as {drawPoints?: boolean})?.drawPoints
     const xray = !!(toolmode as unknown as {xray?: boolean})?.xray
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
     // unchanged, so pushing every frame is cheap.
@@ -2250,6 +2287,9 @@ export class LiteMesh extends SceneObjectData {
     if (drawWireframe) {
       this._ensureWireframeBatch()
     }
+    if (drawPoints) {
+      this._ensurePointsBatch()
+    }
 
     if (drawBVH && !this.treeBatch) {
       this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
@@ -2269,6 +2309,12 @@ export class LiteMesh extends SceneObjectData {
       drawMatrix,
       normalMatrix,
     } as IUniformsBlock & Record<string, unknown>
+
+    // The point-sprite overlay sizes billboards in constant pixels, so it needs
+    // the framebuffer size (xy of a vec4 for std140 alignment).
+    if (uniforms2.viewportSize === undefined) {
+      uniforms2.viewportSize = [view3d.glSize[0], view3d.glSize[1], 0, 0]
+    }
 
     // When a material WGSL is the draw shader, the spatial mesh batch needs the
     // renderengine's full uniform schema (FrameUniforms @group0, lights @group1,
@@ -2320,7 +2366,7 @@ export class LiteMesh extends SceneObjectData {
     }
 
     if (isWebGPU()) {
-      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection, drawWireframe, xray)
+      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection, drawWireframe, drawPoints, xray)
       return
     }
 
@@ -2342,6 +2388,9 @@ export class LiteMesh extends SceneObjectData {
       if (this.wireframeBatch && drawWireframe) {
         exec.dispatch(this.wireframeBatch, uniforms2)
       }
+      if (this.pointsBatch && drawPoints) {
+        exec.dispatch(this.pointsBatch, uniforms2)
+      }
       if (this.selectionBatch && drawSelection) {
         exec.dispatch(this.selectionBatch, uniforms2)
       }
@@ -2362,6 +2411,7 @@ export class LiteMesh extends SceneObjectData {
     drawFeatures = true,
     drawSelection = false,
     drawWireframe = false,
+    drawPoints = false,
     xray = false
   ): void {
     const ctx = getActiveWebGpuContext()
@@ -2400,6 +2450,7 @@ export class LiteMesh extends SceneObjectData {
     if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
     if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
     if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)
+    if (this.pointsBatch && drawPoints) overlay.dispatch(this.pointsBatch, pass)
     if (this.selectionBatch && drawSelection) overlay.dispatch(this.selectionBatch, pass)
   }
 

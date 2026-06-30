@@ -22,6 +22,8 @@ export class BoxModelToolMode extends ToolMode {
   drawSelectionOverlay = true
   /** Draw the full wireframe overlay (every edge, dim). */
   drawWireframe = false
+  /** Draw every vertex as a billboard point sprite. */
+  drawPoints = false
   /** When set, the box-modeling overlays ignore depth (see-through). */
   xray = false
   /** Circle/brush-select radius (screen px). */
@@ -58,6 +60,8 @@ export class BoxModelToolMode extends ToolMode {
       .description('Highlight selected / active elements')
     st.bool('drawWireframe', 'drawWireframe', 'Wireframe')
       .description('Draw all edges as a dim wireframe overlay')
+    st.bool('drawPoints', 'drawPoints', 'Vertex Points')
+      .description('Draw every vertex as a billboard point')
     st.bool('xray', 'xray', 'X-Ray').description('Draw the overlays through the mesh')
     st.float('selectRadius', 'selectRadius', 'Select Radius').noUnits().range(1, 500).step(1.0)
 
@@ -75,6 +79,7 @@ export class BoxModelToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.boxModelSelMode`)
     strip.prop(`scene.tools.${name}.drawSelectionOverlay`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
+    strip.prop(`scene.tools.${name}.drawPoints`)
     strip.prop(`scene.tools.${name}.xray`)
 
     let row = addHeaderRow()

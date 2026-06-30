@@ -2765,6 +2765,15 @@
         "FACE"
       ]
     },
+    "scene.tools.boxmodel.drawPoints": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Vertex Points",
+      "description": "Draw every vertex as a billboard point",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "scene.tools.boxmodel.drawSelectionOverlay": {
       "kind": "prop",
       "indexed": false,

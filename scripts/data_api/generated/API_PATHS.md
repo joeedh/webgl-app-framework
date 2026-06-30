@@ -384,6 +384,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools` | struct |  |  |  |
 | `scene.tools.boxmodel` | struct |  |  |  |
 | `scene.tools.boxmodel.boxModelSelMode` | prop | FlagProperty | Box Model Sel Mode | enum {VERTEX, EDGE, FACE} |
+| `scene.tools.boxmodel.drawPoints` | prop | BoolProperty | Vertex Points |  |
 | `scene.tools.boxmodel.drawSelectionOverlay` | prop | BoolProperty | Selection Overlay |  |
 | `scene.tools.boxmodel.drawWireframe` | prop | BoolProperty | Wireframe |  |
 | `scene.tools.boxmodel.selectRadius` | prop | FloatProperty | Select Radius | range 1..500 |
