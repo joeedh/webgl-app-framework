@@ -620,14 +620,17 @@ export abstract class LiteMeshTopoOpBase<
 /** Build the geom-op + TranslateOp macro for a "T" tool (one undo unit). The
  * geom op's `normalSpace` output is wired to the translate's constraint space and
  * the constraint is locked to that space's Z (the extrude normal). */
-function makeTransformMacro(tool: ToolOp): ToolMacro<ToolContext> {
+function makeTransformMacro(tool: ToolOp, constrainNormal = true): ToolMacro<ToolContext> {
   const macro = new ToolMacro<ToolContext>()
   macro.add(tool)
   const translate = new TranslateOp()
   translate.inputs.selmask.setValue(SelMask.GEOM)
-  translate.inputs.constraint.setValue([0, 0, 1])
   macro.add(translate)
-  macro.connect(tool, 'normalSpace', translate, 'constraint_space')
+  if (constrainNormal) {
+    // Lock the drag to the geom op's averaged normal (extrude/inset lift).
+    translate.inputs.constraint.setValue([0, 0, 1])
+    macro.connect(tool, 'normalSpace', translate, 'constraint_space')
+  }
   return macro
 }
 
@@ -728,6 +731,42 @@ export class LiteMeshExtrudeWireOp extends LiteMeshTopoOpBase<{}, {normalSpace: 
     }
     const log = this._log()
     const no = mesh.extrudeWireVerts(log)
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+    const n = new Vector3(no.length === 3 ? no : [0, 0, 1])
+    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(n))
+  }
+}
+
+/** Split (detach) the selected face region off the mesh, then (transform=1) grab
+ * the detached piece with a free translate. */
+export class LiteMeshSplitOffOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat4Property}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.split_off',
+      uiname  : 'Split Faces Off',
+      icon    : Icons.EXTRUDE,
+      inputs  : {transform: new BoolProperty(false).private()},
+      outputs : {normalSpace: new Mat4Property()},
+    }
+  }
+
+  static invoke(ctx: ViewContext, args: Record<string, unknown>): ToolOp {
+    const tool = super.invoke(ctx, args) as unknown as LiteMeshSplitOffOp
+    if (args['transform']) {
+      // Free translate — drag the detached region anywhere.
+      return makeTransformMacro(tool, false) as unknown as ToolOp
+    }
+    return tool as unknown as ToolOp
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = this._log()
+    const no = mesh.splitFacesOff(log)
     this._logStepId = log.lastStepId()
     this._afterTopoChange(mesh)
     const n = new Vector3(no.length === 3 ? no : [0, 0, 1])
@@ -911,6 +950,7 @@ export const BoxModelTopoOps = [
   LiteMeshExtrudeRegionOp,
   LiteMeshExtrudeIndividualOp,
   LiteMeshExtrudeWireOp,
+  LiteMeshSplitOffOp,
   LiteMeshInsetOp,
 ]
 

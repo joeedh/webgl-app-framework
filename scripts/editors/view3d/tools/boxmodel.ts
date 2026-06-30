@@ -87,6 +87,7 @@ export class BoxModelToolMode extends ToolMode {
     strip.tool('litemesh.extrude_region(transform=true)')
     strip.tool('litemesh.extrude_individual(transform=true)')
     strip.tool('litemesh.extrude_wire(transform=true)')
+    strip.tool('litemesh.split_off(transform=true)')
     strip.tool('litemesh.inset_region()')
 
     header.flushUpdate()

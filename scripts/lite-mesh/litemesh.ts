@@ -1377,6 +1377,15 @@ export class LiteMesh extends SceneObjectData {
     return Array.from(out.read())
   }
 
+  /** Detach the selected face region (duplicate its boundary so it disconnects;
+   * the whole region is left selected for a translate). Returns the averaged
+   * face normal. Caller rebuilds the spatial tree. */
+  splitFacesOff(log: unknown): number[] {
+    const out = this._floatVecOut()
+    ;(log as {splitFacesOff(m: unknown, o: unknown): void}).splitFacesOff(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
   /** Build the inset ring for the selected face region in the CURRENTLY OPEN
    * MeshLog step (the parametric modal op brackets it). Returns the inset vert
    * indices (also a reusable bound vec for markVertsMoved), their base/boundary
