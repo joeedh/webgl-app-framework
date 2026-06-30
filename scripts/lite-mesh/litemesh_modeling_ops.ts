@@ -19,6 +19,7 @@ import {
   EnumProperty,
   FloatProperty,
   BoolProperty,
+  IntProperty,
   Mat4Property,
   PropertySlots,
   ToolMacro,
@@ -794,15 +795,19 @@ function localRay(
   return {origin, dir}
 }
 
-/** Subdivide the selected faces one level (immediate, no transform). Each face
- * splits into one quad per corner; the subdivided region stays selected. */
-export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase {
+/** Pattern subdivide of the selected edges (or the selected faces' edges) with a
+ * user-defined number of cuts (Blender-style: each cut edge → numCuts+1 segments;
+ * fully-cut quads grid, opposite-cut quads strip). Immediate, no transform.
+ * `numCuts` is exposed in the redo panel so it can be tweaked after the op. */
+export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase<{numCuts: IntProperty}> {
   static tooldef() {
     return {
       toolpath: 'litemesh.subdivide',
       uiname  : 'Subdivide',
       icon    : Icons.EXTRUDE,
-      inputs  : {},
+      inputs  : {
+        numCuts: new IntProperty(1).setRange(1, 32).noUnits().saveLastValue(),
+      },
     }
   }
 
@@ -812,7 +817,7 @@ export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase {
       return
     }
     const log = this._log()
-    mesh.subdivideFaces(log)
+    mesh.subdivideEdges(log, this.inputs.numCuts.getValue())
     this._logStepId = log.lastStepId()
     this._afterTopoChange(mesh)
   }

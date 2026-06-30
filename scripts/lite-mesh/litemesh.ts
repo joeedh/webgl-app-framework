@@ -1454,13 +1454,14 @@ export class LiteMesh extends SceneObjectData {
     return Array.from(out.read())
   }
 
-  /** Subdivide the selected faces one level (each face → one quad per corner
-   * around a new center vert; shared edge midpoints; unselected neighbors keep
-   * the midpoint with no T-junction). Returns the new midpoint/center vert
-   * indices; the subdivided region stays selected. Caller rebuilds the tree. */
-  subdivideFaces(log: unknown): number[] {
+  /** Subdivide the selected edges (or, if none, the selected faces' edges) with
+   * `numCuts` cuts each (Blender-style: numCuts+1 segments). Fully-cut quads
+   * become an (numCuts+1)² grid, two-opposite-cut quads a strip; partially-cut
+   * neighbors keep one face with the cut verts inserted (no T-junction). Returns
+   * the new cut verts (left selected). Caller rebuilds the tree. */
+  subdivideEdges(log: unknown, numCuts: number): number[] {
     const out = this._intVecOut()
-    ;(log as {subdivideFaces(m: unknown, o: unknown): void}).subdivideFaces(this.mesh, out.vec)
+    ;(log as {subdivideEdges(m: unknown, n: number, o: unknown): void}).subdivideEdges(this.mesh, numCuts, out.vec)
     return Array.from(out.read())
   }
 
