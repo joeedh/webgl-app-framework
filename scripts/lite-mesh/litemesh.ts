@@ -1406,6 +1406,26 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  /** Bevel the selected verts in the CURRENTLY OPEN MeshLog step (the parametric
+   * modal brackets it, like insetRegion). Each selected interior-manifold vert is
+   * replaced by an offset vert per incident edge plus a cap n-gon; the offset
+   * verts are returned with base coords + per-vert edge tangents, and the modal
+   * drives `co = base + width·tangent`. */
+  bevelVerts(log: unknown): {idxVec: unknown; idx: number[]; base: number[]; tangent: number[]} {
+    const idxV = this._intVecOut()
+    const baseV = this._floatVecOut()
+    const tanV = this._floatVecOut()
+    ;(
+      log as {bevelVerts(m: unknown, i: unknown, b: unknown, t: unknown): void}
+    ).bevelVerts(this.mesh, idxV.vec, baseV.vec, tanV.vec)
+    return {
+      idxVec : idxV.vec,
+      idx    : Array.from(idxV.read()),
+      base   : Array.from(baseV.read()),
+      tangent: Array.from(tanV.read()),
+    }
+  }
+
   /** Unproject the view cone (near→far through the cursor, in object-local
    * space) for a circle/brush query, exactly as the WebGL BVH brush path does.
    * Shared by castScreenCircle (picking) and selectCircle (box-modeling). */

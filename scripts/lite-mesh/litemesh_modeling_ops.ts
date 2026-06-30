@@ -809,6 +809,15 @@ export class LiteMeshInsetOp extends LiteMeshTopoOpBase {
     return this.modal_ctx as unknown as SelModalCtx | undefined
   }
 
+  /** Build the parametric topology in the open step; returns the movable verts +
+   * base coords + tangents. Overridden by the bevel op (same drag/confirm modal). */
+  protected _buildParametric(
+    mesh: LiteMesh,
+    log: unknown
+  ): {idxVec: unknown; idx: number[]; base: number[]; tangent: number[]} {
+    return mesh.insetRegion(log)
+  }
+
   modalStart(ctx: ViewContext) {
     const mesh = this._getMesh(ctx as unknown as ToolContext)
     this._mesh = mesh
@@ -816,7 +825,7 @@ export class LiteMeshInsetOp extends LiteMeshTopoOpBase {
     if (mesh) {
       const log = this._log()
       log.selectionBeginStep()
-      const data = mesh.insetRegion(log)
+      const data = this._buildParametric(mesh, log)
       this._idx = data.idx
       this._idxVec = data.idxVec
       this._base = data.base
@@ -938,6 +947,28 @@ export class LiteMeshInsetOp extends LiteMeshTopoOpBase {
   exec(_ctx: ToolContext) {}
 }
 
+/**
+ * Parametric vertex bevel — the edge-split family's bevel/chamfer. Reuses the
+ * inset modal wholesale (drag → width, one topology+positions undo step); only
+ * the build differs: each selected interior-manifold vert is replaced by an
+ * offset vert per incident edge (sliding along that edge) plus a cap n-gon.
+ */
+export class LiteMeshBevelOp extends LiteMeshInsetOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.bevel_verts',
+      uiname  : 'Bevel Vertices',
+      icon    : Icons.EXTRUDE,
+      is_modal: true,
+      inputs  : {},
+    }
+  }
+
+  protected _buildParametric(mesh: LiteMesh, log: unknown) {
+    return mesh.bevelVerts(log)
+  }
+}
+
 export const BoxModelSelectOps = [
   SelectAllLiteMeshOp,
   SelectBoxLiteMeshOp,
@@ -952,6 +983,7 @@ export const BoxModelTopoOps = [
   LiteMeshExtrudeWireOp,
   LiteMeshSplitOffOp,
   LiteMeshInsetOp,
+  LiteMeshBevelOp,
 ]
 
 for (const op of BoxModelSelectOps) {
