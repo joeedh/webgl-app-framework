@@ -200,6 +200,13 @@ export class AutosaveManager {
     if (this.recoveryChecked || !this.backend) return false
     this.recoveryChecked = true
 
+    // NW.js headless automation never auto-offers recovery on boot (the confirm()
+    // would wedge the hidden renderer, and a deterministic test scene shouldn't be
+    // silently replaced by a stale backup). Pass --autosave-recover to opt back in.
+    if (hasArg('apptest-headless') && !hasArg('autosave-recover')) {
+      return false
+    }
+
     const latest = await this.backend.readLatest()
     if (!latest) return false
 
