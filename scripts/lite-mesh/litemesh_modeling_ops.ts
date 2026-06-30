@@ -774,6 +774,108 @@ export class LiteMeshSplitOffOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat
   }
 }
 
+/** Unproject a screen point (local mouse coords) to an object-local pick ray. */
+function localRay(
+  view3d: SelModalView3D,
+  obmatrix: Matrix4,
+  lx: number,
+  ly: number
+): {origin: Vector3; dir: Vector3} {
+  const imat = new Matrix4(obmatrix)
+  imat.multiply(view3d.activeCamera.rendermat)
+  imat.invert()
+  const d = 0.9999
+  const p1 = new Vector4([lx, ly, -d, 1.0])
+  view3d.unproject(p1, imat)
+  const origin = new Vector3(p1)
+  const p2 = new Vector4([lx, ly, d, 1.0])
+  view3d.unproject(p2, imat)
+  const dir = new Vector3(p2).sub(origin)
+  return {origin, dir}
+}
+
+/** Subdivide the selected faces one level (immediate, no transform). Each face
+ * splits into one quad per corner; the subdivided region stays selected. */
+export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.subdivide',
+      uiname  : 'Subdivide',
+      icon    : Icons.EXTRUDE,
+      inputs  : {},
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const log = this._log()
+    mesh.subdivideFaces(log)
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+  }
+}
+
+/** Loop cut: click on a quad strip to cut the whole ring at its midpoint; the new
+ * loop is left selected (grab/slide it afterward). Modal so the cut lands under
+ * the cursor. The C++ side does the ray-cast + seed + cut; redo replays via
+ * MeshLog. (Live ring preview + multi-cut + slide-on-create are M5 polish.) */
+export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.loop_cut',
+      uiname  : 'Loop Cut',
+      icon    : Icons.EXTRUDE,
+      is_modal: true,
+      inputs  : {},
+    }
+  }
+
+  _ctx(): SelModalCtx | undefined {
+    return this.modal_ctx as unknown as SelModalCtx | undefined
+  }
+
+  on_pointerdown(e: PointerEvent): void {
+    if (e.button === 2) {
+      this.modalEnd(true)
+      return
+    }
+    if (e.button !== 0) {
+      return
+    }
+    const ctx = this._ctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    if (!ctx?.view3d || !ctx.object || !mesh) {
+      this.modalEnd(true)
+      return
+    }
+    const mp = ctx.view3d.getLocalMouse(e.x, e.y)
+    const obmat = ctx.object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(ctx.view3d, obmat, mp[0], mp[1])
+    const log = this._log()
+    const verts = mesh.loopCutAtRay(log, origin, dir)
+    if (verts.length === 0) {
+      this.modalEnd(true) // ray missed the mesh / non-quad strip
+      return
+    }
+    this._logStepId = log.lastStepId()
+    this._afterTopoChange(mesh)
+    window.redraw_viewport()
+    this.modalEnd(false)
+  }
+
+  on_keydown(e: KeyboardEvent): void {
+    if (e.code === 'Escape') {
+      this.modalEnd(true)
+    }
+  }
+
+  // Cut happens live in the modal; redo replays via MeshLog.
+  exec(_ctx: ToolContext) {}
+}
+
 /**
  * Parametric inset of the selected face region. Builds the inset ring up front
  * (one open MeshLog step), then the mouse drags the inset width —
@@ -982,6 +1084,8 @@ export const BoxModelTopoOps = [
   LiteMeshExtrudeIndividualOp,
   LiteMeshExtrudeWireOp,
   LiteMeshSplitOffOp,
+  LiteMeshSubdivideOp,
+  LiteMeshLoopCutOp,
   LiteMeshInsetOp,
   LiteMeshBevelOp,
 ]

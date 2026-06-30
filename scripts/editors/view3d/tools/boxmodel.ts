@@ -90,6 +90,8 @@ export class BoxModelToolMode extends ToolMode {
     strip.tool('litemesh.split_off(transform=true)')
     strip.tool('litemesh.inset_region()')
     strip.tool('litemesh.bevel_verts()')
+    strip.tool('litemesh.subdivide()')
+    strip.tool('litemesh.loop_cut()')
 
     header.flushUpdate()
   }
@@ -109,6 +111,8 @@ export class BoxModelToolMode extends ToolMode {
       new HotKey('E', [], 'litemesh.extrude_region(transform=true)'),
       new HotKey('I', [], 'litemesh.inset_region()'),
       new HotKey('V', [], 'litemesh.bevel_verts()'),
+      new HotKey('D', [], 'litemesh.subdivide()'),
+      new HotKey('R', ['ctrl'], 'litemesh.loop_cut()'),
     ])
   }
 }

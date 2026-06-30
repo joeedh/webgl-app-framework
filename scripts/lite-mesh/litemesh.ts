@@ -1386,6 +1386,30 @@ export class LiteMesh extends SceneObjectData {
     return Array.from(out.read())
   }
 
+  /** Subdivide the selected faces one level (each face → one quad per corner
+   * around a new center vert; shared edge midpoints; unselected neighbors keep
+   * the midpoint with no T-junction). Returns the new midpoint/center vert
+   * indices; the subdivided region stays selected. Caller rebuilds the tree. */
+  subdivideFaces(log: unknown): number[] {
+    const out = this._intVecOut()
+    ;(log as {subdivideFaces(m: unknown, o: unknown): void}).subdivideFaces(this.mesh, out.vec)
+    return Array.from(out.read())
+  }
+
+  /** Loop-cut the quad strip under the cursor ray (object-local origin/dir): the
+   * C++ side casts against the spatial tree, seeds from the hit face's nearest
+   * edge, and cuts the whole ring at its midpoint. Returns the new loop's vert
+   * indices (empty if the ray missed); the loop is left selected. */
+  loopCutAtRay(log: unknown, origin: Vector3, dir: Vector3): number[] {
+    const out = this._intVecOut()
+    const o3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+    const d3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+    ;(
+      log as {loopCutAtRay(m: unknown, t: unknown, o: unknown, d: unknown, v: unknown): void}
+    ).loopCutAtRay(this.mesh, this.spatial, o3, d3, out.vec)
+    return Array.from(out.read())
+  }
+
   /** Build the inset ring for the selected face region in the CURRENTLY OPEN
    * MeshLog step (the parametric modal op brackets it). Returns the inset vert
    * indices (also a reusable bound vec for markVertsMoved), their base/boundary
