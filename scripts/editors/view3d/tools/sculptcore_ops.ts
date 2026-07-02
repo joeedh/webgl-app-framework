@@ -27,6 +27,7 @@ import {SymAxisMap} from './pbvh_base'
 import type {View3D} from '../view3d'
 import {view3dProject, view3dUnproject} from '../view3d_base'
 import {FeatureFlags} from '../../../core/feature-flag'
+import {GpuStrokeController} from './sculptcore_gpu_stroke'
 
 /** Vert page-spread ratio above which the opt-in stroke-end auto-defrag
  * (`sculptcore.auto_defrag`) compacts the mesh layout. 1.0 = perfectly compact. */
@@ -90,6 +91,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * `co` with normal `nrm` so they drag in the *view* plane, not along the
    * curved surface. Empty until the first dab. */
   grabAnchor: ({co: Vector3; nrm: Vector3} | undefined)[] = []
+
+  /** GPU stroke controller (plans/gpuGlobalBrushes.md §5); undefined = CPU
+   * path. Decided once per stroke on the first primary dab (D5). */
+  gpu?: GpuStrokeController
+  gpuDecided = false
+  /** Resolves when the GPU stroke's async finalization (final readback +
+   * endStep) lands; undo/redo arriving mid-await chain onto it. */
+  gpuCompletion?: Promise<void>
 
   static meshLog: MeshLog | undefined
   inStep = false
@@ -161,6 +170,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.dabSeed = 1
     this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
+    this.gpu = undefined
+    this.gpuDecided = false
     // Snapshot the live symmetry axes as an op input so a later exec replay
     // (which may see a different ctx.toolmode) mirrors the same way (A.4).
     this.inputs.symmetryAxes.setValue((ctx.toolmode as SculptCorePaintMode | undefined)?.symmetryAxes ?? 0)
@@ -176,22 +187,36 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
-  undo(ctx: ToolContext) {
-    if (SculptPaintOp.meshLog) {
-      const mesh = ctx.object!.data! as LiteMesh
-      SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
-      mesh.regenBounds()
-      window.redraw_viewport()
+  /** GPU strokes finalize asynchronously (mapAsync readback); an undo/redo
+   * arriving mid-await must wait for the step to close (plan §11). */
+  private afterGpuCompletion(fn: () => void): void {
+    if (this.gpuCompletion) {
+      void this.gpuCompletion.then(fn)
+    } else {
+      fn()
     }
   }
 
+  undo(ctx: ToolContext) {
+    this.afterGpuCompletion(() => {
+      if (SculptPaintOp.meshLog) {
+        const mesh = ctx.object!.data! as LiteMesh
+        SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+        mesh.regenBounds()
+        window.redraw_viewport()
+      }
+    })
+  }
+
   redo(ctx: ToolContext) {
-    if (SculptPaintOp.meshLog) {
-      const mesh = ctx.object!.data! as LiteMesh
-      SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
-      mesh.regenBounds()
-      window.redraw_viewport()
-    }
+    this.afterGpuCompletion(() => {
+      if (SculptPaintOp.meshLog) {
+        const mesh = ctx.object!.data! as LiteMesh
+        SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
+        mesh.regenBounds()
+        window.redraw_viewport()
+      }
+    })
   }
 
   /** Undo data lives in the shared C++ MeshLog; report this op's step size so
@@ -539,18 +564,49 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         }
       }
 
+      // GPU stroke branch (plans/gpuGlobalBrushes.md §5): eligibility is
+      // decided once, on the stroke's first primary dab (D5) — never
+      // mid-stroke. In shadow-verify mode the CPU dab below stays
+      // authoritative and the GPU runs in parallel for the per-dab diff.
+      if (mirrorIdx === 0 && !this.gpuDecided) {
+        this.gpuDecided = true
+        this.gpu = GpuStrokeController.tryBegin({
+          wasm,
+          mesh,
+          wasmBrush,
+          meshLog       : SculptPaintOp.meshLog!,
+          brushType,
+          modalRunning  : this.modalRunning,
+          dyntopoEnabled: dt.enabled,
+          autosmooth    : brush.autosmooth,
+        })
+      }
+      if (this.gpu) {
+        const nonAccum = !(brush.flag & BrushFlags.ACCUMULATE)
+        const ok = this.gpu.dab(dabCenter, dabNormal, radius, filterRadius, mirrorIdx, nonAccum)
+        if (!ok && this.gpu.stroke.stats.dispatches === 0) {
+          // GPU init failed before anything dispatched — the whole stroke
+          // falls back to the CPU path (§4 failure policy).
+          this.gpu.abort()
+          this.gpu = undefined
+        }
+      }
+
       // One unified dab: dyntopo pre-pass (if params != null), node filter,
       // deform, and per-dab topo-chunk seal — all in the executor, one order
       // shared by every client. The seed only matters when dyntopo is on.
-      wasmExec.applyDab(
-        prog,
-        wasm.float3(dabCenter),
-        wasm.float3(dabNormal),
-        filterRadius,
-        params ?? (0 as never),
-        dt.enabled ? this.dabSeed++ : 0
-      )
-      mesh.regenBounds()
+      // Skipped on the pure-GPU branch (the kernel dispatch replaces it).
+      if (!this.gpu || this.gpu.shadow) {
+        wasmExec.applyDab(
+          prog,
+          wasm.float3(dabCenter),
+          wasm.float3(dabNormal),
+          filterRadius,
+          params ?? (0 as never),
+          dt.enabled ? this.dabSeed++ : 0
+        )
+        mesh.regenBounds()
+      }
 
       if (dt.enabled) {
         // Accumulate stats for the debug HUD (lastDynTopoStats holds this dab's
@@ -565,8 +621,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       }
     }
 
-    mesh.regenTreeBatch()
-    mesh.spatial.update(mesh.wasm.gpu)
+    if (!this.gpu || this.gpu.shadow) {
+      mesh.regenTreeBatch()
+      mesh.spatial.update(mesh.wasm.gpu)
+    }
     window.redraw_viewport()
   }
 
@@ -578,6 +636,25 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   }
 
   finishStroke(ctx: ToolContext): void {
+    const gpu = this.gpu
+    if (gpu) {
+      this.gpu = undefined
+      if (gpu.shadow) {
+        // CPU owns the mesh; the controller just frees its GPU side on the
+        // serialized chain, and the normal CPU finish below proceeds.
+        this.gpuCompletion = gpu.finish(() => {})
+      } else {
+        // Final readback -> GpuBrush_endStroke -> the same tail as the CPU
+        // path, all on the stroke's serialized chain. Undo/redo arriving
+        // before it lands wait on gpuCompletion (plan §11).
+        this.gpuCompletion = gpu.finish(() => this.finishStrokeTail(ctx))
+        return
+      }
+    }
+    this.finishStrokeTail(ctx)
+  }
+
+  private finishStrokeTail(ctx: ToolContext): void {
     // Release the stroke-long topology thaw the dyntopo path held (no-op if the
     // executor never ran a dyntopo dab).
     this.executor?.endDynTopoStroke()
@@ -667,7 +744,7 @@ export function runSculptcoreStroke(opts: {
    * exactly like `SculptPaintOp.applyDab`. The test scene is object-local at the
    * origin, so the world-space dabs here are already in mirror space. */
   symmetryAxes?: number
-}): {dabs: number; skipped: boolean} {
+}): {dabs: number; skipped: boolean; completion?: Promise<void>} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
   const radius = opts.radius ?? brush.radius
@@ -709,6 +786,23 @@ export function runSculptcoreStroke(opts: {
   })
   wasmExec.meshLog = meshLog
   wasmExec.beginStep(brush.dynTopoSC.enabled)
+
+  // GPU stroke branch (plans/gpuGlobalBrushes.md): world-space dabs marshal
+  // identically on both paths (no per-dab raycast), so this driver is the
+  // deterministic §8.2 parity gate. Headless drivers must OPT IN via
+  // DEBUG.gpuBrush.allowNonModal (like the screen-space tester) — this
+  // driver finishes asynchronously on the GPU path, and the many existing
+  // tests that call it expect synchronous CPU strokes.
+  let gpu = GpuStrokeController.tryBegin({
+    wasm,
+    mesh,
+    wasmBrush,
+    meshLog,
+    brushType,
+    modalRunning  : false,
+    dyntopoEnabled: brush.dynTopoSC.enabled,
+    autosmooth    : brush.autosmooth,
+  })
 
   // Expand each input dab into its primary image plus SymAxisMap mirror images
   // (p/normal component-sign-flipped about the local origin), exactly like
@@ -798,17 +892,26 @@ export function runSculptcoreStroke(opts: {
         }
       }
 
-      const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
-      buildBrushProgram(prog, brushType, brush, radius, mesh)
-      wasmExec.applyDab(
-        prog,
-        wasm.float3(new Vector3(dabCenter)),
-        wasm.float3(new Vector3(img.normal)),
-        filterRadius,
-        params ?? (0 as never),
-        dabIdx + 1
-      )
-      prog[Symbol.dispose]()
+      if (gpu) {
+        const ok = gpu.dab(dabCenter, img.normal, radius, filterRadius, img.image, nonAccum)
+        if (!ok && gpu.stroke.stats.dispatches === 0) {
+          gpu.abort()
+          gpu = undefined
+        }
+      }
+      if (!gpu || gpu.shadow) {
+        const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
+        buildBrushProgram(prog, brushType, brush, radius, mesh)
+        wasmExec.applyDab(
+          prog,
+          wasm.float3(new Vector3(dabCenter)),
+          wasm.float3(new Vector3(img.normal)),
+          filterRadius,
+          params ?? (0 as never),
+          dabIdx + 1
+        )
+        prog[Symbol.dispose]()
+      }
       dabIdx++
     }
   }
@@ -818,6 +921,18 @@ export function runSculptcoreStroke(opts: {
     dynParams[Symbol.dispose]()
   }
 
+  if (gpu && !gpu.shadow) {
+    // Final readback + endStroke apply + endStep, on the stroke's serialized
+    // chain; callers await `completion` before reading geometry.
+    const completion = gpu.finish(() => {
+      wasmExec.endStep()
+      mesh.regenTreeBatch()
+    })
+    return {dabs: opts.dabs.length, skipped: false, completion}
+  }
+  if (gpu) {
+    gpu.finish(() => {})
+  }
   wasmExec.endStep()
   mesh.regenTreeBatch()
   return {dabs: opts.dabs.length, skipped: false}

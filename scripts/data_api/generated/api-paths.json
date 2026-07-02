@@ -4288,6 +4288,14 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "scene.tools.sculptcore.gpuBrushStatsLabel": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "StringProperty",
+      "uiname": "GPU Brush Stats",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "scene.tools.sculptcore.inheritDynTopo": {
       "kind": "prop",
       "indexed": false,
@@ -4504,6 +4512,33 @@
       "propType": "BoolProperty",
       "uiname": "sculptcore.auto_defrag",
       "description": "Auto-compact mesh DRAM layout at stroke end when fragmented (dyntopo)",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_gpu_brush": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "GPU Brushes",
+      "description": "Run eligible global brushes (kelvinlet) on the GPU when dyntopo is off",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_gpu_brush_grab": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "GPU Grab Brush",
+      "description": "Also run the grab brush on the GPU (off until soak; needs GPU Brushes on)",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_gpu_brush_verify": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "GPU Brush Shadow-Verify",
+      "description": "Run GPU-eligible dabs on both paths and diff them (CPU stays authoritative)",
       "decimalPlaces": 4,
       "step": 0.05
     },

@@ -108,6 +108,44 @@ regression on one path can't hide behind the other. The native leg self-skips if
 the addon is absent. Always assert *no NaN/Inf* in the final position buffer when
 you read it.
 
+## Driving GPU brush strokes headlessly
+
+The GPU path (documentation/gpuBrushes.md) is drivable through the same two
+drivers once three switches are set:
+
+```js
+FeatureFlags.set('sculptcore.gpu_brush', true)       // (+ 'sculptcore.gpu_brush_grab' for grab)
+DEBUG.gpuBrush.allowNonModal = true                  // execTool strokes are non-modal
+// ... run the stroke (either driver) ...
+await globalThis.__gpuBrushCompletion                // the finish is mapAsync-bearing
+```
+
+The debug surface installs on the first GPU stroke *attempt* — a throwaway
+stroke with the flag on suffices before `allowNonModal` exists. Awaiting
+`__gpuBrushCompletion` before reading buffers is mandatory: the final
+readback + `endStep` land asynchronously on the stroke's serialized chain.
+Also wait for the renderer's device before the first GPU stroke — the
+harness `--eval` fires before the async WebGPU init, and an absent device
+silently falls back to the CPU path (RAF-poll
+`getActiveWebGpuContext()?.device`; see `litemesh_gpubrush_test_support.ts`).
+
+- **Strict parity** belongs on the world-space driver: its dabs marshal
+  identically on both paths. The screen-space driver's CPU pass raycasts
+  progressively deformed geometry while the GPU pass sees the stroke-start
+  surface (D4), so its end-to-end diff carries real input drift — bound it,
+  don't fp-compare it.
+- **Shadow-verify** (`sculptcore.gpu_brush_verify`) is the identical-input
+  bit-level gate: CPU authoritative, GPU diffed per dab
+  (`DEBUG.gpuBrush.shadowDivergences`).
+- `__gpuBrushTest()` (litemesh_gpubrush_test_support.ts) packages all of the
+  above — parity/undo/shadow/self-check/fixture — and reflects into the
+  `--dump` as `gpubrushtest`; `tests/integration/sculptcore_gpu_brush.test.ts`
+  is the worked example.
+- `--eval` runs a bare expression (indirect eval): `return X` is a
+  SyntaxError there — that convention belongs to `nwjs/cdp.mjs eval`, which
+  wraps its input in a function. Promises returned by the expression ARE
+  awaited.
+
 ## Gotchas
 
 - **Rebuild the bundle** (`node tools/esbuilder.js`, or `pnpm build`) after editing

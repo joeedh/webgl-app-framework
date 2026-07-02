@@ -467,6 +467,13 @@ class DebugEditorAPI {
     })
   }
 
+  /** The GPU brush-stroke debug surface (window.DEBUG.gpuBrush) — session
+   * state, capture(n), forceReadback(); see documentation/debugSurface.md and
+   * plans/gpuGlobalBrushes.md §9.1. Undefined until the first GPU stroke. */
+  get gpuBrush(): unknown {
+    return (window as unknown as {DEBUG?: {gpuBrush?: unknown}}).DEBUG?.gpuBrush
+  }
+
   /** e.g. CTX.debug.showEditor({editorType: "MaterialEditor"}) */
   showEditor({
     editorType,

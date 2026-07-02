@@ -165,6 +165,27 @@ const featureFlags = [
     type       : 'bool',
     value      : true,
   },
+  {
+    key        : 'sculptcore.gpu_brush',
+    uiName     : 'GPU Brushes',
+    description: 'Run eligible global brushes (kelvinlet) on the GPU when dyntopo is off',
+    type       : 'bool',
+    value      : true,
+  },
+  {
+    key        : 'sculptcore.gpu_brush_grab',
+    uiName     : 'GPU Grab Brush',
+    description: 'Also run the grab brush on the GPU (off until soak; needs GPU Brushes on)',
+    type       : 'bool',
+    value      : false,
+  },
+  {
+    key        : 'sculptcore.gpu_brush_verify',
+    uiName     : 'GPU Brush Shadow-Verify',
+    description: 'Run GPU-eligible dabs on both paths and diff them (CPU stays authoritative)',
+    type       : 'bool',
+    value      : false,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */

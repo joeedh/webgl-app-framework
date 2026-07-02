@@ -63,6 +63,26 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     this.dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
   }
 
+  /** One-line HUD summary of the current/last GPU brush stroke (§9.7 of
+   * plans/gpuGlobalBrushes.md) — dab/dispatch counts, filter-set size, upload
+   * bytes, marshal/upload/submit CPU ms, and GPU pass ms when timestamp-query
+   * is granted. Empty dash when no GPU stroke has run. */
+  get gpuBrushStatsLabel(): string {
+    const s = (window as unknown as {DEBUG?: {gpuBrush?: {lastStats?: Record<string, number | boolean | string>}}})
+      .DEBUG?.gpuBrush?.lastStats
+    if (!s || !s.dabs) {
+      return 'GPU Brush: —'
+    }
+    const ms = (v: unknown) => (typeof v === 'number' ? v.toFixed(1) : '0')
+    const mode = s.gpuResident ? 'resident' : 'readback'
+    return (
+      `GPU Brush(${mode}): ${s.dabs}d/${s.dispatches}x sc${s.scatterDispatches} ` +
+      `${s.uniqueCount}v ${s.bytesUploadedLastDab}B ` +
+      `m${ms(s.marshalMs)} u${ms(s.uploadMs)} s${ms(s.submitMs)} r${ms(s.readbackMs)} g${ms(s.gpuMs)}ms` +
+      (s.tripwireTripped ? ' TRIPPED' : '')
+    )
+  }
+
   /** One-line HUD summary of the current/last stroke's dyntopo activity. */
   get dynTopoStatsLabel(): string {
     const s = this.dynTopoStats
@@ -315,6 +335,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(`scene.tools.${name}.drawFeatureOverlay`)
     strip.prop(`scene.tools.${name}.drawPolyGroupEdges`)
     strip.pathlabel(`scene.tools.${name}.dynTopoStatsLabel`, '')
+    strip.pathlabel(`scene.tools.${name}.gpuBrushStatsLabel`, '')
 
     let row = addHeaderRow()
     const path = `scene.tools.${name}.brush`
@@ -423,6 +444,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       .description('Draw poly-group boundary edges (off by default; updates each dab)')
       .on('change', refreshSeams)
     st.string('dynTopoStatsLabel', 'dynTopoStatsLabel', 'DynTopo Stats').readOnly()
+    st.string('gpuBrushStatsLabel', 'gpuBrushStatsLabel', 'GPU Brush Stats').readOnly()
     /* Only tools sculptcore implements (TOOL_TO_SCULPTBRUSH) are selectable
      * in this tool mode; the legacy pbvh mode keeps the full enum. */
     const sculptcoreTools = {} as Record<string, number>

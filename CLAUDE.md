@@ -456,6 +456,37 @@ graded target and a per-dab split budget); spatial-tree currency is incremental
 (design + post-M7 re-evaluation, incl. why the GPU offload is now optional) and
 [sculptcore/documentation/plans/dyntopo-m7-cascade.md](sculptcore/documentation/plans/dyntopo-m7-cascade.md).
 
+## GPU brushes
+
+When dyntopo is off, the kelvinlet (and, behind a soak flag, grab) sculpt
+brushes dispatch their sbrush WGSL kernels on the renderer's own WebGPU device
+and scatter deformed positions straight into the node VBOs; the CPU mesh syncs
+once at stroke end. See [documentation/gpuBrushes.md](documentation/gpuBrushes.md)
+(user/dev guide + troubleshooting table) and the design plan
+[documentation/plans/gpuGlobalBrushes.md](documentation/plans/gpuGlobalBrushes.md).
+Key conventions:
+
+- C++ owns every byte layout (D1): `sculptcore/source/brush/gpu_marshal.{h,cc}`
+  packs per `compute_layout.h`; the app-facing seam is the `GpuBrush_*` C-API
+  (`gpu_brush_session.h`, exposed on both backends). TS uploads opaque blobs
+  and never re-derives a layout.
+- Kernels ship as the committed, codegen-emitted
+  `sculptcore/typescript/sculptcore/brush/brushWgsl.ts`; the TS dispatcher
+  (`scripts/webgpu/brush_compute.ts`) introspects `@binding(n)` from the WGSL
+  text. Grab-class kernels are tagged `@grabmode` in their `.sbrush` (from-orig
+  + per-dab first-touch write-back, bindings 22/23).
+- Stroke orchestration lives in
+  `scripts/editors/view3d/tools/sculptcore_gpu_stroke.ts`; eligibility (flag
+  `sculptcore.gpu_brush`, no dyntopo/autosmooth, kernel map, device present) is
+  decided once per stroke, with silent CPU fallback (D5). GPU strokes finalize
+  asynchronously — undo/redo defer on the stroke's completion promise.
+- Gates: `tests/integration/sculptcore_gpu_brush.test.ts` (parity/undo/shadow/
+  fixture-replay, both backends) + `make.mjs sbrush-verify` / `webgpu-verify` /
+  `wgpu-native-verify`. Debug surface: `window.DEBUG.gpuBrush`
+  (shadow-verify flag `sculptcore.gpu_brush_verify`, capture/replay,
+  forceReadback, scatter self-check) — see
+  [documentation/debugSurface.md](documentation/debugSurface.md).
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`.

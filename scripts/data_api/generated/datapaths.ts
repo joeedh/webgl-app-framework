@@ -352,6 +352,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.dynTopo.overrides"
   | "scene.tools.sculptcore.dynTopo.smoothLambda"
   | "scene.tools.sculptcore.dynTopoStatsLabel"
+  | "scene.tools.sculptcore.gpuBrushStatsLabel"
   | "scene.tools.sculptcore.inheritDynTopo"
   | "scene.tools.sculptcore.reprojectCustomData"
   | "scene.tools.sculptcore.sharedBrushRadius"
@@ -371,6 +372,9 @@ export type GeneratedDataPath =
   | "settings.brushSet"
   | "settings.featureFlags"
   | "settings.featureFlags.sculptcore_auto_defrag"
+  | "settings.featureFlags.sculptcore_gpu_brush"
+  | "settings.featureFlags.sculptcore_gpu_brush_grab"
+  | "settings.featureFlags.sculptcore_gpu_brush_verify"
   | "settings.featureFlags.sculptcore_quad_remesher"
   | "settings.limitUndoMem"
   | "settings.undoMemLimit"
@@ -1097,6 +1101,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.dynTopo.overrides": true;
     "scene.tools.sculptcore.dynTopo.smoothLambda": true;
     "scene.tools.sculptcore.dynTopoStatsLabel": true;
+    "scene.tools.sculptcore.gpuBrushStatsLabel": true;
     "scene.tools.sculptcore.inheritDynTopo": true;
     "scene.tools.sculptcore.reprojectCustomData": true;
     "scene.tools.sculptcore.sharedBrushRadius": true;
@@ -1116,6 +1121,9 @@ declare module "@framework/pathux" {
     "settings.brushSet": true;
     "settings.featureFlags": true;
     "settings.featureFlags.sculptcore_auto_defrag": true;
+    "settings.featureFlags.sculptcore_gpu_brush": true;
+    "settings.featureFlags.sculptcore_gpu_brush_grab": true;
+    "settings.featureFlags.sculptcore_gpu_brush_verify": true;
     "settings.featureFlags.sculptcore_quad_remesher": true;
     "settings.limitUndoMem": true;
     "settings.undoMemLimit": true;

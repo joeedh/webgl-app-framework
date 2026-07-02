@@ -44,9 +44,16 @@ export class GpuContext {
     })
     if (!adapter) throw new Error('No WebGPU adapter available')
 
+    // Opt into GPU pass timing when the adapter grants it (silently absent
+    // otherwise) — the GPU brush HUD / perf instrumentation reads it
+    // (gpuGlobalBrushes.md §9.7).
+    const requiredFeatures: GPUFeatureName[] = [...(opts.requiredFeatures ?? [])]
+    if (adapter.features.has('timestamp-query') && !requiredFeatures.includes('timestamp-query')) {
+      requiredFeatures.push('timestamp-query')
+    }
     const device = await adapter.requestDevice({
-      requiredFeatures: opts.requiredFeatures,
-      requiredLimits  : opts.requiredLimits,
+      requiredFeatures,
+      requiredLimits: opts.requiredLimits,
     })
 
     const canvasContext = opts.canvas.getContext('webgpu') as GPUCanvasContext | null
