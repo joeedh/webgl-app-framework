@@ -597,4 +597,4 @@ function brushTest(): BrushTestResult {
 
 ;(globalThis as {__brushTest?: typeof brushTest}).__brushTest = brushTest
 
-export {brushTest}
+export {brushTest, readGpuBuffer}
