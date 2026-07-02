@@ -165,6 +165,12 @@ const featureFlags = [
     type       : 'bool',
     value      : true,
   },
+  {
+    key        : 'sculptcore.select_flush_prefer_op_domain',
+    description: "Prefer an op's own selected domain over a derived one; when off, merge instead",
+    type       : 'bool',
+    value      : true,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */

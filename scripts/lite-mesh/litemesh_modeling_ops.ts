@@ -38,6 +38,7 @@ import {TranslateOp} from '../editors/view3d/transform/transform_ops'
 import {LiteMesh, IMeshLogSelect} from './litemesh'
 import {LiteMeshOp} from './litemesh_ops'
 import {Icons} from '../editors/icon_enum.js'
+import {FeatureFlags} from '../core/feature-flag'
 
 /** Map a SelMask bitmask (VERTEX=1/EDGE=2/FACE=4) to the C++ domain codes
  * (0/1/2). Defaults to vertex when nothing is set. */
@@ -576,7 +577,11 @@ export abstract class LiteMeshTopoOpBase<
   }
 
   _log(): IMeshLogSelect {
-    return SculptPaintOp.ensureMeshLog() as unknown as IMeshLogSelect
+    const log = SculptPaintOp.ensureMeshLog() as unknown as IMeshLogSelect
+    // Mirror the selectFlush feature flag into the C++ macro-ops each time (the
+    // auto_defrag pattern: flags are read TS-side, never from C++).
+    log.selectFlushPreferOpDomain = FeatureFlags.get('sculptcore.select_flush_prefer_op_domain')
+    return log
   }
 
   undoPre(_ctx: ToolContext): void {}

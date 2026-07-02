@@ -390,6 +390,9 @@ export interface IMeshLogSelect {
   activeEdge(): number
   activeFace(): number
   lastStepId(): number
+  /** Mirrors the sculptcore.select_flush_prefer_op_domain feature flag into the
+   * C++ macro-ops (selection-domain derivation; see selectFlush plan). */
+  selectFlushPreferOpDomain: boolean
 }
 
 export class LiteMesh extends SceneObjectData {
