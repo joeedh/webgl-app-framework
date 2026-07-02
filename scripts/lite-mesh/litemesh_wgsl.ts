@@ -16,12 +16,15 @@
 
 import type {ShaderDef} from '@sculptcore/api'
 
-/** Overlay depth bias (polygonOffset-style): pull the fragment toward the
- * viewer by a small constant in NDC (scaled by w so it survives the divide).
- * WebGPU's pipeline depthBias only applies to triangle topologies, so the
- * line/point overlays bias in the vertex shader instead; the geometry itself
- * sits exactly on the surface (no model-space normal push-out). */
-export const OVERLAY_DEPTH_BIAS = '1.5e-3'
+/** Overlay depth bias (polygonOffset-style): pull the vertex toward the viewer
+ * by a fraction of the REMAINING clip range, `z -= BIAS * (w - z)`. Perspective
+ * depth is hyperbolic — (w-z)/w ~ near/dist — so this scales with the local
+ * depth-buffer resolution like glPolygonOffset's units term: a constant NDC
+ * offset instead either z-fights up close or pulls back-side lines through the
+ * surface at distance. WebGPU's pipeline depthBias only applies to triangle
+ * topologies, so the line/point overlays bias in the vertex shader; the
+ * geometry itself sits exactly on the surface (no model-space push-out). */
+export const OVERLAY_DEPTH_BIAS = '5e-3'
 
 export const SPATIAL_BASIC_LINE_WGSL = `
 struct SpatialUniforms {
@@ -44,7 +47,7 @@ struct VsOut {
 fn vs_main(in : VsIn) -> VsOut {
   var out : VsOut;
   var clip = spatial.drawMatrix * vec4f(in.position, 1.0);
-  clip.z = clip.z - ${OVERLAY_DEPTH_BIAS} * clip.w;
+  clip.z = clip.z - ${OVERLAY_DEPTH_BIAS} * (clip.w - clip.z);
   out.clipPos = clip;
   out.vColor = in.color;
   return out;
@@ -139,7 +142,7 @@ fn vs_main(in : VsIn) -> VsOut {
   var clip = u.drawMatrix * vec4f(in.position, 1.0);
   let ndcPerPx = vec2f(2.0, 2.0) / max(u.viewportSize.xy, vec2f(1.0, 1.0));
   clip = vec4f(clip.xy + in.corner * PT_HALF_PX * ndcPerPx * clip.w, clip.zw);
-  clip.z = clip.z - ${OVERLAY_DEPTH_BIAS} * clip.w;
+  clip.z = clip.z - ${OVERLAY_DEPTH_BIAS} * (clip.w - clip.z);
   out.clipPos = clip;
   out.vColor = in.color;
   out.vCorner = in.corner;
