@@ -203,10 +203,18 @@ export class GpuStrokeController {
         return undefined
       }
       // Kernel-map gate (M2 kelvinlet, M4 grab). Other tools stay CPU until
-      // their kernels are A/B-gated per gpuGlobalBrushes.md non-goals.
+      // their kernels are A/B-gated per gpuGlobalBrushes.md non-goals. Grab
+      // soaks behind its own flag (M6 default decision).
       if (
         args.brushType !== (SculptBrushes.KELVINLET as number) &&
         args.brushType !== (SculptBrushes.GRAB as number)
+      ) {
+        return undefined
+      }
+      if (
+        args.brushType === (SculptBrushes.GRAB as number) &&
+        !(FeatureFlags.get('sculptcore.gpu_brush_grab') as boolean) &&
+        !shadowOn
       ) {
         return undefined
       }

@@ -561,6 +561,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.featureFlags` | struct |  |  |  |
 | `settings.featureFlags.sculptcore_auto_defrag` | prop | BoolProperty | sculptcore.auto_defrag |  |
 | `settings.featureFlags.sculptcore_gpu_brush` | prop | BoolProperty | GPU Brushes |  |
+| `settings.featureFlags.sculptcore_gpu_brush_grab` | prop | BoolProperty | GPU Grab Brush |  |
 | `settings.featureFlags.sculptcore_gpu_brush_verify` | prop | BoolProperty | GPU Brush Shadow-Verify |  |
 | `settings.featureFlags.sculptcore_quad_remesher` | prop | BoolProperty | sculptcore.quad_remesher |  |
 | `settings.limitUndoMem` | prop | BoolProperty | Limit Undo Memory |  |

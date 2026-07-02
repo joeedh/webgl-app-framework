@@ -789,15 +789,17 @@ export function runSculptcoreStroke(opts: {
 
   // GPU stroke branch (plans/gpuGlobalBrushes.md): world-space dabs marshal
   // identically on both paths (no per-dab raycast), so this driver is the
-  // deterministic §8.2 parity gate. This is a test driver, not a ToolOp
-  // replay — the feature flag alone gates it (modalRunning true).
+  // deterministic §8.2 parity gate. Headless drivers must OPT IN via
+  // DEBUG.gpuBrush.allowNonModal (like the screen-space tester) — this
+  // driver finishes asynchronously on the GPU path, and the many existing
+  // tests that call it expect synchronous CPU strokes.
   let gpu = GpuStrokeController.tryBegin({
     wasm,
     mesh,
     wasmBrush,
     meshLog,
     brushType,
-    modalRunning  : true,
+    modalRunning  : false,
     dyntopoEnabled: brush.dynTopoSC.enabled,
     autosmooth    : brush.autosmooth,
   })

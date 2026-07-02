@@ -178,7 +178,9 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
   tester.frameMeshInCamera()
 
   const flagWas = FeatureFlags.get('sculptcore.gpu_brush')
+  const grabWas = FeatureFlags.get('sculptcore.gpu_brush_grab')
   const verifyWas = FeatureFlags.get('sculptcore.gpu_brush_verify')
+  FeatureFlags.set('sculptcore.gpu_brush_grab', true)
   try {
     // --- CPU reference pass -------------------------------------------------
     FeatureFlags.set('sculptcore.gpu_brush', false)
@@ -312,6 +314,7 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
     return {backend, error: String((e as Error)?.stack ?? e)}
   } finally {
     FeatureFlags.set('sculptcore.gpu_brush', flagWas as boolean)
+    FeatureFlags.set('sculptcore.gpu_brush_grab', grabWas as boolean)
     FeatureFlags.set('sculptcore.gpu_brush_verify', verifyWas as boolean)
     if (g.DEBUG?.gpuBrush) {
       g.DEBUG.gpuBrush.allowNonModal = false

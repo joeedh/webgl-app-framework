@@ -170,6 +170,13 @@ const featureFlags = [
     uiName     : 'GPU Brushes',
     description: 'Run eligible global brushes (kelvinlet) on the GPU when dyntopo is off',
     type       : 'bool',
+    value      : true,
+  },
+  {
+    key        : 'sculptcore.gpu_brush_grab',
+    uiName     : 'GPU Grab Brush',
+    description: 'Also run the grab brush on the GPU (off until soak; needs GPU Brushes on)',
+    type       : 'bool',
     value      : false,
   },
   {

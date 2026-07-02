@@ -75,6 +75,27 @@ Flip live to enable diagnostic logging without a rebuild: `paranoidEvents`,
 `buttonEvents`. App-side code reads extra keys off the same object: `DEBUG.gl`,
 `DEBUG.simplemesh`, `DEBUG.DataLink`, `DEBUG.THREE`.
 
+## `window.DEBUG.gpuBrush` — GPU brush strokes (also `CTX.debug.gpuBrush`)
+
+Installed lazily on the first GPU-brush stroke attempt
+(`scripts/editors/view3d/tools/sculptcore_gpu_stroke.ts`); full guide in
+[gpuBrushes.md](gpuBrushes.md). Highlights, all CDP-reachable:
+
+- `state()` — live session dump: kernel, elem/filter counts, dab generation,
+  the last dab's brush/ctx uniform blobs as hex (layout bugs show here first).
+- `forceReadback()` — sync the CPU mesh from the GPU buffers mid-stroke so
+  vert dumps / bounding boxes / buffer-signature helpers see live GPU state.
+- `capture(n)` / `lastFixture` — record strokes as `tests/webgpu/replay.mjs`
+  fixtures (bit-exact Dawn replays).
+- `scatterSelfCheck()` / `selfCheckNext` + `lastSelfCheck` — scattered-VBO vs
+  CPU-gather byte check (fill-order regression tripwire).
+- `allowNonModal` — let non-modal (execTool-driven, i.e. headless) strokes
+  take the GPU path; `verbose` — per-dab `[gpu-brush]` logging;
+  `shadowDivergences` — shadow-verify breach counter.
+
+The related feature flags (`sculptcore.gpu_brush`, `.gpu_brush_grab`,
+`.gpu_brush_verify`) are flippable at runtime via `window.FeatureFlags`.
+
 ## `_appstate` — direct singleton
 
 `_appstate.ctx`, `.screen`, `.toolstack` (`.undo()`/`.redo()`/`.execTool()`),
