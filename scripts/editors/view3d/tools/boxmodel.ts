@@ -11,7 +11,7 @@
 import {Container, DataAPI, DataStruct, HotKey, KeyMap, nstructjs} from '../../../path.ux/pathux'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
-import {SelMask, SelToolModes} from '../selectmode.js'
+import {SelMask} from '../selectmode.js'
 import type {ViewContext} from '../../../core/context'
 import {SelectLoopLiteMeshOp, SelectNearestLiteMeshOp, localRay} from '../../../lite-mesh/litemesh_modeling_ops'
 import {LiteMesh} from '../../../lite-mesh/litemesh'
@@ -149,7 +149,8 @@ BoxModelToolMode {
     op.inputs.useXY.setValue(true)
     op.inputs.x.setValue(x)
     op.inputs.y.setValue(y)
-    op.inputs.mode.setValue(e.shiftKey ? SelToolModes.SUB : SelToolModes.ADD)
+    // Blender semantics: plain click replaces the selection, shift toggles.
+    op.inputs.toggle.setValue(e.shiftKey)
     ctx.toolstack.execTool(ctx, op)
     return true
   }

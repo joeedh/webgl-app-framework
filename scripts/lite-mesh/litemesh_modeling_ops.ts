@@ -420,14 +420,17 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
 }
 
 /**
- * Select the single element nearest the cursor, and make it the active element
- * of its domain. The picking domain is the first one enabled in the selection
- * mode (vertex, else edge, else face); edge mode picks the hit face's nearest
- * edge. Modal from the toolbar (waits for a click); the toolmode's left-click
- * binding instead passes the click position via x/y and runs it non-modally.
+ * Select the single element nearest the cursor, Blender-style: a plain click
+ * clears the selection (all domains) and selects the picked element; a shift
+ * click toggles the picked element instead. The picked element becomes the
+ * active element of its domain. The picking domain is the first one enabled in
+ * the selection mode (vertex, else edge, else face); edge mode picks the hit
+ * face's nearest edge. Modal from the toolbar (waits for a click); the
+ * toolmode's left-click binding instead passes the click position via x/y and
+ * runs it non-modally.
  */
 export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
-  mode: EnumProperty
+  toggle: BoolProperty
   x: FloatProperty
   y: FloatProperty
   useXY: BoolProperty
@@ -439,11 +442,12 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
       icon    : Icons.CURSOR_ARROW,
       is_modal: true,
       inputs: {
-        mode : new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
+        // Shift-click: toggle the picked element instead of replace-selecting.
+        toggle: new BoolProperty(false).private(),
         // Local-mouse click position for the non-modal (toolmode click) path.
-        x    : new FloatProperty(0).private(),
-        y    : new FloatProperty(0).private(),
-        useXY: new BoolProperty(false).private(),
+        x     : new FloatProperty(0).private(),
+        y     : new FloatProperty(0).private(),
+        useXY : new BoolProperty(false).private(),
       },
     }
   }
@@ -475,12 +479,25 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
     if (idx < 0) {
       return -1
     }
-    const state = this.inputs.mode.getValue() !== SelToolModes.SUB
 
     const log = this._log()
     log.selectionBeginStep()
-    log.selectOne(mesh.mesh, domain, idx, state)
-    log.setActiveElem(domain, idx)
+    if (this.inputs.toggle.getValue()) {
+      // Shift: toggle the picked element; it becomes active when selected.
+      const cur =
+        (mesh.mesh as unknown as {elemSelected(d: number, i: number): number}).elemSelected(domain, idx) !== 0
+      log.selectOne(mesh.mesh, domain, idx, !cur)
+      if (!cur) {
+        log.setActiveElem(domain, idx)
+      }
+    } else {
+      // Plain click: replace — clear every domain, then select the pick.
+      for (const d of [0, 1, 2]) {
+        log.selectAllElems(mesh.mesh, d, 0)
+      }
+      log.selectOne(mesh.mesh, domain, idx, true)
+      log.setActiveElem(domain, idx)
+    }
     log.selectionEndStep()
     this._logStepId = log.lastStepId()
     this._refreshOverlay(mesh, log)
@@ -496,7 +513,7 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
     if (e.button !== 0 || !ctx?.view3d || !ctx.object) {
       return
     }
-    this.inputs.mode.setValue(e.shiftKey ? SelToolModes.SUB : SelToolModes.ADD)
+    this.inputs.toggle.setValue(e.shiftKey)
     const m = ctx.view3d.getLocalMouse(e.x, e.y)
     this._pickAndSelect(ctx as unknown as ToolContext, m[0], m[1])
     this.modalEnd(false)
