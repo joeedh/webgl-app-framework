@@ -432,6 +432,27 @@ HUD/timestamp instrumentation as the measurement tool; fix what misses the
 §7 target.
 *Done when: acceptance target met and recorded here.*
 
+**M5 RESULT (2026-07-02, native backend over CDP, litemesh-cube subdiv=645 =
+2.49 M verts / ~5 M tris, whole-mesh kelvinlet radius 8):**
+
+- CPU baseline: **507 ms/dab** (~2 fps equivalent).
+- GPU steady state (dab 2 onward): **≈0 ms marshal / ≈2 ms wall / ≈1.5 ms GPU**
+  per dab (timestamp-query) — far past the ≥25 fps bar; the frame budget is
+  now owned by the renderer itself.
+- Per-stroke one-time cost ≈750 ms at 5 M: begin geometry upload (~80 MB
+  stride-16 co/no), the first dab's whole-mesh undo snapshot (~360 ms,
+  serial AttrSaver appendFrom — parallelizing it is a follow-up), and chunk
+  build. The scatter-map upload amortizes across strokes via
+  `SpatialTree::gpuLayoutGen`.
+- The winning fix was the marshal steady-state fast path: when a dab's
+  filtered node set is pointer-identical to the previous dab's (the saturated
+  state of an anchored whole-mesh brush), the snapshot walk, chunk rebuild,
+  uverts compare, and touched-owner mapping are all skipped — uverts/nodeMeta
+  re-upload only on set changes (grow-only in practice). Membership tests use
+  hash sets (Vector::contains scans were O(n²) at 5 M).
+- The §7 "skip the indirection at whole-mesh" kernel specialization was NOT
+  needed: the indirected dispatch measures ~1.5 ms/dab on the 5 M scene.
+
 **M6 — cleanup + docs.** Strip `CLAUDENOTE:`s, decide the feature-flag
 default (likely on for kelvinlet, off for grab until soak), write
 `documentation/gpuBrushes.md` (user/developer doc incl. the §9.8
