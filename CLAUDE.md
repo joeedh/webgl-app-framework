@@ -136,6 +136,28 @@ WebGL `GPUSelectBuffer` + `FindnearestClass` registry are gone). See
   rect corners + cone endpoints cross as bound `float3`s, results as
   `Vector<int>` out-params; native uses the `makeIntVector` N-API helper).
 
+## Box modeling
+
+A Blender-style polygon-modeling toolmode for `LiteMesh` objects (selection,
+extrude, inset, bevel, split-off, subdivide, loop-cut) alongside sculpt mode.
+See [documentation/boxModelingMode.md](documentation/boxModelingMode.md) (and
+the design doc, [documentation/plans/boxModelingTools.md](documentation/plans/boxModelingTools.md)).
+Key conventions:
+
+- Almost everything lives in sculptcore (C++): topology mutation, selection
+  state (a new `select` attribute category on all three domains), active-
+  element state, undo (`MeshLog`), spatial queries, and overlay GPU batches.
+  TypeScript owns only the toolmode shell
+  (`scripts/editors/view3d/tools/boxmodel.ts`), thin modal ops
+  (`scripts/lite-mesh/litemesh_modeling_ops.ts`), and the transform bridge
+  (`scripts/lite-mesh/litemesh_transtype.ts`).
+- Every op runs inside one `MeshLog` step, so topology + any final vertex
+  positions are a single undo press.
+- "T" tools (extrude/split-off) chain a `ToolMacro` of the geometry op +
+  the stock `view3d.translate`, constrained to a normal the op emits; inset
+  and bevel instead use a dedicated parametric modal that maps mouse drag to
+  a per-vertex `base + width·tangent` offset.
+
 ## Feature-edge marking (seams & sharp)
 
 The interactive seam / sharp marking tools (`litemesh.mark_seam_interactive` /

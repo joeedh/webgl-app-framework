@@ -954,7 +954,7 @@ View3D {
 
     this.busSubscribe()
     this.makeGraphNodes()
-    this.rebuildHeader()
+    this.doOnce(this.rebuildHeader)
 
     const on_mousewheel = (e: WheelEvent) => {
       e.preventDefault()

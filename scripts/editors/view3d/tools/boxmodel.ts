@@ -35,9 +35,9 @@ BoxModelToolMode {
   /** Draw the selection overlay (selected verts/edges/faces + active). */
   drawSelectionOverlay = true
   /** Draw the full wireframe overlay (every edge, dim). */
-  drawWireframe = false
+  drawWireframe = true
   /** Draw every vertex as a billboard point sprite. */
-  drawPoints = false
+  drawPoints = true
   /** When set, the box-modeling overlays ignore depth (see-through). */
   xray = false
   /** Circle/brush-select radius (screen px). */

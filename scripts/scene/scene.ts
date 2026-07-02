@@ -350,7 +350,7 @@ Scene {
   selectMask   : int;
   cursor3D     : mat4;
   envlight     : EnvLight;
-  toolmode_i   : string | obj.toolModeProp.keys[obj.toolmode_i];
+  toolmode_i   : string | obj.constructor.toolModeProp.keys[obj.toolmode_i];
   toolmodes    : array(abstract(ToolMode));
   collection   : DataRef | DataRef.fromBlock(obj.collection);
   fps          : int;
@@ -794,7 +794,7 @@ propIslandOnly : bool;
 
     const struct2 = sstruct.struct('toolmode_namemap', 'tools', 'Saved Tool Data', toolModeStruct)
     struct2.name = 'ToolModes'
-    updateToolModeAPI(api, [ToolMode])
+    updateToolModeAPI(api, ToolModes)
 
     messageBus.subscribe(
       () => Scene,
