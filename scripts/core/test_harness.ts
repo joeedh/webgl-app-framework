@@ -343,6 +343,10 @@ function dumpScene(): unknown {
     // random dyntopo toggles, a replayable per-stroke log, and a non-finite scan
     // (hunts the intermittent dyntopo crash).
     fuzztest     : (globalThis as {__fuzzTestResult?: unknown}).__fuzzTestResult,
+    // Reflect the GPU-brush parity driver (`__gpuBrushTest`): CPU-vs-GPU
+    // kelvinlet stroke fingerprints, undo/redo fidelity, and shadow-verify
+    // divergences (plans/gpuGlobalBrushes.md §8.2-8.4).
+    gpubrushtest : (globalThis as {__gpuBrushTestResult?: unknown}).__gpuBrushTestResult,
     // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
     // stores on globalThis.__evalTestResult lands in the dump (renderer
     // console output never reaches the harness stdout, so the dump is the

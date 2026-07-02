@@ -2602,6 +2602,10 @@ export class LiteMesh extends SceneObjectData {
       wasm         : this.wasm,
       pipelineCache: ctx.pipelineCache,
       wgslForShader: wgslForSpatialShader,
+      // Node VBOs double as compute-scatter targets during a GPU brush stroke
+      // (gpuGlobalBrushes.md M3/D4); copy-src serves the §9.6 scatter
+      // self-check + buffer-signature debug reads.
+      bufferUsage  : ['vertex', 'storage', 'copy-src'],
       colorTargets : [
         {
           format: surfaceFormat,

@@ -26,7 +26,7 @@ import {GPUType} from '@sculptcore/api/sculptcore/gpu/GPUType'
 import {GPUCmdType} from '@sculptcore/api/sculptcore/gpu/GPUCmdType'
 import {IWasmInterface} from '@sculptcore/api/api'
 
-import {GpuBuffer} from './buffer.js'
+import {GpuBuffer, GpuBufferUsage} from './buffer.js'
 import {Pipeline, PipelineCache, type PipelineDescriptor} from './pipeline.js'
 
 interface BoundLike {
@@ -114,6 +114,10 @@ export interface WebGPUBatchExecutorOptions {
   bindGroupForCommand: (cmd: DrawCommand, pipeline: Pipeline) => GPUBindGroup | CommandBindGroup[] | null
   colorTargets: GPUColorTargetState[]
   depthStencil?: GPUDepthStencilState
+  /** Usage for the cached vertex buffers (default `['vertex']`). LiteMesh
+   * passes `['vertex','storage']` so the GPU brush stroke's scatter pass can
+   * write node VBOs in place (gpuGlobalBrushes.md M3/D4). */
+  bufferUsage?: GpuBufferUsage[]
 }
 
 export class WebGPUBatchExecutor {
@@ -223,7 +227,7 @@ export class WebGPUBatchExecutor {
         buf: new GpuBuffer(this.device, {
           label: 'WebGPUBatch.vbo',
           size : Math.max(bytes, 4),
-          usage: 'vertex',
+          usage: this.opts.bufferUsage ?? 'vertex',
         }),
         uploadedSize   : bytes,
         uploadedDataPtr: -1,
@@ -243,6 +247,15 @@ export class WebGPUBatchExecutor {
     }
 
     return cached.buf
+  }
+
+  /**
+   * The cached GPUBuffer for a sculptcore Buffer identity key (`buf.ptr` on
+   * WASM / `objectAddress` natively) — the GPU brush scatter pass resolves
+   * node VBOs through this. Undefined until the buffer has been drawn once.
+   */
+  cachedBufferByKey(key: number): GPUBuffer | undefined {
+    return this.bufferCache.get(key)?.buf.handle
   }
 
   releaseBuffer(buf: Buffer): void {

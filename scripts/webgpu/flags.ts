@@ -33,3 +33,8 @@ export const ShaderStage = {
   FRAGMENT: 0x2,
   COMPUTE : 0x4,
 } as const
+
+export const MapMode = {
+  READ : 0x1,
+  WRITE: 0x2,
+} as const
