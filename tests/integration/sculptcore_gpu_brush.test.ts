@@ -65,6 +65,10 @@ interface GpuBrushTestResult {
   gpuResident?: boolean
   scatterDispatches?: number
   selfCheck?: {checked?: boolean; badCorners?: number; maxErr?: number; reason?: string}
+  grabWorldParityMaxDiff?: number | null
+  grabWorldMoved?: boolean
+  grabWorldUndoMaxDiff?: number | null
+  grabShadowDivergences?: number
   stats?: {dabs: number; dispatches: number; tripwireTripped: boolean}
 }
 
@@ -169,6 +173,14 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore GPU brush parity (%s)'
 
   test('§9.3 shadow-verify reports zero divergent dabs', () => {
     expect(r.shadowDivergences).toBe(0)
+  })
+
+  test('M4: grab world-space parity + undo + shadow (§8.2-8.4, §9.3)', () => {
+    expect(r.grabWorldMoved).toBe(true)
+    expect(typeof r.grabWorldParityMaxDiff).toBe('number')
+    expect(r.grabWorldParityMaxDiff!).toBeLessThan(1e-5)
+    expect(r.grabWorldUndoMaxDiff).toBe(0)
+    expect(r.grabShadowDivergences).toBe(0)
   })
 
   test('M3: GPU-resident scatter path engaged, self-check clean (§9.6)', () => {

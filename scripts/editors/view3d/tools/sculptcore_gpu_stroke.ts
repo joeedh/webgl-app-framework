@@ -202,8 +202,12 @@ export class GpuStrokeController {
       if (args.dyntopoEnabled || args.autosmooth > 0) {
         return undefined
       }
-      // Kernel-map gate: KELVINLET first (M2); GRAB lands with M4.
-      if (args.brushType !== (SculptBrushes.KELVINLET as number)) {
+      // Kernel-map gate (M2 kelvinlet, M4 grab). Other tools stay CPU until
+      // their kernels are A/B-gated per gpuGlobalBrushes.md non-goals.
+      if (
+        args.brushType !== (SculptBrushes.KELVINLET as number) &&
+        args.brushType !== (SculptBrushes.GRAB as number)
+      ) {
         return undefined
       }
       const device = getActiveWebGpuContext()?.device

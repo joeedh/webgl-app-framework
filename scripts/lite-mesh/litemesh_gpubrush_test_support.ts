@@ -98,6 +98,12 @@ export interface GpuBrushTestResult {
   scatterDispatches?: number
   /** §9.6 scatter-map self-check, run at the world-space GPU stroke's finish. */
   selfCheck?: object
+  /** M4: the same strict world-space gates for GRAB (§8.2-8.4). */
+  grabWorldParityMaxDiff?: number
+  grabWorldMoved?: boolean
+  grabWorldUndoMaxDiff?: number
+  /** M4: grab shadow-verify divergences (screen-space stroke, §9.3). */
+  grabShadowDivergences?: number
 }
 
 interface TestOpts {
@@ -234,14 +240,14 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
       await (window as Window).redraw_viewport_p(true)
     }
 
-    // --- deterministic world-space pass (§8.2 strict gate) --------------------
-    {
+    // --- deterministic world-space passes (§8.2 strict gate), per tool --------
+    for (const tool of [SculptTools.KELVINLET, SculptTools.GRAB]) {
       const tester2 = tester as unknown as {
         getBrush(o: object): SculptBrush
         meshLog?: {undo(m: unknown, t: unknown): void}
       }
       const brush = tester2.getBrush({
-        sculptTool   : SculptTools.KELVINLET,
+        sculptTool   : tool,
         brushSettings: {strength: 0.6},
       })
       const dabs = [
@@ -261,23 +267,44 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
       meshLog.undo(mesh.mesh, mesh.spatial)
 
       FeatureFlags.set('sculptcore.gpu_brush', true)
-      ensureGpuBrushDebug().selfCheckNext = true
+      if (tool === SculptTools.KELVINLET) {
+        ensureGpuBrushDebug().selfCheckNext = true
+      }
       const run = runSculptcoreStroke({mesh, brush, dabs, radius, symmetryAxes: 1})
       await run.completion
-      const dbg2 = ensureGpuBrushDebug()
-      result.selfCheck = dbg2.lastSelfCheck
-      const worldStats = dbg2.lastStats as unknown as
-        | {gpuResident?: boolean; scatterDispatches?: number}
-        | undefined
-      result.gpuResident = worldStats?.gpuResident
-      result.scatterDispatches = worldStats?.scatterDispatches
       const gpu2 = readGpuBuffer(mesh, 'position')
       meshLog.undo(mesh.mesh, mesh.spatial)
       const undone2 = readGpuBuffer(mesh, 'position')
 
-      result.worldParityMaxDiff = maxAbsDiff(cpu2, gpu2)
-      result.worldMoved = maxAbsDiff(baseline2, cpu2) > 1e-6
-      result.worldUndoMaxDiff = maxAbsDiff(baseline2, undone2)
+      if (tool === SculptTools.KELVINLET) {
+        const dbg2 = ensureGpuBrushDebug()
+        result.selfCheck = dbg2.lastSelfCheck
+        const worldStats = dbg2.lastStats as unknown as
+          | {gpuResident?: boolean; scatterDispatches?: number}
+          | undefined
+        result.gpuResident = worldStats?.gpuResident
+        result.scatterDispatches = worldStats?.scatterDispatches
+        result.worldParityMaxDiff = maxAbsDiff(cpu2, gpu2)
+        result.worldMoved = maxAbsDiff(baseline2, cpu2) > 1e-6
+        result.worldUndoMaxDiff = maxAbsDiff(baseline2, undone2)
+      } else {
+        result.grabWorldParityMaxDiff = maxAbsDiff(cpu2, gpu2)
+        result.grabWorldMoved = maxAbsDiff(baseline2, cpu2) > 1e-6
+        result.grabWorldUndoMaxDiff = maxAbsDiff(baseline2, undone2)
+      }
+    }
+
+    // --- M4: grab shadow-verify (screen-space, §9.3) ---------------------------
+    if (opts.runShadow) {
+      const divBefore = g.DEBUG?.gpuBrush?.shadowDivergences ?? 0
+      FeatureFlags.set('sculptcore.gpu_brush', false)
+      FeatureFlags.set('sculptcore.gpu_brush_verify', true)
+      await tester.runStroke({...strokeOpts, sculptTool: SculptTools.GRAB}).redrawPromise
+      await g.__gpuBrushCompletion
+      result.grabShadowDivergences = (g.DEBUG?.gpuBrush?.shadowDivergences ?? 0) - divBefore
+      FeatureFlags.set('sculptcore.gpu_brush_verify', false)
+      tester.undo()
+      await (window as Window).redraw_viewport_p(true)
     }
 
     return result
