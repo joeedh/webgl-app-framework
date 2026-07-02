@@ -2269,7 +2269,10 @@ export class LiteMesh extends SceneObjectData {
       // changed; invalidate the autosave blob cache (M2).
       this.meshRevision++
       if (this.treeBatch) {
+        // Null before the conditional rebuild: with drawBVH off a stale handle
+        // here double-frees on the next _rebuildSpatial (native crash).
         this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
+        this.treeBatch = undefined
         if (drawBVH) {
           this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
         }
