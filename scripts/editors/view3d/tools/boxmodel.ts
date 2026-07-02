@@ -178,23 +178,21 @@ BoxModelToolMode {
     if (!view3d || !object || !(mesh instanceof LiteMesh)) {
       return
     }
-    const obmatrix = object.outputs.matrix.getValue()
-    const {origin, dir} = localRay(
-      view3d as unknown as Parameters<typeof localRay>[0],
-      obmatrix,
-      x,
-      y
-    )
     const mode = this.boxModelSelMode
     let v = -1
     let ed = -1
     let f = -1
-    if (mode & SelMask.VERTEX) {
-      v = mesh.pickVert(origin, dir)
-    } else if (mode & SelMask.EDGE) {
-      ed = mesh.pickEdge(origin, dir)
-    } else if (mode & SelMask.FACE) {
-      f = mesh.pickFace(origin, dir)
+    if (mode & SelMask.EDGE && !(mode & SelMask.VERTEX)) {
+      // Screen-space edge pick (3D nearest mis-picks on foreshortened faces).
+      ed = mesh.pickEdge(view3d, object, x, y)
+    } else {
+      const obmatrix = object.outputs.matrix.getValue()
+      const {origin, dir} = localRay(view3d as unknown as Parameters<typeof localRay>[0], obmatrix, x, y)
+      if (mode & SelMask.VERTEX) {
+        v = mesh.pickVert(origin, dir)
+      } else if (mode & SelMask.FACE) {
+        f = mesh.pickFace(origin, dir)
+      }
     }
     mesh.setHover(v, ed, f)
   }

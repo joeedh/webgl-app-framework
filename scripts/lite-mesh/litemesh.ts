@@ -1751,24 +1751,81 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
-  /** Resolve a ray to the mesh edge nearest the hit point (-1 on a miss): castRay
-   * to a face, then the C++ faceEdgeNearest picks the closest of its edges. The
-   * edge-mode click pick and the loop-select seed. */
-  pickEdge(origin: Vector3, dir: Vector3): number {
+  /** Resolve a cursor position to the mesh edge nearest it in SCREEN space
+   * (-1 on a miss): castRay to a face, then project that face's edges to pixels
+   * and take the closest segment to the cursor. A 3D nearest-to-hit-point test
+   * systematically mis-picks on foreshortened (view-tilted) surfaces — 1px of
+   * screen distance maps to very different 3D distances along vs across the
+   * tilt. The edge-mode click pick and the loop-select seed. */
+  pickEdge(view3d: View3D, object: SceneObject, mx: number, my: number): number {
+    // Object-local cursor ray (same construction as _coneParams).
+    const obmatrix = object.outputs.matrix.getValue()
+    const imat = new Matrix4(obmatrix)
+    imat.multiply(view3d.activeCamera.rendermat)
+    imat.invert()
+    const d = 0.9999
+    const p1 = new Vector4([mx, my, -d, 1.0])
+    view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+    const p2 = new Vector4([mx, my, d, 1.0])
+    view3d.unproject(p2, imat)
+    const dir = new Vector3(p2).sub(origin)
+
     const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    let face = -1
     try {
       const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
       const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
       const hit = this.spatial.castRay(originF3, dirF3, isectOut)
-      const f = hit ? (isectOut as unknown as {faceIndex: number}).faceIndex : -1
-      if (f < 0) {
-        return -1
-      }
-      const p = (isectOut as unknown as {p: unknown}).p
-      return (this.mesh as unknown as {faceEdgeNearest(f: number, p: unknown): number}).faceEdgeNearest(f, p)
+      face = hit ? (isectOut as unknown as {faceIndex: number}).faceIndex : -1
     } finally {
       ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
     }
+    if (face < 0) {
+      return -1
+    }
+
+    const edgesOut = this._intVecOut()
+    const coordsOut = this._floatVecOut()
+    ;(this.mesh as unknown as {faceEdgeList(f: number, e: unknown, c: unknown): void}).faceEdgeList(
+      face,
+      edgesOut.vec,
+      coordsOut.vec
+    )
+    const edges = edgesOut.read()
+    const co = coordsOut.read()
+
+    // Nearest projected segment to the cursor, in pixels.
+    const a = new Vector3()
+    const b = new Vector3()
+    let best = -1
+    let bestD = Infinity
+    for (let i = 0; i < edges.length; i++) {
+      a[0] = co[i * 6]
+      a[1] = co[i * 6 + 1]
+      a[2] = co[i * 6 + 2]
+      b[0] = co[i * 6 + 3]
+      b[1] = co[i * 6 + 4]
+      b[2] = co[i * 6 + 5]
+      a.multVecMatrix(obmatrix)
+      b.multVecMatrix(obmatrix)
+      if (view3d.project(a) <= 0 || view3d.project(b) <= 0) {
+        continue // behind the camera
+      }
+      const abx = b[0] - a[0]
+      const aby = b[1] - a[1]
+      const len2 = abx * abx + aby * aby
+      let t = len2 > 1e-12 ? ((mx - a[0]) * abx + (my - a[1]) * aby) / len2 : 0
+      t = t < 0 ? 0 : t > 1 ? 1 : t
+      const dx = mx - (a[0] + abx * t)
+      const dy = my - (a[1] + aby * t)
+      const dist = dx * dx + dy * dy
+      if (dist < bestD) {
+        bestD = dist
+        best = edges[i]
+      }
+    }
+    return best
   }
 
   /** Loop-cut preview segments for the ring through `seedEdge`: flat xyz pairs

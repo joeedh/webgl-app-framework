@@ -472,7 +472,8 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
     if (domain === 2) {
       idx = mesh.pickFace(origin, dir)
     } else if (domain === 1) {
-      idx = mesh.pickEdge(origin, dir)
+      // Screen-space edge pick (3D nearest mis-picks on foreshortened faces).
+      idx = mesh.pickEdge(view3d as unknown as View3D, object, lx, ly)
     } else {
       idx = mesh.pickVert(origin, dir)
     }
@@ -560,9 +561,12 @@ export class SelectLoopLiteMeshOp extends LiteMeshSelectOpBase<{
     if (!view3d || !object || !mesh) {
       return
     }
-    const obmatrix = object.outputs.matrix.getValue()
-    const {origin, dir} = localRay(view3d, obmatrix, this.inputs.x.getValue(), this.inputs.y.getValue())
-    const seed = mesh.pickEdge(origin, dir)
+    const seed = mesh.pickEdge(
+      view3d as unknown as View3D,
+      object,
+      this.inputs.x.getValue(),
+      this.inputs.y.getValue()
+    )
     if (seed < 0) {
       return
     }
@@ -977,9 +981,7 @@ export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
       return
     }
     const mp = ctx.view3d.getLocalMouse(e.x, e.y)
-    const obmat = ctx.object.outputs.matrix.getValue()
-    const {origin, dir} = localRay(ctx.view3d, obmat, mp[0], mp[1])
-    const seed = mesh.pickEdge(origin, dir)
+    const seed = mesh.pickEdge(ctx.view3d as unknown as View3D, ctx.object, mp[0], mp[1])
     if (seed === this._previewSeed) {
       return
     }
