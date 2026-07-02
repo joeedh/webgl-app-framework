@@ -125,9 +125,10 @@ BoxModelToolMode {
     header.flushUpdate()
   }
 
-  /** Left-click selection: plain click selects the nearest element in the first
-   * enabled selection domain (shift deselects); ctrl-click loop-selects (edge
-   * loop / face loop; ctrl-shift = the edge ring, "face loop edge select"). */
+  /** Left-click selection, Blender-style: plain click replace-selects the
+   * nearest element in the first enabled selection domain; shift-click toggles
+   * it. Ctrl-click loop-selects (edge loop / face loop; ctrl-shift = the edge
+   * ring, "face loop edge select"), toggling off a fully-selected loop. */
   on_mousedown(e: PointerEvent, x: number, y: number): boolean | void {
     if (e.button !== 0 || e.altKey || this.hasWidgetHighlight()) {
       return false

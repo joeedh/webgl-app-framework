@@ -612,11 +612,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // Dyntopo changes the seam/feature topology; refresh the overlay batch.
     if (mesh instanceof LiteMesh) {
       mesh.markSeamsDirty()
-      // The wireframe/points overlays rebuild on meshRevision, but the stroke
-      // path's own spatial.update calls consume the flush the draw path bumps
-      // it on — bump here so the overlays reflect the stroke at its end.
-      // (Per-dab rebuilds are deliberate non-goals: a full-edge batch rebuild
-      // thaws frozen topology mid-stroke and is O(all edges) per frame.)
+      // The stroke path's own spatial.update calls consume the flush the draw
+      // path bumps meshRevision on; bump at stroke end so wireframe/points
+      // overlays rebuild (per-dab rebuilds would thaw topology, O(all edges)).
       mesh.meshRevision++
     }
     window.redraw_viewport()

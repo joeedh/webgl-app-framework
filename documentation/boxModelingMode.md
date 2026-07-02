@@ -67,8 +67,9 @@ undo/redo.
 Conventions (Blender-ish, not identical):
 
 - Selection is **not** reset between tools.
-- No-shift **selects**; shift **deselects** (the inverse of many other
-  apps' "shift extends").
+- Box/circle select: no-shift **selects**, shift **deselects**. Click select
+  follows Blender: a plain click **replaces** the selection (all domains),
+  shift **toggles** the picked element.
 - Which domains a tool affects is the toolmode's current selection mode.
 
 Selection tools (all in `litemesh_modeling_ops.ts`, thin ops over C++ region
@@ -84,9 +85,10 @@ queries):
 | Select shortest path | `litemesh.select_path()` | click | Dijkstra from the active vertex; endpoint becomes the new active vertex |
 
 Left click runs `select_nearest` non-modally through the toolmode's
-`on_mousedown` (shift deselects); ctrl-click loop-selects — the edge loop in
-edge mode, the face loop in face mode, and the edge **ring** ("face loop edge
-select") with ctrl-shift. Edge picking resolves the ray's hit face to its
+`on_mousedown` (plain click replaces the selection, shift toggles the picked
+element); ctrl-click loop-selects — the edge loop in edge mode, the face loop
+in face mode, and the edge **ring** ("face loop edge select") with ctrl-shift;
+a fully-selected loop toggles off. Edge picking resolves the ray's hit face to its
 nearest edge (`Mesh::faceEdgeNearest`). Hovering (no buttons held) highlights
 the element under the cursor in cyan via the selection overlay
 (`buildSelectionBatch` hover params; `LiteMesh.setHover`).

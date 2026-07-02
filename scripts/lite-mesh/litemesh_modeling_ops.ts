@@ -10,10 +10,11 @@
  * select against the shared MeshLog and captures `lastStepId()`, `undo`/`redo`
  * route through `MeshLog.undo/redo`, `calcUndoMem` reports `stepMemSize`.
  *
- * Per the draft, selection is NOT reset between tools and `shift` deselects
- * (no-shift selects). Which element domains a tool writes is the toolmode's
- * selection mode (vertex/edge/face bitmask), mapped to the C++ domain codes
- * 0 = vertex, 1 = edge, 2 = face.
+ * Selection is NOT reset between tools. Box/circle select: no-shift selects,
+ * shift deselects; click select follows Blender (plain click replaces, shift
+ * toggles). Which element domains a tool writes is the toolmode's selection
+ * mode (vertex/edge/face bitmask), mapped to the C++ domain codes 0 = vertex,
+ * 1 = edge, 2 = face.
  */
 import {
   EnumProperty,
@@ -532,7 +533,8 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
  * Loop select seeded at the edge under the cursor (the toolmode's ctrl-click):
  * edge mode selects the edge LOOP (end-to-end chain), ctrl-shift the edge RING
  * (the parallel edges a face loop crosses — "face loop edge select"), and face
- * mode the face loop. Non-modal; the click position comes in via x/y.
+ * mode the face loop. Selecting an already fully-selected loop deselects it
+ * (loop toggle). Non-modal; the click position comes in via x/y.
  */
 export class SelectLoopLiteMeshOp extends LiteMeshSelectOpBase<{
   mode: EnumProperty

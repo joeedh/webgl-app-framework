@@ -361,7 +361,8 @@ export interface IMeshLogSelect {
   selectOne(m: unknown, domain: number, idx: number, state: boolean): void
   selectAllElems(m: unknown, domain: number, state: number): void
   selectShortestPath(m: unknown, vEnd: number, state: number): number
-  /** kind 0 = edge loop, 1 = edge ring, 2 = face loop; seeded at an edge. */
+  /** kind 0 = edge loop, 1 = edge ring, 2 = face loop; seeded at an edge. A
+   * fully-selected loop toggles off; returns the negated count when it did. */
   selectLoop(m: unknown, seedEdge: number, kind: number, state: number): number
   selectScreenCircle(
     m: unknown,
