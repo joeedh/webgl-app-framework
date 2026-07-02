@@ -580,8 +580,11 @@ export class SelectLoopLiteMeshOp extends LiteMeshSelectOpBase<{
 
     const log = this._log()
     log.selectionBeginStep()
-    log.selectLoop(mesh.mesh, seed, kind, state)
-    log.setActiveElem(1, seed)
+    // Negative count = the loop was already fully selected and got toggled off.
+    const n = log.selectLoop(mesh.mesh, seed, kind, state)
+    if (n > 0) {
+      log.setActiveElem(1, seed)
+    }
     log.selectionEndStep()
     this._logStepId = log.lastStepId()
     this._refreshOverlay(mesh, log)
