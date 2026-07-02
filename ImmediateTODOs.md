@@ -22,3 +22,4 @@
 [ ]: Extrude region crashes
 [ ]: Pattern-based subdivide is either not being invoked by 
      box modelling toolmode's subdivide op or just doesn't work.
+[ ]: Implement the plan at documentation/plans/selectFlush.md
