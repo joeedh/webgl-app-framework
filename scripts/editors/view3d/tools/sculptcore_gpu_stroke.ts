@@ -18,7 +18,8 @@ import {
 } from '@sculptcore/api/api'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 
-import {GpuBrushStroke, GpuBrushStats} from '../../../webgpu/brush_compute'
+import {GpuBrushStroke, GpuBrushStats, ScatterTables} from '../../../webgpu/brush_compute'
+import {BufferUsage, MapMode} from '../../../webgpu/flags'
 import {getActiveWebGpuContext} from '../../../render/queue_factory'
 import {FeatureFlags} from '../../../core/feature-flag'
 
@@ -48,6 +49,16 @@ export interface GpuBrushDebug {
   /** Mid-stroke: sync the CPU mesh from the GPU buffers so every existing
    * inspection tool sees live GPU state. No-op with no active GPU stroke. */
   forceReadback(): Promise<boolean>
+  /** §9.6: after a forceReadback, byte-check one touched node's scattered pos
+   * VBO against a CPU gather over the corner->vert map — the direct test of
+   * the fill-order-disagreement risk. Requires an active GPU-resident stroke. */
+  scatterSelfCheck(): Promise<object>
+  /** Run the §9.6 self-check automatically at the next GPU stroke's finish
+   * (before the final apply), storing the result in `lastSelfCheck` — the
+   * hook headless drivers use (the stroke is finished by the time they can
+   * call scatterSelfCheck directly). */
+  selfCheckNext: boolean
+  lastSelfCheck: object | undefined
 }
 
 /** Install (or fetch) window.DEBUG.gpuBrush. Exported for the headless parity
@@ -64,6 +75,8 @@ function ensureDebugSurface(): GpuBrushDebug {
     dbg = {
       verbose          : false,
       allowNonModal    : false,
+      selfCheckNext    : false,
+      lastSelfCheck    : undefined,
       captureNext      : 0,
       lastFixture      : undefined,
       lastStats        : undefined,
@@ -98,6 +111,13 @@ function ensureDebugSurface(): GpuBrushDebug {
         await c.forceReadback()
         return true
       },
+      async scatterSelfCheck() {
+        const c = activeController
+        if (!c || !c.stroke.valid) {
+          return {checked: false, reason: 'no active GPU stroke'}
+        }
+        return c.scatterSelfCheck()
+      },
     }
     w.DEBUG.gpuBrush = dbg
   }
@@ -118,6 +138,20 @@ function hex(bytes: Uint8Array): string {
 /** The live stroke's controller (one GPU stroke at a time), for the debug
  * surface's mid-stroke hatches. */
 let activeController: GpuStrokeController | undefined = undefined
+
+/** Cross-stroke scatter-table cache (plan §3/§7): the corner->vert map upload
+ * (~4 B/corner — tens of MB at 5M tris) is paid only when the spatial GPU
+ * layout generation moves; per-stroke work is just re-resolving the node VBOs
+ * (buffer identity is part of the generation contract). */
+interface ScatterCacheEntry {
+  gen: number
+  mapBuf: GPUBuffer
+  /** Parsed SCATTER_META records (u32×6 per node). */
+  meta: Uint32Array
+  /** Per-owner {cornerCount, mapOffset} uniform buffers, meta-index-aligned. */
+  paramsBufs: GPUBuffer[]
+}
+const scatterCache = new WeakMap<LiteMesh, ScatterCacheEntry>()
 
 export interface GpuStrokeBeginArgs {
   wasm: IWasmInterface
@@ -204,6 +238,11 @@ export class GpuStrokeController {
           console.warn('[gpu-brush] begin failed; stroke falls back to CPU-applied finish')
         }
       })
+      if (!shadowOn) {
+        // M3: GPU-resident rendering — scatter into the node VBOs per dab
+        // instead of the M2 per-dab readback (which stays as the fallback).
+        ctl.tryEnableScatter()
+      }
       return ctl
     } catch (e) {
       console.warn('[gpu-brush] tryBegin failed:', e)
@@ -227,6 +266,158 @@ export class GpuStrokeController {
     this.debug = debug
     this.debug.lastStats = stroke.stats
     activeController = this
+  }
+
+  /**
+   * Resolve the M3 scatter tables and hand them to the dispatcher: cached
+   * corner->vert map (rebuilt only when SpatialTree::gpuLayoutGen moved) plus
+   * this stroke's node-VBO lookups through the batch executor's buffer cache.
+   * Any miss (no executor yet, a VBO not drawn/cached yet) leaves the stroke
+   * on the M2 per-dab-readback shape — never throws.
+   */
+  private tryEnableScatter(): void {
+    try {
+      const exec = this.mesh.drawBatchExecutorGPU
+      if (!exec) {
+        return
+      }
+      const device = this.stroke.device
+      const gen = this.wasm.GpuBrush_info(this.session, GpuBrushInfo.GPU_LAYOUT_GEN)
+      let cache = scatterCache.get(this.mesh)
+      if (!cache || cache.gen !== gen) {
+        cache?.mapBuf.destroy()
+        cache?.paramsBufs.forEach((b) => b.destroy())
+        const metaBytes = this.wasm.GpuBrush_data(this.session, GpuBrushData.SCATTER_META).slice()
+        const meta = new Uint32Array(metaBytes.buffer, 0, metaBytes.byteLength / 4)
+        const mapBytes = this.wasm.GpuBrush_data(this.session, GpuBrushData.SCATTER_MAP)
+        if (!meta.length || !mapBytes.length) {
+          return
+        }
+        const mapBuf = device.createBuffer({
+          label: 'gpuBrush.scatterMap',
+          size : (mapBytes.byteLength + 3) & ~3,
+          usage: BufferUsage.STORAGE | BufferUsage.COPY_DST,
+        })
+        device.queue.writeBuffer(mapBuf, 0, mapBytes, 0, mapBytes.byteLength)
+        const paramsBufs: GPUBuffer[] = []
+        for (let i = 0; i * 6 < meta.length; i++) {
+          const params = device.createBuffer({
+            label: `gpuBrush.scatterParams${i}`,
+            size : 16,
+            usage: BufferUsage.UNIFORM | BufferUsage.COPY_DST,
+          })
+          device.queue.writeBuffer(params, 0, new Uint32Array([meta[i * 6 + 5], meta[i * 6 + 4]]))
+          paramsBufs.push(params)
+        }
+        cache = {gen, mapBuf, meta, paramsBufs}
+        scatterCache.set(this.mesh, cache)
+      }
+
+      // Per-stroke: resolve each owner's pos/nor VBO by identity key.
+      const owners: ScatterTables['owners'] = []
+      let missing = 0
+      for (let i = 0; i * 6 < cache.meta.length; i++) {
+        const posKey = cache.meta[i * 6 + 0] + cache.meta[i * 6 + 1] * 0x100000000
+        const norKey = cache.meta[i * 6 + 2] + cache.meta[i * 6 + 3] * 0x100000000
+        const posBuf = exec.cachedBufferByKey(posKey)
+        const norBuf = exec.cachedBufferByKey(norKey)
+        if (!posBuf || !norBuf) {
+          missing++
+          owners.push(undefined as never)
+          continue
+        }
+        owners.push({
+          posBuf,
+          norBuf,
+          paramsBuf  : cache.paramsBufs[i],
+          cornerCount: cache.meta[i * 6 + 5],
+        })
+      }
+      if (missing === owners.length) {
+        // Nothing drawn yet — no VBOs to scatter into; stay on readback.
+        return
+      }
+      this.stroke.setScatter({mapBuf: cache.mapBuf, owners})
+      if (missing > 0) {
+        console.warn(`[gpu-brush] scatter: ${missing} node VBO(s) not cached yet (will readback-render)`) 
+      }
+    } catch (e) {
+      console.warn('[gpu-brush] scatter setup failed; staying on readback:', e)
+    }
+  }
+
+  /**
+   * §9.6 scatter-map self-check: read one touched owner's pos VBO back and
+   * compare it corner-by-corner against a CPU gather of GpuBrush LIVE_CO over
+   * the seam's corner->vert map (run forceReadback first so LIVE_CO reflects
+   * the GPU state). Serialized on the chain; never throws.
+   */
+  scatterSelfCheck(): Promise<object> {
+    let out: object = {checked: false, reason: 'not run'}
+    return this.enqueue(async () => {
+      out = await this.selfCheckInner()
+    }).then(() => out)
+  }
+
+  /** The §9.6 check body — callers must hold the chain (enqueue / finish). */
+  private async selfCheckInner(): Promise<object> {
+    {
+      const cache = scatterCache.get(this.mesh)
+      const exec = this.mesh.drawBatchExecutorGPU
+      if (!cache || !exec || !this.stroke.stats.gpuResident) {
+        return {checked: false, reason: 'not GPU-resident'}
+      }
+      // Sync the CPU mesh from the GPU co first (LIVE_CO is the reference).
+      const co = await this.stroke.readCo()
+      if (!co) {
+        return {checked: false, reason: 'readback failed'}
+      }
+      this.wasm.GpuBrush_applyCo(this.session, co)
+      const tBytes = this.wasm.GpuBrush_data(this.session, GpuBrushData.TOUCHED_OWNERS)
+      const touched = new Uint32Array(tBytes.buffer, tBytes.byteOffset, tBytes.byteLength / 4)
+      const idx = touched.length ? touched[0] : 0
+      const posKey = cache.meta[idx * 6 + 0] + cache.meta[idx * 6 + 1] * 0x100000000
+      const mapOffset = cache.meta[idx * 6 + 4]
+      const cornerCount = cache.meta[idx * 6 + 5]
+      const posBuf = exec.cachedBufferByKey(posKey)
+      if (!posBuf || !cornerCount) {
+        return {checked: false, reason: 'owner VBO not cached'}
+      }
+      const byteLen = cornerCount * 12
+      const staging = this.stroke.device.createBuffer({
+        label: 'gpuBrush.scatterSelfCheck',
+        size : (byteLen + 3) & ~3,
+        usage: BufferUsage.MAP_READ | BufferUsage.COPY_DST,
+      })
+      const enc = this.stroke.device.createCommandEncoder()
+      enc.copyBufferToBuffer(posBuf, 0, staging, 0, byteLen)
+      this.stroke.device.queue.submit([enc.finish()])
+      await staging.mapAsync(MapMode.READ, 0, byteLen)
+      const got = new Float32Array(staging.getMappedRange(0, byteLen).slice(0))
+      staging.unmap()
+      staging.destroy()
+
+      const mapBytes = this.wasm.GpuBrush_data(this.session, GpuBrushData.SCATTER_MAP).slice()
+      const map = new Uint32Array(mapBytes.buffer, 0, mapBytes.byteLength / 4)
+      let bad = 0
+      let maxErr = 0
+      for (let s = 0; s < cornerCount; s++) {
+        const v = map[mapOffset + s]
+        for (let j = 0; j < 3; j++) {
+          const e = Math.abs(got[s * 3 + j] - co[v * 3 + j])
+          maxErr = Math.max(maxErr, e)
+          if (e > 1e-6) {
+            bad++
+            break
+          }
+        }
+      }
+      const result = {checked: true, ownerIdx: idx, cornerCount, badCorners: bad, maxErr}
+      if (bad > 0) {
+        console.warn('[gpu-brush] scatter self-check FAILED:', result)
+      }
+      return result
+    }
   }
 
   /**
@@ -264,10 +455,21 @@ export class GpuStrokeController {
       this.stroke.stats.dabs++
     }
     if (n > 0) {
-      this.stroke.dab(n)
+      const touched = this.stroke.stats.gpuResident
+        ? (() => {
+            const t = this.wasm.GpuBrush_data(this.session, GpuBrushData.TOUCHED_OWNERS)
+            return new Uint32Array(t.buffer, t.byteOffset, t.byteLength / 4)
+          })()
+        : undefined
+      this.stroke.dab(n, touched)
     }
-    if (this.stroke.valid && !this.shadow) {
+    if (this.stroke.valid && !this.shadow && !this.stroke.stats.gpuResident) {
       this.scheduleReadback()
+    }
+    if (this.stroke.valid && !this.shadow && this.stroke.stats.gpuResident && mirrorIdx === 0) {
+      // GPU-resident: rendering currency comes from the scatter pass; just
+      // repaint (the render queue orders after our compute submit — D3).
+      window.redraw_viewport()
     }
     if (this.stroke.valid && this.shadow && mirrorIdx === 0) {
       this.scheduleShadowDiff()
@@ -314,6 +516,12 @@ export class GpuStrokeController {
     activeController = undefined
     this.completion = this.enqueue(async () => {
       try {
+        if (!this.shadow && this.debug.selfCheckNext && this.stroke.stats.gpuResident) {
+          // §9.6 hook: check the scatter output against the CPU gather before
+          // the final apply refreshes the VBOs from the CPU mesh.
+          this.debug.selfCheckNext = false
+          this.debug.lastSelfCheck = await this.selfCheckInner()
+        }
         if (this.shadow) {
           // CPU path owns the mesh; drop the GPU side.
           this.wasm.GpuBrush_free(this.session)

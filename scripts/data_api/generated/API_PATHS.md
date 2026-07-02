@@ -523,6 +523,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculptcore.dynTopo.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculptcore.dynTopoStatsLabel` | prop | StringProperty | DynTopo Stats |  |
+| `scene.tools.sculptcore.gpuBrushStatsLabel` | prop | StringProperty | GPU Brush Stats |  |
 | `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |

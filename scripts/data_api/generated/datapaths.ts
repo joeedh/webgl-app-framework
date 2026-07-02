@@ -352,6 +352,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.dynTopo.overrides"
   | "scene.tools.sculptcore.dynTopo.smoothLambda"
   | "scene.tools.sculptcore.dynTopoStatsLabel"
+  | "scene.tools.sculptcore.gpuBrushStatsLabel"
   | "scene.tools.sculptcore.inheritDynTopo"
   | "scene.tools.sculptcore.reprojectCustomData"
   | "scene.tools.sculptcore.sharedBrushRadius"
@@ -1099,6 +1100,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.dynTopo.overrides": true;
     "scene.tools.sculptcore.dynTopo.smoothLambda": true;
     "scene.tools.sculptcore.dynTopoStatsLabel": true;
+    "scene.tools.sculptcore.gpuBrushStatsLabel": true;
     "scene.tools.sculptcore.inheritDynTopo": true;
     "scene.tools.sculptcore.reprojectCustomData": true;
     "scene.tools.sculptcore.sharedBrushRadius": true;

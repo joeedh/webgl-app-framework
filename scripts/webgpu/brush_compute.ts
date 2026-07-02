@@ -132,6 +132,55 @@ fn main(@builtin(local_invocation_index) lid: u32, @builtin(workgroup_id) gid: v
 }
 `
 
+/** Scatter kernel (plan §4/M3): fans the compute-pass co into a GPU node's
+ * corner-major position/normal VBOs via the corner->global-vert map — the GPU
+ * twin of fill_leaf_slice. The renderer is flat-shaded (face normal broadcast
+ * to all 3 corners), and a tri's corners are adjacent map slots, so the face
+ * normal is computed inline from the corner's tri triple — no separate
+ * face/vertex normal passes are needed for rendering parity. */
+const SCATTER_WGSL = `
+struct Params { cornerCount: u32, mapOffset: u32, };
+@group(0) @binding(0) var<storage, read>       co_buf: array<vec3<f32>>;
+@group(0) @binding(1) var<storage, read>       corner_vert: array<u32>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<f32>;
+@group(0) @binding(3) var<storage, read_write> out_nor: array<f32>;
+@group(0) @binding(4) var<uniform>             params: Params;
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let s = gid.x;
+  if (s >= params.cornerCount) { return; }
+  let v = corner_vert[params.mapOffset + s];
+  let base = params.mapOffset + (s / 3u) * 3u;
+  let a = co_buf[corner_vert[base]];
+  let b = co_buf[corner_vert[base + 1u]];
+  let c = co_buf[corner_vert[base + 2u]];
+  let n = normalize(cross(b - a, c - a));
+  let p = co_buf[v];
+  out_pos[s * 3u + 0u] = p.x;
+  out_pos[s * 3u + 1u] = p.y;
+  out_pos[s * 3u + 2u] = p.z;
+  out_nor[s * 3u + 0u] = n.x;
+  out_nor[s * 3u + 1u] = n.y;
+  out_nor[s * 3u + 2u] = n.z;
+}
+`
+
+/** One GPU node's scatter targets, resolved by the controller from the batch
+ * executor's buffer cache + the seam's SCATTER_META records. */
+export interface ScatterOwner {
+  posBuf: GPUBuffer
+  norBuf: GPUBuffer
+  /** Uniform {cornerCount, mapOffset} for this owner (cached per layout gen). */
+  paramsBuf: GPUBuffer
+  cornerCount: number
+}
+
+export interface ScatterTables {
+  /** The full corner->global-vert map (cached across strokes per layout gen). */
+  mapBuf: GPUBuffer
+  owners: ScatterOwner[]
+}
+
 /** Per-stroke stats mirrored onto window.DEBUG.gpuBrush / the HUD (plan §9.7). */
 export interface GpuBrushStats {
   kernel: string
@@ -145,6 +194,10 @@ export interface GpuBrushStats {
   uploadMs: number
   submitMs: number
   readbackMs: number
+  /** Kernel+scatter GPU time (timestamp-query; 0 when the feature is absent). */
+  gpuMs: number
+  scatterDispatches: number
+  gpuResident: boolean
   tripwireTripped: boolean
 }
 
@@ -186,7 +239,9 @@ export class GpuBrushStroke {
   valid = false
   stats: GpuBrushStats
 
-  private device: GPUDevice
+  /** The renderer's device (shared queue — D3). Readable by the controller
+   * for scatter-cache buffer creation. */
+  readonly device: GPUDevice
   private wasm: IWasmInterface
   private session: SculptHandle
   private log: (msg: string) => void
@@ -204,6 +259,10 @@ export class GpuBrushStroke {
   private texView: GPUTextureView | null = null
   private sampler: GPUSampler | null = null
 
+  private scatterPipeline: GPUComputePipeline | null = null
+  private scatter: ScatterTables | null = null
+  private scatterBindGroups = new Map<number, GPUBindGroup>()
+
   private tripPipeline: GPUComputePipeline | null = null
   private tripFlag: GPUBuffer | null = null
   private tripStaging: GPUBuffer | null = null
@@ -211,6 +270,12 @@ export class GpuBrushStroke {
 
   private readback: GPUBuffer | null = null
   private deviceLost = false
+
+  // §9.7 GPU pass timing (timestamp-query; all null when the feature is absent).
+  private tsQuerySet: GPUQuerySet | null = null
+  private tsResolve: GPUBuffer | null = null
+  private tsStaging: GPUBuffer | null = null
+  private tsInFlight = false
 
   private capture: {
     kernel: string
@@ -246,6 +311,9 @@ export class GpuBrushStroke {
       uploadMs            : 0,
       submitMs            : 0,
       readbackMs          : 0,
+      gpuMs               : 0,
+      scatterDispatches   : 0,
+      gpuResident         : false,
       tripwireTripped     : false,
     }
     this.device.lost.then(() => {
@@ -327,6 +395,21 @@ export class GpuBrushStroke {
       this.makeWhiteTexture()
     }
 
+    // §9.7: GPU pass timing when the adapter granted timestamp-query.
+    if (dev.features.has('timestamp-query')) {
+      this.tsQuerySet = dev.createQuerySet({label: `gpuBrush.${this.kernel}.ts`, type: 'timestamp', count: 2})
+      this.tsResolve = dev.createBuffer({
+        label: `gpuBrush.${this.kernel}.tsResolve`,
+        size : 16,
+        usage: BufferUsage.QUERY_RESOLVE | BufferUsage.COPY_SRC,
+      })
+      this.tsStaging = dev.createBuffer({
+        label: `gpuBrush.${this.kernel}.tsStaging`,
+        size : 16,
+        usage: BufferUsage.MAP_READ | BufferUsage.COPY_DST,
+      })
+    }
+
     // Non-finite tripwire (plan §9.4).
     this.tripPipeline = dev.createComputePipeline({
       label  : `gpuBrush.${this.kernel}.tripwire`,
@@ -377,6 +460,79 @@ export class GpuBrushStroke {
   }
 
   /**
+   * Install the M3 scatter tables (controller-resolved node VBOs + the cached
+   * corner->vert map). From then on `dab()` encodes a scatter pass over each
+   * touched owner in the same submit, and the stroke is GPU-resident — no
+   * per-dab readback. Requires begin() to have run (needs the pipeline's
+   * device objects).
+   */
+  setScatter(tables: ScatterTables): boolean {
+    if (!this.pipeline) {
+      return false
+    }
+    const dev = this.device
+    dev.pushErrorScope('validation')
+    if (!this.scatterPipeline) {
+      this.scatterPipeline = dev.createComputePipeline({
+        label  : `gpuBrush.${this.kernel}.scatter`,
+        layout : 'auto',
+        compute: {
+          module    : dev.createShaderModule({code: SCATTER_WGSL}),
+          entryPoint: 'main',
+        },
+      })
+    }
+    this.scatter = tables
+    this.scatterBindGroups.clear()
+    void dev.popErrorScope().then((err) => {
+      if (err) {
+        this.log(`scatter pipeline failed: ${err.message} — falling back to per-dab readback`)
+        this.scatter = null
+        this.stats.gpuResident = false
+      }
+    })
+    this.stats.gpuResident = true
+    return true
+  }
+
+  /** Encode scatter passes for the given owner (meta) indices into `enc`. */
+  private encodeScatter(enc: GPUCommandEncoder, ownerIndices: ArrayLike<number>) {
+    const scatter = this.scatter
+    const co = this.bufs.get(0)
+    if (!scatter || !this.scatterPipeline || !co) {
+      return
+    }
+    for (let i = 0; i < ownerIndices.length; i++) {
+      const idx = ownerIndices[i]
+      const owner = scatter.owners[idx]
+      if (!owner) {
+        continue
+      }
+      let bg = this.scatterBindGroups.get(idx)
+      if (!bg) {
+        bg = this.device.createBindGroup({
+          label  : `gpuBrush.${this.kernel}.scatter.bg${idx}`,
+          layout : this.scatterPipeline.getBindGroupLayout(0),
+          entries: [
+            {binding: 0, resource: {buffer: co}},
+            {binding: 1, resource: {buffer: scatter.mapBuf}},
+            {binding: 2, resource: {buffer: owner.posBuf}},
+            {binding: 3, resource: {buffer: owner.norBuf}},
+            {binding: 4, resource: {buffer: owner.paramsBuf}},
+          ],
+        })
+        this.scatterBindGroups.set(idx, bg)
+      }
+      const pass = enc.beginComputePass({label: `gpuBrush.${this.kernel}.scatterPass`})
+      pass.setPipeline(this.scatterPipeline)
+      pass.setBindGroup(0, bg)
+      pass.dispatchWorkgroups(Math.ceil(owner.cornerCount / 64))
+      pass.end()
+      this.stats.scatterDispatches++
+    }
+  }
+
+  /**
    * Overwrite the GPU co buffer from packed CPU positions — the shadow-verify
    * re-sync (divergence must never compound across dabs).
    */
@@ -395,7 +551,7 @@ export class GpuBrushStroke {
    * the filter set changed) and submits kernel + tripwire in one command
    * buffer. Synchronous — the queue orders everything.
    */
-  dab(nodeCount: number): boolean {
+  dab(nodeCount: number, scatterOwners?: ArrayLike<number>): boolean {
     if (!this.valid || nodeCount <= 0) {
       return this.valid
     }
@@ -450,12 +606,25 @@ export class GpuBrushStroke {
     if (this.has(11)) {
       enc.copyBufferToBuffer(this.bufs.get(0)!, 0, this.bufs.get(11)!, 0, this.elemCount * VEC3_STRIDE)
     }
-    const pass = enc.beginComputePass({label: `gpuBrush.${this.kernel}.pass`})
+    const wantTs = !!this.tsQuerySet && !this.tsInFlight
+    const pass = enc.beginComputePass({
+      label          : `gpuBrush.${this.kernel}.pass`,
+      timestampWrites: wantTs
+        ? {querySet: this.tsQuerySet!, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1}
+        : undefined,
+    })
     pass.setPipeline(this.pipeline)
     pass.setBindGroup(0, this.bindGroup)
     pass.dispatchWorkgroups(nodeCount)
     pass.end()
+    if (wantTs) {
+      enc.resolveQuerySet(this.tsQuerySet!, 0, 2, this.tsResolve!, 0)
+      enc.copyBufferToBuffer(this.tsResolve!, 0, this.tsStaging!, 0, 16)
+    }
     this.encodeTripwire(enc, nodeCount)
+    if (scatterOwners && scatterOwners.length) {
+      this.encodeScatter(enc, scatterOwners)
+    }
     dev.queue.submit([enc.finish()])
 
     if (firstDab) {
@@ -466,6 +635,9 @@ export class GpuBrushStroke {
       })
     }
     this.pollTripwire()
+    if (wantTs) {
+      this.pollTimestamps()
+    }
 
     const t2 = performance.now()
     this.stats.dispatches++
@@ -530,12 +702,24 @@ export class GpuBrushStroke {
     this.readback = null
     this.tripFlag?.destroy()
     this.tripFlag = null
+    this.tsQuerySet?.destroy()
+    this.tsQuerySet = null
+    this.tsResolve?.destroy()
+    this.tsResolve = null
+    if (!this.tsInFlight) {
+      this.tsStaging?.destroy()
+    }
+    this.tsStaging = null
     if (!this.tripInFlight) {
       this.tripStaging?.destroy()
     }
     this.tripStaging = null
     this.texture?.destroy()
     this.texture = null
+    // Scatter map/params buffers are owned by the controller's cross-stroke
+    // cache — only drop this stroke's references.
+    this.scatter = null
+    this.scatterBindGroups.clear()
     this.pipeline = null
     this.bindGroup = null
     this.valid = false
@@ -663,6 +847,26 @@ export class GpuBrushStroke {
     if (this.tripStaging && !this.tripInFlight) {
       enc.copyBufferToBuffer(this.tripFlag, 0, this.tripStaging, 0, 4)
     }
+  }
+
+  /** Async GPU-time accumulation (at most one map in flight; never stalls). */
+  private pollTimestamps() {
+    const staging = this.tsStaging
+    if (!staging || this.tsInFlight) {
+      return
+    }
+    this.tsInFlight = true
+    staging
+      .mapAsync(MapMode.READ, 0, 16)
+      .then(() => {
+        const t = new BigUint64Array(staging.getMappedRange(0, 16).slice(0))
+        staging.unmap()
+        this.tsInFlight = false
+        this.stats.gpuMs += Number(t[1] - t[0]) / 1e6
+      })
+      .catch(() => {
+        this.tsInFlight = false
+      })
   }
 
   /** Async, never stalls the stroke: map the tripwire staging copy and flag

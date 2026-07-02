@@ -93,6 +93,11 @@ export interface GpuBrushTestResult {
   worldUndoMaxDiff?: number
   /** The captured replay fixture (opts.capture). */
   fixture?: object
+  /** M3: the GPU pass rendered via the scatter path (no per-dab readback). */
+  gpuResident?: boolean
+  scatterDispatches?: number
+  /** §9.6 scatter-map self-check, run at the world-space GPU stroke's finish. */
+  selfCheck?: object
 }
 
 interface TestOpts {
@@ -256,8 +261,16 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
       meshLog.undo(mesh.mesh, mesh.spatial)
 
       FeatureFlags.set('sculptcore.gpu_brush', true)
+      ensureGpuBrushDebug().selfCheckNext = true
       const run = runSculptcoreStroke({mesh, brush, dabs, radius, symmetryAxes: 1})
       await run.completion
+      const dbg2 = ensureGpuBrushDebug()
+      result.selfCheck = dbg2.lastSelfCheck
+      const worldStats = dbg2.lastStats as unknown as
+        | {gpuResident?: boolean; scatterDispatches?: number}
+        | undefined
+      result.gpuResident = worldStats?.gpuResident
+      result.scatterDispatches = worldStats?.scatterDispatches
       const gpu2 = readGpuBuffer(mesh, 'position')
       meshLog.undo(mesh.mesh, mesh.spatial)
       const undone2 = readGpuBuffer(mesh, 'position')

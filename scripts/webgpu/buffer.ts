@@ -7,14 +7,15 @@
 
 import {BufferUsage} from './flags.js'
 
-export type GpuBufferUsage = 'vertex' | 'index' | 'uniform' | 'storage' | 'indirect'
+export type GpuBufferUsage = 'vertex' | 'index' | 'uniform' | 'storage' | 'indirect' | 'copy-src'
 
 const usageFlags: Record<GpuBufferUsage, number> = {
-  vertex  : BufferUsage.VERTEX,
-  index   : BufferUsage.INDEX,
-  uniform : BufferUsage.UNIFORM,
-  storage : BufferUsage.STORAGE,
-  indirect: BufferUsage.INDIRECT,
+  vertex    : BufferUsage.VERTEX,
+  index     : BufferUsage.INDEX,
+  uniform   : BufferUsage.UNIFORM,
+  storage   : BufferUsage.STORAGE,
+  indirect  : BufferUsage.INDIRECT,
+  'copy-src': BufferUsage.COPY_SRC,
 }
 
 export interface GpuBufferOptions {

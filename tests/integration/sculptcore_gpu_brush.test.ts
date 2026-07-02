@@ -62,6 +62,9 @@ interface GpuBrushTestResult {
   worldMoved?: boolean
   worldUndoMaxDiff?: number | null
   fixture?: object
+  gpuResident?: boolean
+  scatterDispatches?: number
+  selfCheck?: {checked?: boolean; badCorners?: number; maxErr?: number; reason?: string}
   stats?: {dabs: number; dispatches: number; tripwireTripped: boolean}
 }
 
@@ -166,6 +169,17 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore GPU brush parity (%s)'
 
   test('§9.3 shadow-verify reports zero divergent dabs', () => {
     expect(r.shadowDivergences).toBe(0)
+  })
+
+  test('M3: GPU-resident scatter path engaged, self-check clean (§9.6)', () => {
+    expect(r.gpuResident).toBe(true)
+    expect(r.scatterDispatches!).toBeGreaterThan(0)
+    if (r.selfCheck?.checked !== true) {
+      // eslint-disable-next-line no-console
+      console.error('[sculptcore-gpu-brush] self-check did not run:', r.selfCheck)
+    }
+    expect(r.selfCheck?.checked).toBe(true)
+    expect(r.selfCheck?.badCorners).toBe(0)
   })
 
   test('screen-space end-to-end stroke moved geometry sanely', () => {
