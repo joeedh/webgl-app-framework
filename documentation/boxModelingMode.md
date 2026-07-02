@@ -79,12 +79,17 @@ queries):
 | Select All / None / Auto | `litemesh.select_all(mode=...)` | `A` / `Alt+A` | auto = all-if-empty else none |
 | Box select | `litemesh.select_box()` | `B` | `SpatialTree::castScreenRect` (frustum) |
 | Circle/brush select | `litemesh.select_circle()` | `C` | `SpatialTree::castScreenCircle` (cone), continuous drag, one undo step |
-| Select nearest | `litemesh.select_nearest()` | click | `pickVert`/`pickFace`; sets the domain's active element |
+| Select nearest | `litemesh.select_nearest()` | left click | `pickVert`/`pickEdge`/`pickFace` in the first enabled domain; sets the domain's active element |
+| Loop select | `litemesh.select_loop(ring=...)` | ctrl-click / ctrl-shift-click | edge loop (`walkEdgeLoop`), edge ring, or face loop from the edge under the cursor |
 | Select shortest path | `litemesh.select_path()` | click | Dijkstra from the active vertex; endpoint becomes the new active vertex |
 
-Edge-domain nearest-pick currently falls back to vertex picking (see
-`SelectNearestLiteMeshOp`); dedicated edge cone/frustum collection is listed
-as a gap in the plan doc.
+Left click runs `select_nearest` non-modally through the toolmode's
+`on_mousedown` (shift deselects); ctrl-click loop-selects — the edge loop in
+edge mode, the face loop in face mode, and the edge **ring** ("face loop edge
+select") with ctrl-shift. Edge picking resolves the ray's hit face to its
+nearest edge (`Mesh::faceEdgeNearest`). Hovering (no buttons held) highlights
+the element under the cursor in cyan via the selection overlay
+(`buildSelectionBatch` hover params; `LiteMesh.setHover`).
 
 ## Modeling tools
 
@@ -103,7 +108,7 @@ transform hand-off.
 | Inset region | `litemesh.inset_region()` | `I` | Parametric modal: builds the inset ring at zero offset inside one step, then the drag maps to `co = base + width·tangent` |
 | Bevel/chamfer vertices | `litemesh.bevel_verts()` | `V` | Reuses the inset modal (`LiteMeshInsetOp` subclass); replaces each selected vert with one offset vert per incident edge + a cap n-gon |
 | Subdivide | `litemesh.subdivide(numCuts=...)` | `D` | Pattern subdivision of selected edges/faces, Blender-style N-cuts; immediate, `numCuts` is redo-tweakable |
-| Loop cut | `litemesh.loop_cut()` | `Ctrl+R` | Modal ray-pick of a quad-strip ring; cuts the whole ring at its midpoint in one step |
+| Loop cut | `litemesh.loop_cut()` | `Ctrl+R` | Modal: hover previews the ring polyline (`Mesh::loopCutPreviewCoords`, yellow drawlines); click cuts the whole ring at its midpoint in one step |
 
 "T" tools (marked with a target in the plan) use `transform=true` to chain a
 `ToolMacro` of the geometry op + `TranslateOp`: the geometry op emits an

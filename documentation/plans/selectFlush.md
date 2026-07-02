@@ -1,5 +1,15 @@
 # On-demand selection-domain flushing
 
+> **Status: IMPLEMENTED (2026-07-02).** M1–M4 landed: `select_derive.{h,cc}`
+> (derive + resolve queries, absorbing `gatherMovableVerts` /
+> `regionBoundaryEdges`), the `sculptcore.select_flush_prefer_op_domain`
+> feature flag mirrored into the bound `MeshLog.selectFlushPreferOpDomain`
+> member (the auto_defrag TS-side-flag pattern), op wiring
+> (extrude region/individual/wire, inset, split-off, bevel, subdivide;
+> loopcut has no selection input), the `test_select_derive` ctest, and the
+> per-backend headless integration test
+> `tests/integration/sculptcore_selectflush.test.ts`.
+
 Box modeling's `select` attribute category (`documentation/boxModelingMode.md`)
 is three independent bool columns — `VertexData::select`, `EdgeData::select`,
 `FaceData::select` — with no relationship enforced between them. Today, an op
