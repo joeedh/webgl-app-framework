@@ -327,6 +327,10 @@ function dumpScene(): unknown {
     // the sphere poles, diffing GPU position/color buffers to assert invert,
     // draw-sharp boundedness, mask gating, brush.color, and accumulate flags.
     brushtest    : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
+    // Reflect the sculpt-layer driver (`__layerTest`): a LAYERDRAW stroke on a
+    // fresh sculpt layer — displacement, post-stroke position checksum (the
+    // wasm↔native bit-parity gate), and the one-undo residual.
+    layertest    : (globalThis as {__layerTestResult?: unknown}).__layerTestResult,
     // Reflect the boundary-constraint driver (`__boundaryTest`): seam-marking
     // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
     // invariants (non-2-valence verts, components) and both undo stacks.

@@ -34,6 +34,8 @@ import './litemesh_quad_remesh_support'
 // Side-effect: registers globalThis.__brushTest for the brush-behavior test.
 import './litemesh_brushtest_support'
 import './litemesh_gpubrush_test_support'
+// Side-effect: registers globalThis.__layerTest for the sculpt-layer test.
+import './litemesh_layertest_support'
 // Side-effect: registers globalThis.__boundaryTest for the boundary-constraint test.
 import './litemesh_boundarytest_support'
 // Side-effect: registers globalThis.__undoMemTest for the undo-memory test.

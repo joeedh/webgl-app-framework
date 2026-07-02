@@ -15,6 +15,7 @@ import {
   configureDynTopoParams,
   isGrabTool,
 } from './sculptcore_bindings'
+import type {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {
   BrushFlags,
   DynTopoEdgeModeSC,
@@ -752,13 +753,19 @@ export function runSculptcoreStroke(opts: {
    * exactly like `SculptPaintOp.applyDab`. The test scene is object-local at the
    * origin, so the world-space dabs here are already in mirror space. */
   symmetryAxes?: number
+  /** Test seam: run this sculptcore kernel instead of the tool's mapped one
+   * (e.g. LAYERDRAW, which has no TS SculptTools entry). */
+  brushTypeOverride?: SculptBrushes
+  /** Test seam: point command 0's attr handle `attrIdx` at `layerIndex`
+   * (a per-domain AttrGroup index) after each dab's buildBrushProgram. */
+  attrLayerOverride?: {attrIdx: number; layerIndex: number}
 }): {dabs: number; skipped: boolean; completion?: Promise<void>} {
   const wasm = getWasmImmediate()!
   const {mesh, brush} = opts
   const radius = opts.radius ?? brush.radius
   const dist = opts.dist ?? 0
 
-  const brushType = toolToSculptBrush(brush.tool)
+  const brushType = opts.brushTypeOverride ?? toolToSculptBrush(brush.tool)
   if (brushType === undefined) {
     return {dabs: 0, skipped: true}
   }
@@ -910,6 +917,9 @@ export function runSculptcoreStroke(opts: {
       if (!gpu || gpu.shadow) {
         const prog = wasm.manager.construct('sculptcore::brush::BrushProgram') as BrushProgram
         buildBrushProgram(prog, brushType, brush, radius, mesh)
+        if (opts.attrLayerOverride !== undefined) {
+          prog.setCommandAttrLayer(0, opts.attrLayerOverride.attrIdx, opts.attrLayerOverride.layerIndex)
+        }
         wasmExec.applyDab(
           prog,
           wasm.float3(new Vector3(dabCenter)),
