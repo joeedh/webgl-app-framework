@@ -361,6 +361,8 @@ export interface IMeshLogSelect {
   selectOne(m: unknown, domain: number, idx: number, state: boolean): void
   selectAllElems(m: unknown, domain: number, state: number): void
   selectShortestPath(m: unknown, vEnd: number, state: number): number
+  /** kind 0 = edge loop, 1 = edge ring, 2 = face loop; seeded at an edge. */
+  selectLoop(m: unknown, seedEdge: number, kind: number, state: number): number
   selectScreenCircle(
     m: unknown,
     tree: unknown,
@@ -1719,6 +1721,26 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
+  /** Resolve a ray to the mesh edge nearest the hit point (-1 on a miss): castRay
+   * to a face, then the C++ faceEdgeNearest picks the closest of its edges. The
+   * edge-mode click pick and the loop-select seed. */
+  pickEdge(origin: Vector3, dir: Vector3): number {
+    const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    try {
+      const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+      const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+      const hit = this.spatial.castRay(originF3, dirF3, isectOut)
+      const f = hit ? (isectOut as unknown as {faceIndex: number}).faceIndex : -1
+      if (f < 0) {
+        return -1
+      }
+      const p = (isectOut as unknown as {p: unknown}).p
+      return (this.mesh as unknown as {faceEdgeNearest(f: number, p: unknown): number}).faceEdgeNearest(f, p)
+    } finally {
+      ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
+  }
+
   /** Cone (circle/brush) select through the cursor: pick + select happen in C++
    * (no index array crosses the binding). The op brackets the step. */
   selectCircle(
@@ -2261,7 +2283,10 @@ export class LiteMesh extends SceneObjectData {
     // Wireframe / points overlays + xray (box-modeling toolmode only; undefined
     // elsewhere).
     const drawWireframe = !!(toolmode as unknown as {drawWireframe?: boolean})?.drawWireframe
-    const drawPoints = !!(toolmode as unknown as {drawPoints?: boolean})?.drawPoints
+    // Vertex points only make sense while vertex selection mode is on
+    // (SelMask.VERTEX = 1 in boxModelSelMode).
+    const tmSel = (toolmode as unknown as {boxModelSelMode?: number})?.boxModelSelMode ?? 0
+    const drawPoints = !!(toolmode as unknown as {drawPoints?: boolean})?.drawPoints && (tmSel & 1) !== 0
     const xray = !!(toolmode as unknown as {xray?: boolean})?.xray
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
     // unchanged, so pushing every frame is cheap.

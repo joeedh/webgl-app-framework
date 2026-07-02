@@ -140,7 +140,8 @@ export abstract class LiteMeshSelectOpBase<
 
 /**
  * Select all / none / auto (auto = all-if-nothing-selected, else none). Operates
- * on every domain in the current selection mode.
+ * on every element domain regardless of the current selection mode, so A /
+ * Alt+A never leave stale selection in a disabled domain.
  */
 export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumProperty}> {
   static tooldef() {
@@ -161,7 +162,7 @@ export class SelectAllLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPropert
       return
     }
     const log = this._log()
-    const domains = this._domains(ctx)
+    const domains = [0, 1, 2] // all domains, not just the active selection mode
     let mode = this.inputs.mode.getValue()
     if (mode === 2) {
       // auto: select-all unless something is already selected in any domain.
@@ -355,6 +356,21 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
     this._refreshOverlay(mesh, log)
   }
 
+  /** Draw the brush circle at the cursor (cleared when the modal ends). */
+  private _drawCircle(e: PointerEvent): void {
+    const view3d = this._ctx()?.view3d
+    if (!view3d?.overdraw) {
+      return
+    }
+    const m = view3d.getLocalMouse(e.x, e.y)
+    view3d.overdraw.clear()
+    ;(view3d.overdraw as unknown as {circle(p: number[], r: number, stroke?: string): unknown}).circle(
+      [m[0], m[1]],
+      this.inputs.radius.getValue(),
+      'white'
+    )
+  }
+
   on_pointerdown(e: PointerEvent): void {
     if (e.button === 2) {
       this._commit()
@@ -369,6 +385,7 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
     if (this.mdown) {
       this._stamp(e)
     }
+    this._drawCircle(e)
   }
 
   on_pointerup(_e: PointerEvent): void {
@@ -380,6 +397,11 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
       this._commit()
       this.modalEnd(e.code === 'Escape')
     }
+  }
+
+  modalEnd(wasCancelled: boolean): void {
+    this._ctx()?.view3d?.overdraw?.clear()
+    super.modalEnd(wasCancelled)
   }
 
   /** Close the accumulated step and record it for undo. */
@@ -398,11 +420,18 @@ export class SelectCircleLiteMeshOp extends LiteMeshSelectOpBase<{radius: FloatP
 }
 
 /**
- * Select the single element nearest the cursor (within the brush radius), and
- * make it the active element of its domain. The picking domain is the first one
- * enabled in the selection mode (vertex, else edge, else face).
+ * Select the single element nearest the cursor, and make it the active element
+ * of its domain. The picking domain is the first one enabled in the selection
+ * mode (vertex, else edge, else face); edge mode picks the hit face's nearest
+ * edge. Modal from the toolbar (waits for a click); the toolmode's left-click
+ * binding instead passes the click position via x/y and runs it non-modally.
  */
-export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumProperty}> {
+export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
+  mode: EnumProperty
+  x: FloatProperty
+  y: FloatProperty
+  useXY: BoolProperty
+}> {
   static tooldef() {
     return {
       toolpath: 'litemesh.select_nearest',
@@ -410,7 +439,11 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPro
       icon    : Icons.CURSOR_ARROW,
       is_modal: true,
       inputs: {
-        mode: new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
+        mode : new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
+        // Local-mouse click position for the non-modal (toolmode click) path.
+        x    : new FloatProperty(0).private(),
+        y    : new FloatProperty(0).private(),
+        useXY: new BoolProperty(false).private(),
       },
     }
   }
@@ -419,18 +452,39 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPro
     return this.modal_ctx as unknown as SelModalCtx | undefined
   }
 
-  private _localRay(view3d: SelModalView3D, obmatrix: Matrix4, lx: number, ly: number) {
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
-    imat.invert()
-    const d = 0.9999
-    const p1 = new Vector4([lx, ly, -d, 1.0])
-    view3d.unproject(p1, imat)
-    const origin = new Vector3(p1)
-    const p2 = new Vector4([lx, ly, d, 1.0])
-    view3d.unproject(p2, imat)
-    const dir = new Vector3(p2).sub(origin)
-    return {origin, dir}
+  /** Pick + select at local mouse (lx,ly); one undo step. Returns hit index. */
+  _pickAndSelect(ctx: ToolContext, lx: number, ly: number): number {
+    const view3d = (ctx as unknown as SelModalCtx).view3d
+    const object = (ctx as unknown as SelModalCtx).object
+    const mesh = this._getMesh(ctx)
+    if (!view3d || !object || !mesh) {
+      return -1
+    }
+    const obmatrix = object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(view3d, obmatrix, lx, ly)
+
+    const domain = this._domains(ctx)[0]
+    let idx = -1
+    if (domain === 2) {
+      idx = mesh.pickFace(origin, dir)
+    } else if (domain === 1) {
+      idx = mesh.pickEdge(origin, dir)
+    } else {
+      idx = mesh.pickVert(origin, dir)
+    }
+    if (idx < 0) {
+      return -1
+    }
+    const state = this.inputs.mode.getValue() !== SelToolModes.SUB
+
+    const log = this._log()
+    log.selectionBeginStep()
+    log.selectOne(mesh.mesh, domain, idx, state)
+    log.setActiveElem(domain, idx)
+    log.selectionEndStep()
+    this._logStepId = log.lastStepId()
+    this._refreshOverlay(mesh, log)
+    return idx
   }
 
   on_pointerdown(e: PointerEvent): void {
@@ -443,42 +497,74 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumPro
       return
     }
     this.inputs.mode.setValue(e.shiftKey ? SelToolModes.SUB : SelToolModes.ADD)
-    const mesh = this._getMesh(ctx as unknown as ToolContext)
-    if (!mesh) {
-      this.modalEnd(false)
-      return
-    }
     const m = ctx.view3d.getLocalMouse(e.x, e.y)
-    const obmatrix = ctx.object.outputs.matrix.getValue()
-    const {origin, dir} = this._localRay(ctx.view3d, obmatrix, m[0], m[1])
-
-    const domain = this._domains(ctx as unknown as ToolContext)[0]
-    let idx = -1
-    if (domain === 2) {
-      idx = mesh.pickFace(origin, dir)
-    } else {
-      // vertex (and, for now, edge mode) resolve to the nearest vertex hit.
-      idx = mesh.pickVert(origin, dir)
-    }
-    if (idx < 0) {
-      this.modalEnd(false)
-      return
-    }
-    const pickDomain = domain === 2 ? 2 : 0
-    const state = e.shiftKey ? false : true
-
-    const log = this._log()
-    log.selectionBeginStep()
-    log.selectOne(mesh.mesh, pickDomain, idx, state)
-    log.setActiveElem(pickDomain, idx)
-    log.selectionEndStep()
-    this._logStepId = log.lastStepId()
-    this._refreshOverlay(mesh, log)
+    this._pickAndSelect(ctx as unknown as ToolContext, m[0], m[1])
     this.modalEnd(false)
   }
 
-  // Work happens in on_pointerdown; redo replays via MeshLog.
-  exec(_ctx: ToolContext) {}
+  // Non-modal path (toolmode click): the position comes in via x/y inputs.
+  exec(ctx: ToolContext) {
+    if (this.inputs.useXY.getValue()) {
+      this._pickAndSelect(ctx, this.inputs.x.getValue(), this.inputs.y.getValue())
+    }
+  }
+}
+
+/**
+ * Loop select seeded at the edge under the cursor (the toolmode's ctrl-click):
+ * edge mode selects the edge LOOP (end-to-end chain), ctrl-shift the edge RING
+ * (the parallel edges a face loop crosses — "face loop edge select"), and face
+ * mode the face loop. Non-modal; the click position comes in via x/y.
+ */
+export class SelectLoopLiteMeshOp extends LiteMeshSelectOpBase<{
+  mode: EnumProperty
+  x: FloatProperty
+  y: FloatProperty
+  ring: BoolProperty
+}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.select_loop',
+      uiname  : 'Select Loop',
+      icon    : Icons.SELECT_PATH,
+      inputs: {
+        mode: new EnumProperty(SelToolModes.ADD, SelToolModes).private(),
+        x   : new FloatProperty(0).private(),
+        y   : new FloatProperty(0).private(),
+        ring: new BoolProperty(false).private(),
+      },
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const view3d = (ctx as unknown as SelModalCtx).view3d
+    const object = (ctx as unknown as SelModalCtx).object
+    const mesh = this._getMesh(ctx)
+    if (!view3d || !object || !mesh) {
+      return
+    }
+    const obmatrix = object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(view3d, obmatrix, this.inputs.x.getValue(), this.inputs.y.getValue())
+    const seed = mesh.pickEdge(origin, dir)
+    if (seed < 0) {
+      return
+    }
+    const ring = this.inputs.ring.getValue()
+    const domains = this._domains(ctx)
+    // face mode (and not the explicit ring ask) walks the face loop; otherwise
+    // the edge loop, or the edge ring under ctrl-shift.
+    const faceMode = domains.includes(2) && !domains.includes(1) && !domains.includes(0)
+    const kind = faceMode && !ring ? 2 : ring ? 1 : 0
+    const state = this.inputs.mode.getValue() !== SelToolModes.SUB ? 1 : 0
+
+    const log = this._log()
+    log.selectionBeginStep()
+    log.selectLoop(mesh.mesh, seed, kind, state)
+    log.setActiveElem(1, seed)
+    log.selectionEndStep()
+    this._logStepId = log.lastStepId()
+    this._refreshOverlay(mesh, log)
+  }
 }
 
 /**
@@ -1091,6 +1177,7 @@ export const BoxModelSelectOps = [
   SelectBoxLiteMeshOp,
   SelectCircleLiteMeshOp,
   SelectNearestLiteMeshOp,
+  SelectLoopLiteMeshOp,
   SelectPathLiteMeshOp,
 ]
 

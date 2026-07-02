@@ -11,8 +11,9 @@
 import {Container, DataAPI, DataStruct, HotKey, KeyMap, nstructjs} from '../../../path.ux/pathux'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
-import {SelMask} from '../selectmode.js'
+import {SelMask, SelToolModes} from '../selectmode.js'
 import type {ViewContext} from '../../../core/context'
+import {SelectLoopLiteMeshOp, SelectNearestLiteMeshOp} from '../../../lite-mesh/litemesh_modeling_ops'
 
 export class BoxModelToolMode extends ToolMode {
   static STRUCT = nstructjs.inlineRegister(
@@ -121,6 +122,35 @@ BoxModelToolMode {
     strip.tool('litemesh.loop_cut()')
 
     header.flushUpdate()
+  }
+
+  /** Left-click selection: plain click selects the nearest element in the first
+   * enabled selection domain (shift deselects); ctrl-click loop-selects (edge
+   * loop / face loop; ctrl-shift = the edge ring, "face loop edge select"). */
+  on_mousedown(e: PointerEvent, x: number, y: number): boolean | void {
+    if (e.button !== 0 || e.altKey || this.hasWidgetHighlight()) {
+      return false
+    }
+    const ctx = this.ctx
+    if (!ctx?.view3d || !ctx.object) {
+      return false
+    }
+    if (e.ctrlKey) {
+      const op = new SelectLoopLiteMeshOp()
+      op.inputs.x.setValue(x)
+      op.inputs.y.setValue(y)
+      op.inputs.ring.setValue(e.shiftKey)
+      ctx.toolstack.execTool(ctx, op)
+      return true
+    }
+    const op = new SelectNearestLiteMeshOp()
+    op.is_modal = false // click position is already known; skip the modal wait
+    op.inputs.useXY.setValue(true)
+    op.inputs.x.setValue(x)
+    op.inputs.y.setValue(y)
+    op.inputs.mode.setValue(e.shiftKey ? SelToolModes.SUB : SelToolModes.ADD)
+    ctx.toolstack.execTool(ctx, op)
+    return true
   }
 
   defineKeyMap(): void {
