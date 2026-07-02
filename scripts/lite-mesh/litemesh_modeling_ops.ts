@@ -872,7 +872,7 @@ export class LiteMeshSplitOffOp extends LiteMeshTopoOpBase<{}, {normalSpace: Mat
 }
 
 /** Unproject a screen point (local mouse coords) to an object-local pick ray. */
-function localRay(
+export function localRay(
   view3d: SelModalView3D,
   obmatrix: Matrix4,
   lx: number,
@@ -919,11 +919,15 @@ export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase<{numCuts: IntPropert
   }
 }
 
-/** Loop cut: click on a quad strip to cut the whole ring at its midpoint; the new
- * loop is left selected (grab/slide it afterward). Modal so the cut lands under
- * the cursor. The C++ side does the ray-cast + seed + cut; redo replays via
- * MeshLog. (Live ring preview + multi-cut + slide-on-create are M5 polish.) */
+/** Loop cut: hover shows a live preview of the ring that will be cut (yellow
+ * polyline at the future cut positions); click commits the cut at that ring and
+ * leaves the new loop selected (grab/slide it afterward). Modal so the cut lands
+ * under the cursor. The C++ side does the ray-cast + seed + cut; redo replays
+ * via MeshLog. (Multi-cut + slide-on-create are later polish.) */
 export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
+  private _previewSeed = -1
+  private _drawlines: unknown[] = []
+
   static tooldef() {
     return {
       toolpath: 'litemesh.loop_cut',
@@ -938,8 +942,51 @@ export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
     return this.modal_ctx as unknown as SelModalCtx | undefined
   }
 
+  private _clearPreview(): void {
+    const view3d = this._ctx()?.view3d as unknown as {removeDrawLine?(dl: unknown): void} | undefined
+    if (view3d?.removeDrawLine) {
+      for (const dl of this._drawlines) {
+        view3d.removeDrawLine(dl)
+      }
+    }
+    this._drawlines.length = 0
+    this._previewSeed = -1
+  }
+
+  on_pointermove(e: PointerEvent): void {
+    const ctx = this._ctx()
+    const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
+    if (!ctx?.view3d || !ctx.object || !mesh) {
+      return
+    }
+    const mp = ctx.view3d.getLocalMouse(e.x, e.y)
+    const obmat = ctx.object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(ctx.view3d, obmat, mp[0], mp[1])
+    const seed = mesh.pickEdge(origin, dir)
+    if (seed === this._previewSeed) {
+      return
+    }
+    this._clearPreview()
+    this._previewSeed = seed
+    if (seed < 0) {
+      window.redraw_viewport()
+      return
+    }
+    const view3d = ctx.view3d as unknown as {
+      makeDrawLine(a: Vector3, b: Vector3, color: number[]): unknown
+    }
+    const c = mesh.loopCutPreviewCoords(seed)
+    for (let i = 0; i + 5 < c.length; i += 6) {
+      const a = new Vector3([c[i], c[i + 1], c[i + 2]])
+      const b = new Vector3([c[i + 3], c[i + 4], c[i + 5]])
+      this._drawlines.push(view3d.makeDrawLine(a, b, [1.0, 0.9, 0.2, 1.0]))
+    }
+    window.redraw_viewport()
+  }
+
   on_pointerdown(e: PointerEvent): void {
     if (e.button === 2) {
+      this._clearPreview()
       this.modalEnd(true)
       return
     }
@@ -949,12 +996,14 @@ export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
     const ctx = this._ctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
     if (!ctx?.view3d || !ctx.object || !mesh) {
+      this._clearPreview()
       this.modalEnd(true)
       return
     }
     const mp = ctx.view3d.getLocalMouse(e.x, e.y)
     const obmat = ctx.object.outputs.matrix.getValue()
     const {origin, dir} = localRay(ctx.view3d, obmat, mp[0], mp[1])
+    this._clearPreview()
     const log = this._log()
     const verts = mesh.loopCutAtRay(log, origin, dir)
     if (verts.length === 0) {
@@ -969,6 +1018,7 @@ export class LiteMeshLoopCutOp extends LiteMeshTopoOpBase {
 
   on_keydown(e: KeyboardEvent): void {
     if (e.code === 'Escape') {
+      this._clearPreview()
       this.modalEnd(true)
     }
   }

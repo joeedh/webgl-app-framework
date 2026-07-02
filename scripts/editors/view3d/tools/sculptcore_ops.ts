@@ -181,6 +181,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       const mesh = ctx.object!.data! as LiteMesh
       SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
       mesh.regenBounds()
+      // The stroke path consumes the spatial flush the draw path keys revision
+      // bumps on; bump explicitly so wireframe/points overlays rebuild.
+      mesh.meshRevision++
       window.redraw_viewport()
     }
   }
@@ -190,6 +193,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       const mesh = ctx.object!.data! as LiteMesh
       SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
       mesh.regenBounds()
+      mesh.meshRevision++
       window.redraw_viewport()
     }
   }
@@ -608,6 +612,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // Dyntopo changes the seam/feature topology; refresh the overlay batch.
     if (mesh instanceof LiteMesh) {
       mesh.markSeamsDirty()
+      // The wireframe/points overlays rebuild on meshRevision, but the stroke
+      // path's own spatial.update calls consume the flush the draw path bumps
+      // it on — bump here so the overlays reflect the stroke at its end.
+      // (Per-dab rebuilds are deliberate non-goals: a full-edge batch rebuild
+      // thaws frozen topology mid-stroke and is O(all edges) per frame.)
+      mesh.meshRevision++
     }
     window.redraw_viewport()
   }

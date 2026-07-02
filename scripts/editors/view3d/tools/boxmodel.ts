@@ -13,7 +13,8 @@ import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
 import {SelMask, SelToolModes} from '../selectmode.js'
 import type {ViewContext} from '../../../core/context'
-import {SelectLoopLiteMeshOp, SelectNearestLiteMeshOp} from '../../../lite-mesh/litemesh_modeling_ops'
+import {SelectLoopLiteMeshOp, SelectNearestLiteMeshOp, localRay} from '../../../lite-mesh/litemesh_modeling_ops'
+import {LiteMesh} from '../../../lite-mesh/litemesh'
 
 export class BoxModelToolMode extends ToolMode {
   static STRUCT = nstructjs.inlineRegister(
@@ -151,6 +152,50 @@ BoxModelToolMode {
     op.inputs.mode.setValue(e.shiftKey ? SelToolModes.SUB : SelToolModes.ADD)
     ctx.toolstack.execTool(ctx, op)
     return true
+  }
+
+  onInactive(): void {
+    // Drop any hover highlight when leaving the mode.
+    const mesh = this.ctx?.object?.data
+    if (mesh instanceof LiteMesh) {
+      mesh.setHover(-1, -1, -1)
+    }
+    super.onInactive()
+  }
+
+  /** Hover highlight: pick the nearest element in the first enabled selection
+   * domain under the cursor and hand it to the LiteMesh selection overlay
+   * (cyan; setHover no-ops when unchanged). */
+  on_mousemove(e: PointerEvent, x: number, y: number): boolean | void {
+    if (e.buttons !== 0) {
+      return // dragging — modal ops own the pointer
+    }
+    const ctx = this.ctx
+    const view3d = ctx?.view3d
+    const object = ctx?.object
+    const mesh = object?.data
+    if (!view3d || !object || !(mesh instanceof LiteMesh)) {
+      return
+    }
+    const obmatrix = object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(
+      view3d as unknown as Parameters<typeof localRay>[0],
+      obmatrix,
+      x,
+      y
+    )
+    const mode = this.boxModelSelMode
+    let v = -1
+    let ed = -1
+    let f = -1
+    if (mode & SelMask.VERTEX) {
+      v = mesh.pickVert(origin, dir)
+    } else if (mode & SelMask.EDGE) {
+      ed = mesh.pickEdge(origin, dir)
+    } else if (mode & SelMask.FACE) {
+      f = mesh.pickFace(origin, dir)
+    }
+    mesh.setHover(v, ed, f)
   }
 
   defineKeyMap(): void {

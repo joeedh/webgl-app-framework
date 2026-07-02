@@ -650,6 +650,7 @@ export class LiteMesh extends SceneObjectData {
   selectionBatch?: DrawBatch
   _selectionDirty = true
   private _selActive: [number, number, number] = [-1, -1, -1]
+  private _selHover: [number, number, number] = [-1, -1, -1]
   private lastAttrItems: LiteMeshAttrItem[] = []
   _seamsDirty = true
   /** Box-modeling wireframe overlay batch (every edge as a dim line). Rebuilt
@@ -1067,6 +1068,19 @@ export class LiteMesh extends SceneObjectData {
     this.meshRevision++
   }
 
+  /** Update the hover-highlight element (per domain, -1 = none; the box-modeling
+   * toolmode's mousemove pick). Cheap when unchanged — only a real change flags
+   * the selection overlay for rebuild. */
+  setHover(vert = -1, edge = -1, face = -1): void {
+    const h = this._selHover
+    if (h[0] === vert && h[1] === edge && h[2] === face) {
+      return
+    }
+    this._selHover = [vert, edge, face]
+    this._selectionDirty = true
+    window.redraw_viewport()
+  }
+
   /** Rebuild the selection overlay batch if the selection / active element
    * changed. Returns undefined (no batch) when nothing is selected. */
   private _ensureSelectionBatch(): void {
@@ -1081,9 +1095,25 @@ export class LiteMesh extends SceneObjectData {
     this.selectionBatch =
       (
         this.spatial as unknown as {
-          buildSelectionBatch(g: unknown, av: number, ae: number, af: number): DrawBatch | undefined
+          buildSelectionBatch(
+            g: unknown,
+            av: number,
+            ae: number,
+            af: number,
+            hv: number,
+            he: number,
+            hf: number
+          ): DrawBatch | undefined
         }
-      ).buildSelectionBatch(this.wasm.gpu, this._selActive[0], this._selActive[1], this._selActive[2]) ?? undefined
+      ).buildSelectionBatch(
+        this.wasm.gpu,
+        this._selActive[0],
+        this._selActive[1],
+        this._selActive[2],
+        this._selHover[0],
+        this._selHover[1],
+        this._selHover[2]
+      ) ?? undefined
   }
 
   /** Rebuild the wireframe batch when the geometry/topology revision changed
@@ -1739,6 +1769,18 @@ export class LiteMesh extends SceneObjectData {
     } finally {
       ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
     }
+  }
+
+  /** Loop-cut preview segments for the ring through `seedEdge`: flat xyz pairs
+   * (6 floats per face-loop quad), object-local — the polyline the cut will
+   * create. Empty when the seed isn't on a quad strip. */
+  loopCutPreviewCoords(seedEdge: number): number[] {
+    const out = this._floatVecOut()
+    ;(this.mesh as unknown as {loopCutPreviewCoords(e: number, o: unknown): void}).loopCutPreviewCoords(
+      seedEdge,
+      out.vec
+    )
+    return Array.from(out.read())
   }
 
   /** Cone (circle/brush) select through the cursor: pick + select happen in C++

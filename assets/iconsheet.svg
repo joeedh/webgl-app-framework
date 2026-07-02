@@ -4655,5 +4655,14 @@
       <circle cx="7" cy="25" r="2.2" style="fill:#ffffff;stroke:none" />
       <circle cx="25" cy="25" r="2.2" style="fill:#ffffff;stroke:none" />
     </g>
+    <g id="g-sculpt-feature-align" inkscape:label="SCULPT_FEATURE_ALIGN" transform="translate(0,828.36218)">
+      <path d="M 16 5 L 16 27" style="fill:none;stroke:#ffffff;stroke-width:2.4;stroke-linecap:round" />
+      <path d="M 5 9 C 10 9 12 8 13.5 6.5" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+      <path d="M 5 16 L 12.5 16" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+      <path d="M 5 23 C 10 23 12 24 13.5 25.5" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+      <path d="M 27 9 C 22 9 20 8 18.5 6.5" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+      <path d="M 27 16 L 19.5 16" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+      <path d="M 27 23 C 22 23 20 24 18.5 25.5" style="fill:none;stroke:#ffffff;stroke-width:1.6;stroke-linecap:round" />
+    </g>
   </g>
 </svg>

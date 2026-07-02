@@ -147,5 +147,6 @@ export let Icons = {
   XRAY                    : 141,
   VERTEX_POINTS           : 142,
   SELECTION_OVERLAY       : 143,
+  SCULPT_FEATURE_ALIGN    : 144,
 }
 setIconMap(Icons)
