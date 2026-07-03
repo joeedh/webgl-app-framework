@@ -331,6 +331,10 @@ function dumpScene(): unknown {
     // fresh sculpt layer — displacement, post-stroke position checksum (the
     // wasm↔native bit-parity gate), and the one-undo residual.
     layertest    : (globalThis as {__layerTestResult?: unknown}).__layerTestResult,
+    // Reflect the VDM engine driver (`__vdmTest`): one vdm splat dab at the +Z
+    // pole — texels touched, tile count, atlas checksum (the wasm↔native
+    // bit-parity gate), layout ints, and the positions-unchanged proof.
+    vdmtest      : (globalThis as {__vdmTestResult?: unknown}).__vdmTestResult,
     // Reflect the boundary-constraint driver (`__boundaryTest`): seam-marking
     // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
     // invariants (non-2-valence verts, components) and both undo stacks.

@@ -36,6 +36,8 @@ import './litemesh_brushtest_support'
 import './litemesh_gpubrush_test_support'
 // Side-effect: registers globalThis.__layerTest for the sculpt-layer test.
 import './litemesh_layertest_support'
+// Side-effect: registers globalThis.__vdmTest for the VDM splat/parity test.
+import './litemesh_vdmtest_support'
 // Side-effect: registers globalThis.__boundaryTest for the boundary-constraint test.
 import './litemesh_boundarytest_support'
 // Side-effect: registers globalThis.__undoMemTest for the undo-memory test.
