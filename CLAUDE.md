@@ -497,6 +497,17 @@ properties tab (weight/enabled/frozen through the undoable
 `litemesh.sculpt_layer_*` ToolOps; the displace compositor keeps evaluated
 `v.co` current). See [documentation/sculptLayers.md](documentation/sculptLayers.md).
 
+## Multires subsurf
+
+Multiresolution CC-subdivision sculpting on a `LiteMesh` (flag
+`sculptcore.multires`, default off): the engine (`sculptcore/source/subdiv/`)
+owns the grids store + level materialization; the app attaches one level at a
+time as non-owning `mesh`/`spatial` views (cage parked), with the undoable
+`litemesh.multires_{enable,set_level,down_refit,delete}` ToolOps + a
+properties-tab panel. Strokes fold into the store at stroke end
+(`multiresWriteback`); dyntopo is force-gated off on level meshes. See
+[documentation/multires.md](documentation/multires.md).
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`.

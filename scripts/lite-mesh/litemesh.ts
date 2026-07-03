@@ -18,7 +18,7 @@ import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, MeshLog, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
-import type {VdmStore} from '@sculptcore/api'
+import type {Multires, VdmStore} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import type {RequestedAttrBridge} from '@sculptcore/api/api'
 import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
@@ -637,6 +637,27 @@ export class LiteMesh extends SceneObjectData {
     flagProp('activeSculptLayerEnabled', 'Enabled', 0, (mesh, li) => mesh.mesh.sculptLayerEnabled(li))
     flagProp('activeSculptLayerFrozen', 'Frozen', 1, (mesh, li) => mesh.mesh.sculptLayerFrozen(li))
 
+    // Multires (displacementAndSubSurf S): the level slider commits through the
+    // undoable litemesh.multires_set_level op; drags merge to one undo entry.
+    mstruct
+      .int('', 'multiresLevel', 'Level', 'Active multires edit level (0 = no stack)')
+      .noUnits()
+      .range(1, 16)
+      .customGetSet<LiteMesh>(
+        function () {
+          return this.dataref.multiresLevel
+        },
+        function (value: number) {
+          const mesh = this.dataref
+          const ctx = this.ctx as unknown as ViewContext
+          if (!mesh.multiresActive || !ctx) return
+          const level = Math.min(Math.max(Math.round(value), 1), mesh.multiresLevels)
+          if (level === mesh.multiresLevel) return
+          execLayerTool(ctx, 'litemesh.multires_set_level', {level}, true)
+        }
+      )
+    mstruct.int('multiresLevels', 'multiresLevels', 'Levels', 'Multires stack depth (0 = no stack)').noUnits().readOnly()
+
     return mstruct
   }
 
@@ -720,6 +741,20 @@ export class LiteMesh extends SceneObjectData {
       row.prop('object.data.activeSculptLayerFrozen')
       layers.tool('litemesh.sculpt_layer_add()', {label: 'Add Layer'})
       layers.tool('litemesh.sculpt_layer_remove()', {label: 'Remove Active'})
+    }
+
+    // Multires stack (displacementAndSubSurf S), feature-flagged (takes effect
+    // on restart). Level drags commit through litemesh.multires_set_level (one
+    // undo entry per drag); the buttons run the undoable multires_* ops and
+    // no-op when the stack state doesn't match (enable ↔ already enabled, etc).
+    if (FeatureFlags.get('sculptcore.multires')) {
+      const multires = container.panel('Multires')
+      multires.prop('object.data.multiresLevel')
+      multires.prop('object.data.multiresLevels')
+      multires.tool('litemesh.multires_enable()', {label: 'Enable (2 levels)'})
+      multires.tool('litemesh.multires_enable(levels=4)', {label: 'Enable (4 levels)'})
+      multires.tool('litemesh.multires_down_refit()', {label: 'Refit Level Below'})
+      multires.tool('litemesh.multires_delete()', {label: 'Delete Stack'})
     }
 
     // Reorder the mesh's element arrays into BVH depth-first order so sculpting
@@ -833,6 +868,12 @@ export class LiteMesh extends SceneObjectData {
   private _vdmPageTex?: GpuTexture
   private _vdmLayout?: number[]
   private _vdmWarnedSync = false
+  /** Multires stack (displacementAndSubSurf S): when set, `mesh`/`spatial` are
+   * NON-owning views of the active level's slot (the C++ stack owns them) and
+   * the original mesh is parked as `_multiresCage`. Not serialized — saving
+   * while active captures the flattened active level. */
+  _multires?: Multires
+  _multiresCage?: WasmMesh
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array | ArrayBuffer
@@ -1022,11 +1063,10 @@ export class LiteMesh extends SceneObjectData {
     }
   }
 
-  /** Tear down the spatial tree + tree-derived GPU batches and rebuild cleanly
-   * over the current `this.mesh` (after a wholesale topology change). Keeps the
-   * mesh + batch executors; forces the renderengine to re-push the material draw
-   * shader so the rebuilt tree renders with the material, not the fallback. */
-  private _rebuildSpatial(): void {
+  /** Destroy every tree-derived GPU batch and drop the tree reference; when
+   * `freeTree`, the tree itself is freed (skip for multires slot trees — the
+   * C++ stack owns those). */
+  private _teardownTreeState(freeTree: boolean): void {
     if (this.treeBatch) {
       this.wasm.gpu.destroyBatch(this.treeBatch, true, true)
       this.treeBatch = undefined
@@ -1053,15 +1093,18 @@ export class LiteMesh extends SceneObjectData {
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
     if (this.spatial) {
-      this.wasm.SpatialTree_free(this.spatial)
+      if (freeTree) {
+        this.wasm.SpatialTree_free(this.spatial)
+      }
       this.spatial = undefined as unknown as SpatialTree
     }
-    this._initSpatial()
+  }
 
-    // Drop the GPU pipeline/binding caches: the rebuilt tree has a fresh
-    // drawShader ShaderDef, and the allocator may hand back the old address, so a
-    // pipeline cached on the stale pointer would be wrong. Then clear the engine
-    // push-cache so the BasePass re-pushes setRequestedAttrs/setDrawShader.
+  /** Drop the GPU pipeline/binding caches after a tree swap: the new tree has a
+   * fresh drawShader ShaderDef, and the allocator may hand back the old address,
+   * so a pipeline cached on the stale pointer would be wrong. Then clear the
+   * engine push-cache so the BasePass re-pushes setRequestedAttrs/setDrawShader. */
+  private _invalidateGpuCaches(): void {
     this.drawBatchExecutorGPU?.invalidatePipelines()
     for (const bindings of this.gpuBindingsCache.values()) bindings.destroy()
     this.gpuBindingsCache.clear()
@@ -1075,15 +1118,162 @@ export class LiteMesh extends SceneObjectData {
     this.meshRevision++
   }
 
+  /** Tear down the spatial tree + tree-derived GPU batches and rebuild cleanly
+   * over the current `this.mesh` (after a wholesale topology change). Keeps the
+   * mesh + batch executors; forces the renderengine to re-push the material draw
+   * shader so the rebuilt tree renders with the material, not the fallback. */
+  private _rebuildSpatial(): void {
+    if (this._multires) {
+      // The level tree is stack-owned; a clean app-side rebuild isn't possible —
+      // re-attach the active slot instead (spatial.update refreshes buffers).
+      this._attachMultiresLevel()
+      return
+    }
+    this._teardownTreeState(true)
+    this._initSpatial()
+    this._invalidateGpuCaches()
+  }
+
   /** Swap in a different mesh handle (undo restoring a pre-triangulate snapshot):
-   * adopt `newMesh`, rebuild the tree over it, then free the old mesh. */
+   * adopt `newMesh`, rebuild the tree over it, then free the old mesh. A live
+   * multires stack is flattened away first (the incoming mesh supersedes it). */
   _replaceMesh(newMesh: WasmMesh): void {
+    if (this._multires) {
+      // The active level's mesh/tree are stack-owned views — they die with the
+      // stack; the parked cage is superseded by the incoming mesh.
+      this._teardownTreeState(false)
+      this.wasm.Multires_free(this._multires)
+      this._multires = undefined
+      if (this._multiresCage) {
+        this.wasm.Mesh_free(this._multiresCage)
+        this._multiresCage = undefined
+      }
+      this.mesh = newMesh
+      this._rebuildSpatial()
+      return
+    }
     const old = this.mesh
     this.mesh = newMesh
     this._rebuildSpatial()
     if (old) {
       this.wasm.Mesh_free(old)
     }
+  }
+
+  // --- Multires (displacementAndSubSurf S app-wiring pass) ------------------
+
+  get multiresActive(): boolean {
+    return this._multires !== undefined
+  }
+
+  /** Active edit level (1-based); 0 when no stack is attached. */
+  get multiresLevel(): number {
+    return this._multires ? this._multires.activeLevel() : 0
+  }
+
+  get multiresLevels(): number {
+    return this._multires ? this._multires.maxLevel() : 0
+  }
+
+  /** Enable multires: refine the current mesh into a `levels`-deep stack (the
+   * mesh becomes the parked cage) and attach `level` (default: finest). */
+  multiresEnable(levels: number, level = levels): boolean {
+    if (this._multires || levels < 1) {
+      return false
+    }
+    const mr = this.wasm.Multires_new(this.mesh, levels, 1024, 32, 1 << 13)
+    if (!mr) {
+      return false
+    }
+    this._multires = mr
+    this._multiresCage = this.mesh
+    // The cage's app-owned tree dies here; level trees are stack-owned views.
+    this._teardownTreeState(true)
+    this.wasm.Multires_setActiveLevel(mr, level)
+    this._attachMultiresLevel()
+    return true
+  }
+
+  /** Switch the edited level (writes back the outgoing one — lossless, S3
+   * gate). Returns the clamped level actually attached. */
+  multiresSetLevel(level: number): number {
+    if (!this._multires) {
+      return 0
+    }
+    const lv = this.wasm.Multires_setActiveLevel(this._multires, level)
+    this._attachMultiresLevel()
+    return lv
+  }
+
+  /** Fold the active level's edits into the grids store. Call at stroke end and
+   * after a meshlog undo/redo; no-op without a stack. */
+  multiresWriteback(): void {
+    if (this._multires) {
+      this.wasm.Multires_writeback(this._multires, this._multires.activeLevel())
+    }
+  }
+
+  /** Least-squares-refit the level below the active one to the active surface
+   * (the active surface is preserved). Returns changed coarse verts. */
+  multiresDownRefit(): number {
+    if (!this._multires) {
+      return 0
+    }
+    const changed = this.wasm.Multires_downRefit(this._multires, this._multires.activeLevel())
+    // The active slot survives a refit, but re-attach defensively — a refreshed
+    // coarse resident may have reallocated slot storage.
+    this._attachMultiresLevel()
+    return changed
+  }
+
+  /** Tear down the stack and re-adopt the parked cage as a plain mesh. The
+   * stack's levels are discarded (the caller snapshots for undo). */
+  multiresDelete(): boolean {
+    if (!this._multires) {
+      return false
+    }
+    this._teardownTreeState(false) // the active level's mesh/tree are stack-owned
+    this.wasm.Multires_free(this._multires)
+    this._multires = undefined
+    this.mesh = this._multiresCage!
+    this._multiresCage = undefined
+    this._initSpatial()
+    this._invalidateGpuCaches()
+    return true
+  }
+
+  /** Grids-store blob — the undo seam for down-refit / stack delete. */
+  multiresStoreBlob(): Uint8Array | undefined {
+    return this._multires ? this.wasm.Multires_storeBlob(this._multires) : undefined
+  }
+
+  /** Restore a `multiresStoreBlob` snapshot and re-attach `level`. */
+  multiresRestoreStoreBlob(bytes: Uint8Array, level: number): boolean {
+    if (!this._multires || !this.wasm.Multires_restoreStoreBlob(this._multires, bytes)) {
+      return false
+    }
+    this.wasm.Multires_setActiveLevel(this._multires, level)
+    this._attachMultiresLevel()
+    return true
+  }
+
+  /** Point `mesh`/`spatial` at the stack's active-level slot and rebuild the
+   * tree-derived GPU state (batches, pipeline/binding caches). */
+  private _attachMultiresLevel(): void {
+    const mesh = this.wasm.Multires_activeMesh(this._multires!)
+    const tree = this.wasm.Multires_activeTree(this._multires!)
+    if (!mesh || !tree) {
+      throw new Error('litemesh: multires stack has no active level')
+    }
+    this._teardownTreeState(false)
+    this.mesh = mesh
+    this.spatial = tree
+    this.spatial.update(this.wasm.gpu)
+    this.spatial.setColorDisplayMode(this._displayColorMode)
+    this.drawBatch = this.spatial.getDrawBatch()
+    this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+    this._invalidateGpuCaches()
+    this.regenBounds()
   }
 
   /** Bump meshRevision if the spatial tree had pending changes to flush. Called

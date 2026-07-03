@@ -50,6 +50,8 @@ import './litemesh_autosavetest_support'
 import './litemesh_fuzztest_support'
 // Side-effect: registers globalThis.__selectFlushTest for the selectFlush test.
 import './litemesh_selectflushtest_support'
+// Side-effect: registers globalThis.__multiresTest for the multires subsurf test.
+import './litemesh_multirestest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

@@ -466,6 +466,197 @@ export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
 }
 ToolOp.register(SculptLayerSetFlagOp)
 
+/** Feature-flag gate shared by the multires ops (displacementAndSubSurf S). */
+abstract class MultiresOpBase<Inputs extends PropertySlots = {}> extends LiteMeshAttrOp<Inputs> {
+  static canRun(_ctx: ToolContext): boolean {
+    return FeatureFlags.get('sculptcore.multires')
+  }
+}
+
+/**
+ * Enable multires on the active LiteMesh: refine it into a `levels`-deep
+ * Catmull-Clark stack (the mesh parks as the untouched cage) and attach the
+ * finest level. Undo tears the stack down and re-adopts the cage — enable
+ * never mutates the cage, so no snapshot is needed (strokes in between are
+ * their own undo steps, and a redo replays onto the identically-rebuilt
+ * level topology).
+ */
+export class MultiresEnableOp extends MultiresOpBase<{levels: IntProperty}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.multires_enable',
+      uiname  : 'Enable Multires',
+      inputs  : {levels: new IntProperty(2).setRange(1, 7).noUnits()},
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh || mesh.multiresActive) return
+    mesh.multiresEnable(this.getInputs().levels)
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh?.multiresActive) {
+      mesh.multiresDelete()
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MultiresEnableOp)
+
+/**
+ * Switch the active multires edit level. The engine writes the outgoing level
+ * back into the grids store first, so the switch is lossless (S3 gate) and
+ * undo is simply switching back.
+ */
+export class MultiresSetLevelOp extends MultiresOpBase<{level: IntProperty}> {
+  _prev = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.multires_set_level',
+      uiname  : 'Multires Level',
+      inputs  : {level: new IntProperty(1).setRange(1, 16).noUnits()},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    this._prev = this._getMesh(ctx)?.multiresLevel ?? 0
+  }
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.multiresActive) return
+    mesh.multiresSetLevel(this.getInputs().level)
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh?.multiresActive && this._prev >= 1) {
+      mesh.multiresSetLevel(this._prev)
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MultiresSetLevelOp)
+
+/**
+ * Least-squares-refit the level below the active one to the active surface
+ * (the active surface is preserved; see Multires::downRefit). Rewrites the
+ * grids store wholesale, so undo restores a store-blob snapshot.
+ */
+export class MultiresDownRefitOp extends MultiresOpBase {
+  _undoBlob?: Uint8Array
+  _level = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.multires_down_refit',
+      uiname  : 'Refit Level Below',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._level = mesh?.multiresLevel ?? 0
+    this._undoBlob = mesh?.multiresActive && this._level >= 2 ? mesh.multiresStoreBlob() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.multiresActive || mesh.multiresLevel < 2) {
+      this._undoBlob = undefined
+      return
+    }
+    if (mesh.multiresDownRefit() === 0) {
+      this._undoBlob = undefined // nothing moved — keep the op a no-op
+    }
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh?.multiresActive && this._undoBlob) {
+      mesh.multiresRestoreStoreBlob(this._undoBlob, this._level)
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MultiresDownRefitOp)
+
+/**
+ * Delete the multires stack, re-adopting the untouched cage as a plain mesh.
+ * The levels' displacement lives in the grids store, so undo rebuilds the
+ * stack from the cage and restores a store-blob snapshot (topology-compatible
+ * by construction — same cage, same refinement).
+ */
+export class MultiresDeleteOp extends MultiresOpBase {
+  _undoBlob?: Uint8Array
+  _levels = 0
+  _level = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.multires_delete',
+      uiname  : 'Delete Multires',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._levels = mesh?.multiresLevels ?? 0
+    this._level = mesh?.multiresLevel ?? 0
+    this._undoBlob = mesh?.multiresActive ? mesh.multiresStoreBlob() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.multiresActive) {
+      this._undoBlob = undefined
+      return
+    }
+    mesh.multiresDelete()
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (!mesh || mesh.multiresActive || !this._undoBlob) return
+    if (mesh.multiresEnable(this._levels, this._level)) {
+      mesh.multiresRestoreStoreBlob(this._undoBlob, this._level)
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MultiresDeleteOp)
+
 /**
  * Wave 5: mark the shortest edge-path between two vertices as a seam
  * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`

@@ -375,6 +375,7 @@ export type GeneratedDataPath =
   | "settings.featureFlags.sculptcore_gpu_brush"
   | "settings.featureFlags.sculptcore_gpu_brush_grab"
   | "settings.featureFlags.sculptcore_gpu_brush_verify"
+  | "settings.featureFlags.sculptcore_multires"
   | "settings.featureFlags.sculptcore_quad_remesher"
   | "settings.featureFlags.sculptcore_sculpt_layers"
   | "settings.featureFlags.sculptcore_select_flush_prefer_op_domain"
@@ -523,6 +524,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.mark_seam.vStart"
   | "toolDefaults.litemesh.mark_sharp_by_angle"
   | "toolDefaults.litemesh.mark_sharp_by_angle.angle"
+  | "toolDefaults.litemesh.multires_enable"
+  | "toolDefaults.litemesh.multires_enable.levels"
+  | "toolDefaults.litemesh.multires_set_level"
+  | "toolDefaults.litemesh.multires_set_level.level"
   | "toolDefaults.litemesh.quad_remesh"
   | "toolDefaults.litemesh.quad_remesh.autoDensity"
   | "toolDefaults.litemesh.quad_remesh.curvatureSmoothIters"
@@ -1135,6 +1140,7 @@ declare module "@framework/pathux" {
     "settings.featureFlags.sculptcore_gpu_brush": true;
     "settings.featureFlags.sculptcore_gpu_brush_grab": true;
     "settings.featureFlags.sculptcore_gpu_brush_verify": true;
+    "settings.featureFlags.sculptcore_multires": true;
     "settings.featureFlags.sculptcore_quad_remesher": true;
     "settings.featureFlags.sculptcore_sculpt_layers": true;
     "settings.featureFlags.sculptcore_select_flush_prefer_op_domain": true;
@@ -1283,6 +1289,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.mark_seam.vStart": true;
     "toolDefaults.litemesh.mark_sharp_by_angle": true;
     "toolDefaults.litemesh.mark_sharp_by_angle.angle": true;
+    "toolDefaults.litemesh.multires_enable": true;
+    "toolDefaults.litemesh.multires_enable.levels": true;
+    "toolDefaults.litemesh.multires_set_level": true;
+    "toolDefaults.litemesh.multires_set_level.level": true;
     "toolDefaults.litemesh.quad_remesh": true;
     "toolDefaults.litemesh.quad_remesh.autoDensity": true;
     "toolDefaults.litemesh.quad_remesh.curvatureSmoothIters": true;

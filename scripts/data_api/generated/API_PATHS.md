@@ -563,6 +563,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.featureFlags.sculptcore_gpu_brush` | prop | BoolProperty | GPU Brushes |  |
 | `settings.featureFlags.sculptcore_gpu_brush_grab` | prop | BoolProperty | GPU Grab Brush |  |
 | `settings.featureFlags.sculptcore_gpu_brush_verify` | prop | BoolProperty | GPU Brush Shadow-Verify |  |
+| `settings.featureFlags.sculptcore_multires` | prop | BoolProperty | Multires Subsurf |  |
 | `settings.featureFlags.sculptcore_quad_remesher` | prop | BoolProperty | sculptcore.quad_remesher |  |
 | `settings.featureFlags.sculptcore_sculpt_layers` | prop | BoolProperty | Sculpt Layers |  |
 | `settings.featureFlags.sculptcore_select_flush_prefer_op_domain` | prop | BoolProperty | sculptcore.select_flush_prefer_op_domain |  |
@@ -726,6 +727,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.mark_seam.vStart` | prop | IntProperty | V Start |  |
 | `toolDefaults.litemesh.mark_sharp_by_angle` | struct |  |  |  |
 | `toolDefaults.litemesh.mark_sharp_by_angle.angle` | prop | FloatProperty | Angle | range 0..180 |
+| `toolDefaults.litemesh.multires_enable` | struct |  |  |  |
+| `toolDefaults.litemesh.multires_enable.levels` | prop | IntProperty | Levels | range 1..7 |
+| `toolDefaults.litemesh.multires_set_level` | struct |  |  |  |
+| `toolDefaults.litemesh.multires_set_level.level` | prop | IntProperty | Level | range 1..16 |
 | `toolDefaults.litemesh.quad_remesh` | struct |  |  |  |
 | `toolDefaults.litemesh.quad_remesh.autoDensity` | prop | BoolProperty | Auto Density |  |
 | `toolDefaults.litemesh.quad_remesh.curvatureSmoothIters` | prop | IntProperty | Curvature Smooth Iters | range 0..20 |

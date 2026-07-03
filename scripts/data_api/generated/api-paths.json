@@ -4543,6 +4543,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "settings.featureFlags.sculptcore_multires": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Multires Subsurf",
+      "description": "Multiresolution subdivision sculpting: the LiteMesh multires panel + level ops (experimental)",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "settings.featureFlags.sculptcore_quad_remesher": {
       "kind": "prop",
       "indexed": false,
@@ -5795,6 +5804,42 @@
       "range": [
         0,
         180
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.multires_enable": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.multires_enable.levels": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Levels",
+      "description": "Levels",
+      "range": [
+        1,
+        7
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.multires_set_level": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.multires_set_level.level": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Level",
+      "description": "Level",
+      "range": [
+        1,
+        16
       ],
       "decimalPlaces": 4,
       "step": 0.1

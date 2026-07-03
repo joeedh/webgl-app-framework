@@ -199,6 +199,13 @@ const featureFlags = [
     type       : 'bool',
     value      : false,
   },
+  {
+    key        : 'sculptcore.multires',
+    uiName     : 'Multires Subsurf',
+    description: 'Multiresolution subdivision sculpting: the LiteMesh multires panel + level ops (experimental)',
+    type       : 'bool',
+    value      : false,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */

@@ -163,7 +163,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
   undoPre(ctx: ToolContext) {
     const brush = this.inputs.brush.getValue()
-    const hasDyntopo = brush.dynTopoSC.enabled
+    // Dyntopo mutates topology; the multires writeback needs the level's fixed
+    // grid topology, so it is forced off while a multires stack is attached.
+    const opMesh = ctx.object?.data
+    const hasDyntopo = brush.dynTopoSC.enabled && !(opMesh instanceof LiteMesh && opMesh.multiresActive)
 
     this.strokeGroupId = undefined
     this.prevDabLocal = []
@@ -203,6 +206,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       if (SculptPaintOp.meshLog) {
         const mesh = ctx.object!.data! as LiteMesh
         SculptPaintOp.meshLog.undo(mesh.mesh, mesh.spatial)
+        // Re-sync the grids store to the restored level positions (no-op
+        // without a multires stack).
+        mesh.multiresWriteback()
         mesh.regenBounds()
         // The stroke path consumes the spatial flush the draw path keys revision
         // bumps on; bump explicitly so wireframe/points overlays rebuild.
@@ -217,6 +223,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       if (SculptPaintOp.meshLog) {
         const mesh = ctx.object!.data! as LiteMesh
         SculptPaintOp.meshLog.redo(mesh.mesh, mesh.spatial)
+        mesh.multiresWriteback()
         mesh.regenBounds()
         mesh.meshRevision++
         window.redraw_viewport()
@@ -486,6 +493,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // is the accumulated arc-length in units of 2·radius (same units as the
       // spacing param); remesh only once it has advanced past dynTopoSpacing.
       const dt = brush.dynTopoSC
+      // Dyntopo would desync the fixed grid topology the multires writeback
+      // assumes — force it off on a multires level mesh.
+      const dtEnabled = dt.enabled && !mesh.multiresActive
       let params: DynTopoParams | undefined = undefined
       // Decide remesh-due once per stroke sample on the primary dab; mirror
       // images (mirrorIdx > 0) reuse it so every symmetric side remeshes on the
@@ -495,7 +505,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       if (mirrorIdx === 0) {
         this._dabDynTopoDue = dynTopoDue
       }
-      if (dt.enabled && dynTopoDue) {
+      if (dtEnabled && dynTopoDue) {
         const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
         params = this.getDynTopoParams()
         configureDynTopoParams(params, dt, l_max, l_min)
@@ -582,7 +592,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           meshLog       : SculptPaintOp.meshLog!,
           brushType,
           modalRunning  : this.modalRunning,
-          dyntopoEnabled: dt.enabled,
+          dyntopoEnabled: dtEnabled,
           autosmooth    : brush.autosmooth,
         })
       }
@@ -608,12 +618,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           wasm.float3(dabNormal),
           filterRadius,
           params ?? (0 as never),
-          dt.enabled ? this.dabSeed++ : 0
+          dtEnabled ? this.dabSeed++ : 0
         )
         mesh.regenBounds()
       }
 
-      if (dt.enabled) {
+      if (dtEnabled) {
         // Accumulate stats for the debug HUD (lastDynTopoStats holds this dab's
         // counts).
         const st = wasmExec.lastDynTopoStats
@@ -671,6 +681,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // the threshold. Undo then reverts stroke + compaction as one step.
       if (
         mesh instanceof LiteMesh &&
+        !mesh.multiresActive && // compaction reorders verts → stale grid tables
         this.inputs.brush.getValue().dynTopoSC.enabled &&
         FeatureFlags.get('sculptcore.auto_defrag')
       ) {
@@ -694,6 +705,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // path bumps meshRevision on; bump at stroke end so wireframe/points
       // overlays rebuild (per-dab rebuilds would thaw topology, O(all edges)).
       mesh.meshRevision++
+      // Fold the stroke into the multires grids store (no-op without a stack).
+      mesh.multiresWriteback()
     }
     window.redraw_viewport()
   }
@@ -764,6 +777,9 @@ export function runSculptcoreStroke(opts: {
   const {mesh, brush} = opts
   const radius = opts.radius ?? brush.radius
   const dist = opts.dist ?? 0
+  // Dyntopo would desync the fixed grid topology the multires writeback
+  // assumes — force it off on a multires level mesh (mirrors SculptPaintOp).
+  const dtEnabled = brush.dynTopoSC.enabled && !mesh.multiresActive
 
   const brushType = opts.brushTypeOverride ?? toolToSculptBrush(brush.tool)
   if (brushType === undefined) {
@@ -800,7 +816,7 @@ export function runSculptcoreStroke(opts: {
     strokeGen,
   })
   wasmExec.meshLog = meshLog
-  wasmExec.beginStep(brush.dynTopoSC.enabled)
+  wasmExec.beginStep(dtEnabled)
 
   // GPU stroke branch (plans/gpuGlobalBrushes.md): world-space dabs marshal
   // identically on both paths (no per-dab raycast), so this driver is the
@@ -815,7 +831,7 @@ export function runSculptcoreStroke(opts: {
     meshLog,
     brushType,
     modalRunning  : false,
-    dyntopoEnabled: brush.dynTopoSC.enabled,
+    dyntopoEnabled: dtEnabled,
     autosmooth    : brush.autosmooth,
   })
 
@@ -868,7 +884,7 @@ export function runSculptcoreStroke(opts: {
       // Dyntopo config before the deform (mirrors SculptPaintOp). Undefined = off.
       const dt = brush.dynTopoSC
       let params: DynTopoParams | undefined = undefined
-      if (dt.enabled) {
+      if (dtEnabled) {
         const {l_max, l_min} = dt.resolveEdgeGoal(radius, dist)
         if (!dynParams) {
           dynParams = wasm.manager.construct('sculptcore::dyntopo::DynTopoParams') as DynTopoParams
@@ -944,6 +960,7 @@ export function runSculptcoreStroke(opts: {
     // chain; callers await `completion` before reading geometry.
     const completion = gpu.finish(() => {
       wasmExec.endStep()
+      mesh.multiresWriteback()
       mesh.regenTreeBatch()
     })
     return {dabs: opts.dabs.length, skipped: false, completion}
@@ -952,6 +969,7 @@ export function runSculptcoreStroke(opts: {
     gpu.finish(() => {})
   }
   wasmExec.endStep()
+  mesh.multiresWriteback()
   mesh.regenTreeBatch()
   return {dabs: opts.dabs.length, skipped: false}
 }
