@@ -38,13 +38,19 @@ interface AttrTestResult {
   missing: number[]
 }
 
+interface AttrTestOpts {
+  /** Run `Mesh_updateFrames` first, so the `.frames.v.*` F3 frame vertex
+   * layers exist for frame-slot requests (the V3 VDM render path's attrs). */
+  updateFrames?: boolean
+}
+
 /**
  * Build a material requesting `requests`, generate its WGSL, and push the
  * resulting requested-attr set + shader to the scene's active LiteMesh.
  * Returns the requested contract + the missing-slot advisory. Never throws —
  * errors are captured in the result (the bulk-data/render seam must stay alive).
  */
-function applyAttrTestMaterial(requests: AttrTestRequest[]): AttrTestResult {
+function applyAttrTestMaterial(requests: AttrTestRequest[], opts: AttrTestOpts = {}): AttrTestResult {
   const result: AttrTestResult = {ok: false, requested: [], missing: []}
   try {
     const app = (globalThis as {_appstate?: {ctx: {scene: unknown}}})._appstate
@@ -53,6 +59,10 @@ function applyAttrTestMaterial(requests: AttrTestRequest[]): AttrTestResult {
 
     const lite = scene.objects.active?.data
     if (!(lite instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+
+    if (opts.updateFrames) {
+      lite.wasm.Mesh_updateFrames(lite.mesh)
+    }
 
     const mat = new Material()
     const diff = new DiffuseNode()

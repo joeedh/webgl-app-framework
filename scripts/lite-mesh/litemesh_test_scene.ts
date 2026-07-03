@@ -38,6 +38,8 @@ import './litemesh_gpubrush_test_support'
 import './litemesh_layertest_support'
 // Side-effect: registers globalThis.__vdmTest for the VDM splat/parity test.
 import './litemesh_vdmtest_support'
+// Side-effect: registers globalThis.__vdmRenderTest for the VDM screenshot gate.
+import './litemesh_vdmrender_support'
 // Side-effect: registers globalThis.__boundaryTest for the boundary-constraint test.
 import './litemesh_boundarytest_support'
 // Side-effect: registers globalThis.__undoMemTest for the undo-memory test.
@@ -93,6 +95,16 @@ function buildLiteMeshCube(_ctx: ToolContext, lib: Library, scene: Scene, args: 
 }
 
 registerTestScene('litemesh-cube', buildLiteMeshCube)
+
+/**
+ * The VDM fragment-render gate's scene (`__vdmRenderTest`, V3): the same
+ * spherified cube, denser by default (subdiv 48) so the analytically-displaced
+ * *reference* mesh is smooth enough for the screenshot A/B against the
+ * fragment-path image. Same args as `litemesh-cube`.
+ */
+registerTestScene('litemesh-vdmrender', (ctx, lib, scene, args) =>
+  buildLiteMeshCube(ctx, lib, scene, {subdiv: '48', ...args})
+)
 
 /**
  * Builds a LiteMesh cube carrying the two attribute layers the renderengine ↔

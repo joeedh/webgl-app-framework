@@ -18,6 +18,7 @@ import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, MeshLog, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import type {VdmStore} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import type {RequestedAttrBridge} from '@sculptcore/api/api'
 import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
@@ -35,6 +36,8 @@ import {makeBlobPlaceholder, readBlobPlaceholder} from '../core/autosave_format'
 import {getActiveWebGpuContext} from '../render/queue_factory'
 import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
+import {GpuTexture} from '../webgpu/texture'
+import {TextureUsage} from '../webgpu/flags'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
@@ -682,6 +685,15 @@ export class LiteMesh extends SceneObjectData {
    * (frame/object/lights across @group 0/1/2) instead of the basic-shader
    * single @group(0) block — see `drawQ` / `drawQGPU`. */
   private _hasMaterialDrawShader = false
+  /** VDM fragment-render state (displacementAndSubSurf V3): the attached (and
+   * owned) sculptcore VdmStore plus its GPU residency — the rgba32float tile
+   * atlas, the r32sint page table, and the last-uploaded layout ints. Synced
+   * per frame in `_syncVdmGpu` via the store's dirty-slot drain. */
+  private _vdmStore?: VdmStore
+  private _vdmAtlasTex?: GpuTexture
+  private _vdmPageTex?: GpuTexture
+  private _vdmLayout?: number[]
+  private _vdmWarnedSync = false
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array | ArrayBuffer
@@ -2317,6 +2329,179 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /**
+   * Attach (and take ownership of) a sculptcore `VdmStore` — the mesh then
+   * renders its VDM texels through the fragment path (V3): the renderengine
+   * sees `hasVdm` and regenerates the material WGSL with `VDM_MODE`, and
+   * `drawQGPU` keeps the GPU tile atlas/page table current per frame. The
+   * store is freed on `detachVdmStore()` / `destroy()`.
+   */
+  attachVdmStore(store: VdmStore): void {
+    if (this._vdmStore && this._vdmStore !== store) {
+      this.detachVdmStore()
+    }
+    this._vdmStore = store
+    this._vdmWarnedSync = false
+  }
+
+  /** Drop the attached VdmStore (freeing it) + its GPU residency. */
+  detachVdmStore(): void {
+    this._vdmAtlasTex?.destroy()
+    this._vdmAtlasTex = undefined
+    this._vdmPageTex?.destroy()
+    this._vdmPageTex = undefined
+    this._vdmLayout = undefined
+    if (this._vdmStore) {
+      this.wasm.VdmStore_free(this._vdmStore)
+      this._vdmStore = undefined
+    }
+  }
+
+  /** True when a VdmStore is attached — the renderengine folds this into the
+   * material hash and passes `VDM_MODE` to the WGSL codegen. */
+  get hasVdm(): boolean {
+    return this._vdmStore !== undefined
+  }
+
+  /** The attached store handle (driver/test surface; undefined when none). */
+  get vdmStore(): VdmStore | undefined {
+    return this._vdmStore
+  }
+
+  /** Cached bulk-read out-params for the per-frame VDM drain (the bound
+   * Vectors self-clear C++-side, so reuse avoids a per-frame allocation). */
+  private _vdmIntVec?: {vec: unknown; read: () => ArrayLike<number>}
+  private _vdmFloatVec?: {vec: unknown; read: () => ArrayLike<number>}
+
+  /** Bound Vector out-param + bulk reader (native `vectorView` fast path, one
+   * copy instead of a napi call per element; WASM falls back to the heap view). */
+  private _vecOutBulk(elem: 'int32' | 'float'): {vec: unknown; read: () => ArrayLike<number>} {
+    const manager = this.wasm.manager as unknown as {
+      findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}
+      constructWith(c: unknown): unknown
+      addon?: {vectorView(vec: unknown): ArrayBufferView | undefined}
+    }
+    const cls = manager.findVectorClass(elem)
+    const vec = manager.constructWith(cls.findDefaultConstructor())
+    const read = (): ArrayLike<number> => {
+      const view = manager.addon?.vectorView(vec)
+      if (view) return view as unknown as ArrayLike<number>
+      return this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    }
+    return {vec, read}
+  }
+
+  /**
+   * Per-frame VDM GPU sync (V3's "no regen_gpu_node on VDM-only dabs" upload
+   * path): drain the store's dirty-slot list — a topo-dirty drain (tiles
+   * created/removed, or the first sync) re-reads the layout, (re)creates the
+   * atlas/page textures on a dims change, and re-uploads page table + full
+   * atlas; a plain drain writes only the dirty slots' tiles at their atlas
+   * cells. Always seeds the texture views + layout uniforms into `uniforms`
+   * under the names the `VDM_MODE` WGSL declares.
+   */
+  private _syncVdmGpu(device: GPUDevice, uniforms: Record<string, unknown>): void {
+    const store = this._vdmStore as unknown as {
+      gpuLayoutOut(out: never): number
+      gpuPageTableOut(out: never): void
+      gpuAtlasPixelsOut(out: never): void
+      gpuTilePixelsOut(slot: number, out: never): number
+      gpuTakeDirtyOut(outSlots: never): number
+    }
+    const intOut = (this._vdmIntVec ??= this._vecOutBulk('int32'))
+    const floatOut = (this._vdmFloatVec ??= this._vecOutBulk('float'))
+
+    const topoDirty = (store.gpuTakeDirtyOut(intOut.vec as never) | 0) !== 0
+    // Copy the drained slots before the next out-param call reuses the vector.
+    const dirtySlots = topoDirty ? [] : Array.from(intOut.read() as ArrayLike<number>)
+
+    if (topoDirty || !this._vdmAtlasTex || !this._vdmPageTex || !this._vdmLayout) {
+      store.gpuLayoutOut(intOut.vec as never)
+      const lay = intOut.read()
+      const layout = Array.from({length: 8}, (_, i) => (lay[i] as number) | 0)
+      const [tileSize, , grid, , , , atlasW, atlasH] = layout
+      // An empty store still binds valid textures (all-empty page table → the
+      // shader samples zero), so the bind group never fails on the draw seam.
+      const texW = Math.max(atlasW, tileSize, 1)
+      const texH = Math.max(atlasH, tileSize, 1)
+      const gridTex = Math.max(grid, 1)
+
+      if (!this._vdmAtlasTex || this._vdmAtlasTex.width !== texW || this._vdmAtlasTex.height !== texH) {
+        this._vdmAtlasTex?.destroy()
+        this._vdmAtlasTex = new GpuTexture(device, {
+          label : 'litemesh.vdmAtlas',
+          width : texW,
+          height: texH,
+          format: 'rgba32float',
+          usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+        })
+      }
+      if (!this._vdmPageTex || this._vdmPageTex.width !== gridTex || this._vdmPageTex.height !== gridTex) {
+        this._vdmPageTex?.destroy()
+        this._vdmPageTex = new GpuTexture(device, {
+          label : 'litemesh.vdmPage',
+          width : gridTex,
+          height: gridTex,
+          format: 'r32sint',
+          usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+        })
+      }
+
+      store.gpuPageTableOut(intOut.vec as never)
+      const pageArr = intOut.read()
+      const page = pageArr instanceof Int32Array ? pageArr : Int32Array.from(pageArr as ArrayLike<number>)
+      if (grid > 0 && page.length >= grid * grid) {
+        device.queue.writeTexture(
+          {texture: this._vdmPageTex.handle},
+          page,
+          {bytesPerRow: grid * 4, rowsPerImage: grid},
+          {width: grid, height: grid, depthOrArrayLayers: 1}
+        )
+      }
+
+      if (atlasW > 0 && atlasH > 0) {
+        store.gpuAtlasPixelsOut(floatOut.vec as never)
+        const raw = floatOut.read()
+        const atlas = raw instanceof Float32Array ? raw : Float32Array.from(raw as ArrayLike<number>)
+        if (atlas.length >= atlasW * atlasH * 4) {
+          device.queue.writeTexture(
+            {texture: this._vdmAtlasTex.handle},
+            atlas,
+            {bytesPerRow: atlasW * 16, rowsPerImage: atlasH},
+            {width: atlasW, height: atlasH, depthOrArrayLayers: 1}
+          )
+        }
+      }
+      this._vdmLayout = layout
+    } else if (dirtySlots.length > 0) {
+      const [tileSize, , , , tilesX] = this._vdmLayout
+      for (const s of dirtySlots) {
+        const slot = s | 0
+        if (!store.gpuTilePixelsOut(slot, floatOut.vec as never)) continue
+        const raw = floatOut.read()
+        const tile = raw instanceof Float32Array ? raw : Float32Array.from(raw as ArrayLike<number>)
+        if (tile.length < tileSize * tileSize * 4) continue
+        device.queue.writeTexture(
+          {
+            texture: this._vdmAtlasTex.handle,
+            origin : {x: (slot % tilesX) * tileSize, y: Math.floor(slot / tilesX) * tileSize},
+          },
+          tile,
+          {bytesPerRow: tileSize * 16, rowsPerImage: tileSize},
+          {width: tileSize, height: tileSize, depthOrArrayLayers: 1}
+        )
+      }
+    }
+
+    const layout = this._vdmLayout!
+    uniforms.vdm_atlas = this._vdmAtlasTex!.view
+    uniforms.vdm_page = this._vdmPageTex!.view
+    uniforms.vdmTileSize = layout[0]
+    uniforms.vdmResolution = layout[1]
+    uniforms.vdmGridSize = layout[2]
+    uniforms.vdmAtlasTilesX = Math.max(layout[4], 1)
+  }
+
+  /**
    * DataBlock teardown — called by the library when the block is removed
    * (including the scene-clear that precedes a file load). Releases the C++
    * mesh + spatial tree (allocator-correct `Mesh_free`/`SpatialTree_free`, NOT
@@ -2356,6 +2541,9 @@ export class LiteMesh extends SceneObjectData {
     }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
+
+    // VDM residency + the owned store (frees the C++ VdmStore).
+    this.detachVdmStore()
 
     if (this.spatial) {
       this.wasm.SpatialTree_free(this.spatial)
@@ -2556,6 +2744,19 @@ export class LiteMesh extends SceneObjectData {
     // closure (built once on first dispatch) always reads the active
     // frame's values.
     this.gpuUniforms = uniforms
+
+    // VDM residency: drain dirty tiles into the atlas/page textures and seed
+    // the @group(3) views + layout uniforms. Never throws on the render seam.
+    if (this._vdmStore) {
+      try {
+        this._syncVdmGpu(ctx.device, uniforms as unknown as Record<string, unknown>)
+      } catch (err) {
+        if (!this._vdmWarnedSync) {
+          this._vdmWarnedSync = true
+          console.error('litemesh: VDM GPU sync failed', err)
+        }
+      }
+    }
 
     // The tree surface writes depth and tests less-equal.
     if (this.drawBatchExecutorGPU === undefined) {

@@ -133,10 +133,11 @@ interface Dump {
 function runAttrScene(
   nwExe: string,
   backend: 'wasm' | 'native',
-  requests: {name: string; category: number}[]
+  requests: {name: string; category: number}[],
+  opts: {updateFrames?: boolean} = {}
 ): Dump {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), 'attrtest-')), `${backend}.json`)
-  const evalExpr = `globalThis.__attrtestApply(${JSON.stringify(requests)})`
+  const evalExpr = `globalThis.__attrtestApply(${JSON.stringify(requests)}, ${JSON.stringify(opts)})`
   const env = {...process.env}
   execFileSync(
     nwExe,
@@ -301,6 +302,35 @@ maybe('renderengine ↔ sculptcore dynamic attributes', () => {
     expect(missingBuf).toBeDefined()
     expect(missingBuf.empty).toBeUndefined()
     expect(missingBuf.floatCount).toBeGreaterThan(0)
+  })
+
+  test('a frame-attribute request resolves to a populated vertex buffer (V3 frame slot)', () => {
+    // The VDM fragment path (displacementAndSubSurf V3) requests the F3 frame
+    // vertex layers by name. With Mesh_updateFrames run first the layers exist,
+    // so the GENERIC (float3) request must resolve — not report missing — and
+    // sculptcore must fill a real per-vertex buffer with unit-ish tangents.
+    const dump = runAttrScene(
+      nwExe!,
+      'wasm',
+      [
+        {name: 'color', category: CAT_COLOR},
+        {name: '.frames.v.tangent', category: 0 /* GENERIC */},
+      ],
+      {updateFrames: true}
+    )
+    expect(dump.attrtest!.error).toBeUndefined()
+    expect(dump.attrtest!.ok).toBe(true)
+    const req = dump.attrtest!.requested.find((r) => r.name === '.frames.v.tangent')
+    expect(req).toBeDefined()
+    expect(req!.elemSize).toBe(3)
+    expect(dump.attrtest!.missing).toEqual([])
+    const buf = liteMeshOf(dump).gpuBuffers!['.frames.v.tangent'] as BufferSig & {sumAbs?: number}
+    expect(buf).toBeDefined()
+    expect(buf.empty).toBeUndefined()
+    expect(buf.elemsize).toBe(3)
+    expect(buf.floatCount).toBeGreaterThan(0)
+    // Tangents are unit-length vectors — the buffer must be non-trivially filled.
+    expect(buf.sumAbs ?? 0).toBeGreaterThan(0)
   })
 
   test('a shader-node Material round-trips losslessly through nstructjs JSON', () => {

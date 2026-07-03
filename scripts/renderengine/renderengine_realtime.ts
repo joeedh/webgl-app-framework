@@ -647,7 +647,8 @@ export class RealtimeEngine extends RenderEngine {
     ctx: WebGpuRenderContext,
     scene: Scene,
     mat: Material,
-    rlights: IRenderLights
+    rlights: IRenderLights,
+    vdmMode = false
   ): WebgpuMaterialState | undefined {
     let lightHash = 0
     for (const k in rlights) lightHash = (lightHash * 31 + rlights[k].light.data.type) | 0
@@ -655,9 +656,12 @@ export class RealtimeEngine extends RenderEngine {
     // Pass-specific defines for the material WGSL. WITH_AO gates the
     // ambient-occlusion sample inside AMBIENT_WGSL — flipping it must
     // re-compile the pipeline, so it folds into the material hash.
+    // VDM_MODE (mesh carries a VdmStore) adds the @group(3) sampling path;
+    // it folds into the hash the same way so an attach/detach re-pushes.
     const matDefines: Record<string, number | string | boolean> = {}
     if (this.renderSettings.ao) matDefines.WITH_AO = 1
     if (this.renderSettings.sss) matDefines.WITH_SSS = 1
+    if (vdmMode) matDefines.VDM_MODE = 1
     let defHash = 0
     for (const k of Object.keys(matDefines).sort()) {
       for (let i = 0; i < k.length; i++) {
@@ -1214,7 +1218,11 @@ export class RealtimeEngine extends RenderEngine {
       const mat = mats[0]
       if (!mat) continue
 
-      const state = this._ensureWebgpuMaterial(ctx, scene, mat, rlights)
+      // A VdmStore-carrying mesh renders through the VDM fragment path:
+      // VDM_MODE folds into the material hash so an attach/detach re-pushes.
+      // (Per-material cache: a mat shared across meshes follows the last push.)
+      const vdmMode = !!(ob.data as unknown as {hasVdm?: boolean}).hasVdm
+      const state = this._ensureWebgpuMaterial(ctx, scene, mat, rlights, vdmMode)
       if (!state) continue
 
       // LiteMesh integration: its sculpt draw batch renders with the C++ tree
