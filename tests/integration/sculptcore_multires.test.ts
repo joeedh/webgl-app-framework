@@ -245,17 +245,10 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
     expect(native.promptSignal).toBe(wasm.promptSignal)
     expect(native.tileCount).toBe(wasm.tileCount)
     expect(native.atlasFloatCount).toBe(wasm.atlasFloatCount)
-    // The raw byte checksum diverges on curved bases — suspected libm
-    // transcendentals in the F3 cross-field azimuth (see the plan's
-    // frame-parity follow-up under X1). Counts above are exact; the texel
-    // values agree to the 1e-3 quantization the signature encodes.
+    // Bit-exact since the F3 frame provider went transcendental-free (the X1
+    // follow-up): the curvature seed now uses only IEEE-exact ops, so frames —
+    // and therefore texels — are identical across backends.
     expect(native.atlasQuantChecksum).toBe(wasm.atlasQuantChecksum)
-    if (native.atlasChecksum !== wasm.atlasChecksum) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[sculptcore-multires] raw atlas checksums differ (ulp-level backend noise): ` +
-          `wasm=${wasm.atlasChecksum} native=${native.atlasChecksum} maxAbs=${wasm.atlasMaxAbs}`
-      )
-    }
+    expect(native.atlasChecksum).toBe(wasm.atlasChecksum)
   })
 })

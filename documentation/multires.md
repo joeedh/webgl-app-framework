@@ -113,9 +113,9 @@ lifecycle / per-dab carrier routing). `_attachMultiresLevel` refreshes frames
 + carrier tags when a store is attached, so `hasVdm` rendering survives level
 switches. Driver/gate: `__multiresVdmTest()`
 (`litemesh_multirestest_support.ts`) in the `sculptcore_multires` integration
-test — splat counts + prompt signal are bit-exact cross-backend; the atlas
-parity gate is quantized to 1e-3 pending the F3 frame-parity follow-up
-(curved-base frames differ by ulps between backends; see the plan's X1 note).
+test — splat counts, prompt signal, AND raw atlas bytes are bit-exact
+cross-backend (the F3 frame provider is transcendental-free since the X1
+follow-up; see the plan's X1 note).
 
 ## Known debts
 
