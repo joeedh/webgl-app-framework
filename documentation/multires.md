@@ -97,6 +97,26 @@ handle. N-API wraps live in `source/napi/napi_runtime.{h,cc}`
   Cross-backend position checksums are **bit-identical**, including the CG
   down-refit result (fma-anchored stencils, double CG accumulators).
 
+## VDM on the finest level (X1)
+
+Materialized level meshes carry synthesized **grid-chart UVs** (`uv` FLOAT2,
+`AttrUse::UV`; one chart per cage-corner grid in a ⌈√G⌉-per-row atlas layout
+with an inset gutter — `Multires::assignGridUVs`). The layout is a pure
+function of topology, so charts are identical at every level and across
+backends: a VDM authored at the finest level renders (fragment tier) from any
+level's UVs. Level meshes are `topoLocked`: dyntopo stays off, and VDM
+**promotion is gated off in the engine** — the splat clamp `α·ρ_min` is a
+true ceiling; the per-splat clamp count is exposed as
+`wasm.Vdm_lastSplatClamped()` (the "add a multires level" prompt signal —
+surfacing it in the UI rides the X3/X4 app pass, as does interactive store
+lifecycle / per-dab carrier routing). `_attachMultiresLevel` refreshes frames
++ carrier tags when a store is attached, so `hasVdm` rendering survives level
+switches. Driver/gate: `__multiresVdmTest()`
+(`litemesh_multirestest_support.ts`) in the `sculptcore_multires` integration
+test — splat counts + prompt signal are bit-exact cross-backend; the atlas
+parity gate is quantized to 1e-3 pending the F3 frame-parity follow-up
+(curved-base frames differ by ulps between backends; see the plan's X1 note).
+
 ## Known debts
 
 - No `.wproj` persistence of the stack (flatten-on-save), no autosave

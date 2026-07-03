@@ -19,6 +19,8 @@ import {BrushFlags, SculptTools} from '../brush/brush_base'
 import {DefaultBrushes} from '../brush/index'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
+import {numVecOut} from './litemesh_vdmtest_support'
+import type {VdmStoreBound} from './litemesh_vdmtest_support'
 
 export interface MultiresTestResult {
   ok: boolean
@@ -203,4 +205,131 @@ function multiresTest(): MultiresTestResult {
 
 ;(globalThis as {__multiresTest?: typeof multiresTest}).__multiresTest = multiresTest
 
-export {multiresTest}
+export interface MultiresVdmTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  levels?: number
+  /** Texels the default-α pole splat touched (> 0 proves the synthesized
+   * grid-chart UVs drive the splatter on the level mesh). */
+  texelsTouched?: number
+  /** Vdm_lastSplatClamped after the default-α splat (recorded, not asserted). */
+  clampedDefault?: number
+  /** Vdm_lastSplatClamped after a near-zero-α splat — the add-a-level prompt
+   * signal; must saturate most of the footprint (clamp is a true ceiling). */
+  promptSignal?: number
+  /** Store shape + the atlas bit-parity gate. */
+  tileCount?: number
+  atlasFloatCount?: number
+  atlasChecksum?: number
+  /** FNV over round(texel·1e3) — absorbs ulp-level backend noise (the raw
+   * checksum diverges on curved bases; see the plan's F3-parity follow-up). */
+  atlasQuantChecksum?: number
+  /** Max |texel| (recorded for the quantization scale sanity). */
+  atlasMaxAbs?: number
+  /** A VDM splat moves no vertices. */
+  posChecksumBefore?: number
+  posChecksumAfter?: number
+  /** hasVdm still true after a level switch (render attach survives). */
+  hasVdmAfterSwitch?: boolean
+  /** Atlas bytes identical after a 2→1→2 level round-trip (the store is
+   * level-independent; grid charts are level-consistent). */
+  atlasStableAcrossSwitch?: boolean
+}
+
+/**
+ * X1 gate: a VDM layer on the finest multires level. Enables a 2-level stack,
+ * splats through the level mesh's synthesized grid-chart UVs, proves the splat
+ * moves no verts, reads the clamp (add-a-level prompt) signal through the
+ * backend seam, and round-trips a level switch with the store attached.
+ */
+function multiresVdmTest(): MultiresVdmTestResult {
+  const result: MultiresVdmTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {ctx?: {object?: {data?: unknown}}}
+    __multiresVdmTestResult?: MultiresVdmTestResult
+  }
+  try {
+    const mesh = g._appstate?.ctx?.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const wasm = mesh.wasm
+
+    if (!mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
+    try {
+      result.levels = mesh.multiresLevels
+
+      // The engine synthesized the grid-chart UVs at materialization; satisfy
+      // the splatter's frame + carrier prerequisites (the harness fill).
+      wasm.Mesh_updateFrames(mesh.mesh)
+      wasm.SpatialTree_fillDetailCarrier(mesh.spatial, 1)
+
+      const before = dumpCoFlat(mesh)
+      result.posChecksumBefore = fnv1a(before)
+      let R = 0
+      for (let i = 2; i < before.length; i += 3) {
+        if (before[i] > R) R = before[i]
+      }
+      const radius = R * 0.35
+      result.radius = radius
+
+      const store = wasm.VdmStore_new(1024, 32)
+      mesh.attachVdmStore(store) // LiteMesh owns it now (freed on detach)
+      try {
+        result.texelsTouched = wasm.Mesh_vdmSplatDab(
+          mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 0.5, 0)
+        result.clampedDefault = wasm.Vdm_lastSplatClamped()
+
+        // Near-zero α → the fold ceiling collapses; the clamp count is the
+        // add-a-level prompt signal (no promotion exists on this base).
+        wasm.Mesh_vdmSplatDab(
+          mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 1e-8, 0)
+        result.promptSignal = wasm.Vdm_lastSplatClamped()
+
+        result.posChecksumAfter = fnv1a(dumpCoFlat(mesh))
+
+        const sb = store as unknown as VdmStoreBound
+        result.tileCount = sb.tileCount()
+        const atlasOut = numVecOut(mesh, 'float')
+        sb.gpuAtlasPixelsOut(atlasOut.vec as never)
+        const atlas = atlasOut.read()
+        const f32 = atlas instanceof Float32Array ? atlas : Float32Array.from(atlas as ArrayLike<number>)
+        result.atlasFloatCount = f32.length
+        result.atlasChecksum = fnv1a(f32)
+        const quant = new Int32Array(f32.length)
+        let maxAbs = 0
+        for (let i = 0; i < f32.length; i++) {
+          quant[i] = Math.round(f32[i] * 1000)
+          const a = Math.abs(f32[i])
+          if (a > maxAbs) maxAbs = a
+        }
+        result.atlasMaxAbs = maxAbs
+        result.atlasQuantChecksum = fnv1a(new Float32Array(quant.buffer))
+
+        // Level round-trip with the store attached: the attach hook re-frames
+        // + re-tags the new level; the store itself must be untouched.
+        mesh.multiresSetLevel(1)
+        result.hasVdmAfterSwitch = mesh.hasVdm
+        mesh.multiresSetLevel(2)
+        const atlasOut2 = numVecOut(mesh, 'float')
+        sb.gpuAtlasPixelsOut(atlasOut2.vec as never)
+        const again = atlasOut2.read()
+        const f32b = again instanceof Float32Array ? again : Float32Array.from(again as ArrayLike<number>)
+        result.atlasStableAcrossSwitch = fnv1a(f32b) === result.atlasChecksum
+      } finally {
+        mesh.detachVdmStore()
+      }
+    } finally {
+      mesh.multiresDelete()
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+  }
+  g.__multiresVdmTestResult = result
+  return result
+}
+
+;(globalThis as {__multiresVdmTest?: typeof multiresVdmTest}).__multiresVdmTest = multiresVdmTest
+
+export {multiresTest, multiresVdmTest}

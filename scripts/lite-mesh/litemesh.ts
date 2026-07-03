@@ -1272,6 +1272,13 @@ export class LiteMesh extends SceneObjectData {
     this.spatial.setColorDisplayMode(this._displayColorMode)
     this.drawBatch = this.spatial.getDrawBatch()
     this.treeBatch = this.spatial.buildLeafBoundsBatch(this.wasm.gpu)
+    // Keep an attached VDM renderable on the new level (X1): fresh F3 frames +
+    // carrier tags — the grid-chart UVs are level-consistent, so finest-level
+    // texels sample correctly from any level's parameterization.
+    if (this._vdmStore) {
+      this.wasm.Mesh_updateFrames(this.mesh)
+      this.wasm.SpatialTree_fillDetailCarrier(this.spatial, 1)
+    }
     this._invalidateGpuCaches()
     this.regenBounds()
   }
@@ -2944,6 +2951,16 @@ export class LiteMesh extends SceneObjectData {
 
     // VDM residency + the owned store (frees the C++ VdmStore).
     this.detachVdmStore()
+
+    // A live multires stack owns mesh/spatial (views) — free the stack and
+    // fall through to freeing the re-adopted cage.
+    if (this._multires) {
+      this.spatial = undefined as unknown as SpatialTree
+      this.mesh = this._multiresCage as WasmMesh
+      this._multiresCage = undefined
+      this.wasm.Multires_free(this._multires)
+      this._multires = undefined
+    }
 
     if (this.spatial) {
       this.wasm.SpatialTree_free(this.spatial)

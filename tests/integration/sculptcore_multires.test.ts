@@ -57,7 +57,30 @@ interface MultiresTestResult {
   cageRestored?: boolean
 }
 
-function runMultiresTest(nwExe: string, backend: 'wasm' | 'native'): MultiresTestResult {
+/** `__multiresVdmTest()` result — the X1 VDM-on-finest-level gate. */
+interface MultiresVdmTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  levels?: number
+  texelsTouched?: number
+  clampedDefault?: number
+  promptSignal?: number
+  tileCount?: number
+  atlasFloatCount?: number
+  atlasChecksum?: number
+  atlasQuantChecksum?: number
+  atlasMaxAbs?: number
+  posChecksumBefore?: number
+  posChecksumAfter?: number
+  hasVdmAfterSwitch?: boolean
+  atlasStableAcrossSwitch?: boolean
+}
+
+function runMultiresTest(
+  nwExe: string,
+  backend: 'wasm' | 'native'
+): {base: MultiresTestResult; vdm: MultiresVdmTestResult} {
   const dump = bootDump(
     nwExe,
     [
@@ -72,12 +95,13 @@ function runMultiresTest(nwExe: string, backend: 'wasm' | 'native'): MultiresTes
       '--scene-arg',
       'subdiv=6',
       '--eval',
-      'globalThis.__evalTestResult = __multiresTest()',
+      'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest()}',
     ],
     {tmpPrefix: 'scmultires-', timeout: 180000}
-  ) as {evalResult?: MultiresTestResult}
-  if (!dump.evalResult) throw new Error(`${backend} dump has no multiresTest result`)
-  return dump.evalResult
+  ) as {evalResult?: {base?: MultiresTestResult; vdm?: MultiresVdmTestResult}}
+  if (!dump.evalResult?.base) throw new Error(`${backend} dump has no multiresTest result`)
+  if (!dump.evalResult?.vdm) throw new Error(`${backend} dump has no multiresVdmTest result`)
+  return {base: dump.evalResult.base, vdm: dump.evalResult.vdm}
 }
 
 const nwExe = resolveNwjsExe()
@@ -105,10 +129,13 @@ const eachBackend = backends.map((b) => [b] as const)
 
 maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () => {
   const results = new Map<'wasm' | 'native', MultiresTestResult>()
+  const vdmResults = new Map<'wasm' | 'native', MultiresVdmTestResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
-      results.set(backend, runMultiresTest(nwExe!, backend))
+      const r = runMultiresTest(nwExe!, backend)
+      results.set(backend, r.base)
+      vdmResults.set(backend, r.vdm)
     }
   }, 600000)
 
@@ -173,5 +200,62 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
     expect(native.level2FloatCount).toBe(wasm.level2FloatCount)
     expect(native.level2PreChecksum).toBe(wasm.level2PreChecksum)
     expect(native.level2PostChecksum).toBe(wasm.level2PostChecksum)
+  })
+
+  // --- X1 gate: a VDM layer on the finest multires level. ---
+
+  test.each(eachBackend)('%s: VDM driver ran cleanly', (backend) => {
+    const r = vdmResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-multires] ${backend} VDM driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.levels).toBe(2)
+  })
+
+  test.each(eachBackend)('%s: splat lands through the synthesized grid-chart UVs', (backend) => {
+    const r = vdmResults.get(backend)!
+    expect(r.texelsTouched).toBeGreaterThan(0)
+    expect(r.tileCount).toBeGreaterThan(0)
+  })
+
+  test.each(eachBackend)('%s: VDM splat moves no vertices', (backend) => {
+    const r = vdmResults.get(backend)!
+    expect(r.posChecksumAfter).toBe(r.posChecksumBefore)
+  })
+
+  test.each(eachBackend)('%s: the clamp ceiling fires the add-a-level prompt signal', (backend) => {
+    const r = vdmResults.get(backend)!
+    // Near-zero α collapses the fold ceiling — most of the footprint clamps.
+    expect(r.promptSignal).toBeGreaterThan(r.texelsTouched! / 2)
+  })
+
+  test.each(eachBackend)('%s: the store survives a level switch bit-exactly', (backend) => {
+    const r = vdmResults.get(backend)!
+    expect(r.hasVdmAfterSwitch).toBe(true)
+    expect(r.atlasStableAcrossSwitch).toBe(true)
+  })
+
+  crossTest('VDM atlases agree across backends (quantized signature)', () => {
+    const wasm = vdmResults.get('wasm')!
+    const native = vdmResults.get('native')!
+    expect(native.texelsTouched).toBe(wasm.texelsTouched)
+    expect(native.clampedDefault).toBe(wasm.clampedDefault)
+    expect(native.promptSignal).toBe(wasm.promptSignal)
+    expect(native.tileCount).toBe(wasm.tileCount)
+    expect(native.atlasFloatCount).toBe(wasm.atlasFloatCount)
+    // The raw byte checksum diverges on curved bases — suspected libm
+    // transcendentals in the F3 cross-field azimuth (see the plan's
+    // frame-parity follow-up under X1). Counts above are exact; the texel
+    // values agree to the 1e-3 quantization the signature encodes.
+    expect(native.atlasQuantChecksum).toBe(wasm.atlasQuantChecksum)
+    if (native.atlasChecksum !== wasm.atlasChecksum) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[sculptcore-multires] raw atlas checksums differ (ulp-level backend noise): ` +
+          `wasm=${wasm.atlasChecksum} native=${native.atlasChecksum} maxAbs=${wasm.atlasMaxAbs}`
+      )
+    }
   })
 })

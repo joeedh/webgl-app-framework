@@ -183,4 +183,5 @@ function vdmTest(): VdmTestResult {
 
 ;(globalThis as {__vdmTest?: typeof vdmTest}).__vdmTest = vdmTest
 
-export {vdmTest}
+export {vdmTest, numVecOut}
+export type {VdmStoreBound}
