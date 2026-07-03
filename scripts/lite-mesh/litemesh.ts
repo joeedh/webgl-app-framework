@@ -32,6 +32,7 @@ import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 import type {DrawQueue, FrameContext} from '../render/queue'
 import {isWebGPU} from '../core/renderer_flag'
 import {getSerializeCacheMode, getDeferredBlobCollector, getDeferredBlobResolver} from '../core/serialize_cache'
+import {FeatureFlags} from '../core/feature-flag'
 import {makeBlobPlaceholder, readBlobPlaceholder} from '../core/autosave_format'
 import {getActiveWebGpuContext} from '../render/queue_factory'
 import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
@@ -71,8 +72,8 @@ const ATTR_TYPE_LABEL: Record<number, string> = {
   512 : 'Byte',
   1024: 'Short',
 }
-/** `AttrUse` bitflags = the attribute's category/role. */
-export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8} as const
+/** `AttrUse` bitflags = the attribute's category/role (mirror of C++ AttrUse). */
+export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8, SCULPT_LAYER: 32} as const
 
 /** User-selectable attribute categories for the ObData dropdown (the brushable
  * subset of AttrUse + None). Values match AttrUseFlags so they pass straight to
@@ -136,6 +137,36 @@ export class LiteMeshAttrItem {
     if (this.use & AttrUseFlags.POLYGROUP) cats.push('PolyGroup')
     const cat = cats.length ? `   ·   ${cats.join('+')}` : ''
     return `${this.attrName}   ·   ${dom} ${ty}${cat}`
+  }
+}
+
+/**
+ * One sculpt layer, surfaced in the Sculpt Layers ListBox (V5 app wiring).
+ * `index` is the engine settings index (== stack position); `name` is the
+ * composite row label the ListBox displays.
+ */
+export class LiteMeshSculptLayerItem {
+  constructor(
+    public attrName: string,
+    public index: number,
+    public weight: number,
+    public enabled: boolean,
+    public frozen: boolean
+  ) {}
+
+  equals(b: this) {
+    return (
+      this.attrName === b.attrName &&
+      this.index === b.index &&
+      this.weight === b.weight &&
+      this.enabled === b.enabled &&
+      this.frozen === b.frozen
+    )
+  }
+
+  get name(): string {
+    const state = `${this.enabled ? '' : '   ·   off'}${this.frozen ? '   ·   frozen' : ''}`
+    return `${this.attrName}   ·   w ${this.weight.toFixed(2)}${state}`
   }
 }
 
@@ -523,6 +554,89 @@ export class LiteMesh extends SceneObjectData {
       },
     })
 
+    // Sculpt-layer stack (displacementAndSubSurf.md V5). The panel's ListBox
+    // binds to `sculptLayers`; the weight/enabled/frozen props proxy the ACTIVE
+    // layer and commit through the undoable litemesh.sculpt_layer_* ToolOps.
+    const lstruct = api.mapStruct(LiteMeshSculptLayerItem, true)
+    lstruct.string('attrName', 'attrName', 'Name').readOnly()
+
+    mstruct.list('sculptLayerItems', 'sculptLayers', {
+      getIter(api: DataAPI, list: LiteMeshSculptLayerItem[]) {
+        return list
+      },
+      getLength(api: DataAPI, list: LiteMeshSculptLayerItem[]) {
+        return list.length
+      },
+      get(api: DataAPI, list: LiteMeshSculptLayerItem[], key: number) {
+        return list[key]
+      },
+      getKey(api: DataAPI, list: LiteMeshSculptLayerItem[], obj: LiteMeshSculptLayerItem) {
+        return list.indexOf(obj)
+      },
+      getStruct(api: DataAPI, list: LiteMeshSculptLayerItem[], key: number) {
+        return api.mapStruct(LiteMeshSculptLayerItem)
+      },
+    })
+
+    /* Commit an active-layer mutation as a ToolOp. Weight drags arrive as a
+     * setter call per slider tick; merging same-op-same-layer heads through
+     * execOrRedo collapses a drag to a single undo entry. */
+    const execLayerTool = (ctx: ViewContext, path: string, inputs: Record<string, unknown>, merge: boolean) => {
+      const tool = ctx.api.createTool(ctx, `${path}()`, inputs)
+      const head = ctx.toolstack.head
+      const headPath = head
+        ? (head.constructor as unknown as {tooldef(): {toolpath: string}}).tooldef().toolpath
+        : ''
+      const sameTarget =
+        merge && headPath === path && (head!.getInputs() as {layer?: number}).layer === inputs.layer
+      if (sameTarget) {
+        ctx.toolstack.execOrRedo(ctx, tool)
+      } else {
+        ctx.toolstack.execTool(ctx, tool)
+      }
+    }
+
+    mstruct
+      .float('', 'activeSculptLayerWeight', 'Weight', 'Active sculpt layer weight')
+      .noUnits()
+      .range(-2, 2)
+      .decimalPlaces(2)
+      .customGetSet<LiteMesh>(
+        function () {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          return li < 0 ? 1.0 : mesh.mesh.sculptLayerWeight(li)
+        },
+        function (value: number) {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          // `this.ctx` is the root context path.ux binds onto the accessor;
+          // its static type is bare, so narrow it here.
+          const ctx = this.ctx as unknown as ViewContext
+          if (li < 0 || !ctx) return
+          execLayerTool(ctx, 'litemesh.sculpt_layer_set_weight', {layer: li, weight: value}, true)
+        }
+      )
+
+    const flagProp = (apiname: string, uiname: string, kind: number, read: (mesh: LiteMesh, li: number) => number) => {
+      mstruct.bool('', apiname, uiname, `Active sculpt layer ${uiname.toLowerCase()}`).customGetSet<LiteMesh>(
+        function () {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          return li >= 0 && read(mesh, li) !== 0
+        },
+        function (value: boolean) {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          const ctx = this.ctx as unknown as ViewContext
+          if (li < 0 || !ctx) return
+          execLayerTool(ctx, 'litemesh.sculpt_layer_set_flag', {layer: li, kind, value}, false)
+        }
+      )
+    }
+    flagProp('activeSculptLayerEnabled', 'Enabled', 0, (mesh, li) => mesh.mesh.sculptLayerEnabled(li))
+    flagProp('activeSculptLayerFrozen', 'Frozen', 1, (mesh, li) => mesh.mesh.sculptLayerFrozen(li))
+
     return mstruct
   }
 
@@ -582,6 +696,31 @@ export class LiteMesh extends SceneObjectData {
       label: 'Add Poly Group',
     })
     attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
+
+    // Sculpt-layer stack (V5), feature-flagged (takes effect on restart).
+    // Clicking a row activates it (the LAYER_DRAW target); weight/enabled/
+    // frozen bind to the active layer via the litemesh.sculpt_layer_* ops.
+    if (FeatureFlags.get('sculptcore.sculpt_layers')) {
+      const layers = container.panel('Sculpt Layers')
+      const layerBox = document.createElement('listbox-x')
+      layerBox.setAttribute('datapath', 'object.data.sculptLayers')
+      layerBox.addEventListener('change', (e: Event) => {
+        const id = (e as ListBoxChangeEvent).selection?.id
+        const mesh = container.ctx?.object?.data
+        if (typeof id === 'number' && mesh instanceof LiteMesh) {
+          mesh.activeSculptLayer = id
+          window.redraw_all?.()
+        }
+      })
+      layers.add(layerBox as unknown as Container<ViewContext>)
+
+      layers.prop('object.data.activeSculptLayerWeight')
+      const row = layers.row()
+      row.prop('object.data.activeSculptLayerEnabled')
+      row.prop('object.data.activeSculptLayerFrozen')
+      layers.tool('litemesh.sculpt_layer_add()', {label: 'Add Layer'})
+      layers.tool('litemesh.sculpt_layer_remove()', {label: 'Remove Active'})
+    }
 
     // Reorder the mesh's element arrays into BVH depth-first order so sculpting
     // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
@@ -1953,11 +2092,73 @@ export class LiteMesh extends SceneObjectData {
    */
   _activeAttr: {color?: string; polygroup?: string; uv?: string} = {}
 
+  /** Active sculpt layer's engine settings index (see activeSculptLayer). */
+  _activeSculptLayer = 0
+
+  /**
+   * Active sculpt layer (settings index) for the LAYER_DRAW brush + the layer
+   * panel. Clamped to the live stack: -1 when the mesh has no layers, so a
+   * stale selection after removals falls back to a valid layer instead of
+   * silently detargeting the brush. View state — not serialized.
+   */
+  get activeSculptLayer(): number {
+    const count = this.mesh.sculptLayerCount()
+    if (count <= 0) return -1
+    return Math.max(0, Math.min(this._activeSculptLayer, count - 1))
+  }
+  set activeSculptLayer(li: number) {
+    this._activeSculptLayer = li
+  }
+
+  /** Layer `li`'s attribute name, via the v.attrs AttrRef proxy at
+   * sculptLayerAttrIndex (the settings sidecar isn't a bound member). */
+  sculptLayerName(li: number): string {
+    const attrIdx = this.mesh.sculptLayerAttrIndex(li)
+    if (attrIdx < 0) return ''
+    const grp = this._domainGroup(AttrDomain.VERTEX)
+    if (!grp?.attrs) return ''
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
+    if (!cls) return ''
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
+    return attrIdx < arr.length ? arr[attrIdx].name : ''
+  }
+
+  private lastSculptLayerItems: LiteMeshSculptLayerItem[] = []
+
+  /** Sculpt-layer rows for the layer-stack ListBox, in stack order. Reads the
+   * bound per-layer methods; identity-cached like attrItems so path.ux doesn't
+   * rebuild the list every draw. */
+  get sculptLayerItems(): LiteMeshSculptLayerItem[] {
+    const m = this.mesh
+    const items: LiteMeshSculptLayerItem[] = []
+    const count = m.sculptLayerCount()
+    for (let li = 0; li < count; li++) {
+      items.push(
+        new LiteMeshSculptLayerItem(
+          this.sculptLayerName(li),
+          li,
+          m.sculptLayerWeight(li),
+          m.sculptLayerEnabled(li) !== 0,
+          m.sculptLayerFrozen(li) !== 0
+        )
+      )
+    }
+    const last = this.lastSculptLayerItems
+    if (last.length === items.length && items.every((it, i) => it.equals(last[i]))) {
+      return last
+    }
+    this.lastSculptLayerItems = items
+    return items
+  }
+
   /** Domain that a given category's layers live on (mirrors the W2b table). */
   static categoryDomain(category: number): number {
     if (category & AttrUseFlags.COLOR) return AttrDomain.VERTEX
     if (category & AttrUseFlags.POLYGROUP) return AttrDomain.FACE
     if (category & AttrUseFlags.UV) return AttrDomain.VERTEX // corner later
+    if (category & AttrUseFlags.SCULPT_LAYER) return AttrDomain.VERTEX
     return 0
   }
 
@@ -2063,7 +2264,10 @@ export class LiteMesh extends SceneObjectData {
    * live AttrUse; the setter ignores categories invalid for the attr's type. */
   get selectedAttrCategory(): number {
     const s = this._selectedAttr
-    return s ? this._attrUseAt(s.domain, s.layerIndex) : AttrUseFlags.NONE
+    // Mask to the dropdown's roles: other AttrUse bits (SELECT, SCULPT_LAYER)
+    // aren't user-assignable categories and would confuse the enum widget.
+    const mask = AttrUseFlags.COLOR | AttrUseFlags.UV | AttrUseFlags.POLYGROUP
+    return s ? this._attrUseAt(s.domain, s.layerIndex) & mask : AttrUseFlags.NONE
   }
   set selectedAttrCategory(use: number) {
     const s = this._selectedAttr
@@ -2088,6 +2292,12 @@ export class LiteMesh extends SceneObjectData {
    * bound vector so the index matches `grp->attrs[layerIndex]` in C++.
    */
   activeAttrLayerIndex(category: number): number {
+    // Sculpt layers are keyed by settings index, not attr name: the engine's
+    // sidecar (Mesh.sculptLayers) owns the stack, so resolve through it.
+    if (category & AttrUseFlags.SCULPT_LAYER) {
+      const li = this.activeSculptLayer
+      return li < 0 ? -1 : this.mesh.sculptLayerAttrIndex(li)
+    }
     let name: string | undefined
     if (category & AttrUseFlags.COLOR) name = this._activeAttr.color
     else if (category & AttrUseFlags.POLYGROUP) name = this._activeAttr.polygroup

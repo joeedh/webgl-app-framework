@@ -192,6 +192,13 @@ const featureFlags = [
     type       : 'bool',
     value      : false,
   },
+  {
+    key        : 'sculptcore.sculpt_layers',
+    uiName     : 'Sculpt Layers',
+    description: 'Sculpt-layer stack: the Layer Draw brush + the LiteMesh layer panel (experimental)',
+    type       : 'bool',
+    value      : false,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */

@@ -376,6 +376,8 @@ export type GeneratedDataPath =
   | "settings.featureFlags.sculptcore_gpu_brush_grab"
   | "settings.featureFlags.sculptcore_gpu_brush_verify"
   | "settings.featureFlags.sculptcore_quad_remesher"
+  | "settings.featureFlags.sculptcore_sculpt_layers"
+  | "settings.featureFlags.sculptcore_select_flush_prefer_op_domain"
   | "settings.limitUndoMem"
   | "settings.undoMemLimit"
   | "settings_editor"
@@ -560,6 +562,15 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.quad_remesh.useCurvature"
   | "toolDefaults.litemesh.quad_remesh.useDensity"
   | "toolDefaults.litemesh.quad_remesh.useSharpFeatures"
+  | "toolDefaults.litemesh.sculpt_layer_remove"
+  | "toolDefaults.litemesh.sculpt_layer_remove.layer"
+  | "toolDefaults.litemesh.sculpt_layer_set_flag"
+  | "toolDefaults.litemesh.sculpt_layer_set_flag.kind"
+  | "toolDefaults.litemesh.sculpt_layer_set_flag.layer"
+  | "toolDefaults.litemesh.sculpt_layer_set_flag.value"
+  | "toolDefaults.litemesh.sculpt_layer_set_weight"
+  | "toolDefaults.litemesh.sculpt_layer_set_weight.layer"
+  | "toolDefaults.litemesh.sculpt_layer_set_weight.weight"
   | "toolDefaults.litemesh.select_all"
   | "toolDefaults.litemesh.select_all.mode"
   | "toolDefaults.litemesh.select_circle"
@@ -1125,6 +1136,8 @@ declare module "@framework/pathux" {
     "settings.featureFlags.sculptcore_gpu_brush_grab": true;
     "settings.featureFlags.sculptcore_gpu_brush_verify": true;
     "settings.featureFlags.sculptcore_quad_remesher": true;
+    "settings.featureFlags.sculptcore_sculpt_layers": true;
+    "settings.featureFlags.sculptcore_select_flush_prefer_op_domain": true;
     "settings.limitUndoMem": true;
     "settings.undoMemLimit": true;
     "settings_editor": true;
@@ -1309,6 +1322,15 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.quad_remesh.useCurvature": true;
     "toolDefaults.litemesh.quad_remesh.useDensity": true;
     "toolDefaults.litemesh.quad_remesh.useSharpFeatures": true;
+    "toolDefaults.litemesh.sculpt_layer_remove": true;
+    "toolDefaults.litemesh.sculpt_layer_remove.layer": true;
+    "toolDefaults.litemesh.sculpt_layer_set_flag": true;
+    "toolDefaults.litemesh.sculpt_layer_set_flag.kind": true;
+    "toolDefaults.litemesh.sculpt_layer_set_flag.layer": true;
+    "toolDefaults.litemesh.sculpt_layer_set_flag.value": true;
+    "toolDefaults.litemesh.sculpt_layer_set_weight": true;
+    "toolDefaults.litemesh.sculpt_layer_set_weight.layer": true;
+    "toolDefaults.litemesh.sculpt_layer_set_weight.weight": true;
     "toolDefaults.litemesh.select_all": true;
     "toolDefaults.litemesh.select_all.mode": true;
     "toolDefaults.litemesh.select_circle": true;

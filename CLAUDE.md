@@ -487,6 +487,16 @@ Key conventions:
   forceReadback, scatter self-check) — see
   [documentation/debugSurface.md](documentation/debugSurface.md).
 
+## Sculpt layers
+
+Re-weightable displacement layers on a `LiteMesh` (flag
+`sculptcore.sculpt_layers`, default off): the Layer Draw brush
+(`SculptTools.LAYER_DRAW` → the `LAYERDRAW` kernel, redirected to the active
+layer's attr like the color brushes) plus a layer-stack panel on the LiteMesh
+properties tab (weight/enabled/frozen through the undoable
+`litemesh.sculpt_layer_*` ToolOps; the displace compositor keeps evaluated
+`v.co` current). See [documentation/sculptLayers.md](documentation/sculptLayers.md).
+
 ## Typecheck
 
 Run `npx tsgo --noEmit`, **not** `tsc`.

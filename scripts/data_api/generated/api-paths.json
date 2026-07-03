@@ -4034,6 +4034,7 @@
         "BSMOOTH",
         "KELVINLET",
         "FEATURE_ALIGN",
+        "LAYER_DRAW",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -4548,6 +4549,24 @@
       "propType": "BoolProperty",
       "uiname": "sculptcore.quad_remesher",
       "description": "Enable quad remesher",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_sculpt_layers": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Sculpt Layers",
+      "description": "Sculpt-layer stack: the Layer Draw brush + the LiteMesh layer panel (experimental)",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_select_flush_prefer_op_domain": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "sculptcore.select_flush_prefer_op_domain",
+      "description": "Prefer an op's own selected domain over a derived one; when off, merge instead",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -6238,6 +6257,83 @@
       "description": "Use Sharp Features",
       "decimalPlaces": 4,
       "step": 0.05
+    },
+    "toolDefaults.litemesh.sculpt_layer_remove": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.sculpt_layer_remove.layer": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Layer",
+      "description": "Layer",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_flag": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_flag.kind": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Kind",
+      "description": "Kind",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "ENABLED",
+        "FROZEN"
+      ]
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_flag.layer": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Layer",
+      "description": "Layer",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_flag.value": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Value",
+      "description": "Value",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_weight": {
+      "kind": "struct",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_weight.layer": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Layer",
+      "description": "Layer",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.sculpt_layer_set_weight.weight": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Weight",
+      "description": "Weight",
+      "range": [
+        -2,
+        2
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.litemesh.select_all": {
       "kind": "struct",
