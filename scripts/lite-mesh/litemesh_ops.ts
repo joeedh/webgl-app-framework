@@ -246,6 +246,227 @@ export class RemoveAttrOp extends LiteMeshAttrOp {
 ToolOp.register(RemoveAttrOp)
 
 /**
+ * Base for the sculpt-layer ToolOps (displacementAndSubSurf.md V5): shared
+ * flag gate + layer resolution. `layer` is the engine settings index; -1
+ * resolves to the mesh's active sculpt layer at undoPre time (stored on
+ * `_layer` so redo targets the same layer regardless of selection churn).
+ */
+abstract class SculptLayerOpBase<Inputs extends PropertySlots = {}> extends LiteMeshAttrOp<Inputs> {
+  _layer = -1
+
+  static canRun(_ctx: ToolContext): boolean {
+    return FeatureFlags.get('sculptcore.sculpt_layers')
+  }
+
+  _resolveLayer(ctx: ToolContext): LiteMesh | undefined {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return undefined
+    if (this._layer < 0) {
+      const li = (this.inputs as unknown as {layer?: IntProperty}).layer?.getValue() ?? -1
+      this._layer = li >= 0 ? li : mesh.activeSculptLayer
+    }
+    return this._layer >= 0 && this._layer < mesh.mesh.sculptLayerCount() ? mesh : undefined
+  }
+
+  /** Refresh node bounds + GPU buffers after a compositor co adjustment
+   * (settings mutators move verts without flagging spatial nodes). */
+  _refresh(mesh: LiteMesh): void {
+    mesh.recalcNormals()
+    mesh.rebuildSpatialFromEdit()
+    window.redraw_all?.()
+  }
+}
+
+/**
+ * Add a sculpt layer (engine-named `slayer.NNN`, zero-filled) and make it
+ * active. A fresh layer has no data, so undo removes it outright via the
+ * displace mutator (mirrors AddAttrOp; redo mints a fresh layer).
+ */
+export class SculptLayerAddOp extends SculptLayerOpBase {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.sculpt_layer_add',
+      uiname  : 'Add Sculpt Layer',
+      inputs  : {},
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return
+    this._layer = mesh.mesh.sculptLayerAdd()
+    mesh.activeSculptLayer = this._layer
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._layer >= 0) {
+      getWasmImmediate()!.Mesh_layerRemove(mesh.mesh, this._layer)
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(SculptLayerAddOp)
+
+/**
+ * Remove a sculpt layer (default: the active one). The engine subtracts the
+ * layer's contribution and drops its settings row + delta column — destructive,
+ * so undo restores the whole-mesh serialize blob (the symmetrize/quad-remesh
+ * pattern), which brings the layer's painted data back intact.
+ */
+export class SculptLayerRemoveOp extends SculptLayerOpBase<{layer: IntProperty}> {
+  _undoBlob?: Uint8Array
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.sculpt_layer_remove',
+      uiname  : 'Remove Sculpt Layer',
+      inputs  : {layer: new IntProperty(-1).noUnits()},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._resolveLayer(ctx)
+    this._undoBlob = mesh ? mesh.serialize() : undefined
+  }
+  calcUndoMem(): number {
+    return this._undoBlob?.length ?? 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._resolveLayer(ctx)
+    if (!mesh) return
+    const wasEnabled = mesh.mesh.sculptLayerEnabled(this._layer) !== 0
+    getWasmImmediate()!.Mesh_layerRemove(mesh.mesh, this._layer)
+    if (wasEnabled) {
+      this._refresh(mesh)
+    } else {
+      window.redraw_all?.()
+    }
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._undoBlob) {
+      mesh._replaceMesh(getWasmImmediate()!.Mesh_deserialize(this._undoBlob))
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(SculptLayerRemoveOp)
+
+/**
+ * Set a sculpt layer's weight through the displace mutator (which keeps
+ * evaluated v.co current). Undo re-applies the previous weight via the same
+ * mutator (self-inverse up to fp rounding). The panel's slider commits through
+ * `execOrRedo`, so a drag collapses to a single op on the stack.
+ */
+export class SculptLayerSetWeightOp extends SculptLayerOpBase<{layer: IntProperty; weight: FloatProperty}> {
+  _prev = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.sculpt_layer_set_weight',
+      uiname  : 'Sculpt Layer Weight',
+      inputs  : {
+        layer : new IntProperty(-1).noUnits(),
+        weight: new FloatProperty(1.0).setRange(-2, 2).noUnits(),
+      },
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._resolveLayer(ctx)
+    this._prev = mesh ? mesh.mesh.sculptLayerWeight(this._layer) : 0
+  }
+  calcUndoMem(): number {
+    return 0
+  }
+
+  _apply(ctx: ToolContext, weight: number): void {
+    const mesh = this._resolveLayer(ctx)
+    if (!mesh) return
+    getWasmImmediate()!.Mesh_layerSetWeight(mesh.mesh, this._layer, weight)
+    // A disabled layer contributes nothing, so co (and the tree) are untouched.
+    if (mesh.mesh.sculptLayerEnabled(this._layer)) {
+      this._refresh(mesh)
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    this._apply(ctx, this.getInputs().weight)
+  }
+  undo(ctx: ToolContext): void {
+    this._apply(ctx, this._prev)
+  }
+}
+ToolOp.register(SculptLayerSetWeightOp)
+
+/**
+ * Toggle a sculpt layer's enabled / frozen bit (kind selects which). Enabled
+ * adds/subtracts the layer's contribution (tree refresh); frozen only gates
+ * brush writes (no geometry change). Undo re-applies the previous bit.
+ */
+export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
+  layer: IntProperty
+  kind: EnumProperty
+  value: BoolProperty
+}> {
+  _prev = false
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.sculpt_layer_set_flag',
+      uiname  : 'Sculpt Layer State',
+      inputs  : {
+        layer: new IntProperty(-1).noUnits(),
+        kind : new EnumProperty(0, {ENABLED: 0, FROZEN: 1}),
+        value: new BoolProperty(true),
+      },
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._resolveLayer(ctx)
+    const frozen = this.getInputs().kind === 1
+    this._prev = mesh
+      ? (frozen ? mesh.mesh.sculptLayerFrozen(this._layer) : mesh.mesh.sculptLayerEnabled(this._layer)) !== 0
+      : false
+  }
+  calcUndoMem(): number {
+    return 0
+  }
+
+  _apply(ctx: ToolContext, value: boolean): void {
+    const mesh = this._resolveLayer(ctx)
+    if (!mesh) return
+    const wasm = getWasmImmediate()!
+    if (this.getInputs().kind === 1) {
+      wasm.Mesh_layerSetFrozen(mesh.mesh, this._layer, value ? 1 : 0)
+      window.redraw_all?.()
+    } else {
+      wasm.Mesh_layerSetEnabled(mesh.mesh, this._layer, value ? 1 : 0)
+      this._refresh(mesh)
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    this._apply(ctx, this.getInputs().value)
+  }
+  undo(ctx: ToolContext): void {
+    this._apply(ctx, this._prev)
+  }
+}
+ToolOp.register(SculptLayerSetFlagOp)
+
+/**
  * Wave 5: mark the shortest edge-path between two vertices as a seam
  * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`
  * runs Dijkstra + flags the path edges + recomputes derived boundary state, and

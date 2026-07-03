@@ -174,4 +174,149 @@ function layerTest(): LayerTestResult {
 
 ;(globalThis as {__layerTest?: typeof layerTest}).__layerTest = layerTest
 
-export {layerTest}
+interface LayerToolTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  /** Settings index of the created layer (expected 0) + its v.attrs index. */
+  layerIndex?: number
+  layerAttrIndex?: number
+  /** Live verts moved > 1e-6 by the LAYER_DRAW stroke (dumpVertCo diff). */
+  movedCount?: number
+  maxDisp?: number
+  /** Max displacement after Mesh_layerSetWeight(0.5) — expected ≈ maxDisp/2. */
+  halfWeightMaxDisp?: number
+  /** Max |co - after| once the weight is restored to 1 (fp-rounding small). */
+  weightRestoreResidual?: number
+  /** Max |co - before| with the layer disabled (fp-rounding small). */
+  disabledResidual?: number
+  /** Max |co - after| once re-enabled (fp-rounding small). */
+  enabledResidual?: number
+  /** Max |co - before| after one MeshLog undo (exact snapshot restore). */
+  undoResidual?: number
+  /** FNV-1a over the post-stroke dumpVertCo floats (cross-backend parity). */
+  postChecksum?: number
+  postFloatCount?: number
+}
+
+/** Flatten dumpVertCo() into Float32Array xyz triples (live-vert order). */
+function dumpCoFlat(mesh: LiteMesh): Float32Array {
+  const {co} = mesh.dumpVertCo()
+  const out = new Float32Array(co.length * 3)
+  for (let i = 0; i < co.length; i++) {
+    out[i * 3] = co[i][0]
+    out[i * 3 + 1] = co[i][1]
+    out[i * 3 + 2] = co[i][2]
+  }
+  return out
+}
+
+/**
+ * V5 gate: one LAYER_DRAW stroke through the REAL tool mapping — brush.tool =
+ * SculptTools.LAYER_DRAW routed via TOOL_TO_SCULPTBRUSH / toolAttrCategory /
+ * activeAttrLayerIndex (no brushTypeOverride / attrLayerOverride seams) — plus
+ * a settings-mutator round-trip (weight halved + restored, layer disabled +
+ * re-enabled) exercising the Mesh_layerSet* wraps on both backends, then one
+ * MeshLog undo. Positions are read CPU-side (dumpVertCo), so no GPU-buffer
+ * layout hazards from tree rebuilds.
+ */
+function layerToolTest(): LayerToolTestResult {
+  const result: LayerToolTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {ctx?: {object?: {data?: unknown}}}
+    __layerToolTestResult?: LayerToolTestResult
+  }
+  try {
+    const mesh = g._appstate?.ctx?.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const wasm = mesh.wasm
+
+    const brush = DefaultBrushes.slotMap[SculptTools.LAYER_DRAW]
+    if (!brush) throw new Error('no default LAYER_DRAW brush')
+
+    const pos0 = dumpCoFlat(mesh)
+    let R = 0
+    for (let i = 2; i < pos0.length; i += 3) {
+      if (pos0[i] > R) R = pos0[i]
+    }
+    const radius = R * 0.25
+    result.radius = radius
+
+    const saved = {strength: brush.strength, flag: brush.flag, autosmooth: brush.autosmooth}
+    try {
+      brush.autosmooth = 0
+      brush.flag &= ~BrushFlags.ACCUMULATE
+
+      // Create + activate the layer, then settle the GPU buffer layout with a
+      // zero-strength warmup stroke (same first-stroke re-batch as __layerTest).
+      const li = mesh.mesh.sculptLayerAdd()
+      mesh.activeSculptLayer = li
+      result.layerIndex = li
+      result.layerAttrIndex = mesh.mesh.sculptLayerAttrIndex(li)
+      if (result.layerAttrIndex < 0) throw new Error('sculptLayerAttrIndex returned ' + result.layerAttrIndex)
+
+      brush.strength = 0
+      runSculptcoreStroke({mesh, brush, dabs: [{p: [0, 0, R], normal: [0, 0, 1]}], radius})
+      brush.strength = 1
+
+      const before = dumpCoFlat(mesh)
+
+      // The real tool path: no brushTypeOverride, no attrLayerOverride.
+      runSculptcoreStroke({mesh, brush, dabs: [{p: [0, 0, R], normal: [0, 0, 1]}], radius})
+
+      const after = dumpCoFlat(mesh)
+      if (after.length !== before.length) throw new Error('vert count changed')
+      let moved = 0
+      let maxDisp = 0
+      for (let i = 0; i < after.length; i += 3) {
+        const d = Math.hypot(after[i] - before[i], after[i + 1] - before[i + 1], after[i + 2] - before[i + 2])
+        if (d > 1e-6) {
+          moved++
+          if (d > maxDisp) maxDisp = d
+        }
+      }
+      result.movedCount = moved
+      result.maxDisp = maxDisp
+      result.postChecksum = fnv1a(after)
+      result.postFloatCount = after.length
+
+      // Settings-mutator round-trips (the V5 N-API wraps / WASM exports).
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 0.5)
+      const half = dumpCoFlat(mesh)
+      let halfMax = 0
+      for (let i = 0; i < half.length; i += 3) {
+        const d = Math.hypot(half[i] - before[i], half[i + 1] - before[i + 1], half[i + 2] - before[i + 2])
+        if (d > halfMax) halfMax = d
+      }
+      result.halfWeightMaxDisp = halfMax
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 1.0)
+      result.weightRestoreResidual = maxResidual(after, dumpCoFlat(mesh))
+
+      wasm.Mesh_layerSetEnabled(mesh.mesh, li, 0)
+      result.disabledResidual = maxResidual(before, dumpCoFlat(mesh))
+      wasm.Mesh_layerSetEnabled(mesh.mesh, li, 1)
+      result.enabledResidual = maxResidual(after, dumpCoFlat(mesh))
+
+      // One MeshLog undo restores co + the layer column atomically (absolute
+      // snapshots, so this is exact regardless of the fp round-trips above).
+      SculptPaintOp.meshLog!.undo(mesh.mesh, mesh.spatial)
+      mesh.regenBounds()
+      mesh.meshRevision++
+      result.undoResidual = maxResidual(before, dumpCoFlat(mesh))
+    } finally {
+      brush.strength = saved.strength
+      brush.flag = saved.flag
+      brush.autosmooth = saved.autosmooth
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
+  }
+  g.__layerToolTestResult = result
+  return result
+}
+
+;(globalThis as {__layerToolTest?: typeof layerToolTest}).__layerToolTest = layerToolTest
+
+export {layerTest, layerToolTest}

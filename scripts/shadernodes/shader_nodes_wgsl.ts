@@ -65,6 +65,109 @@ function sanitizeAttrField(name: string): string {
   return 'attr_' + name.trim().replace(/[^A-Za-z0-9_]/g, '_')
 }
 
+/**
+ * VDM fragment-sampling library (displacementAndSubSurf plan, V3), emitted only
+ * when `generateWgsl` runs with `VDM_MODE` set. `@group(3)` holds the tile
+ * atlas (rgba32float — non-filterable, hence the manual bilinear over
+ * `textureLoad`s), the page table (`grid × grid` r32sint; -1 = unallocated →
+ * sample zero), and the layout uniforms; the LiteMesh draw path seeds them
+ * (see `litemesh.ts` `_syncVdmGpu`). The 4 bilinear taps are clamped to the
+ * sample's own tile — the store's one-texel dilation skirts carry chart-edge
+ * values, so clamping never blends toward a neighbouring chart or zero.
+ */
+const VDM_SAMPLE_WGSL = `
+struct VdmParams {
+  vdmTileSize : i32,
+  vdmGridSize : i32,
+  vdmAtlasTilesX : i32,
+  vdmResolution : f32,
+};
+@group(3) @binding(0) var vdm_atlas : texture_2d<f32>;
+@group(3) @binding(1) var vdm_page : texture_2d<i32>;
+@group(3) @binding(2) var<uniform> vdmParams : VdmParams;
+
+fn vdmSample(uv : vec2f) -> vec3f {
+  let res = vdmParams.vdmResolution;
+  let ts = vdmParams.vdmTileSize;
+  let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
+  let p = uvc * res - vec2f(0.5);
+  let p0 = vec2i(floor(p));
+  let f = p - floor(p);
+  let tc = clamp(vec2i(uvc * res), vec2i(0), vec2i(i32(res) - 1));
+  let tile = clamp(tc / ts, vec2i(0), vec2i(vdmParams.vdmGridSize - 1));
+  let slot = textureLoad(vdm_page, tile, 0).x;
+  if (slot < 0) {
+    return vec3f(0.0);
+  }
+  let cell = vec2i(slot % vdmParams.vdmAtlasTilesX, slot / vdmParams.vdmAtlasTilesX) * ts;
+  let lo = tile * ts;
+  let hi = vec2i(ts - 1);
+  let d00 = textureLoad(vdm_atlas, cell + clamp(p0 - lo, vec2i(0), hi), 0).xyz;
+  let d10 = textureLoad(vdm_atlas, cell + clamp(p0 + vec2i(1, 0) - lo, vec2i(0), hi), 0).xyz;
+  let d01 = textureLoad(vdm_atlas, cell + clamp(p0 + vec2i(0, 1) - lo, vec2i(0), hi), 0).xyz;
+  let d11 = textureLoad(vdm_atlas, cell + clamp(p0 + vec2i(1, 1) - lo, vec2i(0), hi), 0).xyz;
+  return mix(mix(d00, d10, f.x), mix(d01, d11, f.x), f.y);
+}
+`
+
+/**
+ * The fs_main preamble for VDM mode: reconstruct the displaced surface point
+ * in object space through the F3 frame (`base + t·D.x + b·D.y + n·D.z`, the
+ * exact inverse of the splat's tangent projection), then derive the shading
+ * normal analytically as `cross(∂S/∂x, ∂S/∂y)` with the displacement gradient
+ * taken in *texel* space (±half-texel central differences, so the bilinear
+ * taps stay inside the store's 1.5-texel dilation skirts) and chained through
+ * `dpdx/dpdy(uv)`. Interpolated varyings
+ * are affine per triangle, so their screen derivatives are exact even in
+ * helper invocations at chart edges — unlike naive `dpdx(displacedPos)`,
+ * which embeds texture lookups at extrapolated UVs and turns every per-face
+ * chart boundary into derivative noise. The rewrites land on a local
+ * `var input` copy so every downstream `input.*` read (node codegen,
+ * lighting) picks them up; texels of exactly zero leave the fragment
+ * untouched, so flat regions shade identically to the non-VDM material.
+ */
+function buildVdmPreamble(uvField: string, normalField: string, tangentField: string): string {
+  return `  var input = inputRaw;
+  {
+    let vdm_uv = inputRaw.${uvField};
+    let vdm_d = vdmSample(vdm_uv);
+    var vdm_n = inputRaw.${normalField};
+    vdm_n = vdm_n / max(length(vdm_n), 1e-9);
+    var vdm_t = inputRaw.${tangentField} - vdm_n * dot(vdm_n, inputRaw.${tangentField});
+    vdm_t = vdm_t / max(length(vdm_t), 1e-9);
+    let vdm_b = cross(vdm_n, vdm_t);
+    let vdm_pO = inputRaw.vLocalCo + vdm_t * vdm_d.x + vdm_b * vdm_d.y + vdm_n * vdm_d.z;
+    let vdm_pW = (object.objectMatrix * vec4f(vdm_pO, 1.0)).xyz;
+    let vdm_e = 0.5 / vdmParams.vdmResolution;
+    let vdm_ddu = (vdmSample(vdm_uv + vec2f(vdm_e, 0.0)) - vdmSample(vdm_uv - vec2f(vdm_e, 0.0))) * (0.5 / vdm_e);
+    let vdm_ddv = (vdmSample(vdm_uv + vec2f(0.0, vdm_e)) - vdmSample(vdm_uv - vec2f(0.0, vdm_e))) * (0.5 / vdm_e);
+    let vdm_duvx = dpdx(vdm_uv);
+    let vdm_duvy = dpdy(vdm_uv);
+    let vdm_dDx = vdm_ddu * vdm_duvx.x + vdm_ddv * vdm_duvx.y;
+    let vdm_dDy = vdm_ddu * vdm_duvy.x + vdm_ddv * vdm_duvy.y;
+    let vdm_sx = dpdx(inputRaw.vLocalCo) + vdm_t * vdm_dDx.x + vdm_b * vdm_dDx.y + vdm_n * vdm_dDx.z;
+    let vdm_sy = dpdy(inputRaw.vLocalCo) + vdm_t * vdm_dDy.x + vdm_b * vdm_dDy.y + vdm_n * vdm_dDy.z;
+    var vdm_ns = cross(vdm_sx, vdm_sy);
+    vdm_ns = select(vdm_ns, -vdm_ns, dot(vdm_ns, vdm_n) < 0.0);
+    var vdm_nsW = (object.normalMatrix * vec4f(vdm_ns, 0.0)).xyz;
+    let vdm_nsl = length(vdm_nsW);
+    if (dot(vdm_d, vdm_d) > 0.0) {
+      input.vGlobalCo = vdm_pW;
+      if (vdm_nsl > 1e-9) {
+        input.vNormal = vdm_nsW / vdm_nsl;
+      }
+    }
+  }
+`
+}
+
+/** Mesh attribute names the VDM fragment path reads (beyond the material's own
+ * requests): the UV chart + the F3 frame vertex attrs `Mesh_updateFrames`
+ * maintains. Categories: UV=4, GENERIC=0 (→ FLOAT3/vec3f). */
+const VDM_UV_ATTR = 'uv'
+const VDM_FRAME_NORMAL_ATTR = '.frames.v.normal'
+const VDM_FRAME_TANGENT_ATTR = '.frames.v.tangent'
+
 export class WgslShaderGenerator {
   scene: unknown
   paramnames: Record<number, string>
@@ -300,6 +403,26 @@ ${passthrough}  return out;
       this.out('\n}\n')
     }
 
+    // VDM mode (extraDefines.VDM_MODE): request the UV + frame attrs the
+    // fragment sampler needs and stage the @group(3) library + fs_main
+    // preamble. Unset ⇒ the emitted WGSL is bit-identical to before.
+    const vdmMode = !!extraDefines.VDM_MODE
+    let vdmDecls = ''
+    let vdmPreamble = ''
+    if (vdmMode) {
+      this.requestAttribute(VDM_UV_ATTR, 4)
+      this.requestAttribute(VDM_FRAME_NORMAL_ATTR, 0)
+      this.requestAttribute(VDM_FRAME_TANGENT_ATTR, 0)
+      vdmDecls = VDM_SAMPLE_WGSL
+      vdmPreamble = buildVdmPreamble(
+        this.requestedAttrs.get(VDM_UV_ATTR)!.field,
+        this.requestedAttrs.get(VDM_FRAME_NORMAL_ATTR)!.field,
+        this.requestedAttrs.get(VDM_FRAME_TANGENT_ATTR)!.field
+      )
+    }
+    // The preamble copies the immutable param into a local `var input`.
+    const fsParam = vdmMode ? 'inputRaw' : 'input'
+
     // Attributes were collected during the walk (via requestAttribute); assign
     // their vertex slots now and build the matching VsIn/VsOut/vs_main.
     this._assignAttrSlots()
@@ -336,7 +459,7 @@ ${FRAME_UNIFORMS_WGSL}
 ${OBJECT_UNIFORMS_WGSL}
 ${lightPre}
 ${materialStruct}
-${texdecl}
+${texdecl}${vdmDecls}
 ${vertexStages}
 ${SHADER_LIB_WGSL}
 
@@ -358,12 +481,12 @@ struct FsOut {
 
 @fragment
 #ifdef WITH_SSS
-fn fs_main(input : VsOut) -> FsOut {
+fn fs_main(${fsParam} : VsOut) -> FsOut {
 #endif
 #ifndef WITH_SSS
-fn fs_main(input : VsOut) -> @location(0) vec4f {
+fn fs_main(${fsParam} : VsOut) -> @location(0) vec4f {
 #endif
-  var _mainSurface : Closure;
+${vdmPreamble}  var _mainSurface : Closure;
   _mainSurface.diffuse      = vec3f(0.0);
   _mainSurface.light        = vec3f(0.0);
   _mainSurface.emission     = vec3f(0.0);

@@ -18,6 +18,7 @@ import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
 import {SelMask} from '../editors/view3d/selectmode'
 import {NodeFlags} from '../core/graph'
 import {DrawBatch, MeshLog, SpatialTree, Mesh as WasmMesh} from '@sculptcore/api'
+import type {VdmStore} from '@sculptcore/api'
 import {getWasmImmediate, IWasmInterface} from '@sculptcore/api/api'
 import type {RequestedAttrBridge} from '@sculptcore/api/api'
 import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
@@ -31,10 +32,13 @@ import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
 import type {DrawQueue, FrameContext} from '../render/queue'
 import {isWebGPU} from '../core/renderer_flag'
 import {getSerializeCacheMode, getDeferredBlobCollector, getDeferredBlobResolver} from '../core/serialize_cache'
+import {FeatureFlags} from '../core/feature-flag'
 import {makeBlobPlaceholder, readBlobPlaceholder} from '../core/autosave_format'
 import {getActiveWebGpuContext} from '../render/queue_factory'
 import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
+import {GpuTexture} from '../webgpu/texture'
+import {TextureUsage} from '../webgpu/flags'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
@@ -68,8 +72,8 @@ const ATTR_TYPE_LABEL: Record<number, string> = {
   512 : 'Byte',
   1024: 'Short',
 }
-/** `AttrUse` bitflags = the attribute's category/role. */
-export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8} as const
+/** `AttrUse` bitflags = the attribute's category/role (mirror of C++ AttrUse). */
+export const AttrUseFlags = {NONE: 0, UNIT: 1, COLOR: 2, UV: 4, POLYGROUP: 8, SCULPT_LAYER: 32} as const
 
 /** User-selectable attribute categories for the ObData dropdown (the brushable
  * subset of AttrUse + None). Values match AttrUseFlags so they pass straight to
@@ -133,6 +137,36 @@ export class LiteMeshAttrItem {
     if (this.use & AttrUseFlags.POLYGROUP) cats.push('PolyGroup')
     const cat = cats.length ? `   ·   ${cats.join('+')}` : ''
     return `${this.attrName}   ·   ${dom} ${ty}${cat}`
+  }
+}
+
+/**
+ * One sculpt layer, surfaced in the Sculpt Layers ListBox (V5 app wiring).
+ * `index` is the engine settings index (== stack position); `name` is the
+ * composite row label the ListBox displays.
+ */
+export class LiteMeshSculptLayerItem {
+  constructor(
+    public attrName: string,
+    public index: number,
+    public weight: number,
+    public enabled: boolean,
+    public frozen: boolean
+  ) {}
+
+  equals(b: this) {
+    return (
+      this.attrName === b.attrName &&
+      this.index === b.index &&
+      this.weight === b.weight &&
+      this.enabled === b.enabled &&
+      this.frozen === b.frozen
+    )
+  }
+
+  get name(): string {
+    const state = `${this.enabled ? '' : '   ·   off'}${this.frozen ? '   ·   frozen' : ''}`
+    return `${this.attrName}   ·   w ${this.weight.toFixed(2)}${state}`
   }
 }
 
@@ -520,6 +554,89 @@ export class LiteMesh extends SceneObjectData {
       },
     })
 
+    // Sculpt-layer stack (displacementAndSubSurf.md V5). The panel's ListBox
+    // binds to `sculptLayers`; the weight/enabled/frozen props proxy the ACTIVE
+    // layer and commit through the undoable litemesh.sculpt_layer_* ToolOps.
+    const lstruct = api.mapStruct(LiteMeshSculptLayerItem, true)
+    lstruct.string('attrName', 'attrName', 'Name').readOnly()
+
+    mstruct.list('sculptLayerItems', 'sculptLayers', {
+      getIter(api: DataAPI, list: LiteMeshSculptLayerItem[]) {
+        return list
+      },
+      getLength(api: DataAPI, list: LiteMeshSculptLayerItem[]) {
+        return list.length
+      },
+      get(api: DataAPI, list: LiteMeshSculptLayerItem[], key: number) {
+        return list[key]
+      },
+      getKey(api: DataAPI, list: LiteMeshSculptLayerItem[], obj: LiteMeshSculptLayerItem) {
+        return list.indexOf(obj)
+      },
+      getStruct(api: DataAPI, list: LiteMeshSculptLayerItem[], key: number) {
+        return api.mapStruct(LiteMeshSculptLayerItem)
+      },
+    })
+
+    /* Commit an active-layer mutation as a ToolOp. Weight drags arrive as a
+     * setter call per slider tick; merging same-op-same-layer heads through
+     * execOrRedo collapses a drag to a single undo entry. */
+    const execLayerTool = (ctx: ViewContext, path: string, inputs: Record<string, unknown>, merge: boolean) => {
+      const tool = ctx.api.createTool(ctx, `${path}()`, inputs)
+      const head = ctx.toolstack.head
+      const headPath = head
+        ? (head.constructor as unknown as {tooldef(): {toolpath: string}}).tooldef().toolpath
+        : ''
+      const sameTarget =
+        merge && headPath === path && (head!.getInputs() as {layer?: number}).layer === inputs.layer
+      if (sameTarget) {
+        ctx.toolstack.execOrRedo(ctx, tool)
+      } else {
+        ctx.toolstack.execTool(ctx, tool)
+      }
+    }
+
+    mstruct
+      .float('', 'activeSculptLayerWeight', 'Weight', 'Active sculpt layer weight')
+      .noUnits()
+      .range(-2, 2)
+      .decimalPlaces(2)
+      .customGetSet<LiteMesh>(
+        function () {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          return li < 0 ? 1.0 : mesh.mesh.sculptLayerWeight(li)
+        },
+        function (value: number) {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          // `this.ctx` is the root context path.ux binds onto the accessor;
+          // its static type is bare, so narrow it here.
+          const ctx = this.ctx as unknown as ViewContext
+          if (li < 0 || !ctx) return
+          execLayerTool(ctx, 'litemesh.sculpt_layer_set_weight', {layer: li, weight: value}, true)
+        }
+      )
+
+    const flagProp = (apiname: string, uiname: string, kind: number, read: (mesh: LiteMesh, li: number) => number) => {
+      mstruct.bool('', apiname, uiname, `Active sculpt layer ${uiname.toLowerCase()}`).customGetSet<LiteMesh>(
+        function () {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          return li >= 0 && read(mesh, li) !== 0
+        },
+        function (value: boolean) {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          const ctx = this.ctx as unknown as ViewContext
+          if (li < 0 || !ctx) return
+          execLayerTool(ctx, 'litemesh.sculpt_layer_set_flag', {layer: li, kind, value}, false)
+        }
+      )
+    }
+    flagProp('activeSculptLayerEnabled', 'Enabled', 0, (mesh, li) => mesh.mesh.sculptLayerEnabled(li))
+    flagProp('activeSculptLayerFrozen', 'Frozen', 1, (mesh, li) => mesh.mesh.sculptLayerFrozen(li))
+
     return mstruct
   }
 
@@ -579,6 +696,31 @@ export class LiteMesh extends SceneObjectData {
       label: 'Add Poly Group',
     })
     attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
+
+    // Sculpt-layer stack (V5), feature-flagged (takes effect on restart).
+    // Clicking a row activates it (the LAYER_DRAW target); weight/enabled/
+    // frozen bind to the active layer via the litemesh.sculpt_layer_* ops.
+    if (FeatureFlags.get('sculptcore.sculpt_layers')) {
+      const layers = container.panel('Sculpt Layers')
+      const layerBox = document.createElement('listbox-x')
+      layerBox.setAttribute('datapath', 'object.data.sculptLayers')
+      layerBox.addEventListener('change', (e: Event) => {
+        const id = (e as ListBoxChangeEvent).selection?.id
+        const mesh = container.ctx?.object?.data
+        if (typeof id === 'number' && mesh instanceof LiteMesh) {
+          mesh.activeSculptLayer = id
+          window.redraw_all?.()
+        }
+      })
+      layers.add(layerBox as unknown as Container<ViewContext>)
+
+      layers.prop('object.data.activeSculptLayerWeight')
+      const row = layers.row()
+      row.prop('object.data.activeSculptLayerEnabled')
+      row.prop('object.data.activeSculptLayerFrozen')
+      layers.tool('litemesh.sculpt_layer_add()', {label: 'Add Layer'})
+      layers.tool('litemesh.sculpt_layer_remove()', {label: 'Remove Active'})
+    }
 
     // Reorder the mesh's element arrays into BVH depth-first order so sculpting
     // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
@@ -682,6 +824,15 @@ export class LiteMesh extends SceneObjectData {
    * (frame/object/lights across @group 0/1/2) instead of the basic-shader
    * single @group(0) block — see `drawQ` / `drawQGPU`. */
   private _hasMaterialDrawShader = false
+  /** VDM fragment-render state (displacementAndSubSurf V3): the attached (and
+   * owned) sculptcore VdmStore plus its GPU residency — the rgba32float tile
+   * atlas, the r32sint page table, and the last-uploaded layout ints. Synced
+   * per frame in `_syncVdmGpu` via the store's dirty-slot drain. */
+  private _vdmStore?: VdmStore
+  private _vdmAtlasTex?: GpuTexture
+  private _vdmPageTex?: GpuTexture
+  private _vdmLayout?: number[]
+  private _vdmWarnedSync = false
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array | ArrayBuffer
@@ -1941,11 +2092,73 @@ export class LiteMesh extends SceneObjectData {
    */
   _activeAttr: {color?: string; polygroup?: string; uv?: string} = {}
 
+  /** Active sculpt layer's engine settings index (see activeSculptLayer). */
+  _activeSculptLayer = 0
+
+  /**
+   * Active sculpt layer (settings index) for the LAYER_DRAW brush + the layer
+   * panel. Clamped to the live stack: -1 when the mesh has no layers, so a
+   * stale selection after removals falls back to a valid layer instead of
+   * silently detargeting the brush. View state — not serialized.
+   */
+  get activeSculptLayer(): number {
+    const count = this.mesh.sculptLayerCount()
+    if (count <= 0) return -1
+    return Math.max(0, Math.min(this._activeSculptLayer, count - 1))
+  }
+  set activeSculptLayer(li: number) {
+    this._activeSculptLayer = li
+  }
+
+  /** Layer `li`'s attribute name, via the v.attrs AttrRef proxy at
+   * sculptLayerAttrIndex (the settings sidecar isn't a bound member). */
+  sculptLayerName(li: number): string {
+    const attrIdx = this.mesh.sculptLayerAttrIndex(li)
+    if (attrIdx < 0) return ''
+    const grp = this._domainGroup(AttrDomain.VERTEX)
+    if (!grp?.attrs) return ''
+    const cls = (
+      this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string} | undefined}
+    ).findVectorClass('sculptcore::mesh::AttrRef')
+    if (!cls) return ''
+    const arr = this.wasm.getBoundVector(cls.buildFullName(), grp.attrs as never) as ArrayLike<{name: string}>
+    return attrIdx < arr.length ? arr[attrIdx].name : ''
+  }
+
+  private lastSculptLayerItems: LiteMeshSculptLayerItem[] = []
+
+  /** Sculpt-layer rows for the layer-stack ListBox, in stack order. Reads the
+   * bound per-layer methods; identity-cached like attrItems so path.ux doesn't
+   * rebuild the list every draw. */
+  get sculptLayerItems(): LiteMeshSculptLayerItem[] {
+    const m = this.mesh
+    const items: LiteMeshSculptLayerItem[] = []
+    const count = m.sculptLayerCount()
+    for (let li = 0; li < count; li++) {
+      items.push(
+        new LiteMeshSculptLayerItem(
+          this.sculptLayerName(li),
+          li,
+          m.sculptLayerWeight(li),
+          m.sculptLayerEnabled(li) !== 0,
+          m.sculptLayerFrozen(li) !== 0
+        )
+      )
+    }
+    const last = this.lastSculptLayerItems
+    if (last.length === items.length && items.every((it, i) => it.equals(last[i]))) {
+      return last
+    }
+    this.lastSculptLayerItems = items
+    return items
+  }
+
   /** Domain that a given category's layers live on (mirrors the W2b table). */
   static categoryDomain(category: number): number {
     if (category & AttrUseFlags.COLOR) return AttrDomain.VERTEX
     if (category & AttrUseFlags.POLYGROUP) return AttrDomain.FACE
     if (category & AttrUseFlags.UV) return AttrDomain.VERTEX // corner later
+    if (category & AttrUseFlags.SCULPT_LAYER) return AttrDomain.VERTEX
     return 0
   }
 
@@ -2051,7 +2264,10 @@ export class LiteMesh extends SceneObjectData {
    * live AttrUse; the setter ignores categories invalid for the attr's type. */
   get selectedAttrCategory(): number {
     const s = this._selectedAttr
-    return s ? this._attrUseAt(s.domain, s.layerIndex) : AttrUseFlags.NONE
+    // Mask to the dropdown's roles: other AttrUse bits (SELECT, SCULPT_LAYER)
+    // aren't user-assignable categories and would confuse the enum widget.
+    const mask = AttrUseFlags.COLOR | AttrUseFlags.UV | AttrUseFlags.POLYGROUP
+    return s ? this._attrUseAt(s.domain, s.layerIndex) & mask : AttrUseFlags.NONE
   }
   set selectedAttrCategory(use: number) {
     const s = this._selectedAttr
@@ -2076,6 +2292,12 @@ export class LiteMesh extends SceneObjectData {
    * bound vector so the index matches `grp->attrs[layerIndex]` in C++.
    */
   activeAttrLayerIndex(category: number): number {
+    // Sculpt layers are keyed by settings index, not attr name: the engine's
+    // sidecar (Mesh.sculptLayers) owns the stack, so resolve through it.
+    if (category & AttrUseFlags.SCULPT_LAYER) {
+      const li = this.activeSculptLayer
+      return li < 0 ? -1 : this.mesh.sculptLayerAttrIndex(li)
+    }
     let name: string | undefined
     if (category & AttrUseFlags.COLOR) name = this._activeAttr.color
     else if (category & AttrUseFlags.POLYGROUP) name = this._activeAttr.polygroup
@@ -2317,6 +2539,179 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /**
+   * Attach (and take ownership of) a sculptcore `VdmStore` — the mesh then
+   * renders its VDM texels through the fragment path (V3): the renderengine
+   * sees `hasVdm` and regenerates the material WGSL with `VDM_MODE`, and
+   * `drawQGPU` keeps the GPU tile atlas/page table current per frame. The
+   * store is freed on `detachVdmStore()` / `destroy()`.
+   */
+  attachVdmStore(store: VdmStore): void {
+    if (this._vdmStore && this._vdmStore !== store) {
+      this.detachVdmStore()
+    }
+    this._vdmStore = store
+    this._vdmWarnedSync = false
+  }
+
+  /** Drop the attached VdmStore (freeing it) + its GPU residency. */
+  detachVdmStore(): void {
+    this._vdmAtlasTex?.destroy()
+    this._vdmAtlasTex = undefined
+    this._vdmPageTex?.destroy()
+    this._vdmPageTex = undefined
+    this._vdmLayout = undefined
+    if (this._vdmStore) {
+      this.wasm.VdmStore_free(this._vdmStore)
+      this._vdmStore = undefined
+    }
+  }
+
+  /** True when a VdmStore is attached — the renderengine folds this into the
+   * material hash and passes `VDM_MODE` to the WGSL codegen. */
+  get hasVdm(): boolean {
+    return this._vdmStore !== undefined
+  }
+
+  /** The attached store handle (driver/test surface; undefined when none). */
+  get vdmStore(): VdmStore | undefined {
+    return this._vdmStore
+  }
+
+  /** Cached bulk-read out-params for the per-frame VDM drain (the bound
+   * Vectors self-clear C++-side, so reuse avoids a per-frame allocation). */
+  private _vdmIntVec?: {vec: unknown; read: () => ArrayLike<number>}
+  private _vdmFloatVec?: {vec: unknown; read: () => ArrayLike<number>}
+
+  /** Bound Vector out-param + bulk reader (native `vectorView` fast path, one
+   * copy instead of a napi call per element; WASM falls back to the heap view). */
+  private _vecOutBulk(elem: 'int32' | 'float'): {vec: unknown; read: () => ArrayLike<number>} {
+    const manager = this.wasm.manager as unknown as {
+      findVectorClass(n: string): {buildFullName(): string; findDefaultConstructor(): unknown}
+      constructWith(c: unknown): unknown
+      addon?: {vectorView(vec: unknown): ArrayBufferView | undefined}
+    }
+    const cls = manager.findVectorClass(elem)
+    const vec = manager.constructWith(cls.findDefaultConstructor())
+    const read = (): ArrayLike<number> => {
+      const view = manager.addon?.vectorView(vec)
+      if (view) return view as unknown as ArrayLike<number>
+      return this.wasm.getBoundVector(cls.buildFullName(), vec as never) as ArrayLike<number>
+    }
+    return {vec, read}
+  }
+
+  /**
+   * Per-frame VDM GPU sync (V3's "no regen_gpu_node on VDM-only dabs" upload
+   * path): drain the store's dirty-slot list — a topo-dirty drain (tiles
+   * created/removed, or the first sync) re-reads the layout, (re)creates the
+   * atlas/page textures on a dims change, and re-uploads page table + full
+   * atlas; a plain drain writes only the dirty slots' tiles at their atlas
+   * cells. Always seeds the texture views + layout uniforms into `uniforms`
+   * under the names the `VDM_MODE` WGSL declares.
+   */
+  private _syncVdmGpu(device: GPUDevice, uniforms: Record<string, unknown>): void {
+    const store = this._vdmStore as unknown as {
+      gpuLayoutOut(out: never): number
+      gpuPageTableOut(out: never): void
+      gpuAtlasPixelsOut(out: never): void
+      gpuTilePixelsOut(slot: number, out: never): number
+      gpuTakeDirtyOut(outSlots: never): number
+    }
+    const intOut = (this._vdmIntVec ??= this._vecOutBulk('int32'))
+    const floatOut = (this._vdmFloatVec ??= this._vecOutBulk('float'))
+
+    const topoDirty = (store.gpuTakeDirtyOut(intOut.vec as never) | 0) !== 0
+    // Copy the drained slots before the next out-param call reuses the vector.
+    const dirtySlots = topoDirty ? [] : Array.from(intOut.read() as ArrayLike<number>)
+
+    if (topoDirty || !this._vdmAtlasTex || !this._vdmPageTex || !this._vdmLayout) {
+      store.gpuLayoutOut(intOut.vec as never)
+      const lay = intOut.read()
+      const layout = Array.from({length: 8}, (_, i) => (lay[i] as number) | 0)
+      const [tileSize, , grid, , , , atlasW, atlasH] = layout
+      // An empty store still binds valid textures (all-empty page table → the
+      // shader samples zero), so the bind group never fails on the draw seam.
+      const texW = Math.max(atlasW, tileSize, 1)
+      const texH = Math.max(atlasH, tileSize, 1)
+      const gridTex = Math.max(grid, 1)
+
+      if (!this._vdmAtlasTex || this._vdmAtlasTex.width !== texW || this._vdmAtlasTex.height !== texH) {
+        this._vdmAtlasTex?.destroy()
+        this._vdmAtlasTex = new GpuTexture(device, {
+          label : 'litemesh.vdmAtlas',
+          width : texW,
+          height: texH,
+          format: 'rgba32float',
+          usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+        })
+      }
+      if (!this._vdmPageTex || this._vdmPageTex.width !== gridTex || this._vdmPageTex.height !== gridTex) {
+        this._vdmPageTex?.destroy()
+        this._vdmPageTex = new GpuTexture(device, {
+          label : 'litemesh.vdmPage',
+          width : gridTex,
+          height: gridTex,
+          format: 'r32sint',
+          usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+        })
+      }
+
+      store.gpuPageTableOut(intOut.vec as never)
+      const pageArr = intOut.read()
+      const page = pageArr instanceof Int32Array ? pageArr : Int32Array.from(pageArr as ArrayLike<number>)
+      if (grid > 0 && page.length >= grid * grid) {
+        device.queue.writeTexture(
+          {texture: this._vdmPageTex.handle},
+          page,
+          {bytesPerRow: grid * 4, rowsPerImage: grid},
+          {width: grid, height: grid, depthOrArrayLayers: 1}
+        )
+      }
+
+      if (atlasW > 0 && atlasH > 0) {
+        store.gpuAtlasPixelsOut(floatOut.vec as never)
+        const raw = floatOut.read()
+        const atlas = raw instanceof Float32Array ? raw : Float32Array.from(raw as ArrayLike<number>)
+        if (atlas.length >= atlasW * atlasH * 4) {
+          device.queue.writeTexture(
+            {texture: this._vdmAtlasTex.handle},
+            atlas,
+            {bytesPerRow: atlasW * 16, rowsPerImage: atlasH},
+            {width: atlasW, height: atlasH, depthOrArrayLayers: 1}
+          )
+        }
+      }
+      this._vdmLayout = layout
+    } else if (dirtySlots.length > 0) {
+      const [tileSize, , , , tilesX] = this._vdmLayout
+      for (const s of dirtySlots) {
+        const slot = s | 0
+        if (!store.gpuTilePixelsOut(slot, floatOut.vec as never)) continue
+        const raw = floatOut.read()
+        const tile = raw instanceof Float32Array ? raw : Float32Array.from(raw as ArrayLike<number>)
+        if (tile.length < tileSize * tileSize * 4) continue
+        device.queue.writeTexture(
+          {
+            texture: this._vdmAtlasTex.handle,
+            origin : {x: (slot % tilesX) * tileSize, y: Math.floor(slot / tilesX) * tileSize},
+          },
+          tile,
+          {bytesPerRow: tileSize * 16, rowsPerImage: tileSize},
+          {width: tileSize, height: tileSize, depthOrArrayLayers: 1}
+        )
+      }
+    }
+
+    const layout = this._vdmLayout!
+    uniforms.vdm_atlas = this._vdmAtlasTex!.view
+    uniforms.vdm_page = this._vdmPageTex!.view
+    uniforms.vdmTileSize = layout[0]
+    uniforms.vdmResolution = layout[1]
+    uniforms.vdmGridSize = layout[2]
+    uniforms.vdmAtlasTilesX = Math.max(layout[4], 1)
+  }
+
+  /**
    * DataBlock teardown — called by the library when the block is removed
    * (including the scene-clear that precedes a file load). Releases the C++
    * mesh + spatial tree (allocator-correct `Mesh_free`/`SpatialTree_free`, NOT
@@ -2356,6 +2751,9 @@ export class LiteMesh extends SceneObjectData {
     }
     // drawBatch is owned by the spatial tree; freeing the tree releases it.
     this.drawBatch = undefined
+
+    // VDM residency + the owned store (frees the C++ VdmStore).
+    this.detachVdmStore()
 
     if (this.spatial) {
       this.wasm.SpatialTree_free(this.spatial)
@@ -2556,6 +2954,19 @@ export class LiteMesh extends SceneObjectData {
     // closure (built once on first dispatch) always reads the active
     // frame's values.
     this.gpuUniforms = uniforms
+
+    // VDM residency: drain dirty tiles into the atlas/page textures and seed
+    // the @group(3) views + layout uniforms. Never throws on the render seam.
+    if (this._vdmStore) {
+      try {
+        this._syncVdmGpu(ctx.device, uniforms as unknown as Record<string, unknown>)
+      } catch (err) {
+        if (!this._vdmWarnedSync) {
+          this._vdmWarnedSync = true
+          console.error('litemesh: VDM GPU sync failed', err)
+        }
+      }
+    }
 
     // The tree surface writes depth and tests less-equal.
     if (this.drawBatchExecutorGPU === undefined) {

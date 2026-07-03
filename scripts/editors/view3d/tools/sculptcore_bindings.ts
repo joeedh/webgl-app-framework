@@ -161,6 +161,7 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.GRAB]       : SculptBrushes.GRAB,
   [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
   [SculptTools.FEATURE_ALIGN]: SculptBrushes.FEATURE_ALIGN,
+  [SculptTools.LAYER_DRAW] : SculptBrushes.LAYERDRAW,
 }
 
 /** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
@@ -201,6 +202,8 @@ function toolAttrCategory(tool: SculptTools): number {
   // PAINT_SMOOTH (the color-smooth brush) paints the same color layer as COLOR.
   if (tool === SculptTools.COLOR || tool === SculptTools.PAINT_SMOOTH) return AttrUseFlags.COLOR
   if (tool === SculptTools.POLYGROUP) return AttrUseFlags.POLYGROUP
+  // LAYER_DRAW writes the active sculpt layer's delta attr (`slayer` handle).
+  if (tool === SculptTools.LAYER_DRAW) return AttrUseFlags.SCULPT_LAYER
   return 0
 }
 

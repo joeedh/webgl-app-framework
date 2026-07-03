@@ -500,7 +500,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.texUser.texture.outputs` | list |  |  |  |
 | `scene.tools.sculptcore.brush.texUser.texture.power` | prop | FloatProperty | Exp | range 0.001..100 |
 | `scene.tools.sculptcore.brush.texUser.texture.scale` | prop | FloatProperty | Scale | range 0.001..2000 |
-| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, FEATURE_ALIGN, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, FEATURE_ALIGN, LAYER_DRAW, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
 | `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |
 | `scene.tools.sculptcore.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
@@ -564,6 +564,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.featureFlags.sculptcore_gpu_brush_grab` | prop | BoolProperty | GPU Grab Brush |  |
 | `settings.featureFlags.sculptcore_gpu_brush_verify` | prop | BoolProperty | GPU Brush Shadow-Verify |  |
 | `settings.featureFlags.sculptcore_quad_remesher` | prop | BoolProperty | sculptcore.quad_remesher |  |
+| `settings.featureFlags.sculptcore_sculpt_layers` | prop | BoolProperty | Sculpt Layers |  |
+| `settings.featureFlags.sculptcore_select_flush_prefer_op_domain` | prop | BoolProperty | sculptcore.select_flush_prefer_op_domain |  |
 | `settings.limitUndoMem` | prop | BoolProperty | Limit Undo Memory |  |
 | `settings.undoMemLimit` | prop | IntProperty | Mem Limit |  |
 
@@ -763,6 +765,15 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.quad_remesh.useCurvature` | prop | BoolProperty | Use Curvature |  |
 | `toolDefaults.litemesh.quad_remesh.useDensity` | prop | BoolProperty | Use Density |  |
 | `toolDefaults.litemesh.quad_remesh.useSharpFeatures` | prop | BoolProperty | Use Sharp Features |  |
+| `toolDefaults.litemesh.sculpt_layer_remove` | struct |  |  |  |
+| `toolDefaults.litemesh.sculpt_layer_remove.layer` | prop | IntProperty | Layer |  |
+| `toolDefaults.litemesh.sculpt_layer_set_flag` | struct |  |  |  |
+| `toolDefaults.litemesh.sculpt_layer_set_flag.kind` | prop | EnumProperty | Kind | enum {ENABLED, FROZEN} |
+| `toolDefaults.litemesh.sculpt_layer_set_flag.layer` | prop | IntProperty | Layer |  |
+| `toolDefaults.litemesh.sculpt_layer_set_flag.value` | prop | BoolProperty | Value |  |
+| `toolDefaults.litemesh.sculpt_layer_set_weight` | struct |  |  |  |
+| `toolDefaults.litemesh.sculpt_layer_set_weight.layer` | prop | IntProperty | Layer |  |
+| `toolDefaults.litemesh.sculpt_layer_set_weight.weight` | prop | FloatProperty | Weight | range -2..2 |
 | `toolDefaults.litemesh.select_all` | struct |  |  |  |
 | `toolDefaults.litemesh.select_all.mode` | prop | EnumProperty | Mode | enum {ALL, NONE, AUTO} |
 | `toolDefaults.litemesh.select_circle` | struct |  |  |  |

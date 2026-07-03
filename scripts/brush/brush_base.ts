@@ -154,3 +154,5 @@ export const SculptIcons = {} as {[k: string]: number}
 for (const k in SculptTools) {
   SculptIcons[k] = (Icons as any)['SCULPT_' + k]
 }
+// No dedicated iconsheet cell yet; reuse the draw-brush icon.
+SculptIcons.LAYER_DRAW = Icons.SCULPT_DRAW

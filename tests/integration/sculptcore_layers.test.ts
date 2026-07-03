@@ -44,8 +44,31 @@ interface LayerTestResult {
   nonFiniteCount?: number
 }
 
-/** Boot headlessly under `backend`, run __layerTest(), return its result. */
-function runLayerTest(nwExe: string, backend: 'wasm' | 'native'): LayerTestResult {
+/** `__layerToolTest()` result — the V5 real-tool-mapping + settings-mutator gate. */
+interface LayerToolTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  layerIndex?: number
+  layerAttrIndex?: number
+  movedCount?: number
+  maxDisp?: number
+  halfWeightMaxDisp?: number
+  weightRestoreResidual?: number
+  disabledResidual?: number
+  enabledResidual?: number
+  undoResidual?: number
+  postChecksum?: number
+  postFloatCount?: number
+}
+
+/** Boot headlessly under `backend`, run both layer drivers, return the results.
+ * `__layerTest` runs first (the F1 stroke-seam gate), then `__layerToolTest`
+ * (the V5 real-tool-mapping gate) on a second, independent layer. */
+function runLayerTest(
+  nwExe: string,
+  backend: 'wasm' | 'native'
+): {layertest: LayerTestResult; tooltest: LayerToolTestResult} {
   const dump = bootDump(
     nwExe,
     [
@@ -61,11 +84,14 @@ function runLayerTest(nwExe: string, backend: 'wasm' | 'native'): LayerTestResul
       'subdiv=48',
       '--eval',
       '__layerTest()',
+      '--eval',
+      'globalThis.__evalTestResult = __layerToolTest()',
     ],
     {tmpPrefix: 'sclayer-', timeout: 120000}
-  ) as {layertest?: LayerTestResult}
+  ) as {layertest?: LayerTestResult; evalResult?: LayerToolTestResult}
   if (!dump.layertest) throw new Error(`${backend} dump has no layertest result`)
-  return dump.layertest
+  if (!dump.evalResult) throw new Error(`${backend} dump has no layerToolTest result`)
+  return {layertest: dump.layertest, tooltest: dump.evalResult}
 }
 
 const nwExe = resolveNwjsExe()
@@ -93,10 +119,13 @@ const eachBackend = backends.map((b) => [b] as const)
 
 maybe('sculptcore sculpt layers (LAYERDRAW)', () => {
   const results = new Map<'wasm' | 'native', LayerTestResult>()
+  const toolResults = new Map<'wasm' | 'native', LayerToolTestResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
-      results.set(backend, runLayerTest(nwExe!, backend))
+      const r = runLayerTest(nwExe!, backend)
+      results.set(backend, r.layertest)
+      toolResults.set(backend, r.tooltest)
     }
   }, 300000)
 
@@ -138,6 +167,52 @@ maybe('sculptcore sculpt layers (LAYERDRAW)', () => {
   crossTest('post-stroke position buffers are checksum-identical across backends', () => {
     const wasm = results.get('wasm')!
     const native = results.get('native')!
+    expect(native.postFloatCount).toBe(wasm.postFloatCount)
+    expect(native.postChecksum).toBe(wasm.postChecksum)
+  })
+
+  // --- V5 gate: LAYER_DRAW through the real tool mapping (no test seams) +
+  // the Mesh_layerSet* settings mutators (weight / enabled round-trips). ---
+
+  test.each(eachBackend)('%s: tool-path driver ran cleanly', (backend) => {
+    const r = toolResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-layers] ${backend} tool-path driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.layerAttrIndex).toBeGreaterThanOrEqual(0)
+  })
+
+  test.each(eachBackend)('%s: LAYER_DRAW via brush.tool deforms the surface', (backend) => {
+    const r = toolResults.get(backend)!
+    expect(r.movedCount).toBeGreaterThan(0)
+    expect(r.maxDisp).toBeGreaterThan(0)
+    expect(r.maxDisp!).toBeLessThan(r.radius!)
+  })
+
+  test.each(eachBackend)('%s: weight mutator halves + restores the displacement', (backend) => {
+    const r = toolResults.get(backend)!
+    // co += Δw·d is exact per-vert scaling; allow fp slack around maxDisp/2.
+    expect(r.halfWeightMaxDisp).toBeGreaterThan(r.maxDisp! * 0.4)
+    expect(r.halfWeightMaxDisp).toBeLessThan(r.maxDisp! * 0.6)
+    expect(r.weightRestoreResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: enabled mutator subtracts + re-adds the contribution', (backend) => {
+    const r = toolResults.get(backend)!
+    expect(r.disabledResidual).toBeLessThan(1e-5)
+    expect(r.enabledResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: one undo restores the pre-stroke positions (tool path)', (backend) => {
+    const r = toolResults.get(backend)!
+    expect(r.undoResidual).toBeLessThan(1e-6)
+  })
+
+  crossTest('tool-path post-stroke positions are checksum-identical across backends', () => {
+    const wasm = toolResults.get('wasm')!
+    const native = toolResults.get('native')!
     expect(native.postFloatCount).toBe(wasm.postFloatCount)
     expect(native.postChecksum).toBe(wasm.postChecksum)
   })
