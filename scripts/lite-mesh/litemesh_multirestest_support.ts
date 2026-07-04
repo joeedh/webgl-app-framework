@@ -21,6 +21,8 @@ import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculpt
 import {LiteMesh} from './litemesh'
 import {numVecOut} from './litemesh_vdmtest_support'
 import type {VdmStoreBound} from './litemesh_vdmtest_support'
+import {stencilAmplify, type StencilLevel} from '../webgpu/stencil_compute'
+import {getActiveWebGpuContext} from '../render/queue_factory'
 
 export interface MultiresTestResult {
   ok: boolean
@@ -332,4 +334,169 @@ function multiresVdmTest(): MultiresVdmTestResult {
 
 ;(globalThis as {__multiresVdmTest?: typeof multiresVdmTest}).__multiresVdmTest = multiresVdmTest
 
-export {multiresTest, multiresVdmTest}
+export interface StencilAmplifyTestResult {
+  ok: boolean
+  error?: string
+  editLevel?: number
+  renderLevel?: number
+  fineCount?: number
+  nnz?: number
+  /** GPU SpMV vs the CPU-materialized level: mismatch count + max |Δ|.
+   * Bit-exact on native wgpu (Vulkan honours fma; the S5 gate); Dawn's D3D12
+   * path lowers WGSL fma unfused → 1-ulp-class noise, gated by maxAbsErr
+   * (display-only verts). Cross-backend GPU checksums stay exact. */
+  diffs?: number
+  maxAbsErr?: number
+  /** JS fma-exact eval of the marshalled CSR vs CPU/GPU: jsVsCpu == 0 is the
+   * bit-parity gate for the export seam (tables, row order, src). */
+  jsVsCpu?: number
+  jsVsGpu?: number
+  samples?: number[][]
+  gpuChecksum?: number
+  cpuChecksum?: number
+  /** levelTriIndicesOut sanity: index count + all indices < fineCount. */
+  triIndexCount?: number
+  triIndexOk?: boolean
+}
+
+/**
+ * X3 stage-1 gate: the TS-device stencil SpMV reproduces the CPU chain
+ * bit-for-bit. Enables a 3-level stack, edits at level 2, marshals level 3's
+ * CSR stencil through the new Multires bound methods, dispatches the ported
+ * kernel on the renderer's device, and compares against the engine-
+ * materialized level 3 (Float32-exact — the S5 fma contract, now across the
+ * app seam too). Also sanity-checks the render-level index-buffer emitter.
+ */
+async function stencilAmplifyTest(): Promise<StencilAmplifyTestResult> {
+  const result: StencilAmplifyTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {ctx?: {object?: {data?: unknown}}}
+    __stencilAmplifyTestResult?: StencilAmplifyTestResult
+  }
+  try {
+    const mesh = g._appstate?.ctx?.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    // The render context registers asynchronously after boot (GpuContext
+    // .create); this driver runs from a harness --eval that may precede the
+    // first frame, so poll for it.
+    let device: GPUDevice | undefined
+    const t0 = Date.now()
+    while (!(device = getActiveWebGpuContext()?.device)) {
+      if (Date.now() - t0 > 20000) throw new Error('no WebGPU device (timeout)')
+      await new Promise((r) => setTimeout(r, 50))
+    }
+
+    if (!mesh.multiresEnable(3)) throw new Error('multiresEnable failed')
+    try {
+      mesh.multiresSetLevel(2)
+      result.editLevel = 2
+      result.renderLevel = 3
+      const src = dumpCoFlat(mesh)
+
+      const mr = mesh._multires! as unknown as {
+        stencilMetaOut(l: number, out: never): void
+        stencilOffsetsOut(l: number, out: never): void
+        stencilIndicesOut(l: number, out: never): void
+        stencilWeightsOut(l: number, out: never): void
+        levelTriIndicesOut(l: number, out: never): void
+      }
+      const metaV = numVecOut(mesh, 'int32')
+      mr.stencilMetaOut(3, metaV.vec as never)
+      const meta = Array.from(metaV.read() as ArrayLike<number>)
+      if (meta.length < 3) throw new Error('stencilMetaOut empty')
+      const offV = numVecOut(mesh, 'int32')
+      mr.stencilOffsetsOut(3, offV.vec as never)
+      const idxV = numVecOut(mesh, 'int32')
+      mr.stencilIndicesOut(3, idxV.vec as never)
+      const wgtV = numVecOut(mesh, 'float')
+      mr.stencilWeightsOut(3, wgtV.vec as never)
+      const level: StencilLevel = {
+        coarseCount: meta[0] | 0,
+        fineCount  : meta[1] | 0,
+        offsets    : Uint32Array.from(offV.read() as ArrayLike<number>),
+        indices    : Uint32Array.from(idxV.read() as ArrayLike<number>),
+        weights    : Float32Array.from(wgtV.read() as ArrayLike<number>),
+      }
+      result.fineCount = level.fineCount
+      result.nnz = meta[2] | 0
+
+      const {positions} = await stencilAmplify(device, [level], src)
+      result.gpuChecksum = fnv1a(positions)
+
+      mesh.multiresSetLevel(3)
+      const cpu = dumpCoFlat(mesh)
+      mesh.multiresSetLevel(2)
+      result.cpuChecksum = fnv1a(cpu)
+      let diffs = positions.length === cpu.length ? 0 : Infinity
+      let maxAbsErr = positions.length === cpu.length ? 0 : Infinity
+      if (diffs === 0) {
+        for (let i = 0; i < positions.length; i++) {
+          if (positions[i] === cpu[i]) continue
+          diffs++
+          const d = Math.abs(positions[i] - cpu[i])
+          if (d > maxAbsErr) maxAbsErr = d
+        }
+      }
+      result.diffs = diffs
+      result.maxAbsErr = maxAbsErr
+
+      // The bit-parity gate for the EXPORT SEAM: evaluate the same marshalled
+      // CSR in JS (f64 mul+add + one fround = exact f32 fma at these
+      // magnitudes) — jsVsCpu == 0 proves tables/order/src cross bit-perfect.
+      // The GPU itself gets a display-tier tolerance instead: Dawn's D3D12
+      // path lowers WGSL fma unfused (1-ulp-class noise; native wgpu is
+      // bit-exact per the S5 gate), and amplified verts never enter the mesh.
+      const js = new Float32Array(level.fineCount * 3)
+      for (let i = 0; i < level.fineCount; i++) {
+        let px = 0, py = 0, pz = 0
+        const e = level.offsets[i + 1]
+        for (let k = level.offsets[i]; k < e; k++) {
+          const s = level.indices[k] * 3
+          const w = level.weights[k]
+          px = Math.fround(src[s] * w + px)
+          py = Math.fround(src[s + 1] * w + py)
+          pz = Math.fround(src[s + 2] * w + pz)
+        }
+        js[i * 3] = px
+        js[i * 3 + 1] = py
+        js[i * 3 + 2] = pz
+      }
+      let jsVsCpu = 0
+      let jsVsGpu = 0
+      for (let i = 0; i < js.length; i++) {
+        if (js[i] !== cpu[i]) jsVsCpu++
+        if (js[i] !== positions[i]) jsVsGpu++
+      }
+      result.jsVsCpu = jsVsCpu
+      result.jsVsGpu = jsVsGpu
+      const samples: number[][] = []
+      for (let i = 0; i < cpu.length && samples.length < 3; i++) {
+        if (positions[i] !== cpu[i]) samples.push([i, positions[i], cpu[i], js[i]])
+      }
+      result.samples = samples
+
+      const triV = numVecOut(mesh, 'int32')
+      mr.levelTriIndicesOut(3, triV.vec as never)
+      const tris = triV.read()
+      result.triIndexCount = tris.length
+      let triOk = tris.length > 0 && tris.length % 3 === 0
+      for (let i = 0; triOk && i < tris.length; i++) {
+        if ((tris[i] as number) < 0 || (tris[i] as number) >= level.fineCount) triOk = false
+      }
+      result.triIndexOk = triOk
+    } finally {
+      mesh.multiresDelete()
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+  }
+  g.__stencilAmplifyTestResult = result
+  return result
+}
+
+;(globalThis as {__stencilAmplifyTest?: typeof stencilAmplifyTest}).__stencilAmplifyTest =
+  stencilAmplifyTest
+
+export {multiresTest, multiresVdmTest, stencilAmplifyTest}

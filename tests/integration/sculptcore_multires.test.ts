@@ -80,10 +80,28 @@ interface MultiresVdmTestResult {
   atlasStableAcrossSwitch?: boolean
 }
 
+/** `__stencilAmplifyTest()` result — the X3 stage-1 TS-device SpMV gate. */
+interface StencilAmplifyResult {
+  ok: boolean
+  error?: string
+  editLevel?: number
+  renderLevel?: number
+  fineCount?: number
+  nnz?: number
+  diffs?: number
+  maxAbsErr?: number
+  jsVsCpu?: number
+  jsVsGpu?: number
+  gpuChecksum?: number
+  cpuChecksum?: number
+  triIndexCount?: number
+  triIndexOk?: boolean
+}
+
 function runMultiresTest(
   nwExe: string,
   backend: 'wasm' | 'native'
-): {base: MultiresTestResult; vdm: MultiresVdmTestResult} {
+): {base: MultiresTestResult; vdm: MultiresVdmTestResult; amp: StencilAmplifyResult} {
   const dump = bootDump(
     nwExe,
     [
@@ -99,12 +117,19 @@ function runMultiresTest(
       'subdiv=6',
       '--eval',
       'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest()}',
+      // Async driver: the harness awaits each eval's RESULT, so return the
+      // promise chain (top-level await is not legal in an eval'd script).
+      '--eval',
+      '__stencilAmplifyTest().then(r => { globalThis.__evalTestResult.amp = r })',
     ],
     {tmpPrefix: 'scmultires-', timeout: 180000}
-  ) as {evalResult?: {base?: MultiresTestResult; vdm?: MultiresVdmTestResult}}
+  ) as {
+    evalResult?: {base?: MultiresTestResult; vdm?: MultiresVdmTestResult; amp?: StencilAmplifyResult}
+  }
   if (!dump.evalResult?.base) throw new Error(`${backend} dump has no multiresTest result`)
   if (!dump.evalResult?.vdm) throw new Error(`${backend} dump has no multiresVdmTest result`)
-  return {base: dump.evalResult.base, vdm: dump.evalResult.vdm}
+  if (!dump.evalResult?.amp) throw new Error(`${backend} dump has no stencilAmplifyTest result`)
+  return {base: dump.evalResult.base, vdm: dump.evalResult.vdm, amp: dump.evalResult.amp}
 }
 
 const nwExe = resolveNwjsExe()
@@ -133,12 +158,14 @@ const eachBackend = backends.map((b) => [b] as const)
 maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () => {
   const results = new Map<'wasm' | 'native', MultiresTestResult>()
   const vdmResults = new Map<'wasm' | 'native', MultiresVdmTestResult>()
+  const ampResults = new Map<'wasm' | 'native', StencilAmplifyResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
       const r = runMultiresTest(nwExe!, backend)
       results.set(backend, r.base)
       vdmResults.set(backend, r.vdm)
+      ampResults.set(backend, r.amp)
     }
   }, 600000)
 
@@ -238,6 +265,45 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
     const r = vdmResults.get(backend)!
     expect(r.hasVdmAfterSwitch).toBe(true)
     expect(r.atlasStableAcrossSwitch).toBe(true)
+  })
+
+  // --- X3 stage 1: the TS-device stencil SpMV reproduces the CPU chain. ---
+
+  test.each(eachBackend)('%s: amplification export seam is bit-exact; GPU within tolerance', (backend) => {
+    const r = ampResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-multires] ${backend} amplify driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.fineCount).toBeGreaterThan(0)
+    // The export seam (tables, row order, src) is gated bit-exact via the
+    // JS fma-exact eval; the GPU gets a display-tier absolute tolerance —
+    // Dawn's D3D12 path lowers WGSL fma unfused (1-ulp-class noise; native
+    // wgpu is bit-exact per the S5 gate), and determinism is gated by the
+    // exact cross-backend checksum below.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[sculptcore-multires] ${backend} amplify diffs=${r.diffs} maxAbsErr=${r.maxAbsErr} jsVsCpu=${r.jsVsCpu}`
+    )
+    expect(r.jsVsCpu).toBe(0)
+    expect(r.maxAbsErr).toBeLessThanOrEqual(1e-5)
+  })
+
+  test.each(eachBackend)('%s: the render-level index emitter is sane', (backend) => {
+    const r = ampResults.get(backend)!
+    expect(r.triIndexOk).toBe(true)
+    expect(r.triIndexCount).toBeGreaterThan(0)
+    expect(r.triIndexCount! % 3).toBe(0)
+  })
+
+  crossTest('amplified positions are checksum-identical across backends', () => {
+    const wasm = ampResults.get('wasm')!
+    const native = ampResults.get('native')!
+    expect(native.fineCount).toBe(wasm.fineCount)
+    expect(native.nnz).toBe(wasm.nnz)
+    expect(native.gpuChecksum).toBe(wasm.gpuChecksum)
+    expect(native.triIndexCount).toBe(wasm.triIndexCount)
   })
 
   crossTest('VDM atlases agree across backends (quantized signature)', () => {
