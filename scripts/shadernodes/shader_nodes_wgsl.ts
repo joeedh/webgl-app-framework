@@ -111,6 +111,85 @@ fn vdmSample(uv : vec2f) -> vec3f {
 `
 
 /**
+ * PTEX variant of the sampling library (X2 stage 3): `vdm_page` holds the flat
+ * per-grid offset table (`gpuPtexTable` layout) instead of the [0,1]² page
+ * table, linearly indexed by texel fetches. The grid id is recovered from the
+ * X1 grid-chart uv (`floor(uv·cpr)` — the inset gutter keeps interior
+ * fragments in-cell; `vdmGridSize` carries cpr in this mode), the local param
+ * is un-inset, and taps address the (R+2)² storage lattice (+1 guard-ring
+ * offset) with a PER-TAP slot lookup, so taps may straddle tiles and land on
+ * the copied border skirts — bilinear is seamless across grids.
+ */
+const VDM_SAMPLE_PTEX_WGSL = `
+struct VdmParams {
+  vdmTileSize : i32,
+  vdmGridSize : i32,
+  vdmAtlasTilesX : i32,
+  vdmResolution : f32,
+};
+@group(3) @binding(0) var vdm_atlas : texture_2d<f32>;
+@group(3) @binding(1) var vdm_page : texture_2d<i32>;
+@group(3) @binding(2) var<uniform> vdmParams : VdmParams;
+
+fn vdmPtexFetch(idx : i32) -> i32 {
+  let w = i32(textureDimensions(vdm_page, 0).x);
+  return textureLoad(vdm_page, vec2i(idx % w, idx / w), 0).x;
+}
+
+fn vdmLoadP(off : i32, tps : i32, ext : i32, x : i32, y : i32) -> vec3f {
+  let ts = vdmParams.vdmTileSize;
+  let sx = clamp(x, 0, ext - 1);
+  let sy = clamp(y, 0, ext - 1);
+  let slot = vdmPtexFetch(off + (sy / ts) * tps + sx / ts);
+  if (slot < 0) {
+    return vec3f(0.0);
+  }
+  let cell = vec2i(slot % vdmParams.vdmAtlasTilesX, slot / vdmParams.vdmAtlasTilesX) * ts;
+  return textureLoad(vdm_atlas, cell + vec2i(sx % ts, sy % ts), 0).xyz;
+}
+
+fn vdmSample(uv : vec2f) -> vec3f {
+  let cpr = vdmParams.vdmGridSize;
+  let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
+  let cellX = clamp(i32(floor(uvc.x * f32(cpr))), 0, cpr - 1);
+  let cellY = clamp(i32(floor(uvc.y * f32(cpr))), 0, cpr - 1);
+  let grid = cellY * cpr + cellX;
+  if (grid >= vdmPtexFetch(0)) {
+    return vec3f(0.0);
+  }
+  let hdr = 1 + grid * 3;
+  let off = vdmPtexFetch(hdr);
+  let r = vdmPtexFetch(hdr + 1);
+  let tps = vdmPtexFetch(hdr + 2);
+  if (r <= 0) {
+    return vec3f(0.0);
+  }
+  // Un-inset the packed chart uv into the grid-local param (assignGridUVs:
+  // cell = 1/cpr, inset = cell/32, span = cell - 2*inset).
+  let cell = 1.0 / f32(cpr);
+  let inset = cell / 32.0;
+  let span = cell - 2.0 * inset;
+  let lu = clamp((uvc.x - f32(cellX) * cell - inset) / span, 0.0, 1.0);
+  let lv = clamp((uvc.y - f32(cellY) * cell - inset) / span, 0.0, 1.0);
+  // Payload -> storage coords (+1 for the guard ring); centers at +0.5.
+  let px = lu * f32(r) - 0.5 + 1.0;
+  let py = lv * f32(r) - 0.5 + 1.0;
+  let fx = floor(px);
+  let fy = floor(py);
+  let ax = px - fx;
+  let ay = py - fy;
+  let x0 = i32(fx);
+  let y0 = i32(fy);
+  let ext = r + 2;
+  let d00 = vdmLoadP(off, tps, ext, x0, y0);
+  let d10 = vdmLoadP(off, tps, ext, x0 + 1, y0);
+  let d01 = vdmLoadP(off, tps, ext, x0, y0 + 1);
+  let d11 = vdmLoadP(off, tps, ext, x0 + 1, y0 + 1);
+  return mix(mix(d00, d10, ax), mix(d01, d11, ax), ay);
+}
+`
+
+/**
  * The fs_main preamble for VDM mode: reconstruct the displaced surface point
  * in object space through the F3 frame (`base + t·D.x + b·D.y + n·D.z`, the
  * exact inverse of the splat's tangent projection), then derive the shading
@@ -413,7 +492,9 @@ ${passthrough}  return out;
       this.requestAttribute(VDM_UV_ATTR, 4)
       this.requestAttribute(VDM_FRAME_NORMAL_ATTR, 0)
       this.requestAttribute(VDM_FRAME_TANGENT_ATTR, 0)
-      vdmDecls = VDM_SAMPLE_WGSL
+      // VDM_PTEX swaps in the per-grid-table sampler (same vdmSample seam;
+      // the preamble is shared).
+      vdmDecls = extraDefines.VDM_PTEX ? VDM_SAMPLE_PTEX_WGSL : VDM_SAMPLE_WGSL
       vdmPreamble = buildVdmPreamble(
         this.requestedAttrs.get(VDM_UV_ATTR)!.field,
         this.requestedAttrs.get(VDM_FRAME_NORMAL_ATTR)!.field,

@@ -648,7 +648,8 @@ export class RealtimeEngine extends RenderEngine {
     scene: Scene,
     mat: Material,
     rlights: IRenderLights,
-    vdmMode = false
+    vdmMode = false,
+    vdmPtex = false
   ): WebgpuMaterialState | undefined {
     let lightHash = 0
     for (const k in rlights) lightHash = (lightHash * 31 + rlights[k].light.data.type) | 0
@@ -662,6 +663,9 @@ export class RealtimeEngine extends RenderEngine {
     if (this.renderSettings.ao) matDefines.WITH_AO = 1
     if (this.renderSettings.sss) matDefines.WITH_SSS = 1
     if (vdmMode) matDefines.VDM_MODE = 1
+    // VDM_PTEX swaps in the per-grid-table sampler (X2); folded the same way
+    // so a store-backend change re-pushes.
+    if (vdmMode && vdmPtex) matDefines.VDM_PTEX = 1
     let defHash = 0
     for (const k of Object.keys(matDefines).sort()) {
       for (let i = 0; i < k.length; i++) {
@@ -1222,7 +1226,8 @@ export class RealtimeEngine extends RenderEngine {
       // VDM_MODE folds into the material hash so an attach/detach re-pushes.
       // (Per-material cache: a mat shared across meshes follows the last push.)
       const vdmMode = !!(ob.data as unknown as {hasVdm?: boolean}).hasVdm
-      const state = this._ensureWebgpuMaterial(ctx, scene, mat, rlights, vdmMode)
+      const vdmPtex = !!(ob.data as unknown as {vdmIsPtex?: boolean}).vdmIsPtex
+      const state = this._ensureWebgpuMaterial(ctx, scene, mat, rlights, vdmMode, vdmPtex)
       if (!state) continue
 
       // LiteMesh integration: its sculpt draw batch renders with the C++ tree

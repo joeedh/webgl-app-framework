@@ -21,10 +21,13 @@
  * (`make.mjs build node`); without it only the WASM leg + no cross-compare run.
  */
 
+import {execFileSync} from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {bootDump, resolveNwjsExe} from './nwjs_boot'
+import {bootDump, resolveNwjsExe, NWJS_APP_DIR} from './nwjs_boot'
+import {decodePngGray, meanAbsDiff, type GrayImage} from '../lib/png_gray'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -251,4 +254,102 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
     expect(native.atlasQuantChecksum).toBe(wasm.atlasQuantChecksum)
     expect(native.atlasChecksum).toBe(wasm.atlasChecksum)
   })
+})
+
+// --- X2 stage 3: the Ptex fragment render gate (screenshot A/B) ------------
+
+interface PtexRenderResult {
+  ok: boolean
+  error?: string
+  mode?: string
+  charts?: number
+  texelsTouched?: number
+  tileCount?: number
+}
+
+/** Boot on litemesh-cube, drive `__vdmRenderTest(mode)` (the vdmrender support
+ * gained 'mrflat'/'ptex' modes), capture the screenshot. */
+function runPtexRender(
+  nwExe: string,
+  backend: 'wasm' | 'native',
+  mode: 'mrflat' | 'ptex'
+): {result: PtexRenderResult; image: GrayImage} {
+  const dir = fs.mkdtempSync(Path.join(os.tmpdir(), 'ptexrender-'))
+  const dumpPath = Path.join(dir, 'dump.json')
+  const pngPath = Path.join(dir, 'shot.png')
+  execFileSync(
+    nwExe,
+    [
+      NWJS_APP_DIR,
+      '--apptest-headless',
+      '--no-devtools',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      '--scene-arg',
+      'subdiv=6',
+      `--eval=__vdmRenderTest('${mode}')`,
+      '--dump',
+      dumpPath,
+      '--screenshot',
+      pngPath,
+      '--exit',
+    ],
+    {cwd: REPO_ROOT, encoding: 'utf-8', stdio: 'pipe', timeout: 180000}
+  )
+  if (!fs.existsSync(dumpPath)) throw new Error(`${backend}/${mode}: dump not written`)
+  if (!fs.existsSync(pngPath)) throw new Error(`${backend}/${mode}: screenshot not written`)
+  const dump = JSON.parse(fs.readFileSync(dumpPath, 'utf-8')) as {evalResult?: PtexRenderResult}
+  if (!dump.evalResult) throw new Error(`${backend}/${mode}: dump has no evalResult`)
+  return {result: dump.evalResult, image: decodePngGray(fs.readFileSync(pngPath))}
+}
+
+maybe('sculptcore Ptex fragment render (screenshot A/B)', () => {
+  let flat!: {result: PtexRenderResult; image: GrayImage}
+  let ptex!: {result: PtexRenderResult; image: GrayImage}
+  let ptexNative: {result: PtexRenderResult; image: GrayImage} | undefined
+
+  beforeAll(() => {
+    flat = runPtexRender(nwExe!, 'wasm', 'mrflat')
+    ptex = runPtexRender(nwExe!, 'wasm', 'ptex')
+    if (haveNative) {
+      ptexNative = runPtexRender(nwExe!, 'native', 'ptex')
+    }
+  }, 600000)
+
+  test('drivers ran cleanly and the splat landed', () => {
+    for (const run of [flat, ptex]) {
+      if (!run.result.ok) {
+        // eslint-disable-next-line no-console
+        console.error(`[ptex-render] ${run.result.mode} error:\n${run.result.error}`)
+      }
+      expect(run.result.ok).toBe(true)
+    }
+    expect(ptex.result.texelsTouched).toBeGreaterThan(0)
+    expect(ptex.result.tileCount).toBeGreaterThan(0)
+  })
+
+  test('the VDM_PTEX sampler visibly displaces the shading', () => {
+    expect(ptex.image.width).toBe(flat.image.width)
+    const d = meanAbsDiff(ptex.image, flat.image)
+    // eslint-disable-next-line no-console
+    console.log(`[ptex-render] meanAbs(ptex-flat)=${d.toFixed(4)}`)
+    expect(d).toBeGreaterThan(0.1)
+  })
+
+  const parityTest = haveNative ? test : test.skip
+  parityTest(
+    'native and wasm render the same ptex image',
+    () => {
+      expect(ptexNative!.result.ok).toBe(true)
+      expect(ptexNative!.result.texelsTouched).toBe(ptex.result.texelsTouched)
+      expect(ptexNative!.result.tileCount).toBe(ptex.result.tileCount)
+      const d = meanAbsDiff(ptexNative!.image, ptex.image)
+      // eslint-disable-next-line no-console
+      console.log(`[ptex-render] meanAbs(native-wasm)=${d.toFixed(4)}`)
+      expect(d).toBeLessThan(0.1)
+    },
+    240000
+  )
 })

@@ -26,6 +26,7 @@ import {Material} from '../core/material'
 import {AttributeNode, DiffuseNode, OutputNode} from '../shadernodes/shader_nodes'
 import {View3DFlags} from '../editors/view3d/view3d_base'
 import {LiteMesh} from './litemesh'
+import {numVecOut} from './litemesh_vdmtest_support'
 
 interface VdmRenderResult {
   ok: boolean
@@ -53,7 +54,10 @@ function falloff(dist: number, radius: number): number {
   return w * w * (3 - 2 * w)
 }
 
-function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref'): VdmRenderResult {
+/** X2 additions: 'mrflat' = multires-enabled base, no VDM (the Ptex baseline
+ * image); 'ptex' = multires + a PTEX-backend store configured from the stack's
+ * S2 adjacency, one splat dab, rendered through the VDM_PTEX sampler. */
+function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex'): VdmRenderResult {
   const result: VdmRenderResult = {ok: false, mode}
   const g = globalThis as unknown as {
     _appstate?: {
@@ -75,6 +79,11 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref'): VdmRenderResult {
     if (!view3d) throw new Error('no view3d')
     const wasm = mesh.wasm
 
+    // Multires modes materialize the finest level first (its grid-chart UVs
+    // are synthesized by the engine); the packed/atlas modes unwrap below.
+    const multires = mode === 'mrflat' || mode === 'ptex'
+    if (multires && !mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
+
     const {idx, co} = mesh.dumpVertCo()
     let R = 0
     for (const p of co) {
@@ -83,33 +92,36 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref'): VdmRenderResult {
     }
     result.sphereR = R
 
-    // UV + frames prep runs in every mode so the A/B mesh state is uniform.
-    // Seam only the 12 cube edges (Dijkstra between spherified corners) → 6
-    // large charts; per-face charts are too small for stable gradient normals.
-    const corners: number[] = []
-    for (let ci = 0; ci < 8; ci++) {
-      const s3 = R / Math.sqrt(3)
-      const dir = [(ci & 1 ? 1 : -1) * s3, (ci & 2 ? 1 : -1) * s3, (ci & 4 ? 1 : -1) * s3]
-      let best = 0
-      let bestD = Infinity
-      for (let i = 0; i < idx.length; i++) {
-        const p = co[i]
-        const d = (p[0] - dir[0]) ** 2 + (p[1] - dir[1]) ** 2 + (p[2] - dir[2]) ** 2
-        if (d < bestD) {
-          bestD = d
-          best = idx[i]
+    if (!multires) {
+      // UV + frames prep runs in every atlas mode so the A/B mesh state is
+      // uniform. Seam only the 12 cube edges (Dijkstra between spherified
+      // corners) → 6 large charts; per-face charts are too small for stable
+      // gradient normals.
+      const corners: number[] = []
+      for (let ci = 0; ci < 8; ci++) {
+        const s3 = R / Math.sqrt(3)
+        const dir = [(ci & 1 ? 1 : -1) * s3, (ci & 2 ? 1 : -1) * s3, (ci & 4 ? 1 : -1) * s3]
+        let best = 0
+        let bestD = Infinity
+        for (let i = 0; i < idx.length; i++) {
+          const p = co[i]
+          const d = (p[0] - dir[0]) ** 2 + (p[1] - dir[1]) ** 2 + (p[2] - dir[2]) ** 2
+          if (d < bestD) {
+            bestD = d
+            best = idx[i]
+          }
+        }
+        corners.push(best)
+      }
+      const meshApi = mesh.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}
+      for (let a = 0; a < 8; a++) {
+        for (const bit of [1, 2, 4]) {
+          const b = a ^ bit
+          if (b > a) meshApi.markSeamPath(corners[a], corners[b], 1)
         }
       }
-      corners.push(best)
+      result.charts = mesh.generateUVFromSeams(0.02).charts
     }
-    const meshApi = mesh.mesh as unknown as {markSeamPath(a: number, b: number, s: number): number}
-    for (let a = 0; a < 8; a++) {
-      for (const bit of [1, 2, 4]) {
-        const b = a ^ bit
-        if (b > a) meshApi.markSeamPath(corners[a], corners[b], 1)
-      }
-    }
-    result.charts = mesh.generateUVFromSeams(0.02).charts
     wasm.Mesh_updateFrames(mesh.mesh)
     // Dab at the center of the cube *side* best facing the (fixed default)
     // camera: deterministic, on-screen, and (cap ≈ 29° < the side's 45°
@@ -142,6 +154,25 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref'): VdmRenderResult {
       )
       result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
       mesh.attachVdmStore(store) // LiteMesh owns + uploads it from here on
+    } else if (mode === 'ptex') {
+      wasm.SpatialTree_fillDetailCarrier(mesh.spatial, 1)
+      // Patch space + adjacency come from the multires stack's S2 grids.
+      const store = wasm.VdmStore_new(64, 16)
+      const links = numVecOut(mesh, 'int32')
+      ;(mesh._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(
+        links.vec as never
+      )
+      const linkArr = links.read()
+      const gridCount = (linkArr.length / 8) | 0
+      ;(store as unknown as {configurePtex(g: number, r: number, l: never): void}).configurePtex(
+        gridCount, 0, links.vec as never
+      )
+      result.charts = gridCount
+      result.texelsTouched = wasm.Mesh_vdmSplatDab(
+        mesh.mesh, mesh.spatial, store, c[0], c[1], c[2], n[0], n[1], n[2], radius, strength, 0.0, 0
+      )
+      result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
+      mesh.attachVdmStore(store)
     } else if (mode === 'ref') {
       let moved = 0
       for (let i = 0; i < idx.length; i++) {

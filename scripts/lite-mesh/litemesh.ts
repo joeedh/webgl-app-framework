@@ -2748,6 +2748,17 @@ export class LiteMesh extends SceneObjectData {
     }
     this._vdmStore = store
     this._vdmWarnedSync = false
+    // Detect the store backend once (layout[8]); the renderengine folds
+    // VDM_PTEX into the material hash off this flag.
+    const intOut = (this._vdmIntVec ??= this._vecOutBulk('int32'))
+    ;(store as unknown as {gpuLayoutOut(out: never): number}).gpuLayoutOut(intOut.vec as never)
+    const lay = intOut.read()
+    this._vdmIsPtex = ((lay[8] as number) | 0) === 1
+  }
+
+  /** True when the attached store runs the PTEX backend. */
+  get vdmIsPtex(): boolean {
+    return this._vdmIsPtex
   }
 
   /** Drop the attached VdmStore (freeing it) + its GPU residency. */
@@ -2778,6 +2789,7 @@ export class LiteMesh extends SceneObjectData {
    * Vectors self-clear C++-side, so reuse avoids a per-frame allocation). */
   private _vdmIntVec?: {vec: unknown; read: () => ArrayLike<number>}
   private _vdmFloatVec?: {vec: unknown; read: () => ArrayLike<number>}
+  private _vdmIsPtex = false
 
   /** Bound Vector out-param + bulk reader (native `vectorView` fast path, one
    * copy instead of a napi call per element; WASM falls back to the heap view). */
@@ -2810,6 +2822,7 @@ export class LiteMesh extends SceneObjectData {
     const store = this._vdmStore as unknown as {
       gpuLayoutOut(out: never): number
       gpuPageTableOut(out: never): void
+      gpuPtexTableOut(out: never): void
       gpuAtlasPixelsOut(out: never): void
       gpuTilePixelsOut(slot: number, out: never): number
       gpuTakeDirtyOut(outSlots: never): number
@@ -2824,13 +2837,12 @@ export class LiteMesh extends SceneObjectData {
     if (topoDirty || !this._vdmAtlasTex || !this._vdmPageTex || !this._vdmLayout) {
       store.gpuLayoutOut(intOut.vec as never)
       const lay = intOut.read()
-      const layout = Array.from({length: 8}, (_, i) => (lay[i] as number) | 0)
-      const [tileSize, , grid, , , , atlasW, atlasH] = layout
+      const layout = Array.from({length: 10}, (_, i) => (lay[i] as number) | 0)
+      const [tileSize, , grid, , , , atlasW, atlasH, backend] = layout
       // An empty store still binds valid textures (all-empty page table → the
       // shader samples zero), so the bind group never fails on the draw seam.
       const texW = Math.max(atlasW, tileSize, 1)
       const texH = Math.max(atlasH, tileSize, 1)
-      const gridTex = Math.max(grid, 1)
 
       if (!this._vdmAtlasTex || this._vdmAtlasTex.width !== texW || this._vdmAtlasTex.height !== texH) {
         this._vdmAtlasTex?.destroy()
@@ -2842,27 +2854,57 @@ export class LiteMesh extends SceneObjectData {
           usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
         })
       }
-      if (!this._vdmPageTex || this._vdmPageTex.width !== gridTex || this._vdmPageTex.height !== gridTex) {
-        this._vdmPageTex?.destroy()
-        this._vdmPageTex = new GpuTexture(device, {
-          label : 'litemesh.vdmPage',
-          width : gridTex,
-          height: gridTex,
-          format: 'r32sint',
-          usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
-        })
-      }
 
-      store.gpuPageTableOut(intOut.vec as never)
-      const pageArr = intOut.read()
-      const page = pageArr instanceof Int32Array ? pageArr : Int32Array.from(pageArr as ArrayLike<number>)
-      if (grid > 0 && page.length >= grid * grid) {
+      if (backend === 1) {
+        // PTEX: the flat per-grid offset table rides the page-table binding,
+        // linearly indexed by the VDM_PTEX sampler (gpuPtexTable layout).
+        store.gpuPtexTableOut(intOut.vec as never)
+        const arr = intOut.read()
+        const flat = arr instanceof Int32Array ? arr : Int32Array.from(arr as ArrayLike<number>)
+        const tw = 1024
+        const th = Math.max(1, Math.ceil(flat.length / tw))
+        if (!this._vdmPageTex || this._vdmPageTex.width !== tw || this._vdmPageTex.height !== th) {
+          this._vdmPageTex?.destroy()
+          this._vdmPageTex = new GpuTexture(device, {
+            label : 'litemesh.vdmPtexTable',
+            width : tw,
+            height: th,
+            format: 'r32sint',
+            usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+          })
+        }
+        const padded = new Int32Array(tw * th)
+        padded.set(flat.subarray(0, Math.min(flat.length, padded.length)))
         device.queue.writeTexture(
           {texture: this._vdmPageTex.handle},
-          page,
-          {bytesPerRow: grid * 4, rowsPerImage: grid},
-          {width: grid, height: grid, depthOrArrayLayers: 1}
+          padded,
+          {bytesPerRow: tw * 4, rowsPerImage: th},
+          {width: tw, height: th, depthOrArrayLayers: 1}
         )
+      } else {
+        const gridTex = Math.max(grid, 1)
+        if (!this._vdmPageTex || this._vdmPageTex.width !== gridTex || this._vdmPageTex.height !== gridTex) {
+          this._vdmPageTex?.destroy()
+          this._vdmPageTex = new GpuTexture(device, {
+            label : 'litemesh.vdmPage',
+            width : gridTex,
+            height: gridTex,
+            format: 'r32sint',
+            usage : TextureUsage.TEXTURE_BINDING | TextureUsage.COPY_DST,
+          })
+        }
+
+        store.gpuPageTableOut(intOut.vec as never)
+        const pageArr = intOut.read()
+        const page = pageArr instanceof Int32Array ? pageArr : Int32Array.from(pageArr as ArrayLike<number>)
+        if (grid > 0 && page.length >= grid * grid) {
+          device.queue.writeTexture(
+            {texture: this._vdmPageTex.handle},
+            page,
+            {bytesPerRow: grid * 4, rowsPerImage: grid},
+            {width: grid, height: grid, depthOrArrayLayers: 1}
+          )
+        }
       }
 
       if (atlasW > 0 && atlasH > 0) {
@@ -2903,8 +2945,17 @@ export class LiteMesh extends SceneObjectData {
     uniforms.vdm_atlas = this._vdmAtlasTex!.view
     uniforms.vdm_page = this._vdmPageTex!.view
     uniforms.vdmTileSize = layout[0]
-    uniforms.vdmResolution = layout[1]
-    uniforms.vdmGridSize = layout[2]
+    if ((layout[8] | 0) === 1) {
+      // PTEX: vdmGridSize carries cpr (the X1 chart layout), and
+      // vdmResolution the effective texels-per-packed-uv (R/span, span =
+      // (1/cpr)·(15/16)) for the preamble's derivative epsilon.
+      const cpr = Math.max(1, Math.ceil(Math.sqrt(Math.max(layout[9], 1))))
+      uniforms.vdmGridSize = cpr
+      uniforms.vdmResolution = (layout[1] * cpr * 16) / 15
+    } else {
+      uniforms.vdmResolution = layout[1]
+      uniforms.vdmGridSize = layout[2]
+    }
     uniforms.vdmAtlasTilesX = Math.max(layout[4], 1)
   }
 

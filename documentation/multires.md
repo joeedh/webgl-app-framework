@@ -117,6 +117,25 @@ test — splat counts, prompt signal, AND raw atlas bytes are bit-exact
 cross-backend (the F3 frame provider is transcendental-free since the X1
 follow-up; see the plan's X1 note).
 
+## Ptex carrier (X2)
+
+`VdmStore` runs two backends behind `sample(face, u, v)`
+(`VdmStoreParams.backend`): the UV **atlas** (polygon bases) and **PTEX** —
+per-grid `R_g×R_g` texel lattices keyed on the S2 cage-corner grids, each with
+a one-texel **guard ring** copied from its neighbours through the grids'
+transpose adjacency (`syncGridSkirts`; refreshed for touched grids + link
+targets at splat end), so bilinear is seamless across patches with zero
+render-time adjacency lookups. The splatter rasterizes per-grid via the exact
+`.ptex.c.grid`/`.ptex.c.uv` corner attrs `assignGridUVs` emits. The fragment
+path stays UV-routed: the `VDM_PTEX` WGSL sampler recovers the grid from the
+packed chart uv (`floor(uv·cpr)`), reads a flat per-grid offset table
+(`gpuPtexTableOut`, uploaded as an i32 texture on the page-table binding), and
+taps the (R+2)² storage lattice. App setup: `Multires.vdmAdjacencyOut` →
+`VdmStore.configurePtex` (both bound methods), then attach/splat as usual —
+`attachVdmStore` detects the backend and the renderengine folds `VDM_PTEX`
+into the material hash. Gate: the `sculptcore_multires` screenshot A/B
+(ptex≠flat 0.295, native↔wasm 0.0092, exact texel counts).
+
 ## Known debts
 
 - No `.wproj` persistence of the stack (flatten-on-save), no autosave
