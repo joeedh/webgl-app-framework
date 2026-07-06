@@ -56,8 +56,12 @@ function falloff(dist: number, radius: number): number {
 
 /** X2 additions: 'mrflat' = multires-enabled base, no VDM (the Ptex baseline
  * image); 'ptex' = multires + a PTEX-backend store configured from the stack's
- * S2 adjacency, one splat dab, rendered through the VDM_PTEX sampler. */
-function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex'): VdmRenderResult {
+ * S2 adjacency, one splat dab, rendered through the VDM_PTEX sampler.
+ * X3 additions: 'mrcoarse' = edit level 1 drawn normally (the coarse cage
+ * look); 'tess' = edit level 1 with tessellatedDisplay — the GPU-amplified
+ * finest level drawn through the TESS_TIER material variant. tess should
+ * match mrflat's silhouette (same geometry) and differ from mrcoarse. */
+function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoarse' | 'tess'): VdmRenderResult {
   const result: VdmRenderResult = {ok: false, mode}
   const g = globalThis as unknown as {
     _appstate?: {
@@ -81,8 +85,14 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex'): VdmRen
 
     // Multires modes materialize the finest level first (its grid-chart UVs
     // are synthesized by the engine); the packed/atlas modes unwrap below.
-    const multires = mode === 'mrflat' || mode === 'ptex'
+    const multires = mode === 'mrflat' || mode === 'ptex' || mode === 'mrcoarse' || mode === 'tess'
     if (multires && !mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
+    if (mode === 'mrcoarse' || mode === 'tess') {
+      mesh.multiresSetLevel(1) // edit the coarse level; tess amplifies to 2
+      if (mode === 'tess') {
+        mesh.tessellatedDisplay = true
+      }
+    }
 
     const {idx, co} = mesh.dumpVertCo()
     let R = 0

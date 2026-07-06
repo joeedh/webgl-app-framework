@@ -427,6 +427,47 @@ ${passthrough}  return out;
     return `${vsIn}\n${vsOut}\n${vsMain}`
   }
 
+  /** TESS_TIER vertex interface: position-only input (the amplified vertex
+   * buffer), the SAME VsOut as the normal path so the fragment body compiles
+   * unchanged — vNormal placeholder (the fragment preamble replaces it) and
+   * every requested-attr varying default-filled (white for color-category
+   * attrs, zero otherwise, mirroring sculptcore's missing-layer fills). */
+  private _buildTessVertexStagesWgsl(): string {
+    const attrs = [...this.requestedAttrs.values()].sort((a, b) => a.slot - b.slot)
+
+    let vsOut = 'struct VsOut {\n'
+    vsOut += '  @builtin(position) clipPos : vec4f,\n'
+    vsOut += '  @location(0) vNormal   : vec3f,\n'
+    vsOut += '  @location(1) vGlobalCo : vec3f,\n'
+    vsOut += '  @location(2) vLocalCo  : vec3f,\n'
+    let loc = 3
+    for (const a of attrs) vsOut += `  @location(${loc++}) ${a.field} : ${a.wgslType},\n`
+    vsOut += '};\n'
+
+    let fills = ''
+    for (const a of attrs) {
+      const white = a.category === 2 && a.wgslType === 'vec4f'
+      fills += `  out.${a.field} = ${white ? 'vec4f(1.0, 1.0, 1.0, 1.0)' : `${a.wgslType}()`};\n`
+    }
+
+    const vsMain = `
+struct VsIn {
+  @location(0) position : vec3f,
+};
+@vertex
+fn vs_main(in : VsIn) -> VsOut {
+  var out : VsOut;
+  let p_obj = object.objectMatrix * vec4f(in.position, 1.0);
+  out.clipPos   = frame.projectionMatrix * vec4f(p_obj.xyz, 1.0);
+  out.vNormal   = vec3f(0.0, 0.0, 1.0);
+  out.vGlobalCo = p_obj.xyz;
+  out.vLocalCo  = in.position;
+${fills}  return out;
+}
+`
+    return `${vsOut}\n${vsMain}`
+  }
+
   /** The collected requested-attribute set, slot-ordered. The renderengine
    * hands this to sculptcore after `generate()`. */
   getRequestedAttrs(): RequestedAttrDesc[] {
@@ -482,10 +523,18 @@ ${passthrough}  return out;
       this.out('\n}\n')
     }
 
+    // Tessellated tier (extraDefines.TESS_TIER, X3 stage 2): the draw binds
+    // ONLY the amplified position buffer, so the vertex stage takes position
+    // alone and default-fills every varying, and the fragment derives a flat
+    // normal from screen derivatives (the stage-2 shading stopgap until the
+    // smoothed-frame pass). Mutually exclusive with VDM_MODE — the VDM apply
+    // moves to the amplification compute pass in stage 3.
+    const tessTier = !!extraDefines.TESS_TIER
+
     // VDM mode (extraDefines.VDM_MODE): request the UV + frame attrs the
     // fragment sampler needs and stage the @group(3) library + fs_main
     // preamble. Unset ⇒ the emitted WGSL is bit-identical to before.
-    const vdmMode = !!extraDefines.VDM_MODE
+    const vdmMode = !!extraDefines.VDM_MODE && !tessTier
     let vdmDecls = ''
     let vdmPreamble = ''
     if (vdmMode) {
@@ -501,13 +550,28 @@ ${passthrough}  return out;
         this.requestedAttrs.get(VDM_FRAME_TANGENT_ATTR)!.field
       )
     }
+    let tessPreamble = ''
+    if (tessTier) {
+      tessPreamble = `  var input = inputRaw;
+  {
+    // Framebuffer y points down, so cross(ddx, ddy) of a front-facing
+    // surface points away from the viewer — negate for the outward normal.
+    var tess_n = -cross(dpdx(inputRaw.vGlobalCo), dpdy(inputRaw.vGlobalCo));
+    let tess_l = length(tess_n);
+    if (tess_l > 1e-12) {
+      input.vNormal = tess_n / tess_l;
+    }
+  }
+`
+    }
+
     // The preamble copies the immutable param into a local `var input`.
-    const fsParam = vdmMode ? 'inputRaw' : 'input'
+    const fsParam = vdmMode || tessTier ? 'inputRaw' : 'input'
 
     // Attributes were collected during the walk (via requestAttribute); assign
     // their vertex slots now and build the matching VsIn/VsOut/vs_main.
     this._assignAttrSlots()
-    const vertexStages = this._buildVertexStagesWgsl()
+    const vertexStages = tessTier ? this._buildTessVertexStagesWgsl() : this._buildVertexStagesWgsl()
 
     let materialStruct = 'struct MaterialUniforms {\n'
     const fields: string[] = []
@@ -567,7 +631,7 @@ fn fs_main(${fsParam} : VsOut) -> FsOut {
 #ifndef WITH_SSS
 fn fs_main(${fsParam} : VsOut) -> @location(0) vec4f {
 #endif
-${vdmPreamble}  var _mainSurface : Closure;
+${vdmPreamble}${tessPreamble}  var _mainSurface : Closure;
   _mainSurface.diffuse      = vec3f(0.0);
   _mainSurface.light        = vec3f(0.0);
   _mainSurface.emission     = vec3f(0.0);

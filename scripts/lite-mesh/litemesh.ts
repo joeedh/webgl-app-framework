@@ -38,7 +38,8 @@ import {getActiveWebGpuContext} from '../render/queue_factory'
 import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
 import {GpuTexture} from '../webgpu/texture'
-import {TextureUsage} from '../webgpu/flags'
+import {BufferUsage, TextureUsage} from '../webgpu/flags'
+import {stencilAmplify, type StencilLevel} from '../webgpu/stencil_compute'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
@@ -1255,6 +1256,166 @@ export class LiteMesh extends SceneObjectData {
     this.wasm.Multires_setActiveLevel(this._multires, level)
     this._attachMultiresLevel()
     return true
+  }
+
+  /** The renderengine's TESS_TIER material variant (position-only vertex
+   * input + derivative flat normal); replaces cached tess pipelines/bindings
+   * when the WGSL changes. */
+  setTessDrawWgsl(wgsl: string): void {
+    if (this._tessWgsl === wgsl) return
+    this._tessWgsl = wgsl
+    this._tessPipelines.clear()
+    this._tessBindings = undefined
+  }
+
+  /** Free the tessellated-display GPU state (buffers + caches). */
+  private _dropTessState(): void {
+    if (this._tessState) {
+      this._tessState.vertexBuf.destroy()
+      this._tessState.indexBuf.destroy()
+      this._tessState = undefined
+    }
+    this._tessPipelines.clear()
+    this._tessBindings = undefined
+  }
+
+  /** Kick (or refresh) the async render-level amplification: marshal the CSR
+   * chain (activeLevel, maxLevel], SpMV it on the renderer device
+   * (stencil_compute.ts), and land the result as an on-device vertex buffer +
+   * the static render-level index buffer. Draws fall back to the normal batch
+   * until the state exists; a stale state keeps drawing while the refresh
+   * builds (meshRev-keyed). */
+  private _ensureTessBuild(device: GPUDevice): void {
+    if (this._tessBuilding || !this._multires) return
+    const renderLevel = this.multiresLevels
+    const active = this.multiresLevel
+    if (active >= renderLevel) return
+    const st = this._tessState
+    if (st && st.meshRev === this.meshRevision && st.level === renderLevel) return
+
+    const meshRev = this.meshRevision
+    this._tessBuilding = true
+    void (async () => {
+      try {
+        const mr = this._multires! as unknown as {
+          stencilMetaOut(l: number, out: never): void
+          stencilOffsetsOut(l: number, out: never): void
+          stencilIndicesOut(l: number, out: never): void
+          stencilWeightsOut(l: number, out: never): void
+          levelTriIndicesOut(l: number, out: never): void
+        }
+        const intV = this._vecOutBulk('int32')
+        const fltV = this._vecOutBulk('float')
+        const levels: StencilLevel[] = []
+        for (let l = active + 1; l <= renderLevel; l++) {
+          mr.stencilMetaOut(l, intV.vec as never)
+          const meta = Array.from(intV.read() as ArrayLike<number>)
+          mr.stencilOffsetsOut(l, intV.vec as never)
+          const offsets = Uint32Array.from(intV.read() as ArrayLike<number>)
+          mr.stencilIndicesOut(l, intV.vec as never)
+          const indices = Uint32Array.from(intV.read() as ArrayLike<number>)
+          mr.stencilWeightsOut(l, fltV.vec as never)
+          const weights = Float32Array.from(fltV.read() as ArrayLike<number>)
+          levels.push({coarseCount: meta[0] | 0, fineCount: meta[1] | 0, offsets, indices, weights})
+        }
+        const {co} = this.dumpVertCo()
+        const src = new Float32Array(co.length * 3)
+        for (let i = 0; i < co.length; i++) {
+          src[i * 3] = co[i][0]
+          src[i * 3 + 1] = co[i][1]
+          src[i * 3 + 2] = co[i][2]
+        }
+
+        const {result} = await stencilAmplify(device, levels, src, {keepResult: true})
+        if (!result) throw new Error('amplify returned no device buffer')
+
+        mr.levelTriIndicesOut(renderLevel, intV.vec as never)
+        const tris = Uint32Array.from(intV.read() as ArrayLike<number>)
+        const indexBuf = device.createBuffer({
+          label: 'litemesh.tessIndices',
+          size : Math.max(16, (tris.byteLength + 3) & ~3),
+          usage: BufferUsage.INDEX | BufferUsage.COPY_DST,
+        })
+        device.queue.writeBuffer(indexBuf, 0, tris.buffer as ArrayBuffer, tris.byteOffset, tris.byteLength)
+
+        this._dropTessStateBuffers()
+        this._tessState = {level: renderLevel, meshRev, vertexBuf: result, indexBuf, indexCount: tris.length}
+        window.redraw_viewport?.()
+      } catch (err) {
+        if (!this._tessWarned) {
+          this._tessWarned = true
+          console.error('litemesh: tessellated-display build failed', err)
+        }
+      } finally {
+        this._tessBuilding = false
+      }
+    })()
+  }
+
+  /** Buffers only (keep pipelines/bindings — the WGSL didn't change). */
+  private _dropTessStateBuffers(): void {
+    if (this._tessState) {
+      this._tessState.vertexBuf.destroy()
+      this._tessState.indexBuf.destroy()
+      this._tessState = undefined
+    }
+  }
+
+  /** The tessellated-tier draw (X3 stage 2): bind the amplified positions +
+   * static index buffer under the TESS_TIER material pipeline. Returns false
+   * (caller draws the normal batch) until the async state exists; never
+   * throws on the render seam. */
+  private _drawTessellated(
+    ctx: NonNullable<ReturnType<typeof getActiveWebGpuContext>>,
+    pass: GPURenderPassEncoder,
+    fmts: GPUTextureFormat[]
+  ): boolean {
+    if (!this.tessellatedDisplay || !this._multires || !this._tessWgsl) return false
+    if (this.multiresLevel >= this.multiresLevels) return false
+    if (fmts.length > 1) return false // SSS MRT tess variant rides stage 3
+    try {
+      this._ensureTessBuild(ctx.device)
+      const st = this._tessState
+      if (!st) return false
+
+      const key = fmts.join('+')
+      let pipeline = this._tessPipelines.get(key)
+      if (!pipeline) {
+        pipeline = ctx.pipelineCache.get({
+          label        : 'litemesh.tess',
+          wgsl         : this._tessWgsl,
+          vertexBuffers: [
+            {arrayStride: 12, attributes: [{shaderLocation: 0, offset: 0, format: 'float32x3'}]},
+          ],
+          colorTargets: fmts.map((format) => ({
+            format,
+            blend: {
+              color: {srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+              alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
+            },
+          })),
+          depthStencil: {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
+          primitive   : {topology: 'triangle-list', cullMode: 'none'},
+        })
+        this._tessPipelines.set(key, pipeline)
+      }
+      if (!this._tessBindings) {
+        this._tessBindings = new UniformBindings(ctx.device, this._tessWgsl, 'litemesh.tess')
+      }
+      const groups = this._tessBindings.bindGroupList(pipeline.handle, this.gpuUniforms!)
+      pass.setPipeline(pipeline.handle)
+      for (const e of groups) pass.setBindGroup(e.group, e.bindGroup)
+      pass.setVertexBuffer(0, st.vertexBuf)
+      pass.setIndexBuffer(st.indexBuf, 'uint32')
+      pass.drawIndexed(st.indexCount, 1, 0, 0, 0)
+      return true
+    } catch (err) {
+      if (!this._tessWarned) {
+        this._tessWarned = true
+        console.error('litemesh: tessellated draw failed', err)
+      }
+      return false
+    }
   }
 
   /** Point `mesh`/`spatial` at the stack's active-level slot and rebuild the
@@ -2790,6 +2951,23 @@ export class LiteMesh extends SceneObjectData {
   private _vdmIntVec?: {vec: unknown; read: () => ArrayLike<number>}
   private _vdmFloatVec?: {vec: unknown; read: () => ArrayLike<number>}
   private _vdmIsPtex = false
+  /** X3 tessellated display (view state, not serialized): draw the multires
+   * render level from GPU-amplified positions instead of the active-level
+   * batch. Effective only in SHOW_RENDER with a stack attached and the edit
+   * level below the finest. */
+  tessellatedDisplay = false
+  private _tessWgsl?: string
+  private _tessState?: {
+    level: number
+    meshRev: number
+    vertexBuf: GPUBuffer
+    indexBuf: GPUBuffer
+    indexCount: number
+  }
+  private _tessBuilding = false
+  private _tessPipelines = new Map<string, Pipeline>()
+  private _tessBindings?: UniformBindings
+  private _tessWarned = false
 
   /** Bound Vector out-param + bulk reader (native `vectorView` fast path, one
    * copy instead of a napi call per element; WASM falls back to the heap view). */
@@ -3002,6 +3180,7 @@ export class LiteMesh extends SceneObjectData {
 
     // VDM residency + the owned store (frees the C++ VdmStore).
     this.detachVdmStore()
+    this._dropTessState()
 
     // A live multires stack owns mesh/spatial (views) — free the stack and
     // fall through to freeing the re-adopted cage.
@@ -3247,7 +3426,10 @@ export class LiteMesh extends SceneObjectData {
     main.setColorFormats(fmts)
     overlay.setColorFormats(fmts)
 
-    if (this.drawBatch) main.dispatch(this.drawBatch, pass)
+    // X3 tessellated tier: substitute the amplified render-level draw for the
+    // batch when its async state is ready; fall back to the batch otherwise.
+    const tessDrawn = this._drawTessellated(ctx, pass, fmts)
+    if (!tessDrawn && this.drawBatch) main.dispatch(this.drawBatch, pass)
     if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
     if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
     if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)

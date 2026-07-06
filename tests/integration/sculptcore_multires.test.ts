@@ -371,6 +371,63 @@ function runPtexRender(
   return {result: dump.evalResult, image: decodePngGray(fs.readFileSync(pngPath))}
 }
 
+maybe('sculptcore tessellated tier render (X3 stage 2 screenshot A/B)', () => {
+  let coarse!: {result: PtexRenderResult; image: GrayImage}
+  let fine!: {result: PtexRenderResult; image: GrayImage}
+  let tess!: {result: PtexRenderResult; image: GrayImage}
+  let tessNative: {result: PtexRenderResult; image: GrayImage} | undefined
+
+  beforeAll(() => {
+    coarse = runPtexRender(nwExe!, 'wasm', 'mrcoarse' as never)
+    fine = runPtexRender(nwExe!, 'wasm', 'mrflat')
+    tess = runPtexRender(nwExe!, 'wasm', 'tess' as never)
+    if (haveNative) {
+      tessNative = runPtexRender(nwExe!, 'native', 'tess' as never)
+    }
+  }, 600000)
+
+  test('drivers ran cleanly', () => {
+    for (const run of [coarse, fine, tess]) {
+      if (!run.result.ok) {
+        // eslint-disable-next-line no-console
+        console.error(`[tess-render] ${run.result.mode} error:\n${run.result.error}`)
+      }
+      expect(run.result.ok).toBe(true)
+    }
+  })
+
+  test('the tessellated draw shows the amplified geometry, not the cage', () => {
+    const vsFine = meanAbsDiff(tess.image, fine.image)
+    const vsCoarse = meanAbsDiff(tess.image, coarse.image)
+    const fineVsCoarse = meanAbsDiff(fine.image, coarse.image)
+    // eslint-disable-next-line no-console
+    console.log(
+      `[tess-render] tess-vs-fine=${vsFine.toFixed(4)} tess-vs-coarse=${vsCoarse.toFixed(4)} ` +
+        `fine-vs-coarse=${fineVsCoarse.toFixed(4)}`
+    )
+    // The coarse and fine levels must actually differ for the A/B to mean
+    // anything; tess (same geometry as fine, flat-shading residual only)
+    // must sit an order closer to fine than the levels sit to each other
+    // (measured 0.016 vs 0.22).
+    expect(fineVsCoarse).toBeGreaterThan(0.05)
+    expect(vsFine).toBeLessThan(0.05)
+    expect(vsFine).toBeLessThan(vsCoarse * 0.5)
+  })
+
+  const parityTest = haveNative ? test : test.skip
+  parityTest(
+    'native and wasm render the same tessellated image',
+    () => {
+      expect(tessNative!.result.ok).toBe(true)
+      const d = meanAbsDiff(tessNative!.image, tess.image)
+      // eslint-disable-next-line no-console
+      console.log(`[tess-render] meanAbs(native-wasm)=${d.toFixed(4)}`)
+      expect(d).toBeLessThan(0.1)
+    },
+    240000
+  )
+})
+
 maybe('sculptcore Ptex fragment render (screenshot A/B)', () => {
   let flat!: {result: PtexRenderResult; image: GrayImage}
   let ptex!: {result: PtexRenderResult; image: GrayImage}

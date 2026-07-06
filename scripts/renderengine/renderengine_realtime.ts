@@ -1280,6 +1280,38 @@ export class RealtimeEngine extends RenderEngine {
         }
       }
 
+      // X3 tessellated tier: hand the mesh a TESS_TIER material variant
+      // (position-only vertex input + derivative flat normal); the mesh then
+      // substitutes its own indexed draw of the GPU-amplified render level
+      // for the batch. Guarded on the same material hash as the normal push.
+      const tessMesh = ob.data as unknown as {
+        tessellatedDisplay?: boolean
+        setTessDrawWgsl?: (wgsl: string) => void
+        _engineTessHash?: number
+      }
+      if (tessMesh.tessellatedDisplay && typeof tessMesh.setTessDrawWgsl === 'function') {
+        if (tessMesh._engineTessHash !== state.hash) {
+          try {
+            const tessDefines: Record<string, number | string | boolean> = {TESS_TIER: 1}
+            if (this.renderSettings.ao) tessDefines.WITH_AO = 1
+            if (this.renderSettings.sss) tessDefines.WITH_SSS = 1
+            const tdef = (
+              mat as unknown as {
+                generateWgsl: (
+                  s: unknown,
+                  l: IRenderLights,
+                  d?: Record<string, number | string | boolean>
+                ) => {wgsl: string}
+              }
+            ).generateWgsl(scene, rlights, tessDefines)
+            tessMesh.setTessDrawWgsl(tdef.wgsl)
+            tessMesh._engineTessHash = state.hash
+          } catch (err) {
+            console.error(`[renderengine.webgpu] mat-${mat.lib_id} tess variant failed:`, err)
+          }
+        }
+      }
+
       const obMat = ob.outputs.matrix.getValue() as Matrix4
       uniforms.objectMatrix = obMat
       uniforms.normalMatrix = obMat.copy().makeRotationOnly()
