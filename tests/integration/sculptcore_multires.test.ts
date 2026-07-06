@@ -375,19 +375,23 @@ maybe('sculptcore tessellated tier render (X3 stage 2 screenshot A/B)', () => {
   let coarse!: {result: PtexRenderResult; image: GrayImage}
   let fine!: {result: PtexRenderResult; image: GrayImage}
   let tess!: {result: PtexRenderResult; image: GrayImage}
+  let tessVdm!: {result: PtexRenderResult; image: GrayImage}
   let tessNative: {result: PtexRenderResult; image: GrayImage} | undefined
+  let tessVdmNative: {result: PtexRenderResult; image: GrayImage} | undefined
 
   beforeAll(() => {
     coarse = runPtexRender(nwExe!, 'wasm', 'mrcoarse' as never)
     fine = runPtexRender(nwExe!, 'wasm', 'mrflat')
     tess = runPtexRender(nwExe!, 'wasm', 'tess' as never)
+    tessVdm = runPtexRender(nwExe!, 'wasm', 'tessvdm' as never)
     if (haveNative) {
       tessNative = runPtexRender(nwExe!, 'native', 'tess' as never)
+      tessVdmNative = runPtexRender(nwExe!, 'native', 'tessvdm' as never)
     }
-  }, 600000)
+  }, 900000)
 
   test('drivers ran cleanly', () => {
-    for (const run of [coarse, fine, tess]) {
+    for (const run of [coarse, fine, tess, tessVdm]) {
       if (!run.result.ok) {
         // eslint-disable-next-line no-console
         console.error(`[tess-render] ${run.result.mode} error:\n${run.result.error}`)
@@ -406,23 +410,36 @@ maybe('sculptcore tessellated tier render (X3 stage 2 screenshot A/B)', () => {
         `fine-vs-coarse=${fineVsCoarse.toFixed(4)}`
     )
     // The coarse and fine levels must actually differ for the A/B to mean
-    // anything; tess (same geometry as fine, flat-shading residual only)
-    // must sit an order closer to fine than the levels sit to each other
-    // (measured 0.016 vs 0.22).
+    // anything; tess (same geometry as fine, shading residual only — the
+    // finalize pass computes 4-neighbour lattice normals vs the batch's full
+    // 1-ring v.no, measured 0.055 vs 0.23 level separation) must sit well
+    // inside half the level separation.
     expect(fineVsCoarse).toBeGreaterThan(0.05)
-    expect(vsFine).toBeLessThan(0.05)
+    expect(vsFine).toBeLessThan(0.1)
     expect(vsFine).toBeLessThan(vsCoarse * 0.5)
+  })
+
+  test('the stage-3 VDM apply displaces the tessellated silhouette', () => {
+    expect(tessVdm.result.texelsTouched).toBeGreaterThan(0)
+    const vsTess = meanAbsDiff(tessVdm.image, tess.image)
+    // eslint-disable-next-line no-console
+    console.log(`[tess-render] tessvdm-vs-tess=${vsTess.toFixed(4)}`)
+    // The splat dab must visibly move the amplified surface (the fragment
+    // tier shades but cannot move silhouettes — this tier can).
+    expect(vsTess).toBeGreaterThan(0.05)
   })
 
   const parityTest = haveNative ? test : test.skip
   parityTest(
-    'native and wasm render the same tessellated image',
+    'native and wasm render the same tessellated images',
     () => {
       expect(tessNative!.result.ok).toBe(true)
       const d = meanAbsDiff(tessNative!.image, tess.image)
+      const dv = meanAbsDiff(tessVdmNative!.image, tessVdm.image)
       // eslint-disable-next-line no-console
-      console.log(`[tess-render] meanAbs(native-wasm)=${d.toFixed(4)}`)
+      console.log(`[tess-render] meanAbs(native-wasm) tess=${d.toFixed(4)} tessvdm=${dv.toFixed(4)}`)
       expect(d).toBeLessThan(0.1)
+      expect(dv).toBeLessThan(0.1)
     },
     240000
   )

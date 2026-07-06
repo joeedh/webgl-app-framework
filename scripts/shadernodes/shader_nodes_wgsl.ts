@@ -427,9 +427,9 @@ ${passthrough}  return out;
     return `${vsIn}\n${vsOut}\n${vsMain}`
   }
 
-  /** TESS_TIER vertex interface: position-only input (the amplified vertex
-   * buffer), the SAME VsOut as the normal path so the fragment body compiles
-   * unchanged — vNormal placeholder (the fragment preamble replaces it) and
+  /** TESS_TIER vertex interface: position + normal inputs (the amplified and
+   * finalized buffers — smooth frame normals from the X3 stage-3 pass), the
+   * SAME VsOut as the normal path so the fragment body compiles unchanged;
    * every requested-attr varying default-filled (white for color-category
    * attrs, zero otherwise, mirroring sculptcore's missing-layer fills). */
   private _buildTessVertexStagesWgsl(): string {
@@ -453,13 +453,14 @@ ${passthrough}  return out;
     const vsMain = `
 struct VsIn {
   @location(0) position : vec3f,
+  @location(1) normal   : vec3f,
 };
 @vertex
 fn vs_main(in : VsIn) -> VsOut {
   var out : VsOut;
   let p_obj = object.objectMatrix * vec4f(in.position, 1.0);
   out.clipPos   = frame.projectionMatrix * vec4f(p_obj.xyz, 1.0);
-  out.vNormal   = vec3f(0.0, 0.0, 1.0);
+  out.vNormal   = (object.normalMatrix * vec4f(in.normal, 0.0)).xyz;
   out.vGlobalCo = p_obj.xyz;
   out.vLocalCo  = in.position;
 ${fills}  return out;
@@ -550,23 +551,8 @@ ${fills}  return out;
         this.requestedAttrs.get(VDM_FRAME_TANGENT_ATTR)!.field
       )
     }
-    let tessPreamble = ''
-    if (tessTier) {
-      tessPreamble = `  var input = inputRaw;
-  {
-    // Framebuffer y points down, so cross(ddx, ddy) of a front-facing
-    // surface points away from the viewer — negate for the outward normal.
-    var tess_n = -cross(dpdx(inputRaw.vGlobalCo), dpdy(inputRaw.vGlobalCo));
-    let tess_l = length(tess_n);
-    if (tess_l > 1e-12) {
-      input.vNormal = tess_n / tess_l;
-    }
-  }
-`
-    }
-
     // The preamble copies the immutable param into a local `var input`.
-    const fsParam = vdmMode || tessTier ? 'inputRaw' : 'input'
+    const fsParam = vdmMode ? 'inputRaw' : 'input'
 
     // Attributes were collected during the walk (via requestAttribute); assign
     // their vertex slots now and build the matching VsIn/VsOut/vs_main.
@@ -631,7 +617,7 @@ fn fs_main(${fsParam} : VsOut) -> FsOut {
 #ifndef WITH_SSS
 fn fs_main(${fsParam} : VsOut) -> @location(0) vec4f {
 #endif
-${vdmPreamble}${tessPreamble}  var _mainSurface : Closure;
+${vdmPreamble}  var _mainSurface : Closure;
   _mainSurface.diffuse      = vec3f(0.0);
   _mainSurface.light        = vec3f(0.0);
   _mainSurface.emission     = vec3f(0.0);

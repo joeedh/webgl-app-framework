@@ -61,7 +61,9 @@ function falloff(dist: number, radius: number): number {
  * look); 'tess' = edit level 1 with tessellatedDisplay — the GPU-amplified
  * finest level drawn through the TESS_TIER material variant. tess should
  * match mrflat's silhouette (same geometry) and differ from mrcoarse. */
-function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoarse' | 'tess'): VdmRenderResult {
+function vdmRenderTest(
+  mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoarse' | 'tess' | 'tessvdm'
+): VdmRenderResult {
   const result: VdmRenderResult = {ok: false, mode}
   const g = globalThis as unknown as {
     _appstate?: {
@@ -85,10 +87,13 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoa
 
     // Multires modes materialize the finest level first (its grid-chart UVs
     // are synthesized by the engine); the packed/atlas modes unwrap below.
-    const multires = mode === 'mrflat' || mode === 'ptex' || mode === 'mrcoarse' || mode === 'tess'
-    if (multires && !mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
+    const multires =
+      mode === 'mrflat' || mode === 'ptex' || mode === 'mrcoarse' || mode === 'tess' || mode === 'tessvdm'
+    // 3 levels: dense enough that per-vertex lattice normals converge and
+    // the tess chain spans two stencil levels (1 -> 3).
+    if (multires && !mesh.multiresEnable(3)) throw new Error('multiresEnable failed')
     if (mode === 'mrcoarse' || mode === 'tess') {
-      mesh.multiresSetLevel(1) // edit the coarse level; tess amplifies to 2
+      mesh.multiresSetLevel(1) // edit the coarse level; tess amplifies to 3
       if (mode === 'tess') {
         mesh.tessellatedDisplay = true
       }
@@ -164,7 +169,7 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoa
       )
       result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
       mesh.attachVdmStore(store) // LiteMesh owns + uploads it from here on
-    } else if (mode === 'ptex') {
+    } else if (mode === 'ptex' || mode === 'tessvdm') {
       wasm.SpatialTree_fillDetailCarrier(mesh.spatial, 1)
       // Patch space + adjacency come from the multires stack's S2 grids.
       const store = wasm.VdmStore_new(64, 16)
@@ -183,6 +188,12 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoa
       )
       result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
       mesh.attachVdmStore(store)
+      if (mode === 'tessvdm') {
+        // Edit coarse, render the finest with the VDM applied at amplified
+        // verts (X3 stage 3 — true displaced silhouettes).
+        mesh.multiresSetLevel(1)
+        mesh.tessellatedDisplay = true
+      }
     } else if (mode === 'ref') {
       let moved = 0
       for (let i = 0; i < idx.length; i++) {
@@ -238,6 +249,30 @@ function vdmRenderTest(mode: 'flat' | 'vdm' | 'ref' | 'mrflat' | 'ptex' | 'mrcoa
     view3d.flag |= View3DFlags.SHOW_RENDER
 
     result.ok = true
+
+    // The tessellated state builds asynchronously (amplify + finalize on the
+    // device) and the draw falls back to the batch until it lands — wait for
+    // it (plus a settle frame) so the screenshot deterministically captures
+    // the tessellated render. The harness awaits the returned promise.
+    if (mode === 'tess' || mode === 'tessvdm') {
+      const tessMesh = mesh as unknown as {tessReady?: boolean}
+      return (async () => {
+        const t0 = Date.now()
+        while (!tessMesh.tessReady) {
+          if (Date.now() - t0 > 30000) {
+            result.ok = false
+            const be = (mesh as unknown as {_tessLastError?: string})._tessLastError
+            result.error = 'tessellated state timeout' + (be ? `: ${be}` : '')
+            g.__evalTestResult = result
+            return result
+          }
+          await new Promise((r) => setTimeout(r, 100))
+        }
+        await new Promise((r) => setTimeout(r, 300))
+        g.__evalTestResult = result
+        return result
+      })() as unknown as VdmRenderResult
+    }
   } catch (err) {
     result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
   }

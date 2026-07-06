@@ -39,7 +39,7 @@ import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
 import {GpuTexture} from '../webgpu/texture'
 import {BufferUsage, TextureUsage} from '../webgpu/flags'
-import {stencilAmplify, type StencilLevel} from '../webgpu/stencil_compute'
+import {stencilAmplify, tessFinalize, type StencilLevel, type TessTopoInputs, type TessVdmInputs} from '../webgpu/stencil_compute'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
@@ -1258,6 +1258,13 @@ export class LiteMesh extends SceneObjectData {
     return true
   }
 
+  /** True once the async tessellated-display state is resident (drivers/
+   * tests poll this before screenshotting; draws fall back to the batch
+   * until then). */
+  get tessReady(): boolean {
+    return this._tessState !== undefined
+  }
+
   /** The renderengine's TESS_TIER material variant (position-only vertex
    * input + derivative flat normal); replaces cached tess pipelines/bindings
    * when the WGSL changes. */
@@ -1272,6 +1279,7 @@ export class LiteMesh extends SceneObjectData {
   private _dropTessState(): void {
     if (this._tessState) {
       this._tessState.vertexBuf.destroy()
+      this._tessState.normalBuf.destroy()
       this._tessState.indexBuf.destroy()
       this._tessState = undefined
     }
@@ -1303,6 +1311,8 @@ export class LiteMesh extends SceneObjectData {
           stencilIndicesOut(l: number, out: never): void
           stencilWeightsOut(l: number, out: never): void
           levelTriIndicesOut(l: number, out: never): void
+          levelVertGridCoordsOut(l: number, out: never): void
+          levelGridVertsOut(l: number, out: never): void
         }
         const intV = this._vecOutBulk('int32')
         const fltV = this._vecOutBulk('float')
@@ -1325,9 +1335,69 @@ export class LiteMesh extends SceneObjectData {
           src[i * 3 + 1] = co[i][1]
           src[i * 3 + 2] = co[i][2]
         }
+        // Frame sources at the edit level; amplified through the same chain
+        // they subdivide smoothly (stage 3 — the finalize pass normalizes).
+        this.wasm.Mesh_updateFrames(this.mesh)
+        const frameMesh = this.mesh as unknown as {
+          dumpFrameNormals(out: never): void
+          dumpFrameTangents(out: never): void
+        }
+        frameMesh.dumpFrameNormals(fltV.vec as never)
+        const nSrc = Float32Array.from(fltV.read() as ArrayLike<number>)
+        frameMesh.dumpFrameTangents(fltV.vec as never)
+        const tSrc = Float32Array.from(fltV.read() as ArrayLike<number>)
+        if (nSrc.length !== src.length || tSrc.length !== src.length) {
+          throw new Error('frame attrs missing on the edit level')
+        }
 
-        const {result} = await stencilAmplify(device, levels, src, {keepResult: true})
-        if (!result) throw new Error('amplify returned no device buffer')
+        const pos = await stencilAmplify(device, levels, src, {keepResult: true})
+        const nor = await stencilAmplify(device, levels, nSrc, {keepResult: true})
+        const tan = await stencilAmplify(device, levels, tSrc, {keepResult: true})
+        if (!pos.result || !nor.result || !tan.result) {
+          throw new Error('amplify returned no device buffer')
+        }
+
+        // Level topology for the geometric-normals pass (always needed).
+        mr.levelVertGridCoordsOut(renderLevel, intV.vec as never)
+        const vertCoords = Int32Array.from(intV.read() as ArrayLike<number>)
+        mr.levelGridVertsOut(renderLevel, intV.vec as never)
+        const gridVerts = Int32Array.from(intV.read() as ArrayLike<number>)
+        const gridSide = 1 << (renderLevel - 1)
+        const topo: TessTopoInputs = {
+          gridVerts,
+          vertCoords,
+          gridCount: (gridVerts.length / ((gridSide + 1) * (gridSide + 1))) | 0,
+          latticeW : gridSide + 1,
+        }
+
+        // Ptex VDM inputs for the finalize kernel (true displaced verts).
+        let vdm: TessVdmInputs | undefined
+        if (this._vdmStore && this._vdmIsPtex) {
+          const store = this._vdmStore as unknown as {
+            gpuLayoutOut(o: never): number
+            gpuPtexTableOut(o: never): void
+            gpuAtlasPixelsOut(o: never): void
+          }
+          store.gpuLayoutOut(intV.vec as never)
+          const lay = Array.from(intV.read() as ArrayLike<number>)
+          store.gpuPtexTableOut(intV.vec as never)
+          const table = Int32Array.from(intV.read() as ArrayLike<number>)
+          store.gpuAtlasPixelsOut(fltV.vec as never)
+          const atlasPixels = Float32Array.from(fltV.read() as ArrayLike<number>)
+          vdm = {
+            table,
+            atlasPixels,
+            vertCoords,
+            gridSide,
+            tileSize   : lay[0] | 0,
+            atlasTilesX: Math.max(lay[4] | 0, 1),
+            atlasW     : Math.max(lay[6] | 0, 1),
+          }
+        }
+
+        const fineCount = levels[levels.length - 1].fineCount
+        const {posOut, norOut} = await tessFinalize(
+          device, fineCount, pos.result, nor.result, tan.result, topo, vdm)
 
         mr.levelTriIndicesOut(renderLevel, intV.vec as never)
         const tris = Uint32Array.from(intV.read() as ArrayLike<number>)
@@ -1339,9 +1409,17 @@ export class LiteMesh extends SceneObjectData {
         device.queue.writeBuffer(indexBuf, 0, tris.buffer as ArrayBuffer, tris.byteOffset, tris.byteLength)
 
         this._dropTessStateBuffers()
-        this._tessState = {level: renderLevel, meshRev, vertexBuf: result, indexBuf, indexCount: tris.length}
+        this._tessState = {
+          level    : renderLevel,
+          meshRev,
+          vertexBuf: posOut,
+          normalBuf: norOut,
+          indexBuf,
+          indexCount: tris.length,
+        }
         window.redraw_viewport?.()
       } catch (err) {
+        this._tessLastError = String(err instanceof Error ? (err.stack ?? err.message) : err)
         if (!this._tessWarned) {
           this._tessWarned = true
           console.error('litemesh: tessellated-display build failed', err)
@@ -1356,6 +1434,7 @@ export class LiteMesh extends SceneObjectData {
   private _dropTessStateBuffers(): void {
     if (this._tessState) {
       this._tessState.vertexBuf.destroy()
+      this._tessState.normalBuf.destroy()
       this._tessState.indexBuf.destroy()
       this._tessState = undefined
     }
@@ -1386,6 +1465,7 @@ export class LiteMesh extends SceneObjectData {
           wgsl         : this._tessWgsl,
           vertexBuffers: [
             {arrayStride: 12, attributes: [{shaderLocation: 0, offset: 0, format: 'float32x3'}]},
+            {arrayStride: 12, attributes: [{shaderLocation: 1, offset: 0, format: 'float32x3'}]},
           ],
           colorTargets: fmts.map((format) => ({
             format,
@@ -1406,6 +1486,7 @@ export class LiteMesh extends SceneObjectData {
       pass.setPipeline(pipeline.handle)
       for (const e of groups) pass.setBindGroup(e.group, e.bindGroup)
       pass.setVertexBuffer(0, st.vertexBuf)
+      pass.setVertexBuffer(1, st.normalBuf)
       pass.setIndexBuffer(st.indexBuf, 'uint32')
       pass.drawIndexed(st.indexCount, 1, 0, 0, 0)
       return true
@@ -2961,6 +3042,7 @@ export class LiteMesh extends SceneObjectData {
     level: number
     meshRev: number
     vertexBuf: GPUBuffer
+    normalBuf: GPUBuffer
     indexBuf: GPUBuffer
     indexCount: number
   }
@@ -2968,6 +3050,8 @@ export class LiteMesh extends SceneObjectData {
   private _tessPipelines = new Map<string, Pipeline>()
   private _tessBindings?: UniformBindings
   private _tessWarned = false
+  /** Last async tess-build failure (driver/test diagnostics). */
+  _tessLastError?: string
 
   /** Bound Vector out-param + bulk reader (native `vectorView` fast path, one
    * copy instead of a napi call per element; WASM falls back to the heap view). */
