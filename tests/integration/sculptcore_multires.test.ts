@@ -493,3 +493,103 @@ maybe('sculptcore Ptex fragment render (screenshot A/B)', () => {
     240000
   )
 })
+
+/** `__vdmSculptTest()` result (litemesh_multirestest_support.ts) — X3 stage 4. */
+interface VdmSculptResult {
+  ok: boolean
+  error?: string
+  levels?: number
+  isPtex?: boolean
+  tilesAfterStroke?: number
+  vertResidual?: number
+  blobLenAfterStroke?: number
+  blobChecksumAfterStroke?: number
+  tilesAfterUndo?: number
+  tilesAfterRedo?: number
+  blobChecksumAfterRedo?: number
+  vdmAfterDeleteOp?: boolean
+  vdmAfterDeleteUndo?: boolean
+  blobChecksumAfterDeleteUndo?: number
+}
+
+function runVdmSculpt(nwExe: string, backend: 'wasm' | 'native'): VdmSculptResult {
+  const dump = bootDump(
+    nwExe,
+    [
+      '--headless',
+      '--no-devtools',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      '--scene-arg',
+      'subdiv=6',
+      '--eval',
+      '__vdmSculptTest()',
+    ],
+    {tmpPrefix: 'scvdmsculpt-', timeout: 180000}
+  ) as {evalResult?: VdmSculptResult}
+  if (!dump.evalResult) throw new Error(`${backend} dump has no vdmSculptTest result`)
+  return dump.evalResult
+}
+
+maybe('sculptcore interactive VDM sculpting (ops / routing / undo)', () => {
+  const results = new Map<'wasm' | 'native', VdmSculptResult>()
+
+  beforeAll(() => {
+    for (const backend of backends) {
+      results.set(backend, runVdmSculpt(nwExe!, backend))
+    }
+  }, 600000)
+
+  test.each(eachBackend)('%s: driver ran cleanly', (backend) => {
+    const r = results.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[vdm-sculpt] ${backend} driver error:
+${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: lifecycle ops attach a Ptex store on the multires mesh', (backend) => {
+    const r = results.get(backend)!
+    expect(r.levels).toBe(2)
+    expect(r.isPtex).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: routed DRAW stroke splats texels and moves no vertices', (backend) => {
+    const r = results.get(backend)!
+    expect(r.tilesAfterStroke).toBeGreaterThan(0)
+    expect(r.vertResidual).toBe(0)
+    expect(r.blobLenAfterStroke).toBeGreaterThan(0)
+  })
+
+  test.each(eachBackend)('%s: the stroke undo/redo round-trips the texels exactly', (backend) => {
+    const r = results.get(backend)!
+    expect(r.tilesAfterUndo).toBe(0)
+    expect(r.tilesAfterRedo).toBe(r.tilesAfterStroke)
+    expect(r.blobChecksumAfterRedo).toBe(r.blobChecksumAfterStroke)
+  })
+
+  test.each(eachBackend)('%s: delete + toolstack undo restore the store intact', (backend) => {
+    const r = results.get(backend)!
+    expect(r.vdmAfterDeleteOp).toBe(false)
+    expect(r.vdmAfterDeleteUndo).toBe(true)
+    expect(r.blobChecksumAfterDeleteUndo).toBe(r.blobChecksumAfterStroke)
+  })
+
+  const crossTest = haveNative ? test : test.skip
+  crossTest('cross-backend: identical tile counts and store checksums', () => {
+    const w = results.get('wasm')!
+    const n = results.get('native')!
+    // eslint-disable-next-line no-console
+    console.log(
+      `[vdm-sculpt] tiles=${w.tilesAfterStroke}/${n.tilesAfterStroke} ` +
+        `blob=${w.blobChecksumAfterStroke}/${n.blobChecksumAfterStroke}`
+    )
+    expect(n.tilesAfterStroke).toBe(w.tilesAfterStroke)
+    expect(n.blobLenAfterStroke).toBe(w.blobLenAfterStroke)
+    expect(n.blobChecksumAfterStroke).toBe(w.blobChecksumAfterStroke)
+  })
+})

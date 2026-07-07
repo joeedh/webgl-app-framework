@@ -206,6 +206,13 @@ const featureFlags = [
     type       : 'bool',
     value      : false,
   },
+  {
+    key        : 'sculptcore.vdm_sculpt',
+    uiName     : 'VDM Sculpting',
+    description: 'Vector-displacement sculpting: the LiteMesh VDM panel + Draw-brush texel splatting (experimental)',
+    type       : 'bool',
+    value      : false,
+  },
 ] as const
 
 /** exists to typecheck featureFlags above. */

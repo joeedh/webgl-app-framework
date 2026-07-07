@@ -78,6 +78,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * on the primary dab (mirrorIdx 0) and reused by every mirror image so all
    * sides of a symmetric stroke remesh together (#38). */
   _dabDynTopoDue = false
+  /** One add-a-level clamp note per stroke (X3 stage 4 VDM routing). */
+  _vdmClampNoted = false
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
@@ -459,6 +461,18 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // TS tool with no sculptcore equivalent (e.g. Grab, Snake, Paint).
       // Skip the dab rather than silently running a Draw.
       console.warn(`sculptcore: no kernel for tool ${SculptTools[brush.tool] ?? brush.tool}; skipping dab`)
+    } else if (mesh.hasVdm && brush.tool === SculptTools.DRAW && SculptPaintOp.meshLog) {
+      // VDM carrier routing (X3 stage 4): with a store attached, Draw dabs
+      // splat texels (no vertex moves); undo rides the stroke's MeshLog step.
+      applyVdmSplatDab(wasm, mesh, SculptPaintOp.meshLog, p as unknown as ArrayLike<number>, normal as unknown as ArrayLike<number>, radius, ps.strength, ps.invert)
+      if (wasm.Vdm_lastSplatClamped() > 0 && !this._vdmClampNoted) {
+        // Fold clamp hit its ceiling — on a (topo-locked) multires base the
+        // remedy is another level (X1 prompt signal). Note once per stroke.
+        this._vdmClampNoted = true
+        ;(this.modal_ctx as unknown as {message?: (msg: string) => void})?.message?.(
+          'VDM detail clamped — add a multires level for more'
+        )
+      }
     } else {
       // Make the painted attribute visible (color/polygroup) without a manual
       // display-mode toggle.
@@ -752,6 +766,42 @@ function applyGrabDabState(wasmBrush: WasmBrush, p: number[] | Vector3, prev: Ve
  * casting a view ray. Returns the dab count, or `skipped:true` when the tool has
  * no sculptcore kernel.
  */
+/** Fold-bound clamp fraction for interactive VDM splats (|texel| <= alpha *
+ * rho_min; the engine kernel's own default). Clamp hits surface via
+ * Vdm_lastSplatClamped as the add-a-level prompt signal. */
+const VDM_SPLAT_ALPHA = 0.5
+
+/** One interactive VDM dab (X3 stage 4 carrier routing): splat tangent-space
+ * texels into the mesh's attached store instead of moving vertices; the tile
+ * delta rides `meshLog`'s open step as a VdmLogChunk. Returns texels touched. */
+function applyVdmSplatDab(
+  wasm: NonNullable<ReturnType<typeof getWasmImmediate>>,
+  mesh: LiteMesh,
+  meshLog: MeshLog,
+  p: ArrayLike<number>,
+  normal: ArrayLike<number>,
+  radius: number,
+  strength: number,
+  invert: boolean
+): number {
+  return wasm.Mesh_vdmSplatDabLogged(
+    mesh.mesh,
+    mesh.spatial,
+    mesh.vdmStore!,
+    meshLog as never,
+    p[0],
+    p[1],
+    p[2],
+    normal[0],
+    normal[1],
+    normal[2],
+    radius,
+    strength,
+    VDM_SPLAT_ALPHA,
+    invert ? 1 : 0
+  )
+}
+
 export function runSculptcoreStroke(opts: {
   mesh: LiteMesh
   brush: SculptBrush
@@ -921,6 +971,14 @@ export function runSculptcoreStroke(opts: {
           filterRadius = radius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
           wasmExec.setGrabAccumAdd(img.image > 0)
         }
+      }
+
+      // VDM carrier routing (X3 stage 4) — mirrors the interactive op: Draw
+      // dabs on a store-attached mesh splat texels instead of moving verts.
+      if (mesh.hasVdm && brush.tool === SculptTools.DRAW) {
+        applyVdmSplatDab(wasm, mesh, meshLog, img.p, img.normal, radius, brush.strength, opts.invert ?? false)
+        dabIdx++
+        continue
       }
 
       if (gpu) {

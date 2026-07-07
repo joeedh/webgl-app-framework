@@ -758,6 +758,16 @@ export class LiteMesh extends SceneObjectData {
       multires.tool('litemesh.multires_delete()', {label: 'Delete Stack'})
     }
 
+    // VDM displacement sculpting (displacementAndSubSurf X3 stage 4),
+    // feature-flagged (takes effect on restart). Enable/Delete run the
+    // undoable litemesh.vdm_* ops; with a store attached, Draw dabs splat
+    // texels instead of moving vertices.
+    if (FeatureFlags.get('sculptcore.vdm_sculpt')) {
+      const vdm = container.panel('VDM Displacement')
+      vdm.tool('litemesh.vdm_enable()', {label: 'Enable VDM'})
+      vdm.tool('litemesh.vdm_delete()', {label: 'Delete VDM'})
+    }
+
     // Reorder the mesh's element arrays into BVH depth-first order so sculpting
     // and dyntopo touch cache-coherent memory. Undoable via the shared MeshLog.
     const layout = container.panel('Layout')
@@ -3025,6 +3035,62 @@ export class LiteMesh extends SceneObjectData {
   /** The attached store handle (driver/test surface; undefined when none). */
   get vdmStore(): VdmStore | undefined {
     return this._vdmStore
+  }
+
+  /** Detach the store WITHOUT freeing it. The interactive lifecycle ops hold
+   * the instance across undo/redo — MeshLog VdmLogChunks keep non-owning
+   * store pointers, so freeing + reallocating would leave stroke history
+   * dangling. */
+  releaseVdmStore(): VdmStore | undefined {
+    const store = this._vdmStore
+    this._vdmAtlasTex?.destroy()
+    this._vdmAtlasTex = undefined
+    this._vdmPageTex?.destroy()
+    this._vdmPageTex = undefined
+    this._vdmLayout = undefined
+    this._vdmStore = undefined
+    return store
+  }
+
+  /** Create + attach a VDM store for interactive sculpting (X3 stage 4):
+   * Ptex-configured from the multires stack when one is attached, else the
+   * UV-atlas backend (requires an existing UV unwrap). Tags the whole mesh
+   * as VDM carrier and refreshes frames. Returns false (mesh untouched)
+   * when neither parameterization is available. */
+  vdmEnable(): boolean {
+    if (this._vdmStore) return true
+    const wasm = this.wasm
+    let store: VdmStore
+    if (this.multiresActive && this._multires) {
+      store = wasm.VdmStore_new(64, 16)
+      const links = this._vecOutBulk('int32')
+      ;(this._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(
+        links.vec as never
+      )
+      const linkArr = links.read()
+      const gridCount = (linkArr.length / 8) | 0
+      if (gridCount <= 0) {
+        wasm.VdmStore_free(store)
+        return false
+      }
+      ;(store as unknown as {configurePtex(g: number, r: number, l: never): void}).configurePtex(
+        gridCount, 0, links.vec as never
+      )
+    } else if (this.activeAttrLayerIndex(AttrUseFlags.UV) >= 0) {
+      store = wasm.VdmStore_new(1024, 32)
+    } else {
+      return false
+    }
+    this.vdmReattach(store)
+    return true
+  }
+
+  /** (Re-)attach a store: carrier tags + frames + GPU hookup. Used by
+   * `vdmEnable` and by the lifecycle ops' undo/redo with a released store. */
+  vdmReattach(store: VdmStore): void {
+    this.wasm.SpatialTree_fillDetailCarrier(this.spatial, 1)
+    this.wasm.Mesh_updateFrames(this.mesh)
+    this.attachVdmStore(store)
   }
 
   /** Cached bulk-read out-params for the per-frame VDM drain (the bound

@@ -16,7 +16,8 @@
  */
 
 import {BrushFlags, SculptTools} from '../brush/brush_base'
-import {DefaultBrushes} from '../brush/index'
+import {DefaultBrushes, type SculptBrush} from '../brush/index'
+import {FeatureFlags} from '../core/feature-flag'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
 import {numVecOut} from './litemesh_vdmtest_support'
@@ -499,4 +500,132 @@ async function stencilAmplifyTest(): Promise<StencilAmplifyTestResult> {
 ;(globalThis as {__stencilAmplifyTest?: typeof stencilAmplifyTest}).__stencilAmplifyTest =
   stencilAmplifyTest
 
-export {multiresTest, multiresVdmTest, stencilAmplifyTest}
+/** `__vdmSculptTest()` result — the X3 stage-4 interactive-VDM gate. */
+interface VdmSculptResult {
+  ok: boolean
+  error?: string
+  /** Multires stack depth after litemesh.multires_enable (expect 2). */
+  levels?: number
+  /** Store backend after litemesh.vdm_enable (expect true = Ptex). */
+  isPtex?: boolean
+  /** Live tiles after one routed DRAW stroke (expect > 0). */
+  tilesAfterStroke?: number
+  /** Max |co| drift over the stroke (expect 0 — splats move no vertices). */
+  vertResidual?: number
+  blobLenAfterStroke?: number
+  /** FNV-1a of the store blob — cross-backend comparable. */
+  blobChecksumAfterStroke?: number
+  /** Tiles after MeshLog undo of the stroke step (expect 0). */
+  tilesAfterUndo?: number
+  tilesAfterRedo?: number
+  /** Blob checksum after redo (expect === blobChecksumAfterStroke). */
+  blobChecksumAfterRedo?: number
+  /** hasVdm after litemesh.vdm_delete (expect false). */
+  vdmAfterDeleteOp?: boolean
+  /** hasVdm after toolstack undo of the delete (expect true). */
+  vdmAfterDeleteUndo?: boolean
+  /** Blob checksum after the delete undo (expect === blobChecksumAfterStroke:
+   * the SAME store instance comes back, texels intact). */
+  blobChecksumAfterDeleteUndo?: number
+}
+
+function fnv1aBytes(bytes: Uint8Array): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i]
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** X3 stage-4 interactive VDM sculpting gate: feature-flagged lifecycle ops
+ * (enable/delete + undo through the real toolstack), Draw-dab carrier routing
+ * through `runSculptcoreStroke` (texels splat, vertices hold still), and the
+ * stroke's VdmLogChunk undo/redo through the shared MeshLog. */
+function vdmSculptTest(): VdmSculptResult {
+  const result: VdmSculptResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {
+      ctx: {
+        object?: {data?: unknown}
+        api?: {execTool: (ctx: unknown, p: string) => void}
+      }
+      toolstack: {undo: () => void; redo: () => void}
+    }
+    __evalTestResult?: unknown
+  }
+  try {
+    const app = g._appstate
+    if (!app) throw new Error('no _appstate')
+    const ctx = app.ctx
+    const mesh = ctx.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const wasm = mesh.wasm
+
+    FeatureFlags.set('sculptcore.multires', true)
+    FeatureFlags.set('sculptcore.vdm_sculpt', true)
+
+    const {co} = mesh.dumpVertCo()
+    let R = 0
+    for (const pt of co) {
+      const l = Math.hypot(pt[0], pt[1], pt[2])
+      if (l > R) R = l
+    }
+
+    ctx.api?.execTool(ctx, 'litemesh.multires_enable()')
+    result.levels = mesh.multiresLevels
+    if (!mesh.multiresActive) throw new Error('multires_enable did not attach a stack')
+
+    ctx.api?.execTool(ctx, 'litemesh.vdm_enable()')
+    if (!mesh.hasVdm) throw new Error('vdm_enable did not attach a store')
+    result.isPtex = mesh.vdmIsPtex
+    const store = mesh.vdmStore as unknown as {tileCount(): number}
+
+    let draw: SculptBrush | undefined
+    for (const k in DefaultBrushes.brushes) {
+      const b = DefaultBrushes.brushes[k]
+      if (b && b.tool === SculptTools.DRAW) draw = b
+    }
+    if (!draw) throw new Error('no default DRAW brush')
+
+    const pre = dumpCoFlat(mesh)
+    runSculptcoreStroke({
+      mesh,
+      brush: draw,
+      dabs : [{p: [0, 0, R], normal: [0, 0, 1]}],
+      radius: R * 0.5,
+    })
+    result.tilesAfterStroke = store.tileCount()
+    result.vertResidual = maxResidual(pre, dumpCoFlat(mesh))
+    const blob1 = wasm.VdmStore_serializeBlob(mesh.vdmStore!)
+    result.blobLenAfterStroke = blob1.length
+    result.blobChecksumAfterStroke = fnv1aBytes(blob1)
+
+    // The stroke's texel delta rides its MeshLog step (VdmLogChunk).
+    SculptPaintOp.meshLog!.undo(mesh.mesh, mesh.spatial)
+    result.tilesAfterUndo = store.tileCount()
+    SculptPaintOp.meshLog!.redo(mesh.mesh, mesh.spatial)
+    result.tilesAfterRedo = store.tileCount()
+    result.blobChecksumAfterRedo = fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
+
+    // Lifecycle undo through the real toolstack: delete releases (not frees)
+    // the instance, so its undo brings every texel back.
+    ctx.api?.execTool(ctx, 'litemesh.vdm_delete()')
+    result.vdmAfterDeleteOp = mesh.hasVdm
+    app.toolstack.undo()
+    result.vdmAfterDeleteUndo = mesh.hasVdm
+    if (mesh.hasVdm) {
+      result.blobChecksumAfterDeleteUndo = fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+  }
+  g.__evalTestResult = result
+  return result
+}
+
+;(globalThis as {__vdmSculptTest?: typeof vdmSculptTest}).__vdmSculptTest = vdmSculptTest
+
+export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest}

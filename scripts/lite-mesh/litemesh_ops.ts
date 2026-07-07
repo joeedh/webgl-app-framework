@@ -12,6 +12,7 @@ import {
   Matrix4,
 } from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
+import type {VdmStore} from '@sculptcore/api'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {LiteMesh, AttrDomain} from './litemesh'
@@ -656,6 +657,102 @@ export class MultiresDeleteOp extends MultiresOpBase {
   }
 }
 ToolOp.register(MultiresDeleteOp)
+
+/** Feature-flag gate for the VDM sculpting lifecycle ops (X3 stage 4). */
+abstract class VdmOpBase<Inputs extends PropertySlots = {}> extends LiteMeshAttrOp<Inputs> {
+  static canRun(_ctx: ToolContext): boolean {
+    return FeatureFlags.get('sculptcore.vdm_sculpt')
+  }
+}
+
+/**
+ * Attach a VDM store to the active LiteMesh (Ptex-configured from the
+ * multires stack when one is attached, else the UV-atlas backend over an
+ * existing unwrap). With a store attached, Draw dabs splat texels instead of
+ * moving vertices. Undo RELEASES the store instance rather than freeing it:
+ * stroke history holds non-owning VdmLogChunk pointers into it, so the same
+ * instance must come back on redo.
+ */
+export class VdmEnableOp extends VdmOpBase {
+  _store?: VdmStore
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.vdm_enable',
+      uiname  : 'Enable VDM',
+      inputs  : {},
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh || mesh.hasVdm) return
+    if (this._store) {
+      // Redo: re-attach the SAME instance the undo released.
+      mesh.vdmReattach(this._store)
+      this._store = undefined
+    } else if (!mesh.vdmEnable()) {
+      ;(ctx as unknown as {error?: (msg: string) => void}).error?.(
+        'VDM needs a multires stack or a UV unwrap'
+      )
+      return
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh?.hasVdm) {
+      this._store = mesh.releaseVdmStore()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(VdmEnableOp)
+
+/**
+ * Detach the active LiteMesh's VDM store. The instance is released, not
+ * freed (see VdmEnableOp), so undo re-attaches it with every texel — and
+ * every stroke-history chunk that references it — intact.
+ */
+export class VdmDeleteOp extends VdmOpBase {
+  _store?: VdmStore
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.vdm_delete',
+      uiname  : 'Delete VDM',
+      inputs  : {},
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.hasVdm) return
+    this._store = mesh.releaseVdmStore()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && !mesh.hasVdm && this._store) {
+      mesh.vdmReattach(this._store)
+      this._store = undefined
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(VdmDeleteOp)
 
 /**
  * Wave 5: mark the shortest edge-path between two vertices as a seam
