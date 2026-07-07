@@ -162,12 +162,28 @@ surfaces a once-per-stroke "add a multires level" note. Enable/Delete are
 undoable; their undo *releases* the store instance rather than freeing it,
 because stroke history holds non-owning pointers into it.
 
+## Persistence (X4 stage 3)
+
+The stack and the VDM store both ride LiteMesh's nstructjs stream: `_data`
+holds the **cage** (not the level view — that was the old flatten-on-save
+bug), `_mrData` the grids-store blob (current: `serializeMultires` folds the
+active level's edits in first), `_mrLevels`/`_mrActiveLevel` the stack shape,
+and `_vdmData` the VDM store blob (the v2 container carries backend, params,
+and the Ptex tables). Load rebuilds the refinement from the cage
+(topology-compatible by construction), restores the grids store, re-attaches
+the saved level, and re-attaches the VDM store (carrier tags + frames).
+Active-level positions rematerialize through the disp encoding, so they
+round-trip to fp noise (~1e-7), not bit-exactly; the cage and the VDM blob
+are byte-identical.
+
 ## Known debts
 
-- No `.wproj` persistence of the stack (flatten-on-save), no autosave
-  coverage; rides X-track serialization work.
 - The finest-level LRU default (3 residents) and level cap (7 in the enable
   op) are untuned defaults.
+- External interchange export of the VDM (EXR/image formats for other DCCs)
+  is not implemented — the store blob is app-internal. The frame convention
+  any exporter must match is the splatter's (`t ⊥ n`, `b = n × t`, frames on
+  the smoothed base).
 - Per-face fragment-vs-tessellated carrier mixing is dormant: promotion is
   gated off on topo-locked level meshes, so a multires mesh's carrier tags
   are uniformly VDM — revisit with X4 demotion.

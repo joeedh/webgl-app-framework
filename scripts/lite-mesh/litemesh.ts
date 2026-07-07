@@ -441,6 +441,10 @@ export class LiteMesh extends SceneObjectData {
       _data             : arraybuffer(byte) | this.serialize();
       repairLog         : array(string);
       _displayColorMode : int;
+      _vdmData          : arraybuffer(byte) | this.serializeVdm();
+      _mrData           : arraybuffer(byte) | this.serializeMultires();
+      _mrLevels         : int | this.multiresLevels;
+      _mrActiveLevel    : int | this.multiresLevel;
     }
     `
   )
@@ -830,6 +834,26 @@ export class LiteMesh extends SceneObjectData {
     }
     this._initSpatial()
     this._data = undefined
+
+    // Multires stack (X4 stage 3): rebuild the refinement from the cage —
+    // topology-compatible by construction — then restore the saved grids
+    // store + re-attach the saved level (the delete-op undo pattern).
+    const mrLevels = (this._mrLevels as number | undefined) ?? 0
+    const mrBytes = this._mrData ? new Uint8Array(this._mrData) : undefined
+    if (mrLevels > 0 && mrBytes?.length && this.multiresEnable(mrLevels)) {
+      const level = Math.min(Math.max((this._mrActiveLevel as number | undefined) ?? mrLevels, 1), mrLevels)
+      this.multiresRestoreStoreBlob(mrBytes, level)
+    }
+    this._mrData = undefined
+
+    // VDM store: params + Ptex tables ride the blob, so deserialize +
+    // re-attach (carrier tags + frames) is the whole restore.
+    const vdmBytes = this._vdmData ? new Uint8Array(this._vdmData) : undefined
+    if (vdmBytes?.length) {
+      const store = this.wasm.VdmStore_deserializeBlob(vdmBytes)
+      if (store) this.vdmReattach(store)
+    }
+    this._vdmData = undefined
   }
 
   private needsBoundsUpdate = true
@@ -896,6 +920,11 @@ export class LiteMesh extends SceneObjectData {
    * while active captures the flattened active level. */
   _multires?: Multires
   _multiresCage?: WasmMesh
+  /** Save-stream carriers (X4 stage 3); consumed + cleared by loadSTRUCT. */
+  _vdmData?: ArrayBuffer | Uint8Array
+  _mrData?: ArrayBuffer | Uint8Array
+  _mrLevels?: number
+  _mrActiveLevel?: number
   /** Serialized mesh blob, populated only during `loadSTRUCT` (a plain byte
    * array from nstructjs); cleared once the mesh is rebuilt. */
   _data?: number[] | Uint8Array | ArrayBuffer
@@ -1622,6 +1651,10 @@ export class LiteMesh extends SceneObjectData {
    * previous blob instead of recompressing; app.save leaves cache mode off so
    * the canonical file is always freshly serialized. */
   serialize(): Uint8Array {
+    // On a multires stack the persistent mesh is the parked CAGE — the level
+    // views are derived (stack topology + grids store, saved via _mrData).
+    // Serializing the level view here is exactly the old flatten-on-save bug.
+    const persistMesh = this._multiresCage ?? this.mesh
     // M3 split path: hand the collector either a cached compressed blob or a
     // fresh uncompressed raw payload (the worker lz4-frames it off-thread), and
     // embed only an 8-byte placeholder inline. See autosave_serialize.ts.
@@ -1632,7 +1665,7 @@ export class LiteMesh extends SceneObjectData {
         return makeBlobPlaceholder(collector.add({state: 'compressed', bytes: this._blobCache.blob}))
       }
       const revision = this.meshRevision
-      const raw = this.wasm.Mesh_serializeRaw(this.mesh)
+      const raw = this.wasm.Mesh_serializeRaw(persistMesh)
       const blobId = collector.add({
         state       : 'raw',
         bytes       : raw,
@@ -1649,9 +1682,24 @@ export class LiteMesh extends SceneObjectData {
         return this._blobCache.blob
       }
     }
-    const blob = this.wasm.Mesh_serialize(this.mesh)
+    const blob = this.wasm.Mesh_serialize(persistMesh)
     this._blobCache = {revision: this.meshRevision, blob}
     return blob
+  }
+
+  /** VDM store blob for the save stream (empty = no store attached). The v2
+   * container carries backend/params/Ptex tables, so load just deserializes
+   * and re-attaches. */
+  serializeVdm(): Uint8Array {
+    return this._vdmStore ? this.wasm.VdmStore_serializeBlob(this._vdmStore) : new Uint8Array()
+  }
+
+  /** Grids-store blob for the save stream (empty = no stack). Folds the
+   * active level's resident edits in first so the blob is current. */
+  serializeMultires(): Uint8Array {
+    if (!this._multires) return new Uint8Array()
+    this.multiresWriteback()
+    return this.wasm.Multires_storeBlob(this._multires)
   }
 
   rayCast(origin: Vector3, dir: Vector3): GenericIsect | undefined {

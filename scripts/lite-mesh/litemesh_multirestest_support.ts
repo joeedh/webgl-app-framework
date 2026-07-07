@@ -18,6 +18,7 @@
 import {BrushFlags, SculptTools} from '../brush/brush_base'
 import {DefaultBrushes, type SculptBrush} from '../brush/index'
 import {FeatureFlags} from '../core/feature-flag'
+import {nstructjs} from '../path.ux/scripts/pathux'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
 import {numVecOut} from './litemesh_vdmtest_support'
@@ -698,4 +699,115 @@ function vdmSculptTest(): VdmSculptResult {
 
 ;(globalThis as {__vdmSculptTest?: typeof vdmSculptTest}).__vdmSculptTest = vdmSculptTest
 
-export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest}
+/** `__vdmPersistTest()` result — the X4 stage-3 .wproj round-trip gate. */
+interface VdmPersistResult {
+  ok: boolean
+  error?: string
+  levels?: number
+  activeLevel?: number
+  tiles?: number
+  vdmChecksum?: number
+  posChecksum?: number
+  cageChecksum?: number
+  /** The nstructjs stream length (sanity: nonzero). */
+  streamBytes?: number
+  loadedLevels?: number
+  loadedActiveLevel?: number
+  loadedHasVdm?: boolean
+  loadedIsPtex?: boolean
+  loadedTiles?: number
+  loadedVdmChecksum?: number
+  loadedPosChecksum?: number
+  loadedCageChecksum?: number
+  /** Max |co| between saved and loaded active-level positions. Residual, not
+   * checksum: the load rematerializes through the disp encoding (frameT then
+   * frame = two fp rounding passes over the writeback fold). */
+  posResidual?: number
+}
+
+/** In-process nstructjs round-trip of a LiteMesh carrying a multires stack +
+ * a Ptex VDM store (X4 stage 3): serialize -> readObject -> compare stack
+ * depth/level, VDM blob checksum, and the active-level position checksum.
+ * Before stage 3 this flattened: the level VIEW was saved as the mesh and
+ * the stack + store were dropped. */
+function vdmPersistTest(): VdmPersistResult {
+  const result: VdmPersistResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {ctx: {object?: {data?: unknown}}}
+    __evalTestResult?: unknown
+  }
+  try {
+    const app = g._appstate
+    if (!app) throw new Error('no _appstate')
+    const mesh = app.ctx.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const wasm = mesh.wasm
+
+    const {co} = mesh.dumpVertCo()
+    let R = 0
+    for (const pt of co) {
+      const l = Math.hypot(pt[0], pt[1], pt[2])
+      if (l > R) R = l
+    }
+
+    if (!mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
+    if (!mesh.vdmEnable()) throw new Error('vdmEnable failed')
+    wasm.Mesh_vdmSplatDab(
+      mesh.mesh, mesh.spatial, mesh.vdmStore!, 0, 0, R, 0, 0, 1, R * 0.5, 1.0, 0.5, 0
+    )
+    // A real level edit too, so the grids-store blob carries nonzero disp.
+    let draw: SculptBrush | undefined
+    for (const k in DefaultBrushes.brushes) {
+      const b = DefaultBrushes.brushes[k]
+      if (b && b.tool === SculptTools.SMOOTH) draw = b
+    }
+    // SMOOTH is not VDM-routed, so it deforms the level vertices directly.
+    if (draw) {
+      runSculptcoreStroke({mesh, brush: draw, dabs: [{p: [R, 0, 0], normal: [1, 0, 0]}], radius: R * 0.4})
+    }
+
+    const store = mesh.vdmStore as unknown as {tileCount(): number}
+    result.levels = mesh.multiresLevels
+    result.activeLevel = mesh.multiresLevel
+    result.tiles = store.tileCount()
+    result.vdmChecksum = fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
+    result.posChecksum = fnv1a(dumpCoFlat(mesh))
+    result.cageChecksum = fnv1aBytes(wasm.Mesh_serialize(mesh._multiresCage!))
+
+    const data: number[] = []
+    nstructjs.manager.write_object(data, mesh)
+    result.streamBytes = data.length
+    const loaded = nstructjs.readObject(new Uint8Array(data), LiteMesh) as LiteMesh
+
+    try {
+      result.loadedLevels = loaded.multiresLevels
+      result.loadedActiveLevel = loaded.multiresLevel
+      result.loadedHasVdm = loaded.hasVdm
+      result.loadedIsPtex = loaded.vdmIsPtex
+      const lstore = loaded.vdmStore as unknown as {tileCount(): number} | undefined
+      result.loadedTiles = lstore ? lstore.tileCount() : -1
+      result.loadedVdmChecksum = loaded.hasVdm
+        ? fnv1aBytes(wasm.VdmStore_serializeBlob(loaded.vdmStore!))
+        : -1
+      const savedCo = dumpCoFlat(mesh)
+      const loadedCo = dumpCoFlat(loaded)
+      result.loadedPosChecksum = fnv1a(loadedCo)
+      result.posResidual = maxResidual(savedCo, loadedCo)
+      result.loadedCageChecksum = loaded._multiresCage
+        ? fnv1aBytes(wasm.Mesh_serialize(loaded._multiresCage))
+        : -1
+    } finally {
+      loaded.destroy()
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+  }
+  g.__evalTestResult = result
+  return result
+}
+
+;(globalThis as {__vdmPersistTest?: typeof vdmPersistTest}).__vdmPersistTest = vdmPersistTest
+
+export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest, vdmPersistTest}

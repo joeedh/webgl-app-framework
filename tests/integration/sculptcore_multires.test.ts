@@ -649,3 +649,93 @@ ${r.error}`)
     expect(n.posAfterCapture).toBe(w.posAfterCapture)
   })
 })
+
+/** `__vdmPersistTest()` result (litemesh_multirestest_support.ts) — X4 stage 3. */
+interface VdmPersistResult {
+  ok: boolean
+  error?: string
+  levels?: number
+  activeLevel?: number
+  tiles?: number
+  vdmChecksum?: number
+  cageChecksum?: number
+  streamBytes?: number
+  loadedLevels?: number
+  loadedActiveLevel?: number
+  loadedHasVdm?: boolean
+  loadedIsPtex?: boolean
+  loadedTiles?: number
+  loadedVdmChecksum?: number
+  loadedCageChecksum?: number
+  posResidual?: number
+}
+
+function runVdmPersist(nwExe: string, backend: 'wasm' | 'native'): VdmPersistResult {
+  const dump = bootDump(
+    nwExe,
+    [
+      '--headless',
+      '--no-devtools',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      '--scene-arg',
+      'subdiv=6',
+      '--eval',
+      '__vdmPersistTest()',
+    ],
+    {tmpPrefix: 'scvdmpersist-', timeout: 180000}
+  ) as {evalResult?: VdmPersistResult}
+  if (!dump.evalResult) throw new Error(`${backend} dump has no vdmPersistTest result`)
+  return dump.evalResult
+}
+
+maybe('sculptcore VDM + multires .wproj persistence (X4 stage 3)', () => {
+  const results = new Map<'wasm' | 'native', VdmPersistResult>()
+
+  beforeAll(() => {
+    for (const backend of backends) {
+      results.set(backend, runVdmPersist(nwExe!, backend))
+    }
+  }, 600000)
+
+  test.each(eachBackend)('%s: driver ran cleanly', (backend) => {
+    const r = results.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[vdm-persist] ${backend} driver error:
+${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.streamBytes).toBeGreaterThan(0)
+  })
+
+  test.each(eachBackend)('%s: the multires stack survives the round-trip (no flatten)', (backend) => {
+    const r = results.get(backend)!
+    expect(r.loadedLevels).toBe(r.levels)
+    expect(r.loadedActiveLevel).toBe(r.activeLevel)
+    // The persistent mesh is the CAGE, byte-identical through the stream.
+    expect(r.loadedCageChecksum).toBe(r.cageChecksum)
+    // Active-level positions rematerialize through the disp encoding —
+    // residual, not checksum (frameT then frame = two fp roundings).
+    expect(r.posResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: the VDM store survives the round-trip byte-exact', (backend) => {
+    const r = results.get(backend)!
+    expect(r.loadedHasVdm).toBe(true)
+    expect(r.loadedIsPtex).toBe(true)
+    expect(r.loadedTiles).toBe(r.tiles)
+    expect(r.loadedVdmChecksum).toBe(r.vdmChecksum)
+  })
+
+  const crossTest = haveNative ? test : test.skip
+  crossTest('cross-backend: identical persisted state', () => {
+    const w = results.get('wasm')!
+    const n = results.get('native')!
+    expect(n.vdmChecksum).toBe(w.vdmChecksum)
+    expect(n.cageChecksum).toBe(w.cageChecksum)
+    expect(n.tiles).toBe(w.tiles)
+  })
+})
