@@ -658,6 +658,14 @@ export class LiteMesh extends SceneObjectData {
         }
       )
     mstruct.int('multiresLevels', 'multiresLevels', 'Levels', 'Multires stack depth (0 = no stack)').noUnits().readOnly()
+    // X3 tessellated tier: draw the render level GPU-amplified (+ VDM applied
+    // at the verts) while editing a coarser one. Pure view state - no undo.
+    mstruct.bool(
+      'tessellatedDisplay',
+      'tessellatedDisplay',
+      'Displaced Preview',
+      'Draw the finest multires level (with VDM displacement) while editing a coarser one'
+    )
 
     return mstruct
   }
@@ -752,6 +760,7 @@ export class LiteMesh extends SceneObjectData {
       const multires = container.panel('Multires')
       multires.prop('object.data.multiresLevel')
       multires.prop('object.data.multiresLevels')
+      multires.prop('object.data.tessellatedDisplay')
       multires.tool('litemesh.multires_enable()', {label: 'Enable (2 levels)'})
       multires.tool('litemesh.multires_enable(levels=4)', {label: 'Enable (4 levels)'})
       multires.tool('litemesh.multires_down_refit()', {label: 'Refit Level Below'})
@@ -1309,7 +1318,14 @@ export class LiteMesh extends SceneObjectData {
     const active = this.multiresLevel
     if (active >= renderLevel) return
     const st = this._tessState
-    if (st && st.meshRev === this.meshRevision && st.level === renderLevel) return
+    const storeRev = this._tessStoreRev()
+    if (st && st.meshRev === this.meshRevision && st.level === renderLevel) {
+      // Geometry clean. If only texels changed (interactive VDM splats /
+      // their undo), re-run just the finalize over the kept amplified
+      // channels — the SpMV chain result is still current.
+      if (st.storeRev !== storeRev) this._refinalizeTess(device, storeRev)
+      return
+    }
 
     const meshRev = this.meshRevision
     this._tessBuilding = true
@@ -1381,29 +1397,7 @@ export class LiteMesh extends SceneObjectData {
         }
 
         // Ptex VDM inputs for the finalize kernel (true displaced verts).
-        let vdm: TessVdmInputs | undefined
-        if (this._vdmStore && this._vdmIsPtex) {
-          const store = this._vdmStore as unknown as {
-            gpuLayoutOut(o: never): number
-            gpuPtexTableOut(o: never): void
-            gpuAtlasPixelsOut(o: never): void
-          }
-          store.gpuLayoutOut(intV.vec as never)
-          const lay = Array.from(intV.read() as ArrayLike<number>)
-          store.gpuPtexTableOut(intV.vec as never)
-          const table = Int32Array.from(intV.read() as ArrayLike<number>)
-          store.gpuAtlasPixelsOut(fltV.vec as never)
-          const atlasPixels = Float32Array.from(fltV.read() as ArrayLike<number>)
-          vdm = {
-            table,
-            atlasPixels,
-            vertCoords,
-            gridSide,
-            tileSize   : lay[0] | 0,
-            atlasTilesX: Math.max(lay[4] | 0, 1),
-            atlasW     : Math.max(lay[6] | 0, 1),
-          }
-        }
+        const vdm = this._marshalTessVdm(vertCoords, gridSide)
 
         const fineCount = levels[levels.length - 1].fineCount
         const {posOut, norOut} = await tessFinalize(
@@ -1422,6 +1416,12 @@ export class LiteMesh extends SceneObjectData {
         this._tessState = {
           level    : renderLevel,
           meshRev,
+          storeRev,
+          posAmp   : pos.result,
+          norAmp   : nor.result,
+          tanAmp   : tan.result,
+          topo,
+          fineCount,
           vertexBuf: posOut,
           normalBuf: norOut,
           indexBuf,
@@ -1446,8 +1446,78 @@ export class LiteMesh extends SceneObjectData {
       this._tessState.vertexBuf.destroy()
       this._tessState.normalBuf.destroy()
       this._tessState.indexBuf.destroy()
+      this._tessState.posAmp.destroy()
+      this._tessState.norAmp.destroy()
+      this._tessState.tanAmp.destroy()
       this._tessState = undefined
     }
+  }
+
+  /** The attached store's texel-content revision (-1 = no Ptex store). */
+  private _tessStoreRev(): number {
+    return this._vdmStore && this._vdmIsPtex
+      ? (this._vdmStore as unknown as {contentRev(): number}).contentRev()
+      : -1
+  }
+
+  /** Marshal the finalize kernel's Ptex inputs (undefined = no store: the
+   * finalize still runs for frames/normals, skipping the displacement). */
+  private _marshalTessVdm(vertCoords: Int32Array, gridSide: number): TessVdmInputs | undefined {
+    if (!this._vdmStore || !this._vdmIsPtex) return undefined
+    const intV = this._vecOutBulk('int32')
+    const fltV = this._vecOutBulk('float')
+    const store = this._vdmStore as unknown as {
+      gpuLayoutOut(o: never): number
+      gpuPtexTableOut(o: never): void
+      gpuAtlasPixelsOut(o: never): void
+    }
+    store.gpuLayoutOut(intV.vec as never)
+    const lay = Array.from(intV.read() as ArrayLike<number>)
+    store.gpuPtexTableOut(intV.vec as never)
+    const table = Int32Array.from(intV.read() as ArrayLike<number>)
+    store.gpuAtlasPixelsOut(fltV.vec as never)
+    const atlasPixels = Float32Array.from(fltV.read() as ArrayLike<number>)
+    return {
+      table,
+      atlasPixels,
+      vertCoords,
+      gridSide,
+      tileSize   : lay[0] | 0,
+      atlasTilesX: Math.max(lay[4] | 0, 1),
+      atlasW     : Math.max(lay[6] | 0, 1),
+    }
+  }
+
+  /** Texel-only refresh: re-run the finalize kernels over the kept amplified
+   * channels (no SpMV re-dispatch, no index rebuild) and swap the vertex
+   * streams. Async like the full build; the stale streams draw until it
+   * lands. */
+  private _refinalizeTess(device: GPUDevice, storeRev: number): void {
+    const st = this._tessState
+    if (!st || this._tessBuilding) return
+    this._tessBuilding = true
+    void (async () => {
+      try {
+        const gridSide = 1 << (st.level - 1)
+        const vdm = this._marshalTessVdm(st.topo.vertCoords as Int32Array, gridSide)
+        const {posOut, norOut} = await tessFinalize(
+          device, st.fineCount, st.posAmp, st.norAmp, st.tanAmp, st.topo, vdm)
+        st.vertexBuf.destroy()
+        st.normalBuf.destroy()
+        st.vertexBuf = posOut
+        st.normalBuf = norOut
+        st.storeRev = storeRev
+        window.redraw_viewport?.()
+      } catch (err) {
+        this._tessLastError = String(err instanceof Error ? (err.stack ?? err.message) : err)
+        if (!this._tessWarned) {
+          this._tessWarned = true
+          console.error('litemesh: tessellated re-finalize failed', err)
+        }
+      } finally {
+        this._tessBuilding = false
+      }
+    })()
   }
 
   /** The tessellated-tier draw (X3 stage 2): bind the amplified positions +
@@ -3107,6 +3177,15 @@ export class LiteMesh extends SceneObjectData {
   private _tessState?: {
     level: number
     meshRev: number
+    /** VdmStore.contentRev() folded into the finalize outputs (-1 = no store). */
+    storeRev: number
+    /** Amplified (pre-VDM) position/frame channels — kept so a texel-only
+     * change re-runs just the finalize, not the SpMV chain. */
+    posAmp: GPUBuffer
+    norAmp: GPUBuffer
+    tanAmp: GPUBuffer
+    topo: TessTopoInputs
+    fineCount: number
     vertexBuf: GPUBuffer
     normalBuf: GPUBuffer
     indexBuf: GPUBuffer

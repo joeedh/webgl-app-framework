@@ -379,6 +379,7 @@ export type GeneratedDataPath =
   | "settings.featureFlags.sculptcore_quad_remesher"
   | "settings.featureFlags.sculptcore_sculpt_layers"
   | "settings.featureFlags.sculptcore_select_flush_prefer_op_domain"
+  | "settings.featureFlags.sculptcore_vdm_sculpt"
   | "settings.limitUndoMem"
   | "settings.undoMemLimit"
   | "settings_editor"
@@ -1144,6 +1145,7 @@ declare module "@framework/pathux" {
     "settings.featureFlags.sculptcore_quad_remesher": true;
     "settings.featureFlags.sculptcore_sculpt_layers": true;
     "settings.featureFlags.sculptcore_select_flush_prefer_op_domain": true;
+    "settings.featureFlags.sculptcore_vdm_sculpt": true;
     "settings.limitUndoMem": true;
     "settings.undoMemLimit": true;
     "settings_editor": true;

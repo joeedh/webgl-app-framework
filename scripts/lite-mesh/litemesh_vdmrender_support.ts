@@ -45,6 +45,11 @@ interface VdmRenderResult {
   tileCount?: number
   /** 'ref': vertices moved by the analytic dab (must be > 0). */
   refMoved?: number
+  /** 'tessvdm': texels the post-build second splat wrote (must be > 0). */
+  texels2?: number
+  /** 'tessvdm': the tess tier re-finalized after the second splat (X3 4b:
+   * texel-only change re-runs just the finalize off VdmStore.contentRev). */
+  refinalized?: boolean
 }
 
 /** The C++ splat's smoothstep falloff (vdm_splat.cc): 1 at center, 0 at r. */
@@ -267,6 +272,34 @@ function vdmRenderTest(
             return result
           }
           await new Promise((r) => setTimeout(r, 100))
+        }
+        // 4b gate (tessvdm): a texel-only change after the build must
+        // re-finalize (storeRev catch-up), not rebuild or go stale. Splat a
+        // second dab offset along the surface, then wait for the swap.
+        if (mode === 'tessvdm') {
+          const tstate = (mesh as unknown as {_tessState?: {storeRev: number}})._tessState
+          const rev0 = tstate?.storeRev
+          // Perpendicular axis with the smallest |n| component.
+          let perp = [1, 0, 0]
+          if (Math.abs(n[0]) >= Math.abs(n[1])) perp = Math.abs(n[1]) <= Math.abs(n[2]) ? [0, 1, 0] : [0, 0, 1]
+          const len = Math.hypot(n[0] * 0.8 + perp[0] * 0.6, n[1] * 0.8 + perp[1] * 0.6, n[2] * 0.8 + perp[2] * 0.6)
+          const c2 = [0, 1, 2].map((i) => ((n[i] * 0.8 + perp[i] * 0.6) / len) * R)
+          const n2 = [0, 1, 2].map((i) => c2[i] / R)
+          result.texels2 = wasm.Mesh_vdmSplatDab(
+            mesh.mesh, mesh.spatial, mesh.vdmStore!,
+            c2[0], c2[1], c2[2], n2[0], n2[1], n2[2], radius * 0.7, strength, 0.0, 0
+          )
+          const t1 = Date.now()
+          while ((mesh as unknown as {_tessState?: {storeRev: number}})._tessState?.storeRev === rev0) {
+            if (Date.now() - t1 > 30000) {
+              result.ok = false
+              result.error = 'tess re-finalize timeout'
+              g.__evalTestResult = result
+              return result
+            }
+            await new Promise((r) => setTimeout(r, 100))
+          }
+          result.refinalized = true
         }
         await new Promise((r) => setTimeout(r, 300))
         g.__evalTestResult = result

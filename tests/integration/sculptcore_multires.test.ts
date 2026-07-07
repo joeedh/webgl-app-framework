@@ -325,6 +325,8 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
 // --- X2 stage 3: the Ptex fragment render gate (screenshot A/B) ------------
 
 interface PtexRenderResult {
+  texels2?: number
+  refinalized?: boolean
   ok: boolean
   error?: string
   mode?: string
@@ -427,6 +429,14 @@ maybe('sculptcore tessellated tier render (X3 stage 2 screenshot A/B)', () => {
     // The splat dab must visibly move the amplified surface (the fragment
     // tier shades but cannot move silhouettes — this tier can).
     expect(vsTess).toBeGreaterThan(0.05)
+  })
+
+  test('a texel-only change re-finalizes the tessellated streams (4b caching)', () => {
+    // The driver splats a second dab AFTER the tess build and waits for the
+    // storeRev catch-up — proving the finalize re-runs off the kept amplified
+    // channels instead of going stale (or re-amplifying).
+    expect(tessVdm.result.texels2).toBeGreaterThan(0)
+    expect(tessVdm.result.refinalized).toBe(true)
   })
 
   const parityTest = haveNative ? test : test.skip

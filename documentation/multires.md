@@ -136,11 +136,45 @@ taps the (R+2)² storage lattice. App setup: `Multires.vdmAdjacencyOut` →
 into the material hash. Gate: the `sculptcore_multires` screenshot A/B
 (ptex≠flat 0.295, native↔wasm 0.0092, exact texel counts).
 
+## Tessellated display + interactive VDM (X3)
+
+With a stack attached and the edit level below the finest, the **Displaced
+Preview** toggle on the Multires panel (`object.data.tessellatedDisplay`,
+view state) substitutes a GPU-amplified draw of the render level for the
+active-level batch: the edit level's positions + F3 frames ride the stencil
+SpMV chain on the renderer device (`scripts/webgpu/stencil_compute.ts`), a
+finalize kernel displaces each amplified vert by its Ptex VDM texel and
+computes geometric normals over the displaced positions, and the mesh draws
+the result with a `TESS_TIER` material variant (`_drawTessellated`). Builds
+are async (the batch draws until the state lands; `tessReady` reports it)
+and split-cached: geometry edits re-run the whole chain (keyed on
+`meshRevision`), texel-only changes re-run just the finalize (keyed on
+`VdmStore.contentRev()`), so interactive VDM strokes update the preview
+without re-amplifying.
+
+Interactive VDM sculpting lives behind `sculptcore.vdm_sculpt` (default
+off): **Enable VDM** on the LiteMesh properties tab builds a Ptex store from
+the stack's S2 adjacency (or a UV-atlas store over an existing unwrap on a
+plain mesh); with a store attached, Draw-brush dabs splat tangent-space
+texels (`Mesh_vdmSplatDabLogged` — the tile-delta rides the stroke's MeshLog
+step, so undo reverts it) instead of moving vertices, and a fold-clamp hit
+surfaces a once-per-stroke "add a multires level" note. Enable/Delete are
+undoable; their undo *releases* the store instance rather than freeing it,
+because stroke history holds non-owning pointers into it.
+
 ## Known debts
 
 - No `.wproj` persistence of the stack (flatten-on-save), no autosave
   coverage; rides X-track serialization work.
-- Production draw integration with the GPU stencil amplification (S5) and
-  V's tessellated tier is X3.
 - The finest-level LRU default (3 residents) and level cap (7 in the enable
   op) are untuned defaults.
+- Per-face fragment-vs-tessellated carrier mixing is dormant: promotion is
+  gated off on topo-locked level meshes, so a multires mesh's carrier tags
+  are uniformly VDM — revisit with X4 demotion.
+- LiteMeshes are skipped in the NormalPass entirely (the M6 "no SSAO
+  contribution" note), so the tessellated tier inherits that gap; fixing it
+  is a LiteMesh-wide work item, not a tess one.
+- SSS MRT is latently broken for **all** LiteMesh draws (the batch executor
+  is seeded with one color target and `setColorFormats` cannot grow it);
+  the tessellated draw bails to the batch under MRT for the same reason.
+  Repairing SSS+LiteMesh (batch + tess together) is its own work item.

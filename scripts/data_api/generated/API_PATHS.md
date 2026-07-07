@@ -567,6 +567,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.featureFlags.sculptcore_quad_remesher` | prop | BoolProperty | sculptcore.quad_remesher |  |
 | `settings.featureFlags.sculptcore_sculpt_layers` | prop | BoolProperty | Sculpt Layers |  |
 | `settings.featureFlags.sculptcore_select_flush_prefer_op_domain` | prop | BoolProperty | sculptcore.select_flush_prefer_op_domain |  |
+| `settings.featureFlags.sculptcore_vdm_sculpt` | prop | BoolProperty | VDM Sculpting |  |
 | `settings.limitUndoMem` | prop | BoolProperty | Limit Undo Memory |  |
 | `settings.undoMemLimit` | prop | IntProperty | Mem Limit |  |
 
