@@ -78,7 +78,13 @@ interface BrushTestResult {
   /** Plain (no symmetry) off-center DRAW dab: only the dab's own X-side moves. */
   symPlainX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
   /** Symmetrize op about X: position-mirror miss-fraction before vs after (after ≈ 0). */
-  symmetrize?: {missBefore: number; missAfter: number}
+  symmetrize?: {
+    /** Pristine-scene control: the live vertex set must already be
+     * mirror-symmetric at the cell size, or the metric premise is void. */
+    missPristine: number
+    missBefore: number
+    missAfter: number
+  }
   /** Non-finite floats in the final position buffer (must be 0). */
   nonFiniteCount?: number
   radius?: number
@@ -247,22 +253,35 @@ function octantCoverage(
 function posMissFrac(pos: Float32Array | undefined, axis: number, cell: number): number {
   if (!pos || pos.length === 0) return 1
   const q = (v: number) => Math.round(v / cell)
+  // Fractions over UNIQUE quantized cells, not raw render vertices: the GPU
+  // position buffer duplicates verts per spatial leaf, so a raw-vertex ratio
+  // shifts with leaf layout (defrag, tree params) with zero deform change.
   const set = new Set<string>()
   for (let i = 0; i < pos.length; i += 3) {
     set.add(`${q(pos[i])},${q(pos[i + 1])},${q(pos[i + 2])}`)
   }
   let miss = 0
-  let total = 0
-  const c = [0, 0, 0]
-  for (let i = 0; i < pos.length; i += 3) {
-    c[0] = q(pos[i])
-    c[1] = q(pos[i + 1])
-    c[2] = q(pos[i + 2])
+  for (const key of set) {
+    const c = key.split(',').map(Number)
     c[axis] = -c[axis]
-    total++
     if (!set.has(`${c[0]},${c[1]},${c[2]}`)) miss++
   }
-  return total ? miss / total : 1
+  return set.size ? miss / set.size : 1
+}
+
+/** Flat xyz of the LIVE mesh vertices (`dumpVertCo`) — the symmetry metric
+ * must NOT read the raw leaf VBOs: those duplicate verts per leaf and carry
+ * dead slack slots with stale positions, which both skew the miss fraction
+ * (layout-dependently) and add a phantom always-miss population. */
+function dumpLiveCo(lm: LiteMesh): Float32Array {
+  const {co} = lm.dumpVertCo()
+  const out = new Float32Array(co.length * 3)
+  for (let i = 0; i < co.length; i++) {
+    out[i * 3] = co[i][0]
+    out[i * 3 + 1] = co[i][1]
+    out[i * 3 + 2] = co[i][2]
+  }
+  return out
 }
 
 /**
@@ -568,15 +587,18 @@ function brushTest(): BrushTestResult {
     strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0})
     // Gentle one-sided deform: clears the quantization cell so missBefore is
     // clearly nonzero; the destructive op then mirrors +X exactly onto -X.
+    // All three metrics run on the LIVE vertex set (dumpLiveCo), with the
+    // pristine control validating the premise (scene symmetric at this cell).
     const cell = R * 5e-3
+    const missPristine = posMissFrac(dumpLiveCo(mesh), 0, cell)
     strokeAndMeasure(mesh, draw, SculptTools.DRAW, [R, 0, 0], [1, 0, 0], radius, {strength: 0.3})
-    const missBefore = posMissFrac(readGpuBuffer(mesh, 'position'), 0, cell)
+    const missBefore = posMissFrac(dumpLiveCo(mesh), 0, cell)
     const symOp = new SymmetrizeLiteMeshOp()
     symOp.inputs.axes.setValue(1) // X
     symOp.inputs.direction.setValue(1) // POSITIVE: keep +X, mirror onto -X
     g._appstate!.toolstack!.execTool(g._appstate!.ctx, symOp)
-    const missAfter = posMissFrac(readGpuBuffer(mesh, 'position'), 0, cell)
-    result.symmetrize = {missBefore, missAfter}
+    const missAfter = posMissFrac(dumpLiveCo(mesh), 0, cell)
+    result.symmetrize = {missPristine, missBefore, missAfter}
 
     // Final sanity: no NaN/Inf anywhere in the position buffer.
     const posEnd = readGpuBuffer(mesh, 'position')

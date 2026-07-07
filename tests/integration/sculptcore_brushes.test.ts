@@ -261,11 +261,15 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore brush behavior (%s)', 
 
   test('symmetrize op makes the mesh X-symmetric (Part B)', () => {
     expect(r.symmetrize).toBeDefined()
-    // A clean one-sided +X deform left the mesh clearly X-asymmetric...
+    // Metric premise: the pristine live vertex set is mirror-symmetric at the
+    // quantization cell (measured exactly 0 — the metric reads dumpVertCo,
+    // never the leaf VBOs, whose slack slots used to poison this gate).
+    expect(r.symmetrize!.missPristine).toBeLessThan(1e-3)
+    // A clean one-sided +X deform leaves the mesh clearly X-asymmetric
+    // (measured 0.015)...
     expect(r.symmetrize!.missBefore).toBeGreaterThan(0.01)
-    // ...and symmetrize about X drives the mirror miss-fraction back toward ~0.
-    expect(r.symmetrize!.missAfter).toBeLessThan(0.02)
-    expect(r.symmetrize!.missAfter).toBeLessThan(r.symmetrize!.missBefore * 0.5)
+    // ...and symmetrize about X restores exact mirror symmetry (measured 0).
+    expect(r.symmetrize!.missAfter).toBeLessThan(1e-3)
   })
 
   test('no NaN/Inf in the final position buffer', () => {
