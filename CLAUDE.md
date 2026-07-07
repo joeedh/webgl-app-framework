@@ -505,7 +505,14 @@ owns the grids store + level materialization; the app attaches one level at a
 time as non-owning `mesh`/`spatial` views (cage parked), with the undoable
 `litemesh.multires_{enable,set_level,down_refit,delete}` ToolOps + a
 properties-tab panel. Strokes fold into the store at stroke end
-(`multiresWriteback`); dyntopo is force-gated off on level meshes. See
+(`multiresWriteback`); dyntopo is force-gated off on level meshes. The
+**Displaced Preview** toggle draws the finest level GPU-amplified (stencil
+SpMV + VDM applied at the verts) while editing a coarser one, split-cached so
+texel-only edits re-run just the finalize. **VDM sculpting** (flag
+`sculptcore.vdm_sculpt`, default off) adds a Ptex vector-displacement store:
+Draw dabs splat texels instead of moving vertices, with undoable lifecycle +
+cross-carrier bake ops (`litemesh.vdm_{enable,delete,apply,capture}`). Stack
+and store both persist through `.wproj` (the cage is the saved mesh). See
 [documentation/multires.md](documentation/multires.md).
 
 ## Typecheck
