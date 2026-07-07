@@ -774,6 +774,7 @@ export class LiteMesh extends SceneObjectData {
     if (FeatureFlags.get('sculptcore.vdm_sculpt')) {
       const vdm = container.panel('VDM Displacement')
       vdm.tool('litemesh.vdm_enable()', {label: 'Enable VDM'})
+      vdm.tool('litemesh.vdm_apply()', {label: 'Apply to Mesh'})
       vdm.tool('litemesh.vdm_delete()', {label: 'Delete VDM'})
     }
 

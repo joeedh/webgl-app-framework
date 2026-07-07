@@ -755,6 +755,83 @@ export class VdmDeleteOp extends VdmOpBase {
 ToolOp.register(VdmDeleteOp)
 
 /**
+ * VDM -> geometry extraction (X4): bake the store's displacement field into
+ * the vertices (each vert displaced by its own texel sample through the F3
+ * frame — exactly what the render tiers show) and clear the texels. On a
+ * multires level mesh the result is folded into the grids store
+ * (`multiresWriteback`), so undo restores the multires-store blob; on a
+ * plain mesh undo restores a whole-mesh blob (the quad-remesh pattern).
+ * The VDM store contents restore from their own blob either way.
+ */
+export class VdmApplyOp extends VdmOpBase {
+  _meshBlob?: Uint8Array
+  _mrBlob?: Uint8Array
+  _storeBlob?: Uint8Array
+  _level = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.vdm_apply',
+      uiname  : 'Apply VDM to Mesh',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    const wasm = getWasmImmediate()!
+    this._meshBlob = undefined
+    this._mrBlob = undefined
+    this._storeBlob = undefined
+    if (!mesh?.hasVdm) return
+    this._storeBlob = wasm.VdmStore_serializeBlob(mesh.vdmStore!)
+    if (mesh.multiresActive) {
+      this._level = mesh.multiresLevel
+      this._mrBlob = mesh.multiresStoreBlob()
+    } else {
+      this._meshBlob = wasm.Mesh_serialize(mesh.mesh)
+    }
+  }
+  calcUndoMem(): number {
+    return (this._meshBlob?.length ?? 0) + (this._mrBlob?.length ?? 0) + (this._storeBlob?.length ?? 0)
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.hasVdm) return
+    const wasm = getWasmImmediate()!
+    const moved = wasm.Mesh_vdmApplyToVerts(mesh.mesh, mesh.vdmStore!, 1)
+    if (moved > 0) {
+      if (mesh.multiresActive) {
+        mesh.multiresWriteback()
+      }
+      mesh.rebuildSpatialFromEdit()
+      mesh.regenBounds()
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return
+    const wasm = getWasmImmediate()!
+    if (this._mrBlob) {
+      mesh.multiresRestoreStoreBlob(this._mrBlob, this._level)
+    } else if (this._meshBlob) {
+      mesh._replaceMesh(wasm.Mesh_deserialize(this._meshBlob))
+    }
+    if (this._storeBlob && mesh.hasVdm) {
+      // Refill the SAME instance in place — stroke-history VdmLogChunks hold
+      // non-owning pointers into it, so it must never be freed + replaced.
+      wasm.VdmStore_restoreFromBlob(mesh.vdmStore!, this._storeBlob)
+    }
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+}
+ToolOp.register(VdmApplyOp)
+
+/**
  * Wave 5: mark the shortest edge-path between two vertices as a seam
  * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`
  * runs Dijkstra + flags the path edges + recomputes derived boundary state, and

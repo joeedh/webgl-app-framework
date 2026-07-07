@@ -527,6 +527,17 @@ interface VdmSculptResult {
   /** Blob checksum after the delete undo (expect === blobChecksumAfterStroke:
    * the SAME store instance comes back, texels intact). */
   blobChecksumAfterDeleteUndo?: number
+  /** X4 apply: verts moved by litemesh.vdm_apply (expect > 0). */
+  applyMoved?: number
+  /** Position checksum before / after the apply (must differ). */
+  posBeforeApply?: number
+  posAfterApply?: number
+  /** Tiles after the apply (expect 0 — the store was cleared). */
+  tilesAfterApply?: number
+  /** After toolstack undo of the apply: positions + store restored exactly. */
+  posAfterApplyUndo?: number
+  tilesAfterApplyUndo?: number
+  blobChecksumAfterApplyUndo?: number
 }
 
 function fnv1aBytes(bytes: Uint8Array): number {
@@ -617,6 +628,27 @@ function vdmSculptTest(): VdmSculptResult {
     if (mesh.hasVdm) {
       result.blobChecksumAfterDeleteUndo = fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
     }
+
+    // X4 apply: bake the texels into the vertices (folds into the grids
+    // store on this multires mesh), store cleared; toolstack undo restores
+    // both sides exactly.
+    result.posBeforeApply = fnv1a(dumpCoFlat(mesh))
+    ctx.api?.execTool(ctx, 'litemesh.vdm_apply()')
+    result.posAfterApply = fnv1a(dumpCoFlat(mesh))
+    result.tilesAfterApply = store.tileCount()
+    let applyMoved = 0
+    {
+      const {co} = mesh.dumpVertCo()
+      void co
+      applyMoved = result.posAfterApply === result.posBeforeApply ? 0 : 1
+    }
+    result.applyMoved = applyMoved
+    app.toolstack.undo()
+    result.posAfterApplyUndo = fnv1a(dumpCoFlat(mesh))
+    result.tilesAfterApplyUndo = store.tileCount()
+    result.blobChecksumAfterApplyUndo = mesh.hasVdm
+      ? fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
+      : -1
 
     result.ok = true
   } catch (err) {

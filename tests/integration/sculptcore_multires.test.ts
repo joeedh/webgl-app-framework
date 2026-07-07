@@ -520,6 +520,12 @@ interface VdmSculptResult {
   vdmAfterDeleteOp?: boolean
   vdmAfterDeleteUndo?: boolean
   blobChecksumAfterDeleteUndo?: number
+  posBeforeApply?: number
+  posAfterApply?: number
+  tilesAfterApply?: number
+  posAfterApplyUndo?: number
+  tilesAfterApplyUndo?: number
+  blobChecksumAfterApplyUndo?: number
 }
 
 function runVdmSculpt(nwExe: string, backend: 'wasm' | 'native'): VdmSculptResult {
@@ -589,6 +595,18 @@ ${r.error}`)
     expect(r.blobChecksumAfterDeleteUndo).toBe(r.blobChecksumAfterStroke)
   })
 
+  test.each(eachBackend)('%s: vdm_apply bakes texels into geometry and undoes exactly', (backend) => {
+    const r = results.get(backend)!
+    // The bake moves vertices (checksum changes) and empties the store...
+    expect(r.posAfterApply).not.toBe(r.posBeforeApply)
+    expect(r.tilesAfterApply).toBe(0)
+    // ...and one toolstack undo restores positions bit-exact plus every tile
+    // (in-place refill: the same store instance, same blob checksum).
+    expect(r.posAfterApplyUndo).toBe(r.posBeforeApply)
+    expect(r.tilesAfterApplyUndo).toBe(r.tilesAfterStroke)
+    expect(r.blobChecksumAfterApplyUndo).toBe(r.blobChecksumAfterStroke)
+  })
+
   const crossTest = haveNative ? test : test.skip
   crossTest('cross-backend: identical tile counts and store checksums', () => {
     const w = results.get('wasm')!
@@ -601,5 +619,7 @@ ${r.error}`)
     expect(n.tilesAfterStroke).toBe(w.tilesAfterStroke)
     expect(n.blobLenAfterStroke).toBe(w.blobLenAfterStroke)
     expect(n.blobChecksumAfterStroke).toBe(w.blobChecksumAfterStroke)
+    // The bake itself is deterministic cross-backend too.
+    expect(n.posAfterApply).toBe(w.posAfterApply)
   })
 })
