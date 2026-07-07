@@ -526,6 +526,12 @@ interface VdmSculptResult {
   posAfterApplyUndo?: number
   tilesAfterApplyUndo?: number
   blobChecksumAfterApplyUndo?: number
+  tilesAfterCapture?: number
+  posAfterCapture?: number
+  captureRoundTripResidual?: number
+  captureMaxDisp?: number
+  captureUndoResidual?: number
+  tilesAfterCaptureUndo?: number
 }
 
 function runVdmSculpt(nwExe: string, backend: 'wasm' | 'native'): VdmSculptResult {
@@ -607,6 +613,23 @@ ${r.error}`)
     expect(r.blobChecksumAfterApplyUndo).toBe(r.blobChecksumAfterStroke)
   })
 
+  test.each(eachBackend)('%s: vdm_capture inverts the apply (geometry -> texels)', (backend) => {
+    const r = results.get(backend)!
+    // Capture rasterizes the detail into texels and drops the surface
+    // EXACTLY onto the smooth base (= the pre-apply positions: disp transfer
+    // is exact at the vert level)...
+    expect(r.tilesAfterCapture).toBeGreaterThan(0)
+    expect(r.posAfterCapture).toBe(r.posBeforeApply)
+    // ...re-applying the captured texels reproduces the surface to within
+    // the double-bilinear discretization (measured 0.33% of the max
+    // displacement)...
+    expect(r.captureRoundTripResidual).toBeLessThan(r.captureMaxDisp! * 0.02)
+    // ...and undoing the capture returns to the applied state (residual, not
+    // checksum: the undo rematerializes through the disp encoding).
+    expect(r.captureUndoResidual).toBeLessThan(1e-5)
+    expect(r.tilesAfterCaptureUndo).toBe(0)
+  })
+
   const crossTest = haveNative ? test : test.skip
   crossTest('cross-backend: identical tile counts and store checksums', () => {
     const w = results.get('wasm')!
@@ -621,5 +644,8 @@ ${r.error}`)
     expect(n.blobChecksumAfterStroke).toBe(w.blobChecksumAfterStroke)
     // The bake itself is deterministic cross-backend too.
     expect(n.posAfterApply).toBe(w.posAfterApply)
+    // ...and so is the capture (tile counts + exact base drop).
+    expect(n.tilesAfterCapture).toBe(w.tilesAfterCapture)
+    expect(n.posAfterCapture).toBe(w.posAfterCapture)
   })
 })

@@ -832,6 +832,68 @@ export class VdmApplyOp extends VdmOpBase {
 ToolOp.register(VdmApplyOp)
 
 /**
+ * Geometry -> VDM capture (X4, the apply's inverse; multires only): move the
+ * active level's grids-store displacement into the Ptex VDM texels (added in
+ * the same smoothed-base frame space) and drop the surface onto the smooth
+ * base. Undo restores the multires-store blob + refills the VDM store in
+ * place.
+ */
+export class VdmCaptureOp extends VdmOpBase {
+  _mrBlob?: Uint8Array
+  _storeBlob?: Uint8Array
+  _level = 0
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.vdm_capture',
+      uiname  : 'Capture to VDM',
+      inputs  : {},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    const wasm = getWasmImmediate()!
+    this._mrBlob = undefined
+    this._storeBlob = undefined
+    if (!mesh?.hasVdm || !mesh.multiresActive || !mesh.vdmIsPtex) return
+    this._level = mesh.multiresLevel
+    this._mrBlob = mesh.multiresStoreBlob()
+    this._storeBlob = wasm.VdmStore_serializeBlob(mesh.vdmStore!)
+  }
+  calcUndoMem(): number {
+    return (this._mrBlob?.length ?? 0) + (this._storeBlob?.length ?? 0)
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh?.hasVdm || !mesh.multiresActive || !mesh.vdmIsPtex || !mesh._multires) return
+    const wasm = getWasmImmediate()!
+    const texels = wasm.Multires_captureToVdm(mesh._multires, mesh.vdmStore!, mesh.multiresLevel)
+    if (texels > 0) {
+      mesh.rebuildSpatialFromEdit()
+      mesh.regenBounds()
+    }
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return
+    const wasm = getWasmImmediate()!
+    if (this._mrBlob) {
+      mesh.multiresRestoreStoreBlob(this._mrBlob, this._level)
+    }
+    if (this._storeBlob && mesh.hasVdm) {
+      wasm.VdmStore_restoreFromBlob(mesh.vdmStore!, this._storeBlob)
+    }
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+}
+ToolOp.register(VdmCaptureOp)
+
+/**
  * Wave 5: mark the shortest edge-path between two vertices as a seam
  * (EDGE_SEAM). Takes the path endpoints as vert indices; the C++ `markSeamPath`
  * runs Dijkstra + flags the path edges + recomputes derived boundary state, and

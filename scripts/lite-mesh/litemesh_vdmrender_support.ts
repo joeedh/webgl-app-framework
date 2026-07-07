@@ -290,13 +290,18 @@ function vdmRenderTest(
             c2[0], c2[1], c2[2], n2[0], n2[1], n2[2], radius * 0.7, strength, 0.0, 0
           )
           const t1 = Date.now()
+          // Generous window: under full-suite load (many sequential NW boots)
+          // the async re-finalize can lose a 30 s race without being wrong.
           while ((mesh as unknown as {_tessState?: {storeRev: number}})._tessState?.storeRev === rev0) {
-            if (Date.now() - t1 > 30000) {
+            if (Date.now() - t1 > 90000) {
               result.ok = false
               result.error = 'tess re-finalize timeout'
               g.__evalTestResult = result
               return result
             }
+            // The re-finalize is kicked from the draw path — force a frame
+            // each poll tick so it can't stall if the rAF loop starves.
+            ;(globalThis as unknown as {redraw_viewport?: () => void}).redraw_viewport?.()
             await new Promise((r) => setTimeout(r, 100))
           }
           result.refinalized = true

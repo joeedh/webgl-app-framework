@@ -775,6 +775,7 @@ export class LiteMesh extends SceneObjectData {
       const vdm = container.panel('VDM Displacement')
       vdm.tool('litemesh.vdm_enable()', {label: 'Enable VDM'})
       vdm.tool('litemesh.vdm_apply()', {label: 'Apply to Mesh'})
+      vdm.tool('litemesh.vdm_capture()', {label: 'Capture to VDM'})
       vdm.tool('litemesh.vdm_delete()', {label: 'Delete VDM'})
     }
 

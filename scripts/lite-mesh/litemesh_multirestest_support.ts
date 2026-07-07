@@ -538,6 +538,19 @@ interface VdmSculptResult {
   posAfterApplyUndo?: number
   tilesAfterApplyUndo?: number
   blobChecksumAfterApplyUndo?: number
+  /** X4 capture: texels after litemesh.vdm_capture on the re-applied detail
+   * (expect > 0) and positions dropped EXACTLY back onto the smooth base. */
+  tilesAfterCapture?: number
+  posAfterCapture?: number
+  /** Max |co| between the first apply and re-applying the captured texels —
+   * the capture/apply round-trip residual (bilinear x2; small vs maxDisp). */
+  captureRoundTripResidual?: number
+  captureMaxDisp?: number
+  /** After toolstack undo of the capture: max |co| vs the applied state.
+   * Residual, not checksum — the undo rematerializes positions through the
+   * disp encoding (frameT then frame = two fp rounding passes). */
+  captureUndoResidual?: number
+  tilesAfterCaptureUndo?: number
 }
 
 function fnv1aBytes(bytes: Uint8Array): number {
@@ -649,6 +662,31 @@ function vdmSculptTest(): VdmSculptResult {
     result.blobChecksumAfterApplyUndo = mesh.hasVdm
       ? fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
       : -1
+
+    // X4 capture round-trip: redo the apply (detail -> geometry, store
+    // empty), capture it back (geometry -> texels, surface drops EXACTLY
+    // onto the smooth base = the pre-apply positions), then re-apply and
+    // measure the double-bilinear residual against the first apply.
+    app.toolstack.redo()
+    const applied1 = dumpCoFlat(mesh)
+    let maxDisp = 0
+    ctx.api?.execTool(ctx, 'litemesh.vdm_capture()')
+    result.tilesAfterCapture = store.tileCount()
+    result.posAfterCapture = fnv1a(dumpCoFlat(mesh))
+    {
+      const base = dumpCoFlat(mesh)
+      for (let i = 0; i < base.length; i += 3) {
+        const d = Math.hypot(applied1[i] - base[i], applied1[i + 1] - base[i + 1], applied1[i + 2] - base[i + 2])
+        if (d > maxDisp) maxDisp = d
+      }
+    }
+    result.captureMaxDisp = maxDisp
+    ctx.api?.execTool(ctx, 'litemesh.vdm_apply()')
+    result.captureRoundTripResidual = maxResidual(applied1, dumpCoFlat(mesh))
+    app.toolstack.undo() // un-apply
+    app.toolstack.undo() // un-capture -> back to the applied state
+    result.captureUndoResidual = maxResidual(applied1, dumpCoFlat(mesh))
+    result.tilesAfterCaptureUndo = store.tileCount()
 
     result.ok = true
   } catch (err) {
