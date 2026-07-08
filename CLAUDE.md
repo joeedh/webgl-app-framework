@@ -604,12 +604,21 @@ Key conventions:
 ## Sculpt layers
 
 Re-weightable displacement layers on a `LiteMesh` (flag
-`sculptcore.sculpt_layers`, default off): the Layer Draw brush
-(`SculptTools.LAYER_DRAW` → the `LAYERDRAW` kernel, redirected to the active
-layer's attr like the color brushes) plus a layer-stack panel on the LiteMesh
-properties tab (weight/enabled/frozen through the undoable
-`litemesh.sculpt_layer_*` ToolOps; the displace compositor keeps evaluated
-`v.co` current). See [documentation/sculptLayers.md](documentation/sculptLayers.md).
+`sculptcore.sculpt_layers`, default off), V2 model: **the active layer is
+live geometry**. A layer is made the *edit target* (panel toggle →
+`litemesh.sculpt_layer_set_target`; weight pinned to 1) and every brush,
+autosmooth, dyntopo reposition, and GPU stroke then edits it by construction
+— its delta is *derived* (`d ≡ co − rest`, rest snapshotted into the TEMP
+`.slayer.rest` column) and only **folded** into the stored column at settings
+edits / target switches / `serialize()` / multires writeback (idempotent;
+stroke undo is free). No layer brush exists anymore (Layer Draw is retired
+from the picker; the `LAYERDRAW` kernel stays as a test fixture). On a
+multires level mesh a layer is a grids-store **channel** (settings-only row
+on the cage; the level compositor sums `ch0 + Σ wᵢ·enabledᵢ·chᵢ`, writeback
+targets the active layer's channel); vertex-column layers flatten when
+multires is enabled. Weight/enabled/frozen through the undoable
+`litemesh.sculpt_layer_*` ToolOps, routed plain-vs-multires by the LiteMesh
+layer helpers. See [documentation/sculptLayers.md](documentation/sculptLayers.md).
 
 ## Multires subsurf
 
