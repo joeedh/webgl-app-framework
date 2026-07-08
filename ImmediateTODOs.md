@@ -11,6 +11,13 @@
 [ ]: Add a selection draw overlay to the object toolmode
 [ ]: Do not use the native modal alert system for autosave (it blocks devtools), use something 
      else to drive the popup.
+[ ]: Make sure the default autosave interval is not greater then 1 minute
 
 ## Renderengine bugs
 [ ]: Subsurface scattering node is broken
+
+## Sculpt layers
+[ ]: When creating a new layer it should be set to active
+[ ]: When 'edit target' is enabled the 'enabled' button should be
+     disabled
+[ ]: 

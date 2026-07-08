@@ -14,6 +14,7 @@ yarn-debug.log*
 yarn-error.log*
 build
 gemini.txt
+myicon2.png
 
 # Runtime data
 pids
