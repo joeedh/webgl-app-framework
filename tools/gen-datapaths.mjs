@@ -148,9 +148,10 @@ async function aliasFromTsconfig() {
 }
 
 // Optional deps reachable in the import graph (docbrowser → marked, electron
-// platform → electron) that aren't installed/needed to assemble the DataAPI.
-// Resolve them to a permissive proxy so any named import is a harmless no-op.
-const STUBBED_MODULES = ['marked', 'electron']
+// platform → electron, config → the gitignored per-machine config_local.js)
+// that aren't installed/needed to assemble the DataAPI. Resolve them to a
+// permissive proxy so any named import is a harmless no-op.
+const STUBBED_MODULES = ['marked', 'electron', './config_local.js']
 
 function stubModulesPlugin(names) {
   const set = new Set(names)

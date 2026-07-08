@@ -54,7 +54,10 @@ let options = {
     // require("electron") must stay external even though the app uses NW.js.
     'electron',
     'scripts/util/numeric.js',
+    // config_local.js is optional + gitignored: external it by the RELATIVE
+    // import specifier too, so builds succeed when the file doesn't exist.
     'scripts/config/config_local.js',
+    './config_local.js',
     'numeric',
     'numeric.js',
     'scripts/util/numeric',
