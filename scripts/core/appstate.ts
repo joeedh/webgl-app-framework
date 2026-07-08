@@ -53,6 +53,7 @@ import type {Screen} from '../path.ux/scripts/pathux'
 import type {DataAPI} from '../path.ux/scripts/pathux'
 import {genDefaultFile, RootFileOp, RootLoadFileOp} from './gen_default_file'
 import {AutosaveManager} from './autosave'
+import {startStorageSync} from './storage_sync'
 import {applyMissingAddonHooks, installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
@@ -261,6 +262,10 @@ export class AppState {
     this.autosave = new AutosaveManager(this)
     this.autosave.start()
     void this.autosave.checkRecovery()
+
+    // Converge settings/flags across concurrent NW.js instances sharing one
+    // worktree's `.sculptcore` (no-op in the browser / single instance).
+    startStorageSync()
   }
 
   createFile(args: CreateFileArgs = {save_screen: true, save_settings: false, save_library: true}): ArrayBuffer {

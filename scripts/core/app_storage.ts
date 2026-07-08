@@ -22,10 +22,35 @@ export interface AppStorage {
   /** UTF-8 text (e.g. settings JSON). */
   getText(key: string): string | undefined
   setText(key: string, data: string): void
+  /**
+   * Optimistic read-merge-write for state shared across instances (settings,
+   * feature flags). `merge` receives the freshest on-disk text and returns the
+   * bytes to commit; the write is atomic and retried if another instance wrote
+   * between our read and commit. Tiny residual races (two instances committing
+   * within the same recheck window) resolve to last-writer-wins and are healed
+   * by the polling sync — see storage_sync.ts.
+   */
+  updateText(key: string, merge: (current: string | undefined) => string): void
   remove(key: string): void
+  /** Opaque change token (mtime:size) for cross-instance polling; undefined if
+   * absent or not file-backed (the browser is single-instance, no polling). */
+  version(key: string): string | undefined
   /** True when backed by `.sculptcore` files rather than localStorage. */
   readonly isFileBacked: boolean
   readonly baseDir?: string
+}
+
+/** Sync sleep for the brief atomic-rename retry (SharedArrayBuffer is enabled
+ * in the NW.js manifest; a no-op busy fallback covers its absence). */
+function sleepSync(ms: number): void {
+  try {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+  } catch {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      /* spin */
+    }
+  }
 }
 
 function toU8(data: ArrayBuffer | Uint8Array): Uint8Array {
@@ -52,8 +77,17 @@ class BrowserAppStorage implements AppStorage {
     window.localStorage[key] = data
   }
 
+  updateText(key: string, merge: (current: string | undefined) => string): void {
+    // Single-threaded: no cross-instance concurrency to guard against.
+    this.setText(key, merge(this.getText(key)))
+  }
+
   remove(key: string): void {
     delete window.localStorage[key]
+  }
+
+  version(): undefined {
+    return undefined
   }
 }
 
@@ -70,6 +104,8 @@ interface NodeFsSync {
   mkdirSync(p: string, opts: {recursive: boolean}): void
   readFileSync(p: string, enc?: string): Uint8Array | string
   writeFileSync(p: string, data: Uint8Array | string): void
+  renameSync(from: string, to: string): void
+  statSync(p: string): {mtimeMs: number; size: number}
   rmSync?(p: string, opts: {force: boolean}): void
   unlinkSync(p: string): void
 }
@@ -97,6 +133,31 @@ class NwjsAppStorage implements AppStorage {
     return this.pathlib.join(this.baseDir, name)
   }
 
+  /** Atomic write: full write to a unique temp then rename over the target, so
+   * a concurrent reader never sees a truncated file. The rename can transiently
+   * EPERM on Windows (AV / indexer / open handle); retry briefly. */
+  private writeAtomic(p: string, data: Uint8Array | string): void {
+    const tmp = `${p}.${_procId()}.tmp`
+    this.fs.writeFileSync(tmp, data)
+    for (let i = 0; ; i++) {
+      try {
+        this.fs.renameSync(tmp, p)
+        return
+      } catch (err) {
+        const code = (err as {code?: string}).code
+        if (i >= 20 || (code !== 'EPERM' && code !== 'EACCES' && code !== 'EEXIST')) {
+          try {
+            this.fs.unlinkSync(tmp)
+          } catch {
+            /* ignore */
+          }
+          throw err
+        }
+        sleepSync(5)
+      }
+    }
+  }
+
   getBlob(key: string): Uint8Array | undefined {
     const p = this.file(key)
     if (!this.fs.existsSync(p)) return undefined
@@ -104,7 +165,7 @@ class NwjsAppStorage implements AppStorage {
   }
 
   setBlob(key: string, data: ArrayBuffer | Uint8Array): void {
-    this.fs.writeFileSync(this.file(key), toU8(data))
+    this.writeAtomic(this.file(key), toU8(data))
   }
 
   getText(key: string): string | undefined {
@@ -114,13 +175,47 @@ class NwjsAppStorage implements AppStorage {
   }
 
   setText(key: string, data: string): void {
-    this.fs.writeFileSync(this.file(key), data)
+    this.writeAtomic(this.file(key), data)
+  }
+
+  version(key: string): string | undefined {
+    try {
+      const s = this.fs.statSync(this.file(key))
+      return `${s.mtimeMs}:${s.size}`
+    } catch {
+      return undefined
+    }
+  }
+
+  updateText(key: string, merge: (current: string | undefined) => string): void {
+    // Optimistic CAS: read the on-disk state, merge, and commit only if nothing
+    // wrote in between; retry on conflict. The recheck-before-commit narrows the
+    // race to a sub-ms window that last-writer-wins + polling sync absorb.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const before = this.version(key)
+      const next = merge(this.getText(key))
+      if (this.version(key) !== before) {
+        sleepSync(2)
+        continue
+      }
+      this.writeAtomic(this.file(key), next)
+      return
+    }
+    // Contention backstop: commit our best merge rather than spin forever.
+    this.writeAtomic(this.file(key), merge(this.getText(key)))
   }
 
   remove(key: string): void {
     const p = this.file(key)
     if (this.fs.existsSync(p)) this.fs.unlinkSync(p)
   }
+}
+
+/** A per-process id for unique temp-file names (falls back to a random tag when
+ * `process` is unavailable, e.g. an exotic embedding). */
+function _procId(): string {
+  const proc = (globalThis as {process?: {pid?: number}}).process
+  return proc?.pid !== undefined ? String(proc.pid) : Math.random().toString(36).slice(2, 8)
 }
 
 let _storage: AppStorage | undefined

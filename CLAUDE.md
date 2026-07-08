@@ -251,12 +251,15 @@ for the full flag reference. Key conventions:
 - App args reach the renderer directly as `nw.App.argv` (no IPC / no base64
   token); `scripts/core/app_argv.ts` reads them. The browser build (no `nw`)
   sees an empty arg list, so the harness is inert there.
-- `nwjs/launch.mjs` translates two ergonomic CLI flags before spawning:
+- `nwjs/launch.mjs` translates ergonomic CLI flags before spawning:
   `--remote-debug[=PORT]` → the Chromium `--remote-debugging-port` +
   `--remote-allow-origins=*` switches (the CDP endpoint a direct client like
-  `nwjs/cdp.mjs` connects to), and `--headless` → the app-only
-  `--apptest-headless` (because `--headless` is
-  a real Chromium switch NW.js would intercept). The `nwjs/window.html`
+  `nwjs/cdp.mjs` connects to; a bare `--remote-debug` picks a **free** port when
+  an `--instance` is in play, else the classic `9222`), `--headless` → the
+  app-only `--apptest-headless` (because `--headless` is a real Chromium switch
+  NW.js would intercept), and `--instance[=NAME]` / `--ephemeral` → a distinct
+  Chromium profile subdir so a second window can run in the SAME worktree
+  concurrently (see the multi-instance subsection below). The `nwjs/window.html`
   bootstrap keeps the window hidden under `--apptest-headless` (the manifest
   starts it `show:false`) and opens devtools unless `--no-devtools`. All other
   flags are parsed in `scripts/core/test_harness.ts`: `--gen-scene <name>`,
@@ -286,6 +289,45 @@ for the full flag reference. Key conventions:
   already running on the port at that moment — and any NW.js launched as a child
   of the agent dies when the agent exits, so it can never satisfy that ordering.
   `nwjs/cdp.mjs` connects on demand, in-session, to whatever is live.
+
+### Multiple instances / per-worktree profile
+
+The Chromium `--user-data-dir` holds **only** Chromium internals (single-instance
+lock, GPU cache, Crashpad) — **no app state** (that lives in `<cwd>/.sculptcore`).
+NW.js's default keys it on the manifest `name`, which is identical in every git
+worktree, so two worktrees couldn't run NW.js at once and their crash dumps
+collided. `nwjs/launch.mjs` instead derives the profile **per-worktree** via
+`nwjs/profile_dir.mjs` (`%LOCALAPPDATA%\webgl-app-framework\worktrees\<dir>-<hash8>\`,
+`hash8` over the case-folded worktree root), so each checkout runs independently
+and never clobbers another's window, lock, or dumps. Within one worktree:
+
+- `pnpm run nwjs` → the shared `default/` profile subdir.
+- `--instance=NAME` → `inst-NAME/` (persistent, named) — the way to run 2+
+  windows in one worktree at once (`--instance=a`, `--instance=b`).
+- bare `--instance` / `--ephemeral` → `inst-auto-<time36>/`, GC'd after a week.
+- The launcher **prints** the chosen profile + Crashpad reports dir on startup.
+- Pass your own `--user-data-dir=…` to opt out of all of this.
+
+The shared per-worktree `.sculptcore` (settings.json, feature-flags.json,
+startup.bin, autosave/) is written **concurrency-safe** so instances can share it:
+- `scripts/core/app_storage.ts` writes **atomically** (tmp + rename, with a
+  Windows EPERM retry) and exposes an **optimistic-CAS** `updateText` (read →
+  merge → commit-if-unchanged, retry on conflict) + a `version` change token.
+- Settings/flags merge field-level through CAS: feature flags by per-key mtime
+  (`feature-flag.ts`), settings by baseline-diff (`settings.ts` `mergeSettings`,
+  overriding only fields this instance changed; `addonSettings` per id). The
+  startup file needs no merge — atomic last-snapshot-wins is correct.
+- `scripts/core/storage_sync.ts` polls each shared file's `version` (~1s) and
+  reloads settings/flags when another instance wrote (`startStorageSync`, booted
+  from `appstate.ts`; a no-op in the browser). Consumers `noteLocalWrite` so a
+  poll never reloads an instance's own write. Live addon enable/disable is **not**
+  propagated (too risky); the enabled *flags* still converge in the file.
+- Autosave (`autosave_backend.ts`) namespaces slot files + a recovery pointer per
+  **session** id (`<pid>-<time>-<rand>`), so instances never overwrite each
+  other's backups. `readLatest` scans all per-session pointers for the newest
+  (no single `latest.json` to race); a launch-time GC prunes dead sessions'
+  backups (pid-liveness + a `MAX_DEAD_SESSIONS` cap, keeping the newest crash
+  recoverable).
 
 ## Debug context API (`CTX.debug`)
 
@@ -419,9 +461,14 @@ verified 2026-06-21). Key conventions:
 
 - **Crashpad is on by default in NW.js 0.112** and there is **no
   `nw.App.setCrashDumpDir`** (the official docs are stale — introspect the live
-  `nw.App` to confirm; only `crashRenderer()`/`crashBrowser()` exist). Dumps land
-  in `%LOCALAPPDATA%\webgl-app-framework\User Data\Crashpad\reports\*.dmp` (keyed
-  on the manifest `name`); override the toolkit's read dir with `$SC_CRASHDUMP_DIR`.
+  `nw.App` to confirm; only `crashRenderer()`/`crashBrowser()` exist). Crashpad
+  writes under the active `--user-data-dir`, which `nwjs/launch.mjs` now sets
+  **per-worktree** (see the NW.js multi-instance subsection) — so dumps land in
+  `…\worktrees\<dir>-<hash8>\<profile>\Crashpad\reports\*.dmp`, **not** the old
+  `%LOCALAPPDATA%\webgl-app-framework\User Data\…` path that `dump.mjs` still
+  defaults to. The launcher **prints** the exact reports dir on startup; export
+  `SC_CRASHDUMP_DIR=<that path>` before running `sculptcore/crash/dump.mjs` (its
+  first-choice override) so the toolkit reads the right dir.
 - **CodeView PDB** for the addon: `sculptcore/CMakeLists.txt` adds clang
   `-g -gcodeview` (dir-scope, gated `CMAKE_JS_VERSION AND WIN32 AND NOT MSVC`, set
   before `add_subdirectory` so all module CodeView lands in one PDB) +

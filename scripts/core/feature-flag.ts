@@ -1,7 +1,10 @@
 import {DataAPI, DataStruct, ToolProperty} from '../path.ux/scripts/pathux'
 import {default as messageBus, IBusEmitterClass, IBusEmitter, BusTriggers} from './bus'
 import {getAppStorage} from './app_storage'
+import {registerSyncTarget, noteLocalWrite} from './storage_sync'
 import {registerDataAPI} from '../data_api/api_define_registry'
+
+const FEATURE_FLAGS_KEY = 'feature-flags-app'
 
 /** Flag keys contain dots; datapath member apinames cannot. */
 export function featureFlagApiName(key: string): string {
@@ -32,7 +35,7 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
   }
 
   flags: StoredFeatureFlag[] = []
-  private LSKEY = 'feature-flags-app'
+  private LSKEY = FEATURE_FLAGS_KEY
 
   constructor() {
     this.load()
@@ -96,30 +99,43 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
 
   private merge() {
     /* Merge in-memory flags with whatever's on disk, keyed by `key` with the
-     * newest mtime winning. Deduping by key is essential: the previous version
-     * pushed a duplicate for every flag whose stored copy wasn't newer, so the
-     * array grew on every save until JSON.stringify blew the string-length limit.
-     * Building a Map also collapses any duplicates already on disk. */
-    const byKey = new Map<string, StoredFeatureFlag>()
-    const consider = (flag: StoredFeatureFlag) => {
-      const prev = byKey.get(flag.key)
-      if (!prev || prev.mtime < flag.mtime) {
-        byKey.set(flag.key, {...flag})
+     * newest mtime winning — this per-key mtime merge IS the cross-instance
+     * conflict resolution (two instances toggling different flags both survive).
+     * Deduping by key also bounds the array (a prior bug grew it every save).
+     * Runs inside the storage CAS loop so a concurrent writer can't be lost. */
+    getAppStorage().updateText(this.LSKEY, (existing) => {
+      const byKey = new Map<string, StoredFeatureFlag>()
+      const consider = (flag: StoredFeatureFlag) => {
+        const prev = byKey.get(flag.key)
+        if (!prev || prev.mtime < flag.mtime) {
+          byKey.set(flag.key, {...flag})
+        }
       }
-    }
 
-    for (const f of this.flags) {
-      consider(f)
-    }
-    const existing = getAppStorage().getText(this.LSKEY)
-    if (existing !== undefined) {
-      for (const f of JSON.parse(existing) as StoredFeatureFlag[]) {
+      for (const f of this.flags) {
         consider(f)
       }
-    }
+      if (existing !== undefined) {
+        for (const f of JSON.parse(existing) as StoredFeatureFlag[]) {
+          consider(f)
+        }
+      }
 
-    this.flags = [...byKey.values()]
-    getAppStorage().setText(this.LSKEY, JSON.stringify(this.flags, undefined, 2))
+      this.flags = [...byKey.values()]
+      return JSON.stringify(this.flags, undefined, 2)
+    })
+    noteLocalWrite(this.LSKEY)
+  }
+
+  /** Re-read flags after another instance wrote (storage_sync). path.ux polls
+   * flag getters each frame, so refreshing `flags` is enough for the UI. */
+  reloadFromDisk() {
+    this.load()
+    for (const flag of featureFlags) {
+      if (!this.has(flag.key)) {
+        this.flags.push({...flag, value: undefined, mtime: Date.now()})
+      }
+    }
   }
 
   static defineAPI(api: DataAPI, st?: DataStruct): DataStruct {
@@ -223,6 +239,9 @@ type FeatureFlagKeys = (typeof featureFlags)[number]['key']
 registerDataAPI(FeatureFlagManager)
 
 export const FeatureFlags = new FeatureFlagManager()
+
+// Converge when another instance toggles a flag (NW.js multi-instance).
+registerSyncTarget({key: FEATURE_FLAGS_KEY, reload: () => FeatureFlags.reloadFromDisk()})
 
 declare global {
   interface Window {

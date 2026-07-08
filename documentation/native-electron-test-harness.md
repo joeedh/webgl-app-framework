@@ -38,11 +38,16 @@ build (no `nw`) sees an empty arg list, so nothing here affects it.
 through untouched to the renderer harness):
 
 - `--remote-debug[=PORT]` → the Chromium `--remote-debugging-port` +
-  `--remote-allow-origins=*` switches.
+  `--remote-allow-origins=*` switches (a bare `--remote-debug` auto-picks a free
+  port when an `--instance` is set, else `9222`).
 - `--headless` → the app-only `--apptest-headless` (because `--headless` is a
   real Chromium switch NW.js would intercept). The `nwjs/window.html` bootstrap
   keeps the window hidden under `--apptest-headless` (the manifest starts it
   `show:false`) and opens DevTools unless `--no-devtools`.
+- `--instance[=NAME]` / `--ephemeral` → run a second window in the SAME worktree
+  concurrently by giving it its own Chromium profile subdir (the default profile
+  is per-worktree; see the multi-instance subsection of CLAUDE.md's NW.js
+  harness section). NAME is a persistent profile; bare/ephemeral is a throwaway.
 
 ## Flags
 
@@ -53,6 +58,8 @@ through untouched to the renderer harness):
 | `--remote-debug[=PORT]` | Enable the Chrome DevTools Protocol endpoint (default `9222`) + `--remote-allow-origins=*`. Drive it with the direct-CDP client `nwjs/cdp.mjs` (no MCP server). |
 | `--headless` | Start the window hidden (`--apptest-headless`; CI / batch generation). |
 | `--no-devtools` | Don't auto-open DevTools. |
+| `--instance[=NAME]` | Run concurrently in one worktree via a per-instance Chromium profile subdir. NAME = persistent (`inst-NAME`); bare = throwaway (`inst-auto-*`, GC'd after a week). Auto-picks a free CDP port with `--remote-debug`. |
+| `--ephemeral` | Alias for a bare `--instance` (throwaway profile). |
 
 ### Renderer test-harness flags (parsed in `scripts/core/test_harness.ts`)
 

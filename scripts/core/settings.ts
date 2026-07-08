@@ -3,6 +3,7 @@ import {registerDataAPI} from '../data_api/api_define_registry.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
 import addonManager from '../addon/addon.js'
 import {getAppStorage} from './app_storage'
+import {registerSyncTarget, noteLocalWrite} from './storage_sync'
 import {FeatureFlags, FeatureFlagManager} from './feature-flag'
 
 import '../util/polyfill.d.ts'
@@ -40,7 +41,61 @@ SavedScreen {
   }
 }
 
-const SETTINGS_KEY = 'webgl-app-framework-settings'
+export const SETTINGS_KEY = 'webgl-app-framework-settings'
+
+/** Deep structural equality for the small JSON values in AppSettings. */
+function jsonEq(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/**
+ * Merge this instance's settings onto whatever is currently on disk, so a
+ * concurrent instance's changes to *other* fields survive. `mine` wins only for
+ * fields it actually changed since `baseline` (the on-disk state we loaded);
+ * every unchanged field defers to `disk`. `addonSettings` is merged per addon
+ * id so two instances toggling different addons don't clobber each other.
+ */
+function mergeSettings(
+  disk: Partial<AppSettingsJSON>,
+  mine: AppSettingsJSON,
+  baseline: AppSettingsJSON | undefined
+): AppSettingsJSON {
+  const out = {...mine} as Record<string, unknown>
+  const md = disk as Record<string, unknown>
+  const mm = mine as unknown as Record<string, unknown>
+  const mb = (baseline ?? {}) as Record<string, unknown>
+
+  for (const k of Object.keys(mine)) {
+    if (k === 'addonSettings') continue
+    const changedByMe = !jsonEq(mm[k], mb[k])
+    out[k] = changedByMe ? mm[k] : k in md ? md[k] : mm[k]
+  }
+
+  out.addonSettings = mergeAddonSettings(
+    (mm.addonSettings ?? {}) as Record<string, unknown>,
+    (md.addonSettings ?? {}) as Record<string, unknown>,
+    (mb.addonSettings ?? {}) as Record<string, unknown>
+  )
+  return out as unknown as AppSettingsJSON
+}
+
+function mergeAddonSettings(
+  mine: Record<string, unknown>,
+  disk: Record<string, unknown>,
+  baseline: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {...disk}
+  for (const id of new Set([...Object.keys(mine), ...Object.keys(disk)])) {
+    if (!jsonEq(mine[id], baseline[id])) {
+      // I changed this addon's entry: my value wins (or removal).
+      if (mine[id] === undefined) delete out[id]
+      else out[id] = mine[id]
+    } else if (!(id in out) && mine[id] !== undefined) {
+      out[id] = mine[id]
+    }
+  }
+  return out
+}
 
 export interface AddonSettingsJSON {
   name: string
@@ -137,6 +192,10 @@ AppSettings {
   autosaveIntervalMinutes: number
   autosaveMaxBackups: number
   autosaveToProjectDir: boolean
+
+  /** On-disk JSON we last loaded/synced; the diff baseline for CAS merges so a
+   * save only overrides fields this instance actually changed. */
+  private _baseline?: AppSettingsJSON
 
   constructor() {
     this.screens = []
@@ -305,7 +364,48 @@ AppSettings {
 
   save(): void {
     console.log(util.termColor('Saving settings', 'green'))
-    getAppStorage().setText(SETTINGS_KEY, JSON.stringify(this))
+    const mine = this.toJSON()
+    getAppStorage().updateText(SETTINGS_KEY, (existing) => {
+      const disk = existing ? (JSON.parse(existing) as Partial<AppSettingsJSON>) : {}
+      return JSON.stringify(mergeSettings(disk, mine, this._baseline))
+    })
+    // The committed state is our new diff baseline. If another instance merged
+    // fields in (committed differs from what we wrote), converge in-memory now:
+    // we made the last write, so polling would never see a version change to
+    // trigger the reload. No-op churn-free in the single-instance case.
+    const committed = getAppStorage().getText(SETTINGS_KEY)
+    if (committed !== undefined) {
+      const json = JSON.parse(committed) as AppSettingsJSON
+      if (JSON.stringify(json) !== JSON.stringify(mine)) {
+        this.loadJSON(json)
+      }
+      this._baseline = json
+    } else {
+      this._baseline = mine
+    }
+    noteLocalWrite(SETTINGS_KEY)
+  }
+
+  /** Re-read settings after another instance wrote (storage_sync). Applies the
+   * scalar prefs and addon *flags*, but never live-toggles addons — that stays
+   * a deliberate, same-instance action. */
+  syncFromDisk(): void {
+    const raw = getAppStorage().getText(SETTINGS_KEY)
+    if (raw === undefined) return
+    let json: AppSettingsJSON
+    try {
+      json = JSON.parse(raw)
+    } catch {
+      return
+    }
+    this.loadJSON(json)
+    this._baseline = json
+    try {
+      setBrushSet(this.brushSet)
+    } catch (error) {
+      util.print_stack(error as Error)
+    }
+    ;(window as unknown as {_appstate?: {autosave?: {rearm(): void}}})._appstate?.autosave?.rearm()
   }
 
   _loadAddons(): void {
@@ -381,6 +481,7 @@ AppSettings {
     }
 
     this.loadJSON(json)
+    this._baseline = json
 
     try {
       setBrushSet(this.brushSet)
@@ -438,3 +539,11 @@ AppSettings {
 }
 
 registerDataAPI(AppSettings)
+
+// Converge when another instance changes settings (NW.js multi-instance): the
+// active app's settings re-read from disk. Target the live instance, not a
+// captured one, since AppSettings is swapped on file load.
+registerSyncTarget({
+  key: SETTINGS_KEY,
+  reload: () => (window as unknown as {_appstate?: {settings?: AppSettings}})._appstate?.settings?.syncFromDisk(),
+})
