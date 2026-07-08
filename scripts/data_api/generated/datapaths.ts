@@ -606,6 +606,9 @@ export type GeneratedDataPath =
   | "toolDefaults.node.add_node.nodeClass"
   | "toolDefaults.node.add_node.nodeEditorPath"
   | "toolDefaults.node.add_node.pos"
+  | "toolDefaults.node.add_node.useNodeEditorGraph"
+  | "toolDefaults.node.add_node.x"
+  | "toolDefaults.node.add_node.y"
   | "toolDefaults.node.connect"
   | "toolDefaults.node.connect.disconnectSockID"
   | "toolDefaults.node.connect.graphClass"
@@ -615,10 +618,12 @@ export type GeneratedDataPath =
   | "toolDefaults.node.connect.nodeEditorPath"
   | "toolDefaults.node.connect.sock1_id"
   | "toolDefaults.node.connect.sock2_id"
+  | "toolDefaults.node.connect.useNodeEditorGraph"
   | "toolDefaults.node.delete_selected"
   | "toolDefaults.node.delete_selected.graphClass"
   | "toolDefaults.node.delete_selected.graphPath"
   | "toolDefaults.node.delete_selected.nodeEditorPath"
+  | "toolDefaults.node.delete_selected.useNodeEditorGraph"
   | "toolDefaults.node.selectone"
   | "toolDefaults.node.selectone.graphClass"
   | "toolDefaults.node.selectone.graphPath"
@@ -626,11 +631,13 @@ export type GeneratedDataPath =
   | "toolDefaults.node.selectone.nodeEditorPath"
   | "toolDefaults.node.selectone.nodeId"
   | "toolDefaults.node.selectone.setActive"
+  | "toolDefaults.node.selectone.useNodeEditorGraph"
   | "toolDefaults.node.toggle_select_all"
   | "toolDefaults.node.toggle_select_all.graphClass"
   | "toolDefaults.node.toggle_select_all.graphPath"
   | "toolDefaults.node.toggle_select_all.mode"
   | "toolDefaults.node.toggle_select_all.nodeEditorPath"
+  | "toolDefaults.node.toggle_select_all.useNodeEditorGraph"
   | "toolDefaults.node.translate"
   | "toolDefaults.node.translate.graphClass"
   | "toolDefaults.node.translate.graphPath"
@@ -640,6 +647,7 @@ export type GeneratedDataPath =
   | "toolDefaults.node.translate.propMode"
   | "toolDefaults.node.translate.propradius"
   | "toolDefaults.node.translate.snapMode"
+  | "toolDefaults.node.translate.useNodeEditorGraph"
   | "toolDefaults.node.translate.value"
   | "toolDefaults.object"
   | "toolDefaults.object.apply_transform"
@@ -653,11 +661,13 @@ export type GeneratedDataPath =
   | "toolDefaults.object.selectone.nodeEditorPath"
   | "toolDefaults.object.selectone.nodeId"
   | "toolDefaults.object.selectone.setActive"
+  | "toolDefaults.object.selectone.useNodeEditorGraph"
   | "toolDefaults.object.toggle_select_all"
   | "toolDefaults.object.toggle_select_all.graphClass"
   | "toolDefaults.object.toggle_select_all.graphPath"
   | "toolDefaults.object.toggle_select_all.mode"
   | "toolDefaults.object.toggle_select_all.nodeEditorPath"
+  | "toolDefaults.object.toggle_select_all.useNodeEditorGraph"
   | "toolDefaults.paint"
   | "toolDefaults.paint.brush"
   | "toolDefaults.paint.clear_mask"
@@ -753,6 +763,7 @@ export type GeneratedDataPath =
   | "toolDefaults.view3d.translate.propMode"
   | "toolDefaults.view3d.translate.propradius"
   | "toolDefaults.view3d.translate.snapMode"
+  | "toolDefaults.view3d.translate.useNodeEditorGraph"
   | "toolDefaults.view3d.translate.value"
   | "view3d"
   | "view3d.cameraMode"
@@ -1372,6 +1383,9 @@ declare module "@framework/pathux" {
     "toolDefaults.node.add_node.nodeClass": true;
     "toolDefaults.node.add_node.nodeEditorPath": true;
     "toolDefaults.node.add_node.pos": true;
+    "toolDefaults.node.add_node.useNodeEditorGraph": true;
+    "toolDefaults.node.add_node.x": true;
+    "toolDefaults.node.add_node.y": true;
     "toolDefaults.node.connect": true;
     "toolDefaults.node.connect.disconnectSockID": true;
     "toolDefaults.node.connect.graphClass": true;
@@ -1381,10 +1395,12 @@ declare module "@framework/pathux" {
     "toolDefaults.node.connect.nodeEditorPath": true;
     "toolDefaults.node.connect.sock1_id": true;
     "toolDefaults.node.connect.sock2_id": true;
+    "toolDefaults.node.connect.useNodeEditorGraph": true;
     "toolDefaults.node.delete_selected": true;
     "toolDefaults.node.delete_selected.graphClass": true;
     "toolDefaults.node.delete_selected.graphPath": true;
     "toolDefaults.node.delete_selected.nodeEditorPath": true;
+    "toolDefaults.node.delete_selected.useNodeEditorGraph": true;
     "toolDefaults.node.selectone": true;
     "toolDefaults.node.selectone.graphClass": true;
     "toolDefaults.node.selectone.graphPath": true;
@@ -1392,11 +1408,13 @@ declare module "@framework/pathux" {
     "toolDefaults.node.selectone.nodeEditorPath": true;
     "toolDefaults.node.selectone.nodeId": true;
     "toolDefaults.node.selectone.setActive": true;
+    "toolDefaults.node.selectone.useNodeEditorGraph": true;
     "toolDefaults.node.toggle_select_all": true;
     "toolDefaults.node.toggle_select_all.graphClass": true;
     "toolDefaults.node.toggle_select_all.graphPath": true;
     "toolDefaults.node.toggle_select_all.mode": true;
     "toolDefaults.node.toggle_select_all.nodeEditorPath": true;
+    "toolDefaults.node.toggle_select_all.useNodeEditorGraph": true;
     "toolDefaults.node.translate": true;
     "toolDefaults.node.translate.graphClass": true;
     "toolDefaults.node.translate.graphPath": true;
@@ -1406,6 +1424,7 @@ declare module "@framework/pathux" {
     "toolDefaults.node.translate.propMode": true;
     "toolDefaults.node.translate.propradius": true;
     "toolDefaults.node.translate.snapMode": true;
+    "toolDefaults.node.translate.useNodeEditorGraph": true;
     "toolDefaults.node.translate.value": true;
     "toolDefaults.object": true;
     "toolDefaults.object.apply_transform": true;
@@ -1419,11 +1438,13 @@ declare module "@framework/pathux" {
     "toolDefaults.object.selectone.nodeEditorPath": true;
     "toolDefaults.object.selectone.nodeId": true;
     "toolDefaults.object.selectone.setActive": true;
+    "toolDefaults.object.selectone.useNodeEditorGraph": true;
     "toolDefaults.object.toggle_select_all": true;
     "toolDefaults.object.toggle_select_all.graphClass": true;
     "toolDefaults.object.toggle_select_all.graphPath": true;
     "toolDefaults.object.toggle_select_all.mode": true;
     "toolDefaults.object.toggle_select_all.nodeEditorPath": true;
+    "toolDefaults.object.toggle_select_all.useNodeEditorGraph": true;
     "toolDefaults.paint": true;
     "toolDefaults.paint.brush": true;
     "toolDefaults.paint.clear_mask": true;
@@ -1519,6 +1540,7 @@ declare module "@framework/pathux" {
     "toolDefaults.view3d.translate.propMode": true;
     "toolDefaults.view3d.translate.propradius": true;
     "toolDefaults.view3d.translate.snapMode": true;
+    "toolDefaults.view3d.translate.useNodeEditorGraph": true;
     "toolDefaults.view3d.translate.value": true;
     "view3d": true;
     "view3d.cameraMode": true;

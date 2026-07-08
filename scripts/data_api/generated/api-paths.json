@@ -6653,6 +6653,33 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.node.add_node.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.add_node.x": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "X",
+      "description": "X",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.node.add_node.y": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Y",
+      "description": "Y",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.node.connect": {
       "kind": "struct",
       "indexed": false,
@@ -6730,6 +6757,15 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.node.connect.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.delete_selected": {
       "kind": "struct",
       "indexed": false,
@@ -6759,6 +6795,15 @@
       "propType": "StringProperty",
       "uiname": "Node Editor Path",
       "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.delete_selected.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -6826,6 +6871,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.node.selectone.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.node.toggle_select_all": {
       "kind": "struct",
       "indexed": false,
@@ -6869,6 +6923,15 @@
       "propType": "StringProperty",
       "uiname": "Node Editor Path",
       "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.node.toggle_select_all.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -6960,6 +7023,15 @@
         "NONE",
         "SURFACE"
       ]
+    },
+    "toolDefaults.node.translate.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.node.translate.value": {
       "kind": "prop",
@@ -7078,6 +7150,15 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "toolDefaults.object.selectone.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "toolDefaults.object.toggle_select_all": {
       "kind": "struct",
       "indexed": false,
@@ -7121,6 +7202,15 @@
       "propType": "StringProperty",
       "uiname": "Node Editor Path",
       "description": "Node Editor Path",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.object.toggle_select_all.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -7988,6 +8078,15 @@
         "NONE",
         "SURFACE"
       ]
+    },
+    "toolDefaults.view3d.translate.useNodeEditorGraph": {
+      "kind": "prop",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Use Node Editor Graph",
+      "description": "Use Node Editor Graph",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "toolDefaults.view3d.translate.value": {
       "kind": "prop",

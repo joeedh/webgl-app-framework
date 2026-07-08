@@ -1796,6 +1796,13 @@ const rcbs = [] as (() => void)[]
 const f = () => {
   animreq = undefined
 
+  // do not draw if screen is not listening, happens mostly during file load
+  // (note: drawing inside file load can lead to race conditions).
+  if (!_appstate?.screen?.listening) {
+    window.setTimeout(() => window.redraw_viewport(true), 200)
+    return
+  }
+
   //forcibly update datagraph
   window.updateDataGraph(true)
 
@@ -1810,18 +1817,17 @@ const f = () => {
   rcbs.length = 0
 }
 
-window.redraw_viewport = (ResetRender = false, DrawCount = 1) => {
+window.redraw_viewport = (ResetRender = true, DrawCount /** @deprecated */ = 1) => {
   resetRender |= ResetRender ? 1 : 0
   drawCount = DrawCount
 
   if (animreq !== undefined) {
     return
   }
-
   animreq = requestAnimationFrame(f)
 }
 
-window.redraw_viewport_p = (ResetRender = false, DrawCount = 1) => {
+window.redraw_viewport_p = (ResetRender = true, DrawCount /** @deprecated */ = 1) => {
   return new Promise((accept, reject) => {
     rcbs.push(accept as () => void)
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment

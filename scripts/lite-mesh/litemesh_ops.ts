@@ -13,7 +13,7 @@ import {
 } from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
 import type {VdmStore} from '@sculptcore/api'
-import {SceneObject} from '../sceneobject/sceneobject'
+import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {LiteMesh, AttrDomain} from './litemesh'
 import {makeDefaultMaterial} from '../core/material'
@@ -27,25 +27,27 @@ export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends Prope
   ToolContext,
   ViewContext
 > {
-  execPost(ctx: ToolContext) {
-    const mesh = ctx.object!.data! as LiteMesh
-    mesh.regenBounds()
-    window.redraw_viewport()
+  execPost(ctx: ToolContext, ob = ctx.object) {
+    if (ob?.data instanceof LiteMesh) {
+      ob.data.regenBounds()
+      window.redraw_viewport()
+    }
   }
 }
 
-export class AddLiteMeshCubeOp extends LiteMeshOp<{
-  //
-  sphere: FloatProperty
-  dimen: IntProperty
-  size: FloatProperty
-}> {
+export class AddLiteMeshCubeOp extends LiteMeshOp<
+  {
+    //
+    sphere: FloatProperty
+    dimen: IntProperty
+    size: FloatProperty
+  },
+  {newObjectId: IntProperty}
+> {
   // Created datablocks (for the synchronous undo). Refs are stable because this
   // op does NOT use the default memfile undo — see undo() below.
-  _ob?: SceneObject
-  _litemesh?: LiteMesh
-  _mat?: ReturnType<typeof makeDefaultMaterial>
-  _prevActive?: SceneObject
+  _prevActiveId?: number
+  _prevActiveSelected?: boolean
 
   static tooldef() {
     return {
@@ -56,6 +58,9 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
         dimen : new IntProperty(50).setRange(1, 1024).noUnits(),
         size  : new FloatProperty(1.0),
       },
+      outputs: {
+        newObjectId: new IntProperty(-1).noUnits().private(),
+      },
     }
   }
 
@@ -65,7 +70,8 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
   // settles — so the re-exec wrote into a stale context and the mesh vanished
   // (ImmediateTODOs #10). A synchronous remove/re-create avoids the reload.
   undoPre(ctx: ToolContext): void {
-    this._prevActive = ctx.scene?.objects?.active as SceneObject | undefined
+    this._prevActiveSelected = Boolean((ctx.scene?.objects?.active?.flag ?? 0) & ObjectFlags.SELECT)
+    this._prevActiveId = ctx.scene?.objects?.active?.lib_id ?? -1
   }
   calcUndoMem(): number {
     return 0
@@ -92,16 +98,21 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
     ctx.scene.objects.setSelect(ob, true)
     ctx.scene.objects.setActive(ob)
 
-    this._ob = ob
-    this._litemesh = litemesh
-    this._mat = mat
-
+    this.outputs.newObjectId.setValue(ob.lib_id)
     window.redraw_viewport(true)
   }
 
+  execPost(ctx: ToolContext) {
+    // note: ctx is locked prior to run, so
+    // ctx.object is now stale (we updated it in exec)
+    return super.execPost(ctx, ctx.datalib.get(this.outputs.newObjectId.getValue()))
+  }
+
   undo(ctx: ToolContext) {
-    const ob = this._ob
-    if (ob && ctx.scene.objects.indexOf(ob) >= 0) {
+    const ob = ctx.datalib.get(this.outputs.newObjectId.getValue()) as SceneObject
+    if (ob && ctx.scene.objects.includes(ob)) {
+      const mat = ob.data.materials[0]
+
       ctx.scene.objects.setSelect(ob, false)
       ctx.scene.remove(ob)
       const data = ob.data
@@ -111,18 +122,17 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<{
       if (data && data.lib_users <= 0) {
         ctx.datalib.remove(data)
       }
-      if (this._mat && this._mat.lib_users <= 0) {
-        ctx.datalib.remove(this._mat)
+      if (mat && mat.lib_users <= 0) {
+        ctx.datalib.remove(mat)
       }
     }
+
     // Restore the prior active/selection so the viewport reflects the undone state.
-    const prev = this._prevActive
-    if (prev && ctx.scene.objects.indexOf(prev) >= 0) {
+    const prev = ctx.datalib.get(this._prevActiveId ?? -1) as SceneObject | undefined
+    ctx.scene.objects.setActive(prev)
+    if (prev && this._prevActiveSelected) {
       ctx.scene.objects.setSelect(prev, true)
-      ctx.scene.objects.setActive(prev)
     }
-    this._ob = this._litemesh = this._mat = undefined
-    window.redraw_viewport(true)
   }
 }
 ToolOp.register(AddLiteMeshCubeOp)
@@ -376,7 +386,7 @@ export class SculptLayerSetWeightOp extends SculptLayerOpBase<{layer: IntPropert
     return {
       toolpath: 'litemesh.sculpt_layer_set_weight',
       uiname  : 'Sculpt Layer Weight',
-      inputs  : {
+      inputs: {
         layer : new IntProperty(-1).noUnits(),
         weight: new FloatProperty(1.0).setRange(-2, 2).noUnits(),
       },
@@ -426,7 +436,7 @@ export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
     return {
       toolpath: 'litemesh.sculpt_layer_set_flag',
       uiname  : 'Sculpt Layer State',
-      inputs  : {
+      inputs: {
         layer: new IntProperty(-1).noUnits(),
         kind : new EnumProperty(0, {ENABLED: 0, FROZEN: 1}),
         value: new BoolProperty(true),
@@ -697,9 +707,7 @@ export class VdmEnableOp extends VdmOpBase {
       mesh.vdmReattach(this._store)
       this._store = undefined
     } else if (!mesh.vdmEnable()) {
-      ;(ctx as unknown as {error?: (msg: string) => void}).error?.(
-        'VDM needs a multires stack or a UV unwrap'
-      )
+      ;(ctx as unknown as {error?: (msg: string) => void}).error?.('VDM needs a multires stack or a UV unwrap')
       return
     }
     window.redraw_all?.()
@@ -1169,7 +1177,7 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
   private _pick(e: PointerEvent): {vert: number; ring: [Vector3, Vector3][]} {
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
-    if (!ctx || !ctx.view3d || !ctx.object || !mesh) {
+    if (!ctx?.view3d || !ctx.object || !mesh) {
       return {vert: -1, ring: []}
     }
     const m = ctx.view3d.getLocalMouse(e.x, e.y)
@@ -1185,7 +1193,7 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
 
   private _redraw() {
     const ctx = this._mctx()
-    if (!ctx || !ctx.view3d) {
+    if (!ctx?.view3d) {
       return
     }
     const v3d = ctx.view3d
@@ -1210,7 +1218,7 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
     const anchor = this._chain.length ? this._chain[this._chain.length - 1] : -1
-    if (ctx && ctx.object && mesh && anchor >= 0 && v >= 0 && v !== anchor) {
+    if (ctx?.object && mesh && anchor >= 0 && v >= 0 && v !== anchor) {
       this._hoverLines = this._segmentLines(mesh, ctx.object.outputs.matrix.getValue(), anchor, v)
     }
     this._redraw()
@@ -1235,7 +1243,7 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
     const ctx = this._mctx()
     const mesh = ctx ? this._getMesh(ctx as unknown as ToolContext) : undefined
     const kind = this._kind()
-    if (anchor >= 0 && ctx && ctx.object && mesh) {
+    if (anchor >= 0 && ctx?.object && mesh) {
       // Snapshot each path edge's prior feature bit (first sighting only) before
       // marking live, so undo can restore the exact pre-chain state.
       for (const e of mesh.edgePathEdges(anchor, v)) {
@@ -1423,7 +1431,7 @@ export class TriangulateLiteMeshOp extends LiteMeshAttrOp {
     const mesh = this._getMesh(ctx)
     // Snapshot only when there's an n-gon to triangulate; an already-triangle
     // mesh makes exec a no-op, so undo has nothing to restore.
-    this._undoBlob = mesh && mesh.hasNgons() ? mesh.serialize() : undefined
+    this._undoBlob = mesh?.hasNgons() ? mesh.serialize() : undefined
   }
   calcUndoMem(): number {
     return this._undoBlob?.length ?? 0
@@ -1770,8 +1778,8 @@ function symmetrizeAxis(co: number[][], axis: number, dir: number, threshold: nu
 
   // Spatial hash over source positions for nearest-vertex matching. Cell size is
   // the mean nearest-neighbor scale approximated from the bound diagonal / n^(1/3).
-  let min = [Infinity, Infinity, Infinity]
-  let max = [-Infinity, -Infinity, -Infinity]
+  const min = [Infinity, Infinity, Infinity]
+  const max = [-Infinity, -Infinity, -Infinity]
   for (const i of srcIdx) {
     const p = co[i]
     for (let k = 0; k < 3; k++) {

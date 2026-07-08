@@ -189,7 +189,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       exec.beginStep(hasDyntopo)
       this.logStepId = SculptPaintOp.meshLog.lastStepId()
       this.inStep = true
-      window.redraw_viewport()
+      window.redraw_viewport(true)
     }
   }
 
@@ -215,7 +215,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         // The stroke path consumes the spatial flush the draw path keys revision
         // bumps on; bump explicitly so wireframe/points overlays rebuild.
         mesh.meshRevision++
-        window.redraw_viewport()
+        window.redraw_viewport(true)
       }
     })
   }
@@ -228,7 +228,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         mesh.multiresWriteback()
         mesh.regenBounds()
         mesh.meshRevision++
-        window.redraw_viewport()
+        window.redraw_viewport(true)
       }
     })
   }
@@ -654,7 +654,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       mesh.regenTreeBatch()
       mesh.spatial.update(mesh.wasm.gpu)
     }
-    window.redraw_viewport()
+    window.redraw_viewport(true)
   }
 
   modalEnd(was_cancelled: boolean) {
@@ -722,7 +722,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // Fold the stroke into the multires grids store (no-op without a stack).
       mesh.multiresWriteback()
     }
-    window.redraw_viewport()
+    window.redraw_viewport(true)
   }
 
   exec(ctx: ToolContext): void {
@@ -733,7 +733,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       this.finishStroke(ctx)
     }
 
-    window.redraw_viewport()
+    window.redraw_viewport(true)
     //console.error('TODO: support re-execution of sculptcore paint ops')
   }
 }

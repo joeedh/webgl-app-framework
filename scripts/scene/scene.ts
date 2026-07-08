@@ -442,7 +442,6 @@ propIslandOnly : bool;
         //  return undefined
       }
 
-      console.warn('GETTER ENUM')
       return this
     }
 
@@ -450,7 +449,6 @@ propIslandOnly : bool;
       busgetter,
       ToolMode,
       () => {
-        console.warn('UPDATE ENUM')
 
         // Scene.toolModeProp should have been updated already
         const key = Scene.toolModeProp.keys[this.toolmode_i]
@@ -542,8 +540,6 @@ propIslandOnly : bool;
     const cname = '[Internal ' + this.lib_id + ']'
     const name = cname + ' ' + key
 
-    console.warn('getInternalObject called')
-
     const cl = this.getCollection(ctx, cname)
 
     let ob = ctx.datalib.object.get(name)
@@ -628,8 +624,6 @@ propIslandOnly : bool;
   }
 
   switchToolMode(mode: boolean | number | string, _file_loading = false) {
-    console.warn('switchToolMode called')
-
     if (mode === undefined) {
       throw new Error('switchToolMode: mode cannot be undefined')
     }
@@ -649,8 +643,6 @@ propIslandOnly : bool;
     let ret: ToolMode | undefined
 
     if (this.toolmode_i in this.toolmode_map) {
-      console.log('calling old tool inactive', this.toolmode, this.toolmode.onInactive)
-
       if (!_file_loading) {
         this.toolmode.onInactive()
       }
@@ -711,7 +703,7 @@ propIslandOnly : bool;
 
   remove(ob: SceneObject) {
     if (ob === undefined || !this.objects.includes(ob)) {
-      console.log('object not in scene', ob)
+      console.warn('object not in scene', ob)
       return
     }
 
@@ -724,7 +716,7 @@ propIslandOnly : bool;
       this.destroyIntern()
     } catch (error) {
       util.print_stack(error as Error)
-      console.log('got error in Scene.prototype.destroy')
+      console.warn('got error in Scene.prototype.destroy')
     }
   }
 
@@ -808,10 +800,6 @@ propIslandOnly : bool;
   }
 
   changeTime(newtime: number): void {
-    const oldtime = this.time
-
-    console.log('time change!', newtime)
-
     this.time = newtime
     for (const ob of this.objects) {
       ob.graphUpdate()

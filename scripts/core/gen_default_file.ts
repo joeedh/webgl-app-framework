@@ -115,7 +115,7 @@ export class BasicFileOp extends ToolOp {
   }
 }
 
-export function genDefaultFile(appstate: AppState, dont_load_startup = 0): void {
+export function genDefaultFile(appstate: AppState, dont_load_startup = 0) {
   _appstate.saveHandle = undefined
 
   const startup = dont_load_startup ? undefined : getAppStorage().getBlob(constants.APP_KEY_NAME)

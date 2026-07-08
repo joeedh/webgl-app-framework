@@ -1,4 +1,4 @@
-import {nstructjs} from '../../path.ux/scripts/pathux.js'
+import {BoolProperty, FloatProperty, nstructjs, PropFlags} from '../../path.ux/scripts/pathux.js'
 import {Vector2, Vector3} from '../../util/vectormath.js'
 import {AbstractGraphClass} from '../../core/graph_class.js'
 import {Graph, SocketFlags, type Node} from '../../core/graph.js'
@@ -45,6 +45,7 @@ interface NodeGraphInputs extends PropertySlots {
   graphPath: StringProperty
   graphClass: StringProperty
   nodeEditorPath: StringProperty
+  useNodeEditorGraph: BoolProperty
 }
 
 export interface NodeGraphUndo {
@@ -74,16 +75,12 @@ export class NodeGraphOp<
   static invoke(ctx: ViewContext, args: Record<string, unknown>): NodeGraphOp {
     // When `useNodeEditorGraph` is set, inherit graphPath/graphClass from the
     // active node editor instead of requiring them as explicit args.
-    const useNodeEditorGraph = args['useNodeEditorGraph']
-    delete args['useNodeEditorGraph']
-
     const tool = super.invoke(ctx, args) as NodeGraphOp
+    const useNodeEditorGraph = tool.inputs.useNodeEditorGraph.getValue()
 
-    if (!('nodeEditorPath' in args)) {
-      const area = ctx.editor
-      if (area instanceof NodeEditorBase) {
-        tool.inputs.nodeEditorPath.setValue(Editor.getDataPath(area.constructor))
-      }
+    const area = ctx.editor
+    if (area instanceof NodeEditorBase) {
+      tool.inputs.nodeEditorPath.setValue(Editor.getDataPath(area.constructor))
     }
 
     if (useNodeEditorGraph && tool.getNodeEditor(ctx) !== undefined) {
@@ -91,14 +88,6 @@ export class NodeGraphOp<
       tool.inputs.graphPath.setValue(nodeEditor.graphPath)
       tool.inputs.graphClass.setValue(nodeEditor.graphClass)
     }
-
-    if ('graphPath' in args) {
-      tool.inputs.graphPath.setValue(args['graphPath'] as string)
-    }
-    if ('graphClass' in args) {
-      tool.inputs.graphClass.setValue(args['graphClass'] as string)
-    }
-
     return tool
   }
 
@@ -120,9 +109,10 @@ export class NodeGraphOp<
   static tooldef(): ToolDef {
     return {
       inputs: {
-        graphPath     : new StringProperty(),
-        graphClass    : new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
-        nodeEditorPath: new StringProperty(),
+        graphPath         : new StringProperty(),
+        graphClass        : new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
+        nodeEditorPath    : new StringProperty(),
+        useNodeEditorGraph: new BoolProperty(false),
       },
     }
   }
@@ -333,20 +323,24 @@ export class NodeTranslateOp extends NodeGraphOp<{offset: Vec2Property}> {
 ToolOp.register(NodeTranslateOp)
 
 /** Create a node of type `nodeClass` at `pos` and add it to the graph. */
-export class AddNodeOp extends NodeGraphOp<{nodeClass: StringProperty; pos: Vec2Property}, {graph_id: IntProperty}> {
+export class AddNodeOp extends NodeGraphOp<
+  {
+    nodeClass: StringProperty //
+    pos: Vec2Property
+    x: FloatProperty
+    y: FloatProperty
+  },
+  {graph_id: IntProperty}
+> {
   static invoke(ctx: ViewContext, args: Record<string, unknown>): AddNodeOp {
     const tool = super.invoke(ctx, args) as AddNodeOp
 
-    if ('nodeClass' in args) {
-      tool.inputs.nodeClass.setValue(args['nodeClass'] as string)
+    if ('x' in args || tool.inputs.x.flag & PropFlags.USER_SET) {
+      tool.inputs.pos.getValue()[0] = tool.inputs.x.getValue()
     }
 
-    if ('x' in args) {
-      tool.inputs.pos.getValue()[0] = args.x as number
-    }
-
-    if ('y' in args) {
-      tool.inputs.pos.getValue()[1] = args.y as number
+    if ('y' in args || tool.inputs.y.flag & PropFlags.USER_SET) {
+      tool.inputs.pos.getValue()[1] = tool.inputs.y.getValue()
     }
 
     return tool
@@ -360,6 +354,9 @@ export class AddNodeOp extends NodeGraphOp<{nodeClass: StringProperty; pos: Vec2
       inputs: ToolOp.inherit({
         nodeClass: new StringProperty(), //node class name, just constructor.name
         pos      : new Vec2Property([10, 300]),
+        // optional x/y for nicer access from toolop command strings
+        x        : new FloatProperty(),
+        y        : new FloatProperty(),
       }),
       outputs: {
         graph_id: new IntProperty(), //id of new node

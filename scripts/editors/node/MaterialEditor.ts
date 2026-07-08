@@ -147,7 +147,11 @@ export class MaterialEditor extends NodeEditorBase {
   }
 
   update(): void {
-    const ob = this.ctx.object!
+    const ob = this.ctx.object
+    if (ob === undefined) {
+      super.update()
+      return
+    }
 
     let updateKey = ob.name
 

@@ -107,7 +107,7 @@ export interface IBVHArgs {
 
 declare global {
   interface Window {
-    redraw_viewport(reset?: boolean): void
+    redraw_viewport(resetRenderEngine?: boolean, drawCount?: number): void
     _gl: WebGL2RenderingContext
   }
 }

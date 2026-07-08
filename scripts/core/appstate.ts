@@ -919,16 +919,6 @@ export class AppState {
           sarea.area.pop_ctx_active()
         }
       }
-
-      this.screen.update()
-      this.screen.regenBorders()
-      this.screen.setCSS()
-
-      screen.doOnce(() => {
-        this.screen.on_resize(this.screen.size, [window.innerWidth, window.innerHeight])
-        this.screen.setCSS()
-        this.screen.update()
-      })
     }
   }
 
@@ -977,6 +967,13 @@ export class AppState {
 
     if (found_screen) {
       this.screen.afterSTRUCT()
+    }
+
+    if (this.screen) {
+      this.screen.update()
+      this.screen.regenBorders()
+      this.screen.on_resize(this.screen.size, [window.innerWidth, window.innerHeight])
+      this.screen.update()
     }
 
     this._execEditorOnFileLoad()

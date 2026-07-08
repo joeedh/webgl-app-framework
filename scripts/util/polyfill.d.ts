@@ -37,8 +37,10 @@ export declare global {
     _appstate: AppState
     _unwrap_solvers: Map<any, any>
     FILE_LOADING: boolean
-    redraw_viewport(resetRender?: boolean): void
-    redraw_viewport_p(resetRender?: boolean): Promise<void>
+    /** resetRenderEngine defaults to true */
+    redraw_viewport(resetRenderEngine?: boolean, drawCount?: number): void
+    /** resetRenderEngine defaults to true */
+    redraw_viewport_p(resetRenderEngine?: boolean, drawCount?: number): Promise<void>
     redraw_all(): void
     updateDataGraph(force?: boolean): void
     _genDefaultFile: typeof import('../core/appstate').genDefaultFile

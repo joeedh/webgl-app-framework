@@ -809,6 +809,9 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.add_node.nodeClass` | prop | StringProperty | Node Class |  |
 | `toolDefaults.node.add_node.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.add_node.pos` | prop | Vec2Property | Pos |  |
+| `toolDefaults.node.add_node.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
+| `toolDefaults.node.add_node.x` | prop | FloatProperty | X |  |
+| `toolDefaults.node.add_node.y` | prop | FloatProperty | Y |  |
 | `toolDefaults.node.connect` | struct |  |  |  |
 | `toolDefaults.node.connect.disconnectSockID` | prop | IntProperty | Disconnect Sock Id |  |
 | `toolDefaults.node.connect.graphClass` | prop | StringProperty | Graph Class |  |
@@ -818,10 +821,12 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.connect.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.connect.sock1_id` | prop | IntProperty | Sock1 Id |  |
 | `toolDefaults.node.connect.sock2_id` | prop | IntProperty | Sock2 Id |  |
+| `toolDefaults.node.connect.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.node.delete_selected` | struct |  |  |  |
 | `toolDefaults.node.delete_selected.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.node.delete_selected.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.delete_selected.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
+| `toolDefaults.node.delete_selected.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.node.selectone` | struct |  |  |  |
 | `toolDefaults.node.selectone.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.node.selectone.graphPath` | prop | StringProperty | Graph Path |  |
@@ -829,11 +834,13 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.selectone.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.node.selectone.nodeId` | prop | IntProperty | Node Id |  |
 | `toolDefaults.node.selectone.setActive` | prop | BoolProperty | Set Active |  |
+| `toolDefaults.node.selectone.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.node.toggle_select_all` | struct |  |  |  |
 | `toolDefaults.node.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.node.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.node.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
 | `toolDefaults.node.toggle_select_all.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
+| `toolDefaults.node.toggle_select_all.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.node.translate` | struct |  |  |  |
 | `toolDefaults.node.translate.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.node.translate.graphPath` | prop | StringProperty | Graph Path |  |
@@ -843,6 +850,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.node.translate.propMode` | prop | EnumProperty | Prop mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
 | `toolDefaults.node.translate.propradius` | prop | FloatProperty | Prop radius |  |
 | `toolDefaults.node.translate.snapMode` | prop | EnumProperty | Snap Mode | enum {NONE, SURFACE} |
+| `toolDefaults.node.translate.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.node.translate.value` | prop | Vec3Property | Value |  |
 | `toolDefaults.object` | struct |  |  |  |
 | `toolDefaults.object.apply_transform` | struct |  |  |  |
@@ -856,11 +864,13 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.object.selectone.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
 | `toolDefaults.object.selectone.nodeId` | prop | IntProperty | Node Id |  |
 | `toolDefaults.object.selectone.setActive` | prop | BoolProperty | Set Active |  |
+| `toolDefaults.object.selectone.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.object.toggle_select_all` | struct |  |  |  |
 | `toolDefaults.object.toggle_select_all.graphClass` | prop | StringProperty | Graph Class |  |
 | `toolDefaults.object.toggle_select_all.graphPath` | prop | StringProperty | Graph Path |  |
 | `toolDefaults.object.toggle_select_all.mode` | prop | EnumProperty | Mode | enum {ADD, SUB, AUTO} |
 | `toolDefaults.object.toggle_select_all.nodeEditorPath` | prop | StringProperty | Node Editor Path |  |
+| `toolDefaults.object.toggle_select_all.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.paint` | struct |  |  |  |
 | `toolDefaults.paint.brush` | prop | BrushProperty | Brush |  |
 | `toolDefaults.paint.clear_mask` | struct |  |  |  |
@@ -956,6 +966,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.view3d.translate.propMode` | prop | EnumProperty | Prop mode | enum {SMOOTH, SHARP, EXTRA_SHARP, SPHERE, LINEAR, CONSTANT} |
 | `toolDefaults.view3d.translate.propradius` | prop | FloatProperty | Prop radius |  |
 | `toolDefaults.view3d.translate.snapMode` | prop | EnumProperty | Snap Mode | enum {NONE, SURFACE} |
+| `toolDefaults.view3d.translate.useNodeEditorGraph` | prop | BoolProperty | Use Node Editor Graph |  |
 | `toolDefaults.view3d.translate.value` | prop | Vec3Property | Value |  |
 
 ## view3d
