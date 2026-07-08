@@ -286,6 +286,17 @@ abstract class SculptLayerOpBase<Inputs extends PropertySlots = {}> extends Lite
     mesh.rebuildSpatialFromEdit()
     window.redraw_all?.()
   }
+
+  /** Post-mutation refresh that respects the layer-routing split (M3): the
+   * multires branch already re-attached fresh level views inside the LiteMesh
+   * layer helpers, so only a redraw is needed there. */
+  _refreshAfterLayer(mesh: LiteMesh): void {
+    if (mesh.multiresActive) {
+      window.redraw_all?.()
+    } else {
+      this._refresh(mesh)
+    }
+  }
 }
 
 /**
@@ -310,7 +321,7 @@ export class SculptLayerAddOp extends SculptLayerOpBase {
   exec(ctx: ToolContext) {
     const mesh = this._getMesh(ctx)
     if (!mesh) return
-    this._layer = mesh.mesh.sculptLayerAdd()
+    this._layer = mesh.layerAdd()
     mesh.activeSculptLayer = this._layer
     window.redraw_all?.()
   }
@@ -318,7 +329,7 @@ export class SculptLayerAddOp extends SculptLayerOpBase {
   undo(ctx: ToolContext): void {
     const mesh = this._getMesh(ctx)
     if (mesh && this._layer >= 0) {
-      getWasmImmediate()!.Mesh_layerRemove(mesh.mesh, this._layer)
+      mesh.layerRemove(this._layer)
       window.redraw_all?.()
     }
   }
@@ -333,6 +344,12 @@ ToolOp.register(SculptLayerAddOp)
  */
 export class SculptLayerRemoveOp extends SculptLayerOpBase<{layer: IntProperty}> {
   _undoBlob?: Uint8Array
+  /** Multires undo seam: the layer channels live in the grids store, so the
+   * snapshot is {store blob + layer settings table + level} instead of a
+   * whole-mesh blob (which would tear down the attached stack). */
+  _storeBlob?: Uint8Array
+  _layerTable?: unknown
+  _level = 0
 
   static tooldef() {
     return {
@@ -344,19 +361,28 @@ export class SculptLayerRemoveOp extends SculptLayerOpBase<{layer: IntProperty}>
 
   undoPre(ctx: ToolContext): void {
     const mesh = this._resolveLayer(ctx)
-    this._undoBlob = mesh ? mesh.serialize() : undefined
+    if (mesh?.multiresActive) {
+      // Fold pending level edits first so the blob holds the current state.
+      mesh.layerFold()
+      this._storeBlob = mesh.multiresStoreBlob()
+      this._layerTable = mesh.multiresLayerTableCapture()
+      this._level = mesh.multiresLevel
+      this._undoBlob = undefined
+    } else {
+      this._undoBlob = mesh ? mesh.serialize() : undefined
+    }
   }
   calcUndoMem(): number {
-    return this._undoBlob?.length ?? 0
+    return (this._undoBlob?.length ?? 0) + (this._storeBlob?.length ?? 0)
   }
 
   exec(ctx: ToolContext) {
     const mesh = this._resolveLayer(ctx)
     if (!mesh) return
-    const wasEnabled = mesh.mesh.sculptLayerEnabled(this._layer) !== 0
-    getWasmImmediate()!.Mesh_layerRemove(mesh.mesh, this._layer)
+    const wasEnabled = mesh.layerEnabled(this._layer)
+    mesh.layerRemove(this._layer)
     if (wasEnabled) {
-      this._refresh(mesh)
+      this._refreshAfterLayer(mesh)
     } else {
       window.redraw_all?.()
     }
@@ -364,7 +390,12 @@ export class SculptLayerRemoveOp extends SculptLayerOpBase<{layer: IntProperty}>
 
   undo(ctx: ToolContext): void {
     const mesh = this._getMesh(ctx)
-    if (mesh && this._undoBlob) {
+    if (!mesh) return
+    if (mesh.multiresActive && this._storeBlob) {
+      mesh.multiresRestoreStoreBlob(this._storeBlob, this._level)
+      mesh.multiresLayerTableRestore(this._layerTable)
+      window.redraw_all?.()
+    } else if (this._undoBlob) {
       mesh._replaceMesh(getWasmImmediate()!.Mesh_deserialize(this._undoBlob))
       mesh.regenBounds()
       window.redraw_all?.()
@@ -395,7 +426,7 @@ export class SculptLayerSetWeightOp extends SculptLayerOpBase<{layer: IntPropert
 
   undoPre(ctx: ToolContext): void {
     const mesh = this._resolveLayer(ctx)
-    this._prev = mesh ? mesh.mesh.sculptLayerWeight(this._layer) : 0
+    this._prev = mesh ? mesh.layerWeight(this._layer) : 0
   }
   calcUndoMem(): number {
     return 0
@@ -404,10 +435,10 @@ export class SculptLayerSetWeightOp extends SculptLayerOpBase<{layer: IntPropert
   _apply(ctx: ToolContext, weight: number): void {
     const mesh = this._resolveLayer(ctx)
     if (!mesh) return
-    getWasmImmediate()!.Mesh_layerSetWeight(mesh.mesh, this._layer, weight)
+    mesh.layerSetWeight(this._layer, weight)
     // A disabled layer contributes nothing, so co (and the tree) are untouched.
-    if (mesh.mesh.sculptLayerEnabled(this._layer)) {
-      this._refresh(mesh)
+    if (mesh.layerEnabled(this._layer)) {
+      this._refreshAfterLayer(mesh)
     }
   }
 
@@ -447,9 +478,7 @@ export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
   undoPre(ctx: ToolContext): void {
     const mesh = this._resolveLayer(ctx)
     const frozen = this.getInputs().kind === 1
-    this._prev = mesh
-      ? (frozen ? mesh.mesh.sculptLayerFrozen(this._layer) : mesh.mesh.sculptLayerEnabled(this._layer)) !== 0
-      : false
+    this._prev = mesh ? (frozen ? mesh.layerFrozen(this._layer) : mesh.layerEnabled(this._layer)) : false
   }
   calcUndoMem(): number {
     return 0
@@ -458,13 +487,12 @@ export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
   _apply(ctx: ToolContext, value: boolean): void {
     const mesh = this._resolveLayer(ctx)
     if (!mesh) return
-    const wasm = getWasmImmediate()!
     if (this.getInputs().kind === 1) {
-      wasm.Mesh_layerSetFrozen(mesh.mesh, this._layer, value ? 1 : 0)
+      mesh.layerSetFrozen(this._layer, value)
       window.redraw_all?.()
     } else {
-      wasm.Mesh_layerSetEnabled(mesh.mesh, this._layer, value ? 1 : 0)
-      this._refresh(mesh)
+      mesh.layerSetEnabled(this._layer, value)
+      this._refreshAfterLayer(mesh)
     }
   }
 
@@ -502,10 +530,10 @@ export class SculptLayerSetTargetOp extends SculptLayerOpBase<{layer: IntPropert
     const mesh = this._getMesh(ctx)
     this._layer = this.getInputs().layer
     if (!mesh) return
-    this._prevTarget = mesh.mesh.sculptLayerEditTarget()
+    this._prevTarget = mesh.layerEditTarget()
     if (this._layer >= 0) {
-      this._prevWeight = mesh.mesh.sculptLayerWeight(this._layer)
-      this._prevEnabled = mesh.mesh.sculptLayerEnabled(this._layer) !== 0
+      this._prevWeight = mesh.layerWeight(this._layer)
+      this._prevEnabled = mesh.layerEnabled(this._layer)
     }
   }
   calcUndoMem(): number {
@@ -515,11 +543,11 @@ export class SculptLayerSetTargetOp extends SculptLayerOpBase<{layer: IntPropert
   exec(ctx: ToolContext) {
     const mesh = this._getMesh(ctx)
     if (!mesh) return
-    getWasmImmediate()!.Mesh_setActiveEditLayer(mesh.mesh, this._layer)
+    mesh.layerSetTarget(this._layer)
     // Activation can move co (enable fold-in + the weight-1 pin); a plain
     // fold/deactivation cannot.
     if (this._layer >= 0 && (this._prevWeight !== 1 || !this._prevEnabled)) {
-      this._refresh(mesh)
+      this._refreshAfterLayer(mesh)
     } else {
       window.redraw_all?.()
     }
@@ -528,14 +556,13 @@ export class SculptLayerSetTargetOp extends SculptLayerOpBase<{layer: IntPropert
   undo(ctx: ToolContext): void {
     const mesh = this._getMesh(ctx)
     if (!mesh) return
-    const wasm = getWasmImmediate()!
-    wasm.Mesh_setActiveEditLayer(mesh.mesh, this._prevTarget)
+    mesh.layerSetTarget(this._prevTarget)
     if (this._layer >= 0 && this._layer !== this._prevTarget) {
-      wasm.Mesh_layerSetWeight(mesh.mesh, this._layer, this._prevWeight)
-      wasm.Mesh_layerSetEnabled(mesh.mesh, this._layer, this._prevEnabled ? 1 : 0)
+      mesh.layerSetWeight(this._layer, this._prevWeight)
+      mesh.layerSetEnabled(this._layer, this._prevEnabled)
     }
     if (this._layer >= 0 && (this._prevWeight !== 1 || !this._prevEnabled)) {
-      this._refresh(mesh)
+      this._refreshAfterLayer(mesh)
     } else {
       window.redraw_all?.()
     }
@@ -553,12 +580,14 @@ abstract class MultiresOpBase<Inputs extends PropertySlots = {}> extends LiteMes
 /**
  * Enable multires on the active LiteMesh: refine it into a `levels`-deep
  * Catmull-Clark stack (the mesh parks as the untouched cage) and attach the
- * finest level. Undo tears the stack down and re-adopts the cage — enable
- * never mutates the cage, so no snapshot is needed (strokes in between are
- * their own undo steps, and a redo replays onto the identically-rebuilt
- * level topology).
+ * finest level. Enable never mutates the cage geometry, so undo normally
+ * just tears the stack down — EXCEPT when vertex-column sculpt layers exist:
+ * those are flattened (baked + dropped, V2 — they don't convert to level
+ * channels), so a serialize blob is snapshotted and restored on undo.
  */
 export class MultiresEnableOp extends MultiresOpBase<{levels: IntProperty}> {
+  _flattenBlob?: Uint8Array
+
   static tooldef() {
     return {
       toolpath: 'litemesh.multires_enable',
@@ -567,9 +596,13 @@ export class MultiresEnableOp extends MultiresOpBase<{levels: IntProperty}> {
     }
   }
 
-  undoPre(_ctx: ToolContext): void {}
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._flattenBlob =
+      mesh && !mesh.multiresActive && mesh.mesh.sculptLayerCount() > 0 ? mesh.serialize() : undefined
+  }
   calcUndoMem(): number {
-    return 0
+    return this._flattenBlob?.length ?? 0
   }
 
   exec(ctx: ToolContext) {
@@ -583,6 +616,10 @@ export class MultiresEnableOp extends MultiresOpBase<{levels: IntProperty}> {
     const mesh = this._getMesh(ctx)
     if (mesh?.multiresActive) {
       mesh.multiresDelete()
+      if (this._flattenBlob) {
+        // Restore the pre-flatten layer stack (columns + settings rows).
+        mesh._replaceMesh(getWasmImmediate()!.Mesh_deserialize(this._flattenBlob))
+      }
       mesh.regenBounds()
       window.redraw_all?.()
     }

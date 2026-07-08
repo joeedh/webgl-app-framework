@@ -98,10 +98,33 @@ interface StencilAmplifyResult {
   triIndexOk?: boolean
 }
 
+/** `__multiresLayerTest()` result — the sculptLayersV2 M3 channel gate. */
+interface MultiresLayerTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  layerIndex?: number
+  targetSet?: boolean
+  movedCount?: number
+  maxDisp?: number
+  postChecksum?: number
+  postFloatCount?: number
+  weightZeroResidual?: number
+  weightRestoreResidual?: number
+  roundTripOk?: boolean
+  blobRestoreResidual?: number
+  layerCountAfterRestore?: number
+}
+
 function runMultiresTest(
   nwExe: string,
   backend: 'wasm' | 'native'
-): {base: MultiresTestResult; vdm: MultiresVdmTestResult; amp: StencilAmplifyResult} {
+): {
+  base: MultiresTestResult
+  vdm: MultiresVdmTestResult
+  amp: StencilAmplifyResult
+  layers: MultiresLayerTestResult
+} {
   const dump = bootDump(
     nwExe,
     [
@@ -116,7 +139,7 @@ function runMultiresTest(
       '--scene-arg',
       'subdiv=6',
       '--eval',
-      'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest()}',
+      'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest(), layers: __multiresLayerTest()}',
       // Async driver: the harness awaits each eval's RESULT, so return the
       // promise chain (top-level await is not legal in an eval'd script).
       '--eval',
@@ -124,12 +147,23 @@ function runMultiresTest(
     ],
     {tmpPrefix: 'scmultires-', timeout: 180000}
   ) as {
-    evalResult?: {base?: MultiresTestResult; vdm?: MultiresVdmTestResult; amp?: StencilAmplifyResult}
+    evalResult?: {
+      base?: MultiresTestResult
+      vdm?: MultiresVdmTestResult
+      amp?: StencilAmplifyResult
+      layers?: MultiresLayerTestResult
+    }
   }
   if (!dump.evalResult?.base) throw new Error(`${backend} dump has no multiresTest result`)
   if (!dump.evalResult?.vdm) throw new Error(`${backend} dump has no multiresVdmTest result`)
   if (!dump.evalResult?.amp) throw new Error(`${backend} dump has no stencilAmplifyTest result`)
-  return {base: dump.evalResult.base, vdm: dump.evalResult.vdm, amp: dump.evalResult.amp}
+  if (!dump.evalResult?.layers) throw new Error(`${backend} dump has no multiresLayerTest result`)
+  return {
+    base: dump.evalResult.base,
+    vdm: dump.evalResult.vdm,
+    amp: dump.evalResult.amp,
+    layers: dump.evalResult.layers,
+  }
 }
 
 const nwExe = resolveNwjsExe()
@@ -159,6 +193,7 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
   const results = new Map<'wasm' | 'native', MultiresTestResult>()
   const vdmResults = new Map<'wasm' | 'native', MultiresVdmTestResult>()
   const ampResults = new Map<'wasm' | 'native', StencilAmplifyResult>()
+  const layerResults = new Map<'wasm' | 'native', MultiresLayerTestResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
@@ -166,6 +201,7 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
       results.set(backend, r.base)
       vdmResults.set(backend, r.vdm)
       ampResults.set(backend, r.amp)
+      layerResults.set(backend, r.layers)
     }
   }, 600000)
 
@@ -230,6 +266,46 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
     expect(native.level2FloatCount).toBe(wasm.level2FloatCount)
     expect(native.level2PreChecksum).toBe(wasm.level2PreChecksum)
     expect(native.level2PostChecksum).toBe(wasm.level2PostChecksum)
+  })
+
+  // --- sculptLayersV2 M3: layers on levels are grids-store channels ---
+
+  test.each(eachBackend)('%s: layer-channel driver ran cleanly + target set', (backend) => {
+    const r = layerResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-multires] ${backend} layer driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.layerIndex).toBe(0)
+    expect(r.targetSet).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: targeted stroke lands in the layer channel', (backend) => {
+    const r = layerResults.get(backend)!
+    expect(r.movedCount).toBeGreaterThan(0)
+    expect(r.maxDisp).toBeGreaterThan(0)
+    // Weight 0 removes exactly the stroke; weight 1 returns it (frame
+    // re-encode drift only).
+    expect(r.weightZeroResidual).toBeLessThan(1e-6)
+    expect(r.weightRestoreResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: level switch stays bit-stable with the layer composited', (backend) => {
+    expect(layerResults.get(backend)!.roundTripOk).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: store blob + layer table restore the removed layer', (backend) => {
+    const r = layerResults.get(backend)!
+    expect(r.blobRestoreResidual).toBeLessThan(1e-6)
+    expect(r.layerCountAfterRestore).toBe(1)
+  })
+
+  crossTest('layer-channel strokes are checksum-identical across backends', () => {
+    const wasm = layerResults.get('wasm')!
+    const native = layerResults.get('native')!
+    expect(native.postFloatCount).toBe(wasm.postFloatCount)
+    expect(native.postChecksum).toBe(wasm.postChecksum)
   })
 
   // --- X1 gate: a VDM layer on the finest multires level. ---

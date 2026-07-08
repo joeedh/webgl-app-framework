@@ -810,4 +810,122 @@ function vdmPersistTest(): VdmPersistResult {
 
 ;(globalThis as {__vdmPersistTest?: typeof vdmPersistTest}).__vdmPersistTest = vdmPersistTest
 
-export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest, vdmPersistTest}
+/** `__multiresLayerTest()` result — the sculptLayersV2 M3 channel gate. */
+export interface MultiresLayerTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  /** Settings index from the routed layerAdd (expected 0) + target confirm. */
+  layerIndex?: number
+  targetSet?: boolean
+  /** Stroke displacement on the finest level while targeted. */
+  movedCount?: number
+  maxDisp?: number
+  /** FNV-1a over the post-stroke level positions (wasm↔native parity). */
+  postChecksum?: number
+  postFloatCount?: number
+  /** Weight 0 (target cleared) restores the pre-stroke level surface. */
+  weightZeroResidual?: number
+  /** Weight back to 1: the stroke returns through the frame re-encode. */
+  weightRestoreResidual?: number
+  /** Level switch round-trip stays bit-stable with the layer composited. */
+  roundTripOk?: boolean
+  /** Store-blob + layer-table round-trip preserves the layer. */
+  blobRestoreResidual?: number
+  layerCountAfterRestore?: number
+}
+
+/**
+ * sculptLayersV2 M3 gate: a sculpt layer on a multires level is a grids-store
+ * CHANNEL. Adds + targets a layer through the LiteMesh routing helpers, runs a
+ * real DRAW stroke on the finest level (stroke-end writeback lands in the
+ * layer's channel), and proves the weight-0 restore, level-switch
+ * bit-stability, and the store-blob + layer-table undo seam.
+ */
+function multiresLayerTest(): MultiresLayerTestResult {
+  const result: MultiresLayerTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {ctx?: {object?: {data?: unknown}}}
+  }
+  try {
+    const mesh = g._appstate?.ctx?.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const brush = DefaultBrushes.slotMap[SculptTools.DRAW]
+    if (!brush) throw new Error('no default DRAW brush')
+
+    if (!mesh.multiresEnable(3)) throw new Error('multiresEnable failed')
+    try {
+      const base = dumpCoFlat(mesh)
+      let R = 0
+      for (let i = 2; i < base.length; i += 3) {
+        if (base[i] > R) R = base[i]
+      }
+      const radius = R * 0.25
+      result.radius = radius
+
+      const li = mesh.layerAdd()
+      result.layerIndex = li
+      result.targetSet = mesh.layerSetTarget(li) === li && mesh.layerEditTarget() === li
+
+      const saved = {strength: brush.strength, flag: brush.flag, autosmooth: brush.autosmooth}
+      try {
+        brush.autosmooth = 0
+        brush.flag &= ~BrushFlags.ACCUMULATE
+        brush.strength = 1
+        runSculptcoreStroke({mesh, brush, dabs: [{p: [0, 0, R], normal: [0, 0, 1]}], radius})
+      } finally {
+        brush.strength = saved.strength
+        brush.flag = saved.flag
+        brush.autosmooth = saved.autosmooth
+      }
+
+      const after = dumpCoFlat(mesh)
+      let moved = 0
+      let maxDisp = 0
+      for (let i = 0; i < after.length; i += 3) {
+        const d = Math.hypot(after[i] - base[i], after[i + 1] - base[i + 1], after[i + 2] - base[i + 2])
+        if (d > 1e-6) {
+          moved++
+          if (d > maxDisp) maxDisp = d
+        }
+      }
+      result.movedCount = moved
+      result.maxDisp = maxDisp
+      result.postChecksum = fnv1a(after)
+      result.postFloatCount = after.length
+
+      // Weight round-trip: the whole stroke lives in the layer's channel.
+      mesh.layerSetTarget(-1)
+      mesh.layerSetWeight(li, 0)
+      result.weightZeroResidual = maxResidual(base, dumpCoFlat(mesh))
+      mesh.layerSetWeight(li, 1)
+      result.weightRestoreResidual = maxResidual(after, dumpCoFlat(mesh))
+
+      // Level-switch round-trip with the layer composited.
+      const chk = fnv1a(dumpCoFlat(mesh))
+      mesh.multiresSetLevel(1)
+      mesh.multiresSetLevel(3)
+      result.roundTripOk = fnv1a(dumpCoFlat(mesh)) === chk
+
+      // Store blob + layer table = the remove-undo/persistence seam.
+      const restoreTo = dumpCoFlat(mesh)
+      const blob = mesh.multiresStoreBlob()!
+      const table = mesh.multiresLayerTableCapture()
+      mesh.layerRemove(li)
+      mesh.multiresRestoreStoreBlob(blob, 3)
+      mesh.multiresLayerTableRestore(table)
+      result.blobRestoreResidual = maxResidual(restoreTo, dumpCoFlat(mesh))
+      result.layerCountAfterRestore = mesh.layerCount()
+    } finally {
+      mesh.multiresDelete()
+    }
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+  }
+  return result
+}
+
+;(globalThis as {__multiresLayerTest?: typeof multiresLayerTest}).__multiresLayerTest = multiresLayerTest
+
+export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest, vdmPersistTest, multiresLayerTest}

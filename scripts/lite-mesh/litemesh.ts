@@ -610,7 +610,7 @@ export class LiteMesh extends SceneObjectData {
         function () {
           const mesh = this.dataref
           const li = mesh.activeSculptLayer
-          return li < 0 ? 1.0 : mesh.mesh.sculptLayerWeight(li)
+          return li < 0 ? 1.0 : mesh.layerWeight(li)
         },
         function (value: number) {
           const mesh = this.dataref
@@ -621,7 +621,7 @@ export class LiteMesh extends SceneObjectData {
           if (li < 0 || !ctx) return
           // The edit target's weight is pinned to 1 (sculptLayersV2) — the
           // slider is read-only while the layer is targeted.
-          if (mesh.mesh.sculptLayerEditTarget() === li) return
+          if (mesh.layerEditTarget() === li) return
           execLayerTool(ctx, 'litemesh.sculpt_layer_set_weight', {layer: li, weight: value}, true)
         }
       )
@@ -634,17 +634,17 @@ export class LiteMesh extends SceneObjectData {
         function () {
           const mesh = this.dataref
           const li = mesh.activeSculptLayer
-          return li >= 0 && mesh.mesh.sculptLayerEditTarget() === li
+          return li >= 0 && mesh.layerEditTarget() === li
         },
         function (value: boolean) {
           const mesh = this.dataref
           const li = mesh.activeSculptLayer
           const ctx = this.ctx as unknown as ViewContext
           if (li < 0 || !ctx) return
-          const target = mesh.mesh.sculptLayerEditTarget()
+          const target = mesh.layerEditTarget()
           if (value === (target === li)) return
           // A frozen layer cannot be the edit target (engine refuses it too).
-          if (value && mesh.mesh.sculptLayerFrozen(li) !== 0) return
+          if (value && mesh.layerFrozen(li)) return
           execLayerTool(ctx, 'litemesh.sculpt_layer_set_target', {layer: value ? li : -1}, false)
         }
       )
@@ -663,13 +663,13 @@ export class LiteMesh extends SceneObjectData {
           if (li < 0 || !ctx) return
           // Inert on the edit target (disabling/freezing it would silently end
           // the edit engine-side): clear the target first.
-          if (mesh.mesh.sculptLayerEditTarget() === li) return
+          if (mesh.layerEditTarget() === li) return
           execLayerTool(ctx, 'litemesh.sculpt_layer_set_flag', {layer: li, kind, value}, false)
         }
       )
     }
-    flagProp('activeSculptLayerEnabled', 'Enabled', 0, (mesh, li) => mesh.mesh.sculptLayerEnabled(li))
-    flagProp('activeSculptLayerFrozen', 'Frozen', 1, (mesh, li) => mesh.mesh.sculptLayerFrozen(li))
+    flagProp('activeSculptLayerEnabled', 'Enabled', 0, (mesh, li) => (mesh.layerEnabled(li) ? 1 : 0))
+    flagProp('activeSculptLayerFrozen', 'Frozen', 1, (mesh, li) => (mesh.layerFrozen(li) ? 1 : 0))
 
     // Multires (displacementAndSubSurf S): the level slider commits through the
     // undoable litemesh.multires_set_level op; drags merge to one undo entry.
@@ -1264,6 +1264,12 @@ export class LiteMesh extends SceneObjectData {
     if (this._multires || levels < 1) {
       return false
     }
+    // V2 flatten: vertex-column layers don't convert to level channels — bake
+    // the evaluated surface (co already IS the composite) and drop the stack.
+    // The enable op snapshots a serialize blob for undo when layers exist.
+    if (this.mesh.sculptLayerCount() > 0) {
+      this.mesh.sculptLayerFlattenAll()
+    }
     const mr = this.wasm.Multires_new(this.mesh, levels, 1024, 32, 1 << 13)
     if (!mr) {
       return false
@@ -1320,6 +1326,10 @@ export class LiteMesh extends SceneObjectData {
     this._multires = undefined
     this.mesh = this._multiresCage!
     this._multiresCage = undefined
+    // Channel-backed layer rows lose their channels with the stack — drop
+    // them so the panel doesn't show ghost layers (V2: level layers are lost
+    // on stack delete; the delete op's store blob is the undo).
+    this.mesh.sculptLayerPruneSettingsOnly()
     this._initSpatial()
     this._invalidateGpuCaches()
     return true
@@ -1338,6 +1348,103 @@ export class LiteMesh extends SceneObjectData {
     this.wasm.Multires_setActiveLevel(this._multires, level)
     this._attachMultiresLevel()
     return true
+  }
+
+  // --- Sculpt-layer routing (sculptLayersV2 M3) ------------------------------
+  // Plain meshes store layers as vertex delta columns on this.mesh; with a
+  // multires stack the layers are grids-store CHANNELS keyed by settings rows
+  // on the parked cage, reached through the bound Multires surface. Mutations
+  // there rematerialize the active level (slot pointers change), so the
+  // multires branches re-attach the level views afterwards.
+
+  layerCount(): number {
+    return this._multires ? this._multires.layerCount() : this.mesh.sculptLayerCount()
+  }
+  layerWeight(li: number): number {
+    return this._multires ? this._multires.layerWeight(li) : this.mesh.sculptLayerWeight(li)
+  }
+  layerEnabled(li: number): boolean {
+    return (this._multires ? this._multires.layerEnabled(li) : this.mesh.sculptLayerEnabled(li)) !== 0
+  }
+  layerFrozen(li: number): boolean {
+    return (this._multires ? this._multires.layerFrozen(li) : this.mesh.sculptLayerFrozen(li)) !== 0
+  }
+  layerEditTarget(): number {
+    return this._multires ? this._multires.editTarget() : this.mesh.sculptLayerEditTarget()
+  }
+  /** Add a layer (returns the settings index). A fresh zero layer changes no
+   * positions on either path, so no view refresh is needed. */
+  layerAdd(): number {
+    return this._multires ? this._multires.layerAdd() : this.mesh.sculptLayerAdd()
+  }
+  layerRemove(li: number): void {
+    if (this._multires) {
+      this._multires.layerRemove(li)
+      this._attachMultiresLevel()
+    } else {
+      this.wasm.Mesh_layerRemove(this.mesh, li)
+    }
+  }
+  layerSetWeight(li: number, weight: number): void {
+    if (this._multires) {
+      this._multires.layerSetWeight(li, weight)
+      this._attachMultiresLevel()
+    } else {
+      this.wasm.Mesh_layerSetWeight(this.mesh, li, weight)
+    }
+  }
+  layerSetEnabled(li: number, enabled: boolean): void {
+    if (this._multires) {
+      this._multires.layerSetEnabled(li, enabled ? 1 : 0)
+      this._attachMultiresLevel()
+    } else {
+      this.wasm.Mesh_layerSetEnabled(this.mesh, li, enabled ? 1 : 0)
+    }
+  }
+  layerSetFrozen(li: number, frozen: boolean): void {
+    if (this._multires) {
+      this._multires.layerSetFrozen(li, frozen ? 1 : 0)
+      // Freezing composites nothing (it only gates targeting) — but freezing
+      // the TARGET clears it engine-side, which may leave a fold behind.
+      this._attachMultiresLevel()
+    } else {
+      this.wasm.Mesh_layerSetFrozen(this.mesh, li, frozen ? 1 : 0)
+    }
+  }
+  /** Make layer `li` the edit target (-1 clears); returns the result. */
+  layerSetTarget(li: number): number {
+    if (this._multires) {
+      const r = this._multires.setEditTarget(li)
+      this._attachMultiresLevel()
+      return r
+    }
+    return this.wasm.Mesh_setActiveEditLayer(this.mesh, li)
+  }
+  /** Fold the edit target's derived delta: plain meshes fold the vertex
+   * column; level meshes write back into the target's channel. */
+  layerFold(): void {
+    if (this._multires) {
+      this.multiresWriteback()
+    } else {
+      this.wasm.Mesh_layerFold(this.mesh)
+    }
+  }
+
+  /** Snapshot the multires layer table ({weight,enabled,frozen} per row) as a
+   * retained bound Vector<float> — pair with multiresStoreBlob for the
+   * layer-remove undo seam. */
+  multiresLayerTableCapture(): unknown {
+    if (!this._multires) return undefined
+    const holder = this._vecOutBulk('float')
+    this._multires.layerTableOut(holder.vec as never)
+    return holder.vec
+  }
+  /** Rebuild the layer rows from a multiresLayerTableCapture snapshot (call
+   * after multiresRestoreStoreBlob so the channels exist). */
+  multiresLayerTableRestore(tableVec: unknown): void {
+    if (!this._multires || !tableVec) return
+    this._multires.layerTableRestore(tableVec as never)
+    this._attachMultiresLevel()
   }
 
   /** True once the async tessellated-display state is resident (drivers/
@@ -2703,7 +2810,7 @@ export class LiteMesh extends SceneObjectData {
    * silently detargeting the brush. View state — not serialized.
    */
   get activeSculptLayer(): number {
-    const count = this.mesh.sculptLayerCount()
+    const count = this.layerCount()
     if (count <= 0) return -1
     return Math.max(0, Math.min(this._activeSculptLayer, count - 1))
   }
@@ -2712,8 +2819,10 @@ export class LiteMesh extends SceneObjectData {
   }
 
   /** Layer `li`'s attribute name, via the v.attrs AttrRef proxy at
-   * sculptLayerAttrIndex (the settings sidecar isn't a bound member). */
+   * sculptLayerAttrIndex (the settings sidecar isn't a bound member). Level
+   * layers are channels with no vertex column — display a positional name. */
   sculptLayerName(li: number): string {
+    if (this._multires) return `Layer ${li + 1}`
     const attrIdx = this.mesh.sculptLayerAttrIndex(li)
     if (attrIdx < 0) return ''
     const grp = this._domainGroup(AttrDomain.VERTEX)
@@ -2732,17 +2841,16 @@ export class LiteMesh extends SceneObjectData {
    * bound per-layer methods; identity-cached like attrItems so path.ux doesn't
    * rebuild the list every draw. */
   get sculptLayerItems(): LiteMeshSculptLayerItem[] {
-    const m = this.mesh
     const items: LiteMeshSculptLayerItem[] = []
-    const count = m.sculptLayerCount()
+    const count = this.layerCount()
     for (let li = 0; li < count; li++) {
       items.push(
         new LiteMeshSculptLayerItem(
           this.sculptLayerName(li),
           li,
-          m.sculptLayerWeight(li),
-          m.sculptLayerEnabled(li) !== 0,
-          m.sculptLayerFrozen(li) !== 0
+          this.layerWeight(li),
+          this.layerEnabled(li),
+          this.layerFrozen(li)
         )
       )
     }
