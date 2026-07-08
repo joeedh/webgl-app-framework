@@ -54,6 +54,7 @@ let options = {
     // require("electron") must stay external even though the app uses NW.js.
     'electron',
     'scripts/util/numeric.js',
+    'scripts/config/config_local.js',
     'numeric',
     'numeric.js',
     'scripts/util/numeric',

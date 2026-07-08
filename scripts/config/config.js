@@ -67,28 +67,41 @@ script.innerText = `
   
   let local = configlocal.default;
   
-  if (local.pathuxConfig) {
-    let a = local.pathuxConfig;
-    let b = config.pathuxConfig;
-    
-    for (let k in a) {
-      b[k] = a[k];
-    }
-    
-    cconst.loadConstants(config.pathuxConfig);
-  }
-  
-  for (let k in local) {
-    if (k === "pathuxConfig") {
-      continue;
-    }
-    
-    config[k] = local[k];
-  }
   
 `
 
-document.body.appendChild(script)
+import {cconst} from '../path.ux/scripts/pathux.js'
+export async function loadConfigLocal() {
+  try {
+    await import('./config_local.js').then((local) => {
+      const config = exports
+
+      if (local.pathuxConfig) {
+        let a = local.pathuxConfig
+        let b = config.pathuxConfig
+
+        for (let k in a) {
+          b[k] = a[k]
+        }
+
+        cconst.loadConstants(config.pathuxConfig)
+      }
+
+      for (let k in local) {
+        if (k === 'pathuxConfig') {
+          continue
+        }
+
+        config[k] = local[k]
+      }
+    })
+  } catch (error) {
+    console.log(error.stack)
+    console.log(error.message)
+    console.warn('Warning, config_local.js does not exist; this is fine.')
+  }
+}
+
 window._config = exports
 
 //import './config_local.js';

@@ -1,5 +1,5 @@
 import cconst2 from './path.ux/scripts/config/const.js'
-import config from './config/config.js'
+import {default as config, loadConfigLocal} from './config/config.js'
 import {IconManager, setBaseUnit, setIconManager, setIconMap, setMetric, UIBase} from './path.ux/scripts/pathux.js'
 import {Icons} from './editors/icon_enum.js'
 import {resolvePath} from './config.js'
@@ -97,7 +97,9 @@ export function setupIconsSvg() {
   }
 }
 
-export function setupPathux() {
+export async function setupPathux() {
+  await loadConfigLocal()
+  
   config.pathuxConfig.DEBUG = config.DEBUG || {}
   cconst2.loadConstants(config.pathuxConfig)
   window.DEBUG = cconst2.DEBUG

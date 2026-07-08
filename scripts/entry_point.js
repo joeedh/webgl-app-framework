@@ -108,7 +108,7 @@ export function handleNodeArguments() {
 }
 
 export async function init() {
-  console.log('init!')
+  await setupPathux()
 
   await sculptcore.getWasm()
 
@@ -118,7 +118,6 @@ export async function init() {
     timeout = 500
   }
 
-  setupPathux()
   nstructjs.setWarningMode(0)
   nstructjs.validateStructs()
 
