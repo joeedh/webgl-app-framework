@@ -477,6 +477,72 @@ export class SculptLayerSetFlagOp extends SculptLayerOpBase<{
 }
 ToolOp.register(SculptLayerSetFlagOp)
 
+/**
+ * Make a sculpt layer the edit target (sculptLayersV2), or clear it with
+ * layer=-1. While targeted, every brush/dyntopo/GPU stroke edits the layer by
+ * construction (the delta is derived from co); the engine enables the layer
+ * and pins its weight to 1 on activation. Undo replays setActiveEditLayer with
+ * the previous target — folds are semantically no-ops, so no column snapshot
+ * is needed — then restores the pinned layer's previous weight/enabled state.
+ */
+export class SculptLayerSetTargetOp extends SculptLayerOpBase<{layer: IntProperty}> {
+  _prevTarget = -1
+  _prevWeight = 1
+  _prevEnabled = true
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.sculpt_layer_set_target',
+      uiname  : 'Sculpt Layer Edit Target',
+      inputs  : {layer: new IntProperty(-1).noUnits()},
+    }
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    this._layer = this.getInputs().layer
+    if (!mesh) return
+    this._prevTarget = mesh.mesh.sculptLayerEditTarget()
+    if (this._layer >= 0) {
+      this._prevWeight = mesh.mesh.sculptLayerWeight(this._layer)
+      this._prevEnabled = mesh.mesh.sculptLayerEnabled(this._layer) !== 0
+    }
+  }
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return
+    getWasmImmediate()!.Mesh_setActiveEditLayer(mesh.mesh, this._layer)
+    // Activation can move co (enable fold-in + the weight-1 pin); a plain
+    // fold/deactivation cannot.
+    if (this._layer >= 0 && (this._prevWeight !== 1 || !this._prevEnabled)) {
+      this._refresh(mesh)
+    } else {
+      window.redraw_all?.()
+    }
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) return
+    const wasm = getWasmImmediate()!
+    wasm.Mesh_setActiveEditLayer(mesh.mesh, this._prevTarget)
+    if (this._layer >= 0 && this._layer !== this._prevTarget) {
+      wasm.Mesh_layerSetWeight(mesh.mesh, this._layer, this._prevWeight)
+      wasm.Mesh_layerSetEnabled(mesh.mesh, this._layer, this._prevEnabled ? 1 : 0)
+    }
+    if (this._layer >= 0 && (this._prevWeight !== 1 || !this._prevEnabled)) {
+      this._refresh(mesh)
+    } else {
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(SculptLayerSetTargetOp)
+
 /** Feature-flag gate shared by the multires ops (displacementAndSubSurf S). */
 abstract class MultiresOpBase<Inputs extends PropertySlots = {}> extends LiteMeshAttrOp<Inputs> {
   static canRun(_ctx: ToolContext): boolean {

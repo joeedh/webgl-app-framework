@@ -15,8 +15,9 @@
  * atomically).
  */
 
-import {BrushFlags, SculptTools} from '../brush/brush_base'
+import {BrushFlags, DynTopoFlagsSC, SculptTools} from '../brush/brush_base'
 import {DefaultBrushes} from '../brush/index'
+import {FeatureFlags} from '../core/feature-flag'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
@@ -319,4 +320,256 @@ function layerToolTest(): LayerToolTestResult {
 
 ;(globalThis as {__layerToolTest?: typeof layerToolTest}).__layerToolTest = layerToolTest
 
-export {layerTest, layerToolTest}
+interface LayerTargetTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  /** Phase A: settings index of the targeted layer + the engine target after
+   * the litemesh.sculpt_layer_set_target op ran (must match). */
+  layerIndex?: number
+  targetAfterOp?: number
+  /** Per-stroke moved-vert counts while targeted (real brush.tool mapping —
+   * ordinary geometry brushes, no layer-aware kernel involved). */
+  drawMoved?: number
+  smoothMoved?: number
+  grabMoved?: number
+  /** FNV-1a over post-stroke co (cross-backend parity; dyntopo off here). */
+  postChecksum?: number
+  postFloatCount?: number
+  /** Fold + weight 0: residual vs the surface at target time (the rest). */
+  weightZeroResidual?: number
+  /** Weight back to 1: residual vs the post-stroke surface. */
+  weightRestoreResidual?: number
+  /** Engine target after toolstack-undoing the clear-target op (== layer),
+   * then after redoing it (-1 again). */
+  opUndoTarget?: number
+  opRedoTarget?: number
+  /** MeshLog stroke undo: residual vs the pre-stroke co. */
+  strokeUndoResidual?: number
+  /** After the stroke undo: fold + clear + weight 0 vs the rest — co and the
+   * DERIVED delta stay consistent at every undo cursor. */
+  undoFoldWeightZeroResidual?: number
+  /** Phase B: dyntopo stroke under an edit target (rest interpolates). */
+  dynVertCountChanged?: boolean
+  dynNonFinite?: number
+  /** Weight 1→0→1 round trip after folding the dyntopo stroke. */
+  dynRoundTripResidual?: number
+  /** Phase C: kelvinlet stroke under an edit target; gpuRan reports whether
+   * the GPU dispatch path engaged (CPU fallback is still a valid recording). */
+  gpuRan?: boolean
+  gpuWeightZeroResidual?: number
+}
+
+/**
+ * sculptLayersV2 gate: the ACTIVE layer is live geometry. Targets a layer
+ * through the real litemesh.sculpt_layer_set_target ToolOp, then sculpts with
+ * ordinary geometry brushes (DRAW/SMOOTH/GRAB — no layer-aware kernel), folds,
+ * and proves weight-0 returns the surface to its at-target state; exercises
+ * toolstack undo/redo of the target op, MeshLog stroke undo consistency of the
+ * derived delta, dyntopo-under-edit (the rest snapshot interpolates), and a
+ * kelvinlet stroke (GPU when available — co syncs before endStep, so the fold
+ * sees final positions).
+ */
+async function layerTargetTest(): Promise<LayerTargetTestResult> {
+  const result: LayerTargetTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {
+      ctx?: {object?: {data?: unknown}; api?: {execTool: (ctx: unknown, p: string) => void}}
+      toolstack?: {undo: () => void; redo: () => void}
+    }
+    __layerTargetTestResult?: LayerTargetTestResult
+  }
+  try {
+    const ctx = g._appstate?.ctx
+    const mesh = ctx?.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+    const wasm = mesh.wasm
+
+    // The litemesh.sculpt_layer_* ops are gated on this flag (default off);
+    // the headless boot uses a throwaway profile, so force it for the run.
+    FeatureFlags.set('sculptcore.sculpt_layers', true)
+
+    const need = (tool: SculptTools) => {
+      const b = DefaultBrushes.slotMap[tool]
+      if (!b) throw new Error(`no default brush for tool ${tool}`)
+      return b
+    }
+    const draw = need(SculptTools.DRAW)
+
+    const pos0 = dumpCoFlat(mesh)
+    let R = 0
+    for (let i = 2; i < pos0.length; i += 3) {
+      if (pos0[i] > R) R = pos0[i]
+    }
+    const radius = R * 0.25
+    result.radius = radius
+
+    const movedFrom = (a: Float32Array, b: Float32Array) => {
+      let moved = 0
+      for (let i = 0; i < Math.min(a.length, b.length); i += 3) {
+        const d = Math.hypot(b[i] - a[i], b[i + 1] - a[i + 1], b[i + 2] - a[i + 2])
+        if (d > 1e-6) moved++
+      }
+      return moved
+    }
+    const poleDab = {p: [0, 0, R], normal: [0, 0, 1]}
+    const step = radius * 0.3
+    const marchDabs = [
+      {p: [0, 0, R], normal: [0, 0, 1]},
+      {p: [step, 0, R], normal: [0, 0, 1]},
+      {p: [step * 2, 0, R], normal: [0, 0, 1]},
+    ]
+
+    const savedDraw = {
+      tool      : draw.tool,
+      strength  : draw.strength,
+      flag      : draw.flag,
+      autosmooth: draw.autosmooth,
+      dtFlag    : draw.dynTopoSC.flag,
+    }
+    try {
+      draw.tool = SculptTools.DRAW
+      draw.autosmooth = 0
+      draw.flag &= ~BrushFlags.ACCUMULATE
+      draw.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+
+      // Settle the GPU buffer layout (first stroke re-batches).
+      draw.strength = 0
+      runSculptcoreStroke({mesh, brush: draw, dabs: [poleDab], radius})
+      draw.strength = 1
+
+      // ---- Phase A: target via the real op, sculpt, fold, weight round-trip ----
+      const li = mesh.mesh.sculptLayerAdd()
+      mesh.activeSculptLayer = li
+      result.layerIndex = li
+      ctx!.api!.execTool(ctx, `litemesh.sculpt_layer_set_target(layer=${li})`)
+      result.targetAfterOp = mesh.mesh.sculptLayerEditTarget()
+
+      const preTarget = dumpCoFlat(mesh)
+
+      runSculptcoreStroke({mesh, brush: draw, dabs: [poleDab], radius})
+      const afterDraw = dumpCoFlat(mesh)
+      result.drawMoved = movedFrom(preTarget, afterDraw)
+
+      const smooth = need(SculptTools.SMOOTH)
+      const savedSmooth = {strength: smooth.strength, autosmooth: smooth.autosmooth, dtFlag: smooth.dynTopoSC.flag}
+      smooth.strength = 1
+      smooth.autosmooth = 0
+      smooth.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+      runSculptcoreStroke({mesh, brush: smooth, dabs: [poleDab, poleDab], radius})
+      smooth.strength = savedSmooth.strength
+      smooth.autosmooth = savedSmooth.autosmooth
+      smooth.dynTopoSC.flag = savedSmooth.dtFlag
+      const afterSmooth = dumpCoFlat(mesh)
+      result.smoothMoved = movedFrom(afterDraw, afterSmooth)
+
+      const grab = need(SculptTools.GRAB)
+      const savedGrab = {strength: grab.strength, autosmooth: grab.autosmooth, dtFlag: grab.dynTopoSC.flag}
+      grab.strength = 1
+      grab.autosmooth = 0
+      grab.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+      runSculptcoreStroke({mesh, brush: grab, dabs: marchDabs, radius})
+      grab.strength = savedGrab.strength
+      grab.autosmooth = savedGrab.autosmooth
+      grab.dynTopoSC.flag = savedGrab.dtFlag
+      const after = dumpCoFlat(mesh)
+      result.grabMoved = movedFrom(afterSmooth, after)
+
+      result.postChecksum = fnv1a(after)
+      result.postFloatCount = after.length
+
+      // Fold (explicit C export; the clear-target op below folds again —
+      // idempotent), clear the target, and round-trip the weight.
+      wasm.Mesh_layerFold(mesh.mesh)
+      ctx!.api!.execTool(ctx, 'litemesh.sculpt_layer_set_target(layer=-1)')
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 0)
+      result.weightZeroResidual = maxResidual(preTarget, dumpCoFlat(mesh))
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 1)
+      result.weightRestoreResidual = maxResidual(after, dumpCoFlat(mesh))
+
+      // Toolstack undo of the clear-target op re-targets the layer; redo
+      // clears it again (folds are undo-transparent, no column snapshots).
+      g._appstate!.toolstack!.undo()
+      result.opUndoTarget = mesh.mesh.sculptLayerEditTarget()
+      g._appstate!.toolstack!.redo()
+      result.opRedoTarget = mesh.mesh.sculptLayerEditTarget()
+
+      // ---- MeshLog stroke undo keeps co + the derived delta consistent ----
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, li)
+      const preStroke2 = dumpCoFlat(mesh)
+      runSculptcoreStroke({mesh, brush: draw, dabs: [poleDab], radius})
+      SculptPaintOp.meshLog!.undo(mesh.mesh, mesh.spatial)
+      mesh.regenBounds()
+      mesh.meshRevision++
+      result.strokeUndoResidual = maxResidual(preStroke2, dumpCoFlat(mesh))
+
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, -1)
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 0)
+      result.undoFoldWeightZeroResidual = maxResidual(preTarget, dumpCoFlat(mesh))
+      wasm.Mesh_layerSetWeight(mesh.mesh, li, 1)
+
+      // ---- Phase B: dyntopo under an edit target (rest interpolates) ----
+      const lb = mesh.mesh.sculptLayerAdd()
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, lb)
+      const preDyn = dumpCoFlat(mesh)
+      draw.dynTopoSC.flag |= DynTopoFlagsSC.ENABLED
+      draw.flag |= BrushFlags.ACCUMULATE
+      runSculptcoreStroke({mesh, brush: draw, dabs: [poleDab, poleDab, poleDab, poleDab], radius})
+      draw.flag &= ~BrushFlags.ACCUMULATE
+      draw.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+      const postDyn = dumpCoFlat(mesh)
+      result.dynVertCountChanged = postDyn.length !== preDyn.length
+      let bad = 0
+      for (let i = 0; i < postDyn.length; i++) {
+        if (!Number.isFinite(postDyn[i])) bad++
+      }
+      result.dynNonFinite = bad
+
+      wasm.Mesh_layerFold(mesh.mesh)
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, -1)
+      wasm.Mesh_layerSetWeight(mesh.mesh, lb, 0)
+      wasm.Mesh_layerSetWeight(mesh.mesh, lb, 1)
+      result.dynRoundTripResidual = maxResidual(postDyn, dumpCoFlat(mesh))
+
+      // ---- Phase C: kelvinlet under an edit target (GPU when available) ----
+      const lc = mesh.mesh.sculptLayerAdd()
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, lc)
+      const kelvin = need(SculptTools.KELVINLET)
+      const savedK = {strength: kelvin.strength, autosmooth: kelvin.autosmooth, dtFlag: kelvin.dynTopoSC.flag}
+      kelvin.strength = 1
+      kelvin.autosmooth = 0
+      kelvin.dynTopoSC.flag &= ~DynTopoFlagsSC.ENABLED
+      const preGpu = dumpCoFlat(mesh)
+      const run = runSculptcoreStroke({mesh, brush: kelvin, dabs: marchDabs, radius})
+      result.gpuRan = !!run.completion
+      if (run.completion) {
+        await run.completion
+      }
+      kelvin.strength = savedK.strength
+      kelvin.autosmooth = savedK.autosmooth
+      kelvin.dynTopoSC.flag = savedK.dtFlag
+
+      wasm.Mesh_layerFold(mesh.mesh)
+      wasm.Mesh_setActiveEditLayer(mesh.mesh, -1)
+      wasm.Mesh_layerSetWeight(mesh.mesh, lc, 0)
+      result.gpuWeightZeroResidual = maxResidual(preGpu, dumpCoFlat(mesh))
+      wasm.Mesh_layerSetWeight(mesh.mesh, lc, 1)
+    } finally {
+      draw.tool = savedDraw.tool
+      draw.strength = savedDraw.strength
+      draw.flag = savedDraw.flag
+      draw.autosmooth = savedDraw.autosmooth
+      draw.dynTopoSC.flag = savedDraw.dtFlag
+    }
+
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
+  }
+  g.__layerTargetTestResult = result
+  return result
+}
+
+;(globalThis as {__layerTargetTest?: typeof layerTargetTest}).__layerTargetTest = layerTargetTest
+
+export {layerTest, layerToolTest, layerTargetTest}

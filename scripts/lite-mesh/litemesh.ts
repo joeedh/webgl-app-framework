@@ -619,7 +619,33 @@ export class LiteMesh extends SceneObjectData {
           // its static type is bare, so narrow it here.
           const ctx = this.ctx as unknown as ViewContext
           if (li < 0 || !ctx) return
+          // The edit target's weight is pinned to 1 (sculptLayersV2) — the
+          // slider is read-only while the layer is targeted.
+          if (mesh.mesh.sculptLayerEditTarget() === li) return
           execLayerTool(ctx, 'litemesh.sculpt_layer_set_weight', {layer: li, weight: value}, true)
+        }
+      )
+
+    // V2 edit-target toggle: while checked, sculpting records into this layer
+    // (weight pinned 1; the weight/enabled/frozen controls are inert on it).
+    mstruct
+      .bool('', 'activeSculptLayerEditTarget', 'Edit Target', 'Record sculpting into the active sculpt layer')
+      .customGetSet<LiteMesh>(
+        function () {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          return li >= 0 && mesh.mesh.sculptLayerEditTarget() === li
+        },
+        function (value: boolean) {
+          const mesh = this.dataref
+          const li = mesh.activeSculptLayer
+          const ctx = this.ctx as unknown as ViewContext
+          if (li < 0 || !ctx) return
+          const target = mesh.mesh.sculptLayerEditTarget()
+          if (value === (target === li)) return
+          // A frozen layer cannot be the edit target (engine refuses it too).
+          if (value && mesh.mesh.sculptLayerFrozen(li) !== 0) return
+          execLayerTool(ctx, 'litemesh.sculpt_layer_set_target', {layer: value ? li : -1}, false)
         }
       )
 
@@ -635,6 +661,9 @@ export class LiteMesh extends SceneObjectData {
           const li = mesh.activeSculptLayer
           const ctx = this.ctx as unknown as ViewContext
           if (li < 0 || !ctx) return
+          // Inert on the edit target (disabling/freezing it would silently end
+          // the edit engine-side): clear the target first.
+          if (mesh.mesh.sculptLayerEditTarget() === li) return
           execLayerTool(ctx, 'litemesh.sculpt_layer_set_flag', {layer: li, kind, value}, false)
         }
       )
@@ -731,9 +760,11 @@ export class LiteMesh extends SceneObjectData {
     })
     attrs.tool('litemesh.remove_attr()', {label: 'Remove Selected'})
 
-    // Sculpt-layer stack (V5), feature-flagged (takes effect on restart).
-    // Clicking a row activates it (the LAYER_DRAW target); weight/enabled/
-    // frozen bind to the active layer via the litemesh.sculpt_layer_* ops.
+    // Sculpt-layer stack (sculptLayersV2), feature-flagged (takes effect on
+    // restart). Clicking a row selects it; "Edit Target" makes it the layer
+    // sculpting records into (litemesh.sculpt_layer_set_target — any brush,
+    // dyntopo, GPU strokes). Weight/enabled/frozen commit through the
+    // litemesh.sculpt_layer_* ops and are inert while the layer is targeted.
     if (FeatureFlags.get('sculptcore.sculpt_layers')) {
       const layers = container.panel('Sculpt Layers')
       const layerBox = document.createElement('listbox-x')
@@ -748,6 +779,7 @@ export class LiteMesh extends SceneObjectData {
       })
       layers.add(layerBox as unknown as Container<ViewContext>)
 
+      layers.prop('object.data.activeSculptLayerEditTarget')
       layers.prop('object.data.activeSculptLayerWeight')
       const row = layers.row()
       row.prop('object.data.activeSculptLayerEnabled')

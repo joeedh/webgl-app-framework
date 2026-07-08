@@ -449,9 +449,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
      * in this tool mode; the legacy pbvh mode keeps the full enum. */
     const sculptcoreTools = {} as Record<string, number>
     for (const [k, v] of Object.entries(deleteTsEnumIntegers(SculptTools))) {
-      // Layer Draw is feature-flagged (defineAPI runs at boot; toggling the
-      // flag takes effect on restart, like the other flag-gated surfaces).
-      if ((v as number) === SculptTools.LAYER_DRAW && !FeatureFlags.get('sculptcore.sculpt_layers')) {
+      // Layer Draw is retired from the picker (sculptLayersV2: the panel's
+      // edit-target toggle replaces it); the engine kernel stays as a test
+      // fixture for the sbrush attr-redirection path.
+      if ((v as number) === SculptTools.LAYER_DRAW) {
         continue
       }
       if ((v as number) in TOOL_TO_SCULPTBRUSH) {

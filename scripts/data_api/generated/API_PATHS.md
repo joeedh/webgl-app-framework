@@ -777,6 +777,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.sculpt_layer_set_flag.kind` | prop | EnumProperty | Kind | enum {ENABLED, FROZEN} |
 | `toolDefaults.litemesh.sculpt_layer_set_flag.layer` | prop | IntProperty | Layer |  |
 | `toolDefaults.litemesh.sculpt_layer_set_flag.value` | prop | BoolProperty | Value |  |
+| `toolDefaults.litemesh.sculpt_layer_set_target` | struct |  |  |  |
+| `toolDefaults.litemesh.sculpt_layer_set_target.layer` | prop | IntProperty | Layer |  |
 | `toolDefaults.litemesh.sculpt_layer_set_weight` | struct |  |  |  |
 | `toolDefaults.litemesh.sculpt_layer_set_weight.layer` | prop | IntProperty | Layer |  |
 | `toolDefaults.litemesh.sculpt_layer_set_weight.weight` | prop | FloatProperty | Weight | range -2..2 |

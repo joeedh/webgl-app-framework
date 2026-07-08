@@ -331,6 +331,10 @@ function dumpScene(): unknown {
     // fresh sculpt layer — displacement, post-stroke position checksum (the
     // wasm↔native bit-parity gate), and the one-undo residual.
     layertest    : (globalThis as {__layerTestResult?: unknown}).__layerTestResult,
+    // Reflect the V2 edit-target driver (`__layerTargetTest`): ordinary
+    // brushes sculpting into a targeted layer, fold + weight round-trips,
+    // toolstack/MeshLog undo consistency, dyntopo + kelvinlet under a target.
+    layertargettest: (globalThis as {__layerTargetTestResult?: unknown}).__layerTargetTestResult,
     // Reflect the VDM engine driver (`__vdmTest`): one vdm splat dab at the +Z
     // pole — texels touched, tile count, atlas checksum (the wasm↔native
     // bit-parity gate), layout ints, and the positions-unchanged proof.

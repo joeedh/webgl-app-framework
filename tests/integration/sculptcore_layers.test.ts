@@ -62,13 +62,39 @@ interface LayerToolTestResult {
   postFloatCount?: number
 }
 
-/** Boot headlessly under `backend`, run both layer drivers, return the results.
- * `__layerTest` runs first (the F1 stroke-seam gate), then `__layerToolTest`
- * (the V5 real-tool-mapping gate) on a second, independent layer. */
+/** `__layerTargetTest()` result — the sculptLayersV2 edit-target gate. */
+interface LayerTargetTestResult {
+  ok: boolean
+  error?: string
+  radius?: number
+  layerIndex?: number
+  targetAfterOp?: number
+  drawMoved?: number
+  smoothMoved?: number
+  grabMoved?: number
+  postChecksum?: number
+  postFloatCount?: number
+  weightZeroResidual?: number
+  weightRestoreResidual?: number
+  opUndoTarget?: number
+  opRedoTarget?: number
+  strokeUndoResidual?: number
+  undoFoldWeightZeroResidual?: number
+  dynVertCountChanged?: boolean
+  dynNonFinite?: number
+  dynRoundTripResidual?: number
+  gpuRan?: boolean
+  gpuWeightZeroResidual?: number
+}
+
+/** Boot headlessly under `backend`, run all three layer drivers, return the
+ * results. `__layerTest` runs first (the F1 stroke-seam gate), then
+ * `__layerToolTest` (the V5 real-tool-mapping gate), then `__layerTargetTest`
+ * (the V2 edit-target gate), each on independent layers. */
 function runLayerTest(
   nwExe: string,
   backend: 'wasm' | 'native'
-): {layertest: LayerTestResult; tooltest: LayerToolTestResult} {
+): {layertest: LayerTestResult; tooltest: LayerToolTestResult; targettest: LayerTargetTestResult} {
   const dump = bootDump(
     nwExe,
     [
@@ -86,12 +112,17 @@ function runLayerTest(
       '__layerTest()',
       '--eval',
       'globalThis.__evalTestResult = __layerToolTest()',
+      // Async driver: the harness awaits each eval; the result lands on
+      // __layerTargetTestResult → the dump's `layertargettest` key.
+      '--eval',
+      '__layerTargetTest()',
     ],
-    {tmpPrefix: 'sclayer-', timeout: 120000}
-  ) as {layertest?: LayerTestResult; evalResult?: LayerToolTestResult}
+    {tmpPrefix: 'sclayer-', timeout: 180000}
+  ) as {layertest?: LayerTestResult; evalResult?: LayerToolTestResult; layertargettest?: LayerTargetTestResult}
   if (!dump.layertest) throw new Error(`${backend} dump has no layertest result`)
   if (!dump.evalResult) throw new Error(`${backend} dump has no layerToolTest result`)
-  return {layertest: dump.layertest, tooltest: dump.evalResult}
+  if (!dump.layertargettest) throw new Error(`${backend} dump has no layerTargetTest result`)
+  return {layertest: dump.layertest, tooltest: dump.evalResult, targettest: dump.layertargettest}
 }
 
 const nwExe = resolveNwjsExe()
@@ -120,14 +151,16 @@ const eachBackend = backends.map((b) => [b] as const)
 maybe('sculptcore sculpt layers (LAYERDRAW)', () => {
   const results = new Map<'wasm' | 'native', LayerTestResult>()
   const toolResults = new Map<'wasm' | 'native', LayerToolTestResult>()
+  const targetResults = new Map<'wasm' | 'native', LayerTargetTestResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
       const r = runLayerTest(nwExe!, backend)
       results.set(backend, r.layertest)
       toolResults.set(backend, r.tooltest)
+      targetResults.set(backend, r.targettest)
     }
-  }, 300000)
+  }, 600000)
 
   test.each(eachBackend)('%s: driver ran cleanly', (backend) => {
     const r = results.get(backend)!
@@ -213,6 +246,67 @@ maybe('sculptcore sculpt layers (LAYERDRAW)', () => {
   crossTest('tool-path post-stroke positions are checksum-identical across backends', () => {
     const wasm = toolResults.get('wasm')!
     const native = toolResults.get('native')!
+    expect(native.postFloatCount).toBe(wasm.postFloatCount)
+    expect(native.postChecksum).toBe(wasm.postChecksum)
+  })
+
+  // --- V2 gate: the active layer is live geometry — ordinary brushes sculpt
+  // into the edit target; folds derive the delta; weight-0 returns the rest. ---
+
+  test.each(eachBackend)('%s: V2 edit-target driver ran cleanly', (backend) => {
+    const r = targetResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-layers] ${backend} edit-target driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+    expect(r.targetAfterOp).toBe(r.layerIndex)
+  })
+
+  test.each(eachBackend)('%s: DRAW/SMOOTH/GRAB all deform under an edit target', (backend) => {
+    const r = targetResults.get(backend)!
+    expect(r.drawMoved).toBeGreaterThan(0)
+    expect(r.smoothMoved).toBeGreaterThan(0)
+    expect(r.grabMoved).toBeGreaterThan(0)
+  })
+
+  test.each(eachBackend)('%s: weight 0 restores the at-target surface (fold captured the strokes)', (backend) => {
+    const r = targetResults.get(backend)!
+    expect(r.weightZeroResidual).toBeLessThan(1e-5)
+    expect(r.weightRestoreResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: toolstack undo/redo of the target op restores the engine target', (backend) => {
+    const r = targetResults.get(backend)!
+    expect(r.opUndoTarget).toBe(r.layerIndex)
+    expect(r.opRedoTarget).toBe(-1)
+  })
+
+  test.each(eachBackend)('%s: stroke undo keeps co and the derived delta consistent', (backend) => {
+    const r = targetResults.get(backend)!
+    expect(r.strokeUndoResidual).toBeLessThan(1e-6)
+    expect(r.undoFoldWeightZeroResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: dyntopo under an edit target stays consistent', (backend) => {
+    const r = targetResults.get(backend)!
+    expect(r.dynVertCountChanged).toBe(true)
+    expect(r.dynNonFinite).toBe(0)
+    expect(r.dynRoundTripResidual).toBeLessThan(1e-5)
+  })
+
+  test.each(eachBackend)('%s: kelvinlet stroke records into the target (GPU path when available)', (backend) => {
+    const r = targetResults.get(backend)!
+    if (!r.gpuRan) {
+      // eslint-disable-next-line no-console
+      console.warn(`[sculptcore-layers] ${backend}: kelvinlet ran on the CPU fallback (no GPU dispatch)`)
+    }
+    expect(r.gpuWeightZeroResidual).toBeLessThan(1e-5)
+  })
+
+  crossTest('edit-target post-stroke positions are checksum-identical across backends', () => {
+    const wasm = targetResults.get('wasm')!
+    const native = targetResults.get('native')!
     expect(native.postFloatCount).toBe(wasm.postFloatCount)
     expect(native.postChecksum).toBe(wasm.postChecksum)
   })

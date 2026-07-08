@@ -574,6 +574,8 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.sculpt_layer_set_flag.kind"
   | "toolDefaults.litemesh.sculpt_layer_set_flag.layer"
   | "toolDefaults.litemesh.sculpt_layer_set_flag.value"
+  | "toolDefaults.litemesh.sculpt_layer_set_target"
+  | "toolDefaults.litemesh.sculpt_layer_set_target.layer"
   | "toolDefaults.litemesh.sculpt_layer_set_weight"
   | "toolDefaults.litemesh.sculpt_layer_set_weight.layer"
   | "toolDefaults.litemesh.sculpt_layer_set_weight.weight"
@@ -1351,6 +1353,8 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.sculpt_layer_set_flag.kind": true;
     "toolDefaults.litemesh.sculpt_layer_set_flag.layer": true;
     "toolDefaults.litemesh.sculpt_layer_set_flag.value": true;
+    "toolDefaults.litemesh.sculpt_layer_set_target": true;
+    "toolDefaults.litemesh.sculpt_layer_set_target.layer": true;
     "toolDefaults.litemesh.sculpt_layer_set_weight": true;
     "toolDefaults.litemesh.sculpt_layer_set_weight.layer": true;
     "toolDefaults.litemesh.sculpt_layer_set_weight.weight": true;
