@@ -1,1 +1,1 @@
-Include contents of AGENTS.md.
+Include contents of ../CLAUDE.md.
