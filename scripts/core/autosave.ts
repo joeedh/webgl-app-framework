@@ -219,16 +219,15 @@ export class AutosaveManager {
     }
     if (!offer) return false
 
-    // Headless / automation: `--no-autosave-recover` skips the blocking confirm()
-    // dialog (which otherwise wedges the renderer until dismissed) and declines
-    // recovery; `--autosave-recover` accepts it without prompting.
+    // Headless / automation: `--no-autosave-recover` skips the recovery prompt
+    // and declines; `--autosave-recover` accepts it without prompting.
     if (hasArg('no-autosave-recover')) {
       return false
     }
     if (!hasArg('autosave-recover')) {
-      const where = latest.sourcePath ? `\nProject: ${latest.sourcePath}` : ' (untitled project)'
-      const msg = `Recover unsaved work from ${formatTime(latest.timestamp)}?${where}`
-      if (!(globalThis.confirm?.(msg) ?? false)) {
+      const where = latest.sourcePath ? `Project: ${latest.sourcePath}` : '(untitled project)'
+      const msg = `Recover unsaved work from ${formatTime(latest.timestamp)}?\n${where}`
+      if (!(await recoverPrompt(this.state, msg))) {
         return false
       }
     }
@@ -285,6 +284,57 @@ export class AutosaveManager {
     this.lastSavedChangeId = -1 // mark dirty so the recovered state re-autosaves
     return true
   }
+}
+
+/**
+ * Non-blocking recovery prompt: a path.ux screen popup with Recover / Discard
+ * buttons. The native confirm() modal is deliberately avoided — it blocks the
+ * renderer event loop (and devtools) until dismissed. Falls back to confirm()
+ * only if no screen ever materializes (bounded wait — boot-time callers run
+ * before the UI is built).
+ */
+interface RecoverPromptPopup {
+  label(text: string): unknown
+  row(): {button(label: string, cb: () => void): unknown}
+  remove(): void
+}
+interface RecoverPromptScreen {
+  size: ArrayLike<number>
+  popup(owner: unknown, x: number, y: number, closeOnMouseOut: boolean): RecoverPromptPopup
+}
+
+async function recoverPrompt(state: AppState, msg: string): Promise<boolean> {
+  const getScreen = () => (state as unknown as {screen?: RecoverPromptScreen}).screen
+  for (let i = 0; i < 100 && !getScreen(); i++) {
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  const screen = getScreen()
+  if (!screen) {
+    return globalThis.confirm?.(msg) ?? false
+  }
+
+  return new Promise<boolean>((resolve) => {
+    const w = 320
+    const x = Math.max(10, screen.size[0] * 0.5 - w * 0.5)
+    const y = Math.max(10, screen.size[1] * 0.33)
+    const popup = screen.popup(screen, x, y, false)
+
+    for (const line of msg.split('\n')) {
+      popup.label(line)
+    }
+
+    let done = false
+    const finish = (val: boolean) => {
+      if (done) return
+      done = true
+      popup.remove()
+      resolve(val)
+    }
+
+    const row = popup.row()
+    row.button('Recover', () => finish(true))
+    row.button('Discard', () => finish(false))
+  })
 }
 
 function formatTime(ms: number): string {

@@ -315,11 +315,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       const obmat = new Matrix4(ctx.object!.outputs.matrix.getValue())
       const imatrix = new Matrix4(obmat)
       imatrix.invert()
+      // Directions must not pick up the (inverse) object translation.
+      const idirmat = new Matrix4(imatrix)
+      idirmat.clearTranslation()
 
       const o = origin.copy()
       const d = dir.copy()
       o.multVecMatrix(imatrix)
-      d.multVecMatrix(imatrix)
+      d.multVecMatrix(idirmat)
 
       const isect = mesh.rayCast(o, d)
       if (!isect) {
@@ -328,10 +331,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
       const p = new Vector3(isect.p)
       p.multVecMatrix(obmat)
+      const dirmat = new Matrix4(obmat)
+      dirmat.clearTranslation()
       const normal = new Vector3(isect.normal)
-      normal.multVecMatrix(obmat)
+      normal.multVecMatrix(dirmat)
+      normal.normalize()
 
-      return {p, normal, dist: isect.dis}
+      return {p, normal, dist: p.vectorDistance(origin)}
     }
   }
 
@@ -817,7 +823,7 @@ export function runSculptcoreStroke(opts: {
    * origin, so the world-space dabs here are already in mirror space. */
   symmetryAxes?: number
   /** Test seam: run this sculptcore kernel instead of the tool's mapped one
-   * (e.g. LAYERDRAW, which has no TS SculptTools entry). */
+   * (e.g. LAYERDRAW, whose LAYER_DRAW tool is hidden from the sculpt picker). */
   brushTypeOverride?: SculptBrushes
   /** Test seam: point command 0's attr handle `attrIdx` at `layerIndex`
    * (a per-domain AttrGroup index) after each dab's buildBrushProgram. */

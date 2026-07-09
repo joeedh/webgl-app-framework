@@ -186,14 +186,13 @@ BoxModelToolMode {
     if (mode & SelMask.EDGE && !(mode & SelMask.VERTEX)) {
       // Screen-space edge pick (3D nearest mis-picks on foreshortened faces).
       ed = mesh.pickEdge(view3d, object, x, y)
-    } else {
+    } else if (mode & SelMask.VERTEX) {
+      // Screen-space vert pick (barycentric pickVert mis-picks on coarse meshes).
+      v = mesh.pickVertScreen(view3d, object, x, y)
+    } else if (mode & SelMask.FACE) {
       const obmatrix = object.outputs.matrix.getValue()
       const {origin, dir} = localRay(view3d as unknown as Parameters<typeof localRay>[0], obmatrix, x, y)
-      if (mode & SelMask.VERTEX) {
-        v = mesh.pickVert(origin, dir)
-      } else if (mode & SelMask.FACE) {
-        f = mesh.pickFace(origin, dir)
-      }
+      f = mesh.pickFace(origin, dir)
     }
     mesh.setHover(v, ed, f)
   }

@@ -2016,6 +2016,38 @@
       "indexed": false,
       "dynamic": true
     },
+    "object.drawFlag": {
+      "kind": "prop",
+      "ownerStruct": "SceneObject",
+      "indexed": false,
+      "propType": "FlagProperty",
+      "uiname": "Draw Flags",
+      "description": "Extra viewport draw options",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NONE",
+        "FORCE_XRAY",
+        "WIREFRAME",
+        "TEXTURED"
+      ]
+    },
+    "object.drawMode": {
+      "kind": "prop",
+      "ownerStruct": "SceneObject",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Draw Mode",
+      "description": "How the object is drawn in the viewport",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "BOUNDS",
+        "WIRE",
+        "SOLID",
+        "TEXTURED"
+      ]
+    },
     "object.flag": {
       "kind": "prop",
       "ownerStruct": "SceneObject",
@@ -2267,6 +2299,38 @@
       "ownerStruct": "SceneObject",
       "indexed": true,
       "dynamic": true
+    },
+    "objects[n].drawFlag": {
+      "kind": "prop",
+      "ownerStruct": "SceneObject",
+      "indexed": true,
+      "propType": "FlagProperty",
+      "uiname": "Draw Flags",
+      "description": "Extra viewport draw options",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "NONE",
+        "FORCE_XRAY",
+        "WIREFRAME",
+        "TEXTURED"
+      ]
+    },
+    "objects[n].drawMode": {
+      "kind": "prop",
+      "ownerStruct": "SceneObject",
+      "indexed": true,
+      "propType": "EnumProperty",
+      "uiname": "Draw Mode",
+      "description": "How the object is drawn in the viewport",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "BOUNDS",
+        "WIRE",
+        "SOLID",
+        "TEXTURED"
+      ]
     },
     "objects[n].flag": {
       "kind": "prop",
@@ -5083,7 +5147,7 @@
       "indexed": false,
       "propType": "BoolProperty",
       "uiname": "Sculpt Layers",
-      "description": "Sculpt-layer stack: the Layer Draw brush + the LiteMesh layer panel (experimental)",
+      "description": "Sculpt-layer stack: the LiteMesh layer panel + edit-target sculpting (experimental)",
       "decimalPlaces": 4,
       "step": 0.05
     },
@@ -6450,6 +6514,23 @@
         0,
         1
       ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.add_plane": {
+      "kind": "struct",
+      "ownerStruct": "litemesh",
+      "structName": "add_plane",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.add_plane.size": {
+      "kind": "prop",
+      "ownerStruct": "add_plane",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Size",
+      "description": "Size",
       "decimalPlaces": 4,
       "step": 0.1
     },

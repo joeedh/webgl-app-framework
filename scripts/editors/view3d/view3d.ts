@@ -4,8 +4,11 @@ import {
   IAreaDef,
   IVector4,
   IVectorOrHigher,
+  LastToolPanel,
   nstructjs,
   Number3,
+  PanelManager,
+  PanelSides,
   util,
 } from '../../path.ux/scripts/pathux'
 
@@ -22,7 +25,7 @@ import {RealtimeEngine} from '../../renderengine/renderengine_realtime'
 import {PackFlags} from '../../path.ux/scripts/core/ui_base'
 import {Editor} from '../editor_base'
 import {Camera, init_webgl} from '../../webgl/webgl'
-import {DrawModes} from './drawmode'
+import {DrawModes} from '../../sceneobject/drawmode'
 import {EnvLightFlags} from '../../scene/scene'
 import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base'
 import * as view3d_shaders from '../../shaders/shaders'
@@ -920,8 +923,50 @@ View3D {
     )
   }
 
+  /** Dockable-panel catalog (path.ux dock system, see makePanels in init). */
+  definePanels(panels: PanelManager<ViewContext>) {
+    panels.panel({
+      id: 'last_command',
+      title: 'Last Command',
+      dock: 'right',
+      minSize: [225, undefined],
+      build: (c) => {
+        const last = document.createElement('last-tool-panel-x') as LastToolPanel<ViewContext>
+        c.add(last)
+      },
+    })
+  }
+
+  /** True when node is one of the empty dock-frame skeleton containers
+   *  (built by makePanels), i.e. not interactive UI. */
+  _isDockSkeleton(node: UIBase<ViewContext> | undefined): boolean {
+    const panels = this.panels
+
+    if (node === undefined || panels === undefined) {
+      return false
+    }
+
+    if (node === this.container || node === panels.outer || node === panels.center) {
+      return true
+    }
+
+    if (node === panels.center.parentWidget) {
+      return true
+    }
+
+    for (const side of PanelSides) {
+      if (node === panels.regions[side].container) {
+        return true
+      }
+    }
+
+    return false
+  }
+
   init() {
     super.init()
+
+    this.makePanels(this.container)
 
     /* Prevent pinch zooming. */
     this.addEventListener('pointerdown', (e) => {
@@ -990,7 +1035,13 @@ View3D {
       const node = this.pickElement(x, y)
 
       //console.log(node ? node.tagName : undefined);
-      return node !== this && node !== this.overdraw
+      if (node === this || node === this.overdraw) {
+        return false
+      }
+
+      /* the dock-panel skeleton overlays the viewport; its empty frame
+         containers are not UI */
+      return !this._isDockSkeleton(node)
     }
 
     const on_mousemove = (e: PointerEvent, was_mousemove = true) => {
@@ -1312,6 +1363,8 @@ View3D {
   }
 
   on_area_inactive() {
+    super.on_area_inactive()
+
     this.deleteGraphNodes()
     this.destroy()
     const nonStarted = this as View3D<{started: false}>

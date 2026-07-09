@@ -790,9 +790,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     const m = ctx.view3d.getLocalMouse(e.x, e.y)
     const obmatrix = ctx.object.outputs.matrix.getValue()
 
-    // Object-local ray through the cursor pixel (same unproject as BVH picking).
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(ctx.view3d.activeCamera.rendermat)
+    // Object-local ray through the cursor pixel: invert the local->clip
+    // matrix (rendermat ∘ obmatrix; Matrix4.multiply(b) applies b first).
+    const imat = new Matrix4(ctx.view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
     const d = 0.9999
     const p1 = new Vector4([m[0], m[1], -d, 1.0])

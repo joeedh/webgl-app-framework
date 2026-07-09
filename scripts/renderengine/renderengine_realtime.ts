@@ -5,6 +5,7 @@ import * as util from '../util/util.js'
 import {RenderEngine, RenderSettings} from './renderengine_base.js'
 import type {Light} from '../light/light.js'
 import type {SceneObject} from '../sceneobject/sceneobject.js'
+import {DrawModes} from '../sceneobject/drawmode.js'
 import type {View3D} from '../editors/all.js'
 import type {Scene} from '../scene/scene.js'
 import type {Material} from '../core/material.js'
@@ -214,6 +215,8 @@ interface WebgpuMaterialState {
   // its sculpt batch through the C++ tree shader, fed from these.
   wgsl: string
   requestedAttrs: RequestedAttrDesc[]
+  /** Seeds `sampler_<id>_tex/_smp` views per frame (image nodes). */
+  setTextureUniforms?: (device: GPUDevice, uniforms: Record<string, unknown>) => void
 }
 
 export class RealtimeEngine extends RenderEngine {
@@ -688,6 +691,7 @@ export class RealtimeEngine extends RenderEngine {
       wgsl: string
       setUniforms: (graph: unknown, uniforms: Record<string, unknown>) => void
       requestedAttrs?: RequestedAttrDesc[]
+      generator?: {setTextureUniforms(device: GPUDevice, uniforms: Record<string, unknown>): void}
     }
     let def: WgslDef
     try {
@@ -749,8 +753,11 @@ export class RealtimeEngine extends RenderEngine {
       program,
       pipeline,
       hash,
-      wgsl          : def.wgsl,
-      requestedAttrs: def.requestedAttrs ?? [],
+      wgsl              : def.wgsl,
+      requestedAttrs    : def.requestedAttrs ?? [],
+      setTextureUniforms: def.generator
+        ? (device, uniforms) => def.generator!.setTextureUniforms(device, uniforms)
+        : undefined,
     }
     this.webgpuMaterialStates.set(mat, state)
     return state
@@ -1253,27 +1260,38 @@ export class RealtimeEngine extends RenderEngine {
         _engineDrawShaderHash?: number
         _engineAttrLayersSig?: number
       }
+      // Per-object draw mode: only TEXTURED objects get the material WGSL; a
+      // SOLID (or BOUNDS/WIRE) object renders with the basic tree shader, so
+      // push an empty draw shader instead (hash 0 keys the "no material" state).
+      const wantMaterial = (ob.drawMode & DrawModes.TEXTURED) !== 0
+      const effHash = wantMaterial ? state.hash : 0
       const layerSig = litemesh.attrLayersSignature?.() ?? 0
-      const matChanged = litemesh._engineDrawShaderHash !== state.hash
+      const matChanged = litemesh._engineDrawShaderHash !== effHash
       const layersChanged = litemesh._engineAttrLayersSig !== layerSig
       if (typeof litemesh.setDrawShader === 'function' && (matChanged || layersChanged)) {
         try {
-          litemesh.setRequestedAttrs?.(state.requestedAttrs)
-          if (matChanged) {
-            litemesh.setDrawShader(state.wgsl)
+          if (!wantMaterial) {
+            if (matChanged) {
+              litemesh.setDrawShader('')
+            }
           } else {
-            // Only the mesh layers moved — re-gather buffers, keep the shader.
-            litemesh.refreshRequestedAttrs?.()
+            litemesh.setRequestedAttrs?.(state.requestedAttrs)
+            if (matChanged) {
+              litemesh.setDrawShader(state.wgsl)
+            } else {
+              // Only the mesh layers moved — re-gather buffers, keep the shader.
+              litemesh.refreshRequestedAttrs?.()
+            }
+            const missing = litemesh.getMissingAttrSlots?.() ?? []
+            if (missing.length > 0) {
+              const names = state.requestedAttrs.filter((r) => missing.includes(r.slot)).map((r) => r.name)
+              console.warn(
+                `[renderengine.webgpu] mat-${mat.lib_id}: ${missing.length} requested attribute(s) ` +
+                  `absent on the mesh, rendering with defaults: ${names.join(', ')}`
+              )
+            }
           }
-          const missing = litemesh.getMissingAttrSlots?.() ?? []
-          if (missing.length > 0) {
-            const names = state.requestedAttrs.filter((r) => missing.includes(r.slot)).map((r) => r.name)
-            console.warn(
-              `[renderengine.webgpu] mat-${mat.lib_id}: ${missing.length} requested attribute(s) ` +
-                `absent on the mesh, rendering with defaults: ${names.join(', ')}`
-            )
-          }
-          litemesh._engineDrawShaderHash = state.hash
+          litemesh._engineDrawShaderHash = effHash
           litemesh._engineAttrLayersSig = layerSig
         } catch (err) {
           console.error(`[renderengine.webgpu] LiteMesh attr push failed for mat-${mat.lib_id}:`, err)
@@ -1311,6 +1329,10 @@ export class RealtimeEngine extends RenderEngine {
           }
         }
       }
+
+      // Image-node textures: re-seed the texture views/samplers every frame
+      // (getGpuTex re-uploads + swaps views when an image regenerates).
+      state.setTextureUniforms?.(ctx.device, state.program.uniforms as unknown as Record<string, unknown>)
 
       const obMat = ob.outputs.matrix.getValue() as Matrix4
       uniforms.objectMatrix = obMat

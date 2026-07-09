@@ -37,8 +37,9 @@ State interactions:
 - `_replaceMesh()` (triangulate / quad-remesh / blob-restore undo) **flattens**
   a live stack: the stack + parked cage are freed and the incoming mesh
   becomes a plain mesh.
-- **Serialization does not persist the stack**: saving while active captures
-  the flattened active level (same debt as the VDM store; X-track work).
+- **Serialization persists the stack and the VDM store** (X4 stage 3): `_data`
+  holds the cage and sibling fields carry the grids-store blob, stack shape,
+  and VDM blob — see [Persistence](#persistence-x4-stage-3) below.
 - Dyntopo and the stroke-end auto-defrag are force-gated off on a multires
   level mesh (`sculptcore_ops.ts`) — both would desync the fixed grid
   topology the writeback assumes. GPU brushes remain eligible (their CPU sync

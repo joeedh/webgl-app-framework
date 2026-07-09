@@ -6,6 +6,7 @@ export enum DrawModes {
 }
 
 export enum DrawFlags {
+  NONE = 0,
   FORCE_XRAY = 1 << 0,
   WIREFRAME = 1 << 1,
   TEXTURED = 1 << 2,

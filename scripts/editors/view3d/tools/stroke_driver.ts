@@ -126,6 +126,7 @@ export class BrushStrokeDriver {
   // Object transform snapshot for the current batch (see StrokeDriverOptions
   // .objectMatrix). Identity when no object => world-space emit.
   private _iobmat = new Matrix4() // world->local
+  private _iobmatDir = new Matrix4() // world->local, translation cleared (directions)
   private _localRendermat = new Matrix4() // local->clip
   private _localIrendermat = new Matrix4() // clip->local
   private _tmpV3 = new Vector3()
@@ -189,9 +190,13 @@ export class BrushStrokeDriver {
     if (obmat) {
       this._iobmat.load(obmat)
       this._iobmat.invert()
-      this._localRendermat.load(obmat)
-      this._localRendermat.multiply(this._rendermat)
+      // local->clip: obmat (local->world) must apply BEFORE the camera
+      // rendermat, and Matrix4.multiply(b) composes b first, receiver second.
+      this._localRendermat.load(this._rendermat)
+      this._localRendermat.multiply(obmat)
     }
+    this._iobmatDir.load(this._iobmat)
+    this._iobmatDir.clearTranslation()
     this._localIrendermat.load(this._localRendermat)
     this._localIrendermat.invert()
 
@@ -432,15 +437,19 @@ export class BrushStrokeDriver {
     ps.screenP[0] = screenP[0]
     ps.screenP[1] = screenP[1]
 
-    // surface normal + view ray: world -> local (multVecMatrix point transform
-    // on the normalized world vectors).
+    // surface normal + view ray: world -> local through the translation-free
+    // inverse (directions must not pick up the object translation), then
+    // re-normalized (the inverse scale changes their length).
     setNorm(ps.vec, normalP)
-    ps.vec.multVecMatrix(this._iobmat)
+    ps.vec.multVecMatrix(this._iobmatDir)
+    ps.vec.normalize()
     const viewvec = lerpV(cpA.viewvec, cpB.viewvec, t)
     setNorm(ps.viewvec, viewvec)
-    ps.viewvec.multVecMatrix(this._iobmat)
+    ps.viewvec.multVecMatrix(this._iobmatDir)
+    ps.viewvec.normalize()
     setNorm(ps.viewPlane, viewvec)
-    ps.viewPlane.multVecMatrix(this._iobmat)
+    ps.viewPlane.multVecMatrix(this._iobmatDir)
+    ps.viewPlane.normalize()
 
     // camera origin: world -> local (point)
     const lo = this.toLocal(proj.cameraPos())

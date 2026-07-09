@@ -13,6 +13,8 @@ import {
 } from '../path.ux/pathux.js'
 
 import {SocketFlags} from '../core/graph.js'
+import {DrawModes, DrawFlags} from './drawmode'
+import {deleteTsEnumIntegers} from '../util/enum-utils'
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js'
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
@@ -123,6 +125,8 @@ export class SceneObject<
 > {
   data: OBDATA
   flag: ObjectFlags
+  drawMode: DrawModes
+  drawFlag: DrawFlags
 
   // update generation
   updateGen?: number
@@ -133,6 +137,8 @@ export class SceneObject<
     // is assigned after datablock instantiation
     this.data = data as unknown as OBDATA
     this.flag = 0
+    this.drawMode = DrawModes.TEXTURED
+    this.drawFlag = DrawFlags.NONE
 
     if (data) {
       data.lib_addUser(this)
@@ -220,6 +226,18 @@ export class SceneObject<
       window.redraw_viewport(true)
     })
 
+    ostruct
+      .enum('drawMode', 'drawMode', deleteTsEnumIntegers(DrawModes), 'Draw Mode', 'How the object is drawn in the viewport')
+      .on('change', function () {
+        window.redraw_viewport(true)
+      })
+
+    ostruct
+      .flags('drawFlag', 'drawFlag', deleteTsEnumIntegers(DrawFlags), 'Draw Flags', 'Extra viewport draw options')
+      .on('change', function () {
+        window.redraw_viewport(true)
+      })
+
     return ostruct
   }
 
@@ -227,8 +245,10 @@ export class SceneObject<
     this,
     `
 SceneObject {
-  flag : int;
-  data : DataRef | DataRef.fromBlock(obj.data);
+  flag     : int;
+  drawMode : int;
+  drawFlag : int;
+  data     : DataRef | DataRef.fromBlock(obj.data);
 }
 `
   )
@@ -329,6 +349,9 @@ SceneObject {
 
   copyTo(b: this) {
     super.copyTo(b, false)
+
+    b.drawMode = this.drawMode
+    b.drawFlag = this.drawFlag
   }
 
   copy(addLibUsers = false) {
@@ -338,6 +361,8 @@ SceneObject {
     let ret = super.copy()
 
     ret.flag = this.flag
+    ret.drawMode = this.drawMode
+    ret.drawFlag = this.drawFlag
     ret.data = this.data
 
     if (addLibUsers) {

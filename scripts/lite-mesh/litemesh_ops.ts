@@ -12,7 +12,8 @@ import {
   Matrix4,
 } from '../path.ux/scripts/pathux'
 import type {ViewContext, ToolContext} from '../core/context'
-import type {VdmStore} from '@sculptcore/api'
+import type {VdmStore, Mesh as WasmMesh} from '@sculptcore/api'
+import type {IWasmInterface} from '@sculptcore/api/api'
 import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {LiteMesh, AttrDomain} from './litemesh'
@@ -35,13 +36,11 @@ export class LiteMeshOp<Inputs extends PropertySlots = {}, Outputs extends Prope
   }
 }
 
-export class AddLiteMeshCubeOp extends LiteMeshOp<
-  {
-    //
-    sphere: FloatProperty
-    dimen: IntProperty
-    size: FloatProperty
-  },
+/** Shared add-shape scaffolding: subclasses provide the tooldef and the wasm
+ * mesh factory; exec wraps it in a LiteMesh + SceneObject + default material
+ * and the synchronous object-removal undo below handles undo/redo. */
+export abstract class AddLiteMeshShapeOp<Inputs extends PropertySlots = {}> extends LiteMeshOp<
+  Inputs,
   {newObjectId: IntProperty}
 > {
   // Created datablocks (for the synchronous undo). Refs are stable because this
@@ -49,20 +48,7 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<
   _prevActiveId?: number
   _prevActiveSelected?: boolean
 
-  static tooldef() {
-    return {
-      toolpath: 'litemesh.add_cube',
-      uiname  : 'Add Cube (SculptCore)',
-      inputs: {
-        sphere: new FloatProperty(0.0).setRange(0.0, 1.0).noUnits(),
-        dimen : new IntProperty(50).setRange(1, 1024).noUnits(),
-        size  : new FloatProperty(1.0),
-      },
-      outputs: {
-        newObjectId: new IntProperty(-1).noUnits().private(),
-      },
-    }
-  }
+  protected abstract makeWasmMesh(wasm: IWasmInterface): WasmMesh
 
   // Lightweight undo: track + remove the created object/mesh/material. The
   // default ToolOp undo does a full async loadUndoFile, but ToolStack.rerun()
@@ -79,8 +65,7 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<
 
   exec(ctx: ToolContext) {
     const wasm = getWasmImmediate()!
-    const {sphere, size, dimen} = this.getInputs()
-    const wasmMesh = wasm.Mesh_createCube(dimen, size, sphere)
+    const wasmMesh = this.makeWasmMesh(wasm)
 
     const litemesh = new LiteMesh(wasmMesh)
     const ob = new SceneObject(litemesh)
@@ -135,7 +120,55 @@ export class AddLiteMeshCubeOp extends LiteMeshOp<
     }
   }
 }
+
+export class AddLiteMeshCubeOp extends AddLiteMeshShapeOp<{
+  sphere: FloatProperty
+  dimen: IntProperty
+  size: FloatProperty
+}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.add_cube',
+      uiname  : 'Add Cube (SculptCore)',
+      inputs: {
+        sphere: new FloatProperty(0.0).setRange(0.0, 1.0).noUnits(),
+        dimen : new IntProperty(50).setRange(1, 1024).noUnits(),
+        size  : new FloatProperty(1.0),
+      },
+      outputs: {
+        newObjectId: new IntProperty(-1).noUnits().private(),
+      },
+    }
+  }
+
+  protected makeWasmMesh(wasm: IWasmInterface): WasmMesh {
+    const {sphere, size, dimen} = this.getInputs()
+    return wasm.Mesh_createCube(dimen, size, sphere)
+  }
+}
 ToolOp.register(AddLiteMeshCubeOp)
+
+export class AddLiteMeshPlaneOp extends AddLiteMeshShapeOp<{size: FloatProperty}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.add_plane',
+      uiname  : 'Add Plane (SculptCore)',
+      inputs: {
+        size: new FloatProperty(1.0),
+      },
+      outputs: {
+        newObjectId: new IntProperty(-1).noUnits().private(),
+      },
+    }
+  }
+
+  protected makeWasmMesh(wasm: IWasmInterface): WasmMesh {
+    const {size} = this.getInputs()
+    // 2x2 verts -> a single 1x1 quad facing +Z.
+    return wasm.Mesh_makeGrid(2, 2, size)
+  }
+}
+ToolOp.register(AddLiteMeshPlaneOp)
 
 /** Shared mesh lookup for the attribute ToolOps. */
 class LiteMeshAttrOp<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends LiteMeshOp<
@@ -1187,8 +1220,9 @@ export abstract class MarkEdgePathBaseOp extends LiteMeshAttrOp {
   /** Build the object-local ray through screen pixel (lx, ly) — same unproject
    * the BVH picking path uses. */
   private _localRay(view3d: MarkPathView3D, obmatrix: Matrix4, lx: number, ly: number) {
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
+    // clip→local = (rendermat∘obmat)^-1 (multiply applies its argument first).
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
     const d = 0.9999
     const p1 = new Vector4([lx, ly, -d, 1.0])

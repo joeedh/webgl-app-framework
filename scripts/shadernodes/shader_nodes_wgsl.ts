@@ -672,6 +672,42 @@ ${vdmPreamble}  var _mainSurface : Closure;
       }
     }
   }
+
+  /**
+   * Seed each image node's GPU texture view + sampler into `uniforms` under
+   * the `sampler_<libid>_tex` / `_smp` names the generated WGSL declares.
+   * Separate from setMaterialUniforms because it needs the GPUDevice and must
+   * re-run per frame (getGpuTex re-uploads when the image regenerates; the
+   * view identity then changes). Not-ready images stay unseeded —
+   * UniformBindings skips absent resource vars.
+   */
+  setTextureUniforms(device: GPUDevice, uniforms: Record<string, unknown>): void {
+    for (const image of this.textures.keys()) {
+      const tex = image.getGpuTex(device)
+      if (!tex) {
+        continue
+      }
+      const base = `sampler_${image.lib_id}`
+      uniforms[`${base}_tex`] = tex.view
+      uniforms[`${base}_smp`] = sharedLinearSampler(device)
+    }
+  }
+}
+
+/** One linear/repeat sampler per device — every image node shares it. */
+const linearSamplers = new WeakMap<GPUDevice, GPUSampler>()
+export function sharedLinearSampler(device: GPUDevice): GPUSampler {
+  let smp = linearSamplers.get(device)
+  if (!smp) {
+    smp = device.createSampler({
+      magFilter   : 'linear',
+      minFilter   : 'linear',
+      addressModeU: 'repeat',
+      addressModeV: 'repeat',
+    })
+    linearSamplers.set(device, smp)
+  }
+  return smp
 }
 
 /** Minimal vertex interface (position+normal only) for the no-output fallback

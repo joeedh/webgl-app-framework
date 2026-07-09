@@ -423,8 +423,9 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.DRAW]
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
-  // Layer Draw (sculpt-layer displacement): same feel as Draw, no autosmooth —
-  // smoothing would write geometry the active layer doesn't own.
+  // Layer Draw (retired from the picker in sculptLayersV2; kept for tests):
+  // same feel as Draw, no autosmooth — smoothing would write geometry the
+  // active layer doesn't own.
   brush = bmap[SculptTools.LAYER_DRAW]
   brush.autosmooth = 0.0
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)

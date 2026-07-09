@@ -271,6 +271,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | --- | --- | --- | --- | --- |
 | `object` | struct |  |  |  |
 | `object.data` | dynamicStruct |  |  | dynamic |
+| `object.drawFlag` | prop | FlagProperty | Draw Flags | enum {NONE, FORCE_XRAY, WIREFRAME, TEXTURED} |
+| `object.drawMode` | prop | EnumProperty | Draw Mode | enum {BOUNDS, WIRE, SOLID, TEXTURED} |
 | `object.flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, 64, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL, DRAW_WIREFRAME} |
 | `object.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `object.graph_id` | prop | IntProperty | Graph ID |  |
@@ -298,6 +300,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | --- | --- | --- | --- | --- |
 | `objects` | list |  |  |  |
 | `objects[n].data` | dynamicStruct |  |  | dynamic |
+| `objects[n].drawFlag` | prop | FlagProperty | Draw Flags | enum {NONE, FORCE_XRAY, WIREFRAME, TEXTURED} |
+| `objects[n].drawMode` | prop | EnumProperty | Draw Mode | enum {BOUNDS, WIRE, SOLID, TEXTURED} |
 | `objects[n].flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, 64, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL, DRAW_WIREFRAME} |
 | `objects[n].graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `objects[n].graph_id` | prop | IntProperty | Graph ID |  |
@@ -721,6 +725,8 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.add_cube.dimen` | prop | IntProperty | Dimen | range 1..1024 |
 | `toolDefaults.litemesh.add_cube.size` | prop | FloatProperty | Size |  |
 | `toolDefaults.litemesh.add_cube.sphere` | prop | FloatProperty | Sphere | range 0..1 |
+| `toolDefaults.litemesh.add_plane` | struct |  |  |  |
+| `toolDefaults.litemesh.add_plane.size` | prop | FloatProperty | Size |  |
 | `toolDefaults.litemesh.generate_uv` | struct |  |  |  |
 | `toolDefaults.litemesh.generate_uv.margin` | prop | FloatProperty | Margin | range 0..0.25 |
 | `toolDefaults.litemesh.mark_seam` | struct |  |  |  |

@@ -25,7 +25,8 @@ import type {RequestedAttrDesc} from '../shadernodes/shader_nodes_wgsl'
 import {LightGenWgsl, type IRenderLights} from '../shadernodes/shader_lib_wgsl'
 import {IUniformsBlock, WebGLBatchExecutor} from '../webgl/index'
 import type {View3D} from '../editors/all'
-import {SceneObject} from '../sceneobject/index'
+import {SceneObject, ObjectFlags} from '../sceneobject/index'
+import {DrawModes, DrawFlags} from '../sceneobject/drawmode'
 import {Shaders} from '../shaders/shaders'
 import {GenericIsect} from '../util/spatial'
 import type {SculptCorePaintMode} from '../editors/view3d/tools/sculptcore'
@@ -152,7 +153,10 @@ export class LiteMeshSculptLayerItem {
     public index: number,
     public weight: number,
     public enabled: boolean,
-    public frozen: boolean
+    public frozen: boolean,
+    /** Owning mesh backref so the DataList's getActive can reach
+     * activeSculptLayer (callbacks only receive the raw item array). */
+    public mesh?: LiteMesh
   ) {}
 
   equals(b: this) {
@@ -581,6 +585,13 @@ export class LiteMesh extends SceneObjectData {
       getStruct(api: DataAPI, list: LiteMeshSculptLayerItem[], key: number) {
         return api.mapStruct(LiteMeshSculptLayerItem)
       },
+      // Read-only active mirror: the layer ListBox highlights the layer the
+      // sculpt_layer_* ops select (write side stays the panel's click handler).
+      getActive(api: DataAPI, list: LiteMeshSculptLayerItem[]) {
+        const mesh = list.length > 0 ? list[0].mesh : undefined
+        const li = mesh?.activeSculptLayer ?? -1
+        return li >= 0 && li < list.length ? list[li] : undefined
+      },
     })
 
     /* Commit an active-layer mutation as a ToolOp. Weight drags arrive as a
@@ -780,10 +791,30 @@ export class LiteMesh extends SceneObjectData {
       layers.add(layerBox as unknown as Container<ViewContext>)
 
       layers.prop('object.data.activeSculptLayerEditTarget')
-      layers.prop('object.data.activeSculptLayerWeight')
+      const weightWidget = layers.prop('object.data.activeSculptLayerWeight')
       const row = layers.row()
-      row.prop('object.data.activeSculptLayerEnabled')
-      row.prop('object.data.activeSculptLayerFrozen')
+      const enabledWidget = row.prop('object.data.activeSculptLayerEnabled')
+      const frozenWidget = row.prop('object.data.activeSculptLayerFrozen')
+
+      // The weight/enabled/frozen setters are inert while the active layer is
+      // the edit target — gray the widgets out so that state is visible.
+      const activeIsEditTarget = (): boolean => {
+        const mesh = container.ctx?.object?.data
+        if (!(mesh instanceof LiteMesh)) {
+          return false
+        }
+        const li = mesh.activeSculptLayer
+        return li >= 0 && mesh.layerEditTarget() === li
+      }
+      for (const w of [weightWidget, enabledWidget, frozenWidget]) {
+        const widget = w as unknown as {disabled: boolean; updateAfter(cb: () => void): void} | undefined
+        widget?.updateAfter(() => {
+          const disable = activeIsEditTarget()
+          if (widget.disabled !== disable) {
+            widget.disabled = disable
+          }
+        })
+      }
       layers.tool('litemesh.sculpt_layer_add()', {label: 'Add Layer'})
       layers.tool('litemesh.sculpt_layer_remove()', {label: 'Remove Active'})
     }
@@ -917,6 +948,10 @@ export class LiteMesh extends SceneObjectData {
    * change, like the wireframe. */
   pointsBatch?: DrawBatch
   private _pointsRev = -1
+  /** Object-AABB 12-edge line box (BOUNDS draw mode + object-mode selection
+   * overlay; tinted via uColor). Rebuilt on geometry-revision change. */
+  boundsBatch?: DrawBatch
+  private _boundsRev = -1
   drawBatchExecutor?: WebGLBatchExecutor
   drawBatchExecutorGPU?: WebGPUBatchExecutor
   /** Separate GPU executor for the box-modeling overlays (selection / wireframe /
@@ -937,6 +972,10 @@ export class LiteMesh extends SceneObjectData {
    * (frame/object/lights across @group 0/1/2) instead of the basic-shader
    * single @group(0) block — see `drawQ` / `drawQGPU`. */
   private _hasMaterialDrawShader = false
+  /** Texture view/sampler for the solid-mode textured draw shader, seeded per
+   * frame by the non-render pass (view3d_draw_webgpu). Merged into the draw
+   * uniforms so UniformBindings can bind `solidtex_tex`/`solidtex_smp`. */
+  solidTexUniforms?: Record<string, unknown>
   /** VDM fragment-render state (displacementAndSubSurf V3): the attached (and
    * owned) sculptcore VdmStore plus its GPU residency — the rgba32float tile
    * atlas, the r32sint page table, and the last-uploaded layout ints. Synced
@@ -1071,6 +1110,11 @@ export class LiteMesh extends SceneObjectData {
       this.wasm.gpu.destroyBatch(this.pointsBatch, true, true)
       this.pointsBatch = undefined
       this._pointsRev = -1
+    }
+    if (this.boundsBatch) {
+      this.wasm.gpu.destroyBatch(this.boundsBatch, true, true)
+      this.boundsBatch = undefined
+      this._boundsRev = -1
     }
     this.spatial.update(this.wasm.gpu)
     this.drawBatch = this.spatial.getDrawBatch()
@@ -1994,6 +2038,22 @@ export class LiteMesh extends SceneObjectData {
       ) ?? undefined
   }
 
+  /** Rebuild the object-AABB bounds box batch on geometry-revision change. */
+  private _ensureBoundsBatch(): void {
+    if (this._boundsRev === this.meshRevision && this.boundsBatch) {
+      return
+    }
+    this._boundsRev = this.meshRevision
+    if (this.boundsBatch) {
+      this.wasm.gpu.destroyBatch(this.boundsBatch, true, true)
+      this.boundsBatch = undefined
+    }
+    this.boundsBatch =
+      (this.spatial as unknown as {buildBoundsBatch(g: unknown): DrawBatch | undefined}).buildBoundsBatch(
+        this.wasm.gpu
+      ) ?? undefined
+  }
+
   /** Rebuild the billboard vertex-point batch on geometry-revision change. */
   private _ensurePointsBatch(): void {
     if (this._pointsRev === this.meshRevision && this.pointsBatch) {
@@ -2424,8 +2484,10 @@ export class LiteMesh extends SceneObjectData {
     radius: number
   ): {origin: Vector3; ray: Vector3; radius1: number; radius2: number} {
     const obmatrix = object.outputs.matrix.getValue()
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
+    // clip→local = (rendermat∘obmat)^-1 — path.ux multiply applies its ARGUMENT
+    // first, so compose as load(rendermat).multiply(obmat) before inverting.
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
 
     const x = ~~mpos[0]
@@ -2497,8 +2559,10 @@ export class LiteMesh extends SceneObjectData {
    * Shared by castScreenRect (picking) and selectRect (box-modeling). */
   private _rectCorners(view3d: View3D, object: SceneObject, min: Vector2, max: Vector2): Vector3[] {
     const obmatrix = object.outputs.matrix.getValue()
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
+    // clip→local = (rendermat∘obmat)^-1 — path.ux multiply applies its ARGUMENT
+    // first, so compose as load(rendermat).multiply(obmat) before inverting.
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
 
     const corners2d = [
@@ -2620,8 +2684,10 @@ export class LiteMesh extends SceneObjectData {
   pickEdge(view3d: View3D, object: SceneObject, mx: number, my: number): number {
     // Object-local cursor ray (same construction as _coneParams).
     const obmatrix = object.outputs.matrix.getValue()
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
+    // clip→local = (rendermat∘obmat)^-1 — path.ux multiply applies its ARGUMENT
+    // first, so compose as load(rendermat).multiply(obmat) before inverting.
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
     const d = 0.9999
     const p1 = new Vector4([mx, my, -d, 1.0])
@@ -2683,6 +2749,73 @@ export class LiteMesh extends SceneObjectData {
       if (dist < bestD) {
         bestD = dist
         best = edges[i]
+      }
+    }
+    return best
+  }
+
+  /** Resolve a cursor position to the mesh vert nearest it in SCREEN space
+   * (-1 on a miss): castRay to a face, project that face's verts to pixels and
+   * take the closest to the cursor. The 3D highest-barycentric `pickVert`
+   * systematically mis-picks on coarse meshes — a dimen=2 cube face is one
+   * huge quad, so the hit triangle's max-weight corner is usually not the
+   * vertex under the cursor. The vertex-mode click pick and hover. */
+  pickVertScreen(view3d: View3D, object: SceneObject, mx: number, my: number): number {
+    const obmatrix = object.outputs.matrix.getValue()
+    // clip→local = (rendermat∘obmat)^-1 — path.ux multiply applies its ARGUMENT
+    // first, so compose as load(rendermat).multiply(obmat) before inverting.
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
+    imat.invert()
+    const d = 0.9999
+    const p1 = new Vector4([mx, my, -d, 1.0])
+    view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+    const p2 = new Vector4([mx, my, d, 1.0])
+    view3d.unproject(p2, imat)
+    const dir = new Vector3(p2).sub(origin)
+
+    const isectOut = this.wasm.manager.construct('sculptcore::spatial::CastRayIsect')
+    let face = -1
+    try {
+      const originF3 = this.wasm.float3([origin[0], origin[1], origin[2]])
+      const dirF3 = this.wasm.float3([dir[0], dir[1], dir[2]])
+      const hit = this.spatial.castRay(originF3, dirF3, isectOut)
+      face = hit ? (isectOut as unknown as {faceIndex: number}).faceIndex : -1
+    } finally {
+      ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
+    }
+    if (face < 0) {
+      return -1
+    }
+
+    const vertsOut = this._intVecOut()
+    const coordsOut = this._floatVecOut()
+    ;(this.mesh as unknown as {faceVertList(f: number, v: unknown, c: unknown): void}).faceVertList(
+      face,
+      vertsOut.vec,
+      coordsOut.vec
+    )
+    const verts = vertsOut.read()
+    const co = coordsOut.read()
+
+    const a = new Vector3()
+    let best = -1
+    let bestD = Infinity
+    for (let i = 0; i < verts.length; i++) {
+      a[0] = co[i * 3]
+      a[1] = co[i * 3 + 1]
+      a[2] = co[i * 3 + 2]
+      a.multVecMatrix(obmatrix)
+      if (view3d.project(a) <= 0) {
+        continue // behind the camera
+      }
+      const dx = mx - a[0]
+      const dy = my - a[1]
+      const dist = dx * dx + dy * dy
+      if (dist < bestD) {
+        bestD = dist
+        best = verts[i]
       }
     }
     return best
@@ -2804,10 +2937,11 @@ export class LiteMesh extends SceneObjectData {
   _activeSculptLayer = 0
 
   /**
-   * Active sculpt layer (settings index) for the LAYER_DRAW brush + the layer
-   * panel. Clamped to the live stack: -1 when the mesh has no layers, so a
-   * stale selection after removals falls back to a valid layer instead of
-   * silently detargeting the brush. View state — not serialized.
+   * Active sculpt layer (settings index) for the layer panel + the edit-target
+   * routing (litemesh.sculpt_layer_set_target). Clamped to the live stack: -1
+   * when the mesh has no layers, so a stale selection after removals falls
+   * back to a valid layer instead of pointing past the end. View state — not
+   * serialized.
    */
   get activeSculptLayer(): number {
     const count = this.layerCount()
@@ -2850,7 +2984,8 @@ export class LiteMesh extends SceneObjectData {
           li,
           this.layerWeight(li),
           this.layerEnabled(li),
-          this.layerFrozen(li)
+          this.layerFrozen(li),
+          this
         )
       )
     }
@@ -3645,6 +3780,15 @@ export class LiteMesh extends SceneObjectData {
     // Sculpt-mask darkening overlay (#20): default on; the C++ side no-ops when
     // unchanged, so pushing every frame is cheap.
     const drawMask = (toolmode as unknown as {drawMask?: boolean})?.drawMask !== false
+    // Per-object draw mode/flags (SceneObject.drawMode/.drawFlag): BOUNDS draws
+    // only the AABB box, WIRE only the wireframe, SOLID/TEXTURED the surface.
+    const objDrawMode = _object?.drawMode ?? DrawModes.TEXTURED
+    const objDrawFlag = _object?.drawFlag ?? DrawFlags.NONE
+    const drawSurface = (objDrawMode & (DrawModes.SOLID | DrawModes.TEXTURED)) !== 0
+    const drawBounds = objDrawMode === DrawModes.BOUNDS
+    const wireOverlay =
+      drawWireframe || objDrawMode === DrawModes.WIRE || (objDrawFlag & DrawFlags.WIREFRAME) !== 0
+    const xrayAll = xray || (objDrawFlag & DrawFlags.FORCE_XRAY) !== 0
     ;(this.spatial as unknown as {setDisplayMask?: (on: boolean) => void}).setDisplayMask?.(drawMask)
     if (this.spatial.update(this.wasm.gpu)) {
       // The tree flushed pending geometry/attribute edits → the serialized form
@@ -3670,11 +3814,14 @@ export class LiteMesh extends SceneObjectData {
     if (drawSelection) {
       this._ensureSelectionBatch()
     }
-    if (drawWireframe) {
+    if (wireOverlay) {
       this._ensureWireframeBatch()
     }
     if (drawPoints) {
       this._ensurePointsBatch()
+    }
+    if (drawBounds) {
+      this._ensureBoundsBatch()
     }
 
     if (drawBVH && !this.treeBatch) {
@@ -3700,6 +3847,18 @@ export class LiteMesh extends SceneObjectData {
     // the framebuffer size (xy of a vec4 for std140 alignment).
     if (uniforms2.viewportSize === undefined) {
       uniforms2.viewportSize = [view3d.glSize[0], view3d.glSize[1], 0, 0]
+    }
+
+    // BOUNDS mode: tint the box with the object's editor color so selection
+    // state stays visible (the box is the only thing drawn).
+    if (drawBounds && _object) {
+      const selMask = ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT | ObjectFlags.ACTIVE
+      if ((_object.flag & selMask) !== 0) {
+        const clr = _object.getEditorColor()
+        if (clr) {
+          uniforms2.uColor = clr
+        }
+      }
     }
 
     // When a material WGSL is the draw shader, the spatial mesh batch needs the
@@ -3749,10 +3908,27 @@ export class LiteMesh extends SceneObjectData {
         }
       }
       LightGenWgsl.setUniforms(uniforms2 as unknown as Record<string, unknown>, scene, rlights)
+
+      // Solid-mode textured draw: texture view/sampler seeded per frame by the
+      // non-render pass (updateSolidTexturedDrawShader). Merged last so the
+      // resource vars survive the engine-uniform merges above.
+      if (this.solidTexUniforms) {
+        Object.assign(uniforms2, this.solidTexUniforms)
+      }
     }
 
     if (isWebGPU()) {
-      this.drawQGPU(uniforms2, drawBVH, drawFeatures, drawSelection, drawWireframe, drawPoints, xray)
+      this.drawQGPU(
+        uniforms2,
+        drawBVH,
+        drawFeatures,
+        drawSelection,
+        wireOverlay,
+        drawPoints,
+        xrayAll,
+        drawSurface,
+        drawBounds
+      )
       return
     }
 
@@ -3762,7 +3938,7 @@ export class LiteMesh extends SceneObjectData {
         exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
         this.drawBatchExecutor = exec
       }
-      if (this.drawBatch) {
+      if (this.drawBatch && drawSurface) {
         exec.dispatch(this.drawBatch, uniforms2)
       }
       if (drawBVH && this.treeBatch) {
@@ -3771,7 +3947,7 @@ export class LiteMesh extends SceneObjectData {
       if (this.seamBatch && drawFeatures) {
         exec.dispatch(this.seamBatch, uniforms2)
       }
-      if (this.wireframeBatch && drawWireframe) {
+      if (this.wireframeBatch && wireOverlay) {
         exec.dispatch(this.wireframeBatch, uniforms2)
       }
       if (this.pointsBatch && drawPoints) {
@@ -3780,6 +3956,70 @@ export class LiteMesh extends SceneObjectData {
       if (this.selectionBatch && drawSelection) {
         exec.dispatch(this.selectionBatch, uniforms2)
       }
+      if (this.boundsBatch && drawBounds) {
+        exec.dispatch(this.boundsBatch, uniforms2)
+      }
+    })
+  }
+
+  /** Object-mode selection/highlight overlay: the object-AABB box tinted with
+   * the editor color (`frame.uniforms.uColor`, set by ObjectEditor.drawObject).
+   * Skipped in BOUNDS draw mode — drawQ already draws the (tinted) box. */
+  drawOutlineQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, _object: SceneObject) {
+    if (_object?.drawMode === DrawModes.BOUNDS) {
+      return
+    }
+    this._ensureBoundsBatch()
+    const batch = this.boundsBatch
+    if (!batch) {
+      return
+    }
+
+    const uniforms = frame.uniforms
+    const drawMatrix = new Matrix4(uniforms.projectionMatrix)
+    if (uniforms.objectMatrix instanceof Matrix4) {
+      drawMatrix.multiply(uniforms.objectMatrix)
+    }
+    const uniforms2 = {
+      uColor: [1, 1, 1, 1],
+      ...uniforms,
+      drawMatrix,
+      normalMatrix: drawMatrix.copy().makeRotationOnly(),
+    } as IUniformsBlock & Record<string, unknown>
+    if (uniforms2.viewportSize === undefined) {
+      uniforms2.viewportSize = [view3d.glSize[0], view3d.glSize[1], 0, 0]
+    }
+
+    if (isWebGPU()) {
+      const ctx = getActiveWebGpuContext()
+      if (!ctx?.currentPass) {
+        return
+      }
+      const surfaceFormat = navigator.gpu.getPreferredCanvasFormat()
+      if (this.overlayExecutorGPU === undefined) {
+        this.overlayExecutorGPU = this._makeGPUExecutor(
+          ctx,
+          surfaceFormat,
+          false,
+          this._overlayXray ? 'always' : 'less-equal'
+        )
+      }
+      const overlay = this.overlayExecutorGPU
+      overlay.setColorFormats(ctx.currentColorFormats ?? [surfaceFormat])
+      const saved = this.gpuUniforms
+      this.gpuUniforms = uniforms2
+      overlay.dispatch(batch, ctx.currentPass)
+      this.gpuUniforms = saved
+      return
+    }
+
+    queue.scheduleRawGLPass((gl: WebGL2RenderingContext) => {
+      let exec = this.drawBatchExecutor
+      if (exec === undefined) {
+        exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
+        this.drawBatchExecutor = exec
+      }
+      exec.dispatch(batch, uniforms2)
     })
   }
 
@@ -3798,7 +4038,9 @@ export class LiteMesh extends SceneObjectData {
     drawSelection = false,
     drawWireframe = false,
     drawPoints = false,
-    xray = false
+    xray = false,
+    drawSurface = true,
+    drawBounds = false
   ): void {
     const ctx = getActiveWebGpuContext()
     if (!ctx?.currentPass) return
@@ -3847,13 +4089,14 @@ export class LiteMesh extends SceneObjectData {
 
     // X3 tessellated tier: substitute the amplified render-level draw for the
     // batch when its async state is ready; fall back to the batch otherwise.
-    const tessDrawn = this._drawTessellated(ctx, pass, fmts)
-    if (!tessDrawn && this.drawBatch) main.dispatch(this.drawBatch, pass)
+    const tessDrawn = drawSurface && this._drawTessellated(ctx, pass, fmts)
+    if (!tessDrawn && this.drawBatch && drawSurface) main.dispatch(this.drawBatch, pass)
     if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
     if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
     if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)
     if (this.pointsBatch && drawPoints) overlay.dispatch(this.pointsBatch, pass)
     if (this.selectionBatch && drawSelection) overlay.dispatch(this.selectionBatch, pass)
+    if (this.boundsBatch && drawBounds) overlay.dispatch(this.boundsBatch, pass)
   }
 
   /** Build a WebGPU batch executor for the spatial overlays with the given depth

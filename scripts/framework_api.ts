@@ -73,6 +73,7 @@ export type {Library, IDataBlockConstructor, BlockLoader, BlockLoaderAddUser} fr
 // time the context-triggered chain re-enters the mesh addon. Keep these
 // re-exports above `ViewContext` to dodge that race.
 export {SceneObject, ObjectFlags, Colors, composeObjectMatrix} from './sceneobject/sceneobject.js'
+export {DrawModes, DrawFlags} from './sceneobject/drawmode.js'
 export {SceneObjectData} from './sceneobject/sceneobject_base.js'
 export type {IDataDefine} from './sceneobject/sceneobject_base.js'
 export {StandardTools} from './sceneobject/stdtools.js'

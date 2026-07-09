@@ -37,7 +37,8 @@ export enum SculptTools {
   KELVINLET = 20,
   FEATURE_ALIGN = 21,
   /* Sculpt-layer draw (sculptcore LAYERDRAW): displaces through the active
-   * sculpt layer's delta attr. Gated by the sculptcore.sculpt_layers flag. */
+   * sculpt layer's delta attr. Retired from the picker in sculptLayersV2 —
+   * kept as an engine/test fixture. */
   LAYER_DRAW = 22,
   PAINT = 128,
   PAINT_SMOOTH = 129,

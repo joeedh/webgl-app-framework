@@ -60,6 +60,8 @@ export let Icons = {
   ZOOM_IN              : 54,
   ZOOM_OUT             : 55,
   SCULPT_DRAW          : 56,
+  // LAYER_DRAW has no dedicated iconsheet cell; alias the draw-brush glyph.
+  SCULPT_LAYER_DRAW    : 56,
   SCULPT_INFLATE       : 57,
   SCULPT_SHARP         : 58,
   SCULPT_CLAY          : 59,

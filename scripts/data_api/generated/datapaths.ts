@@ -141,6 +141,8 @@ export type GeneratedDataPath =
   | "nodeViewer.velpan.scale"
   | "object"
   | "object.data"
+  | "object.drawFlag"
+  | "object.drawMode"
   | "object.flag"
   | "object.graph_flag"
   | "object.graph_id"
@@ -518,6 +520,8 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.add_cube.dimen"
   | "toolDefaults.litemesh.add_cube.size"
   | "toolDefaults.litemesh.add_cube.sphere"
+  | "toolDefaults.litemesh.add_plane"
+  | "toolDefaults.litemesh.add_plane.size"
   | "toolDefaults.litemesh.generate_uv"
   | "toolDefaults.litemesh.generate_uv.margin"
   | "toolDefaults.litemesh.mark_seam"
@@ -920,6 +924,8 @@ declare module "@framework/pathux" {
     "nodeViewer.velpan.scale": true;
     "object": true;
     "object.data": true;
+    "object.drawFlag": true;
+    "object.drawMode": true;
     "object.flag": true;
     "object.graph_flag": true;
     "object.graph_id": true;
@@ -1297,6 +1303,8 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.add_cube.dimen": true;
     "toolDefaults.litemesh.add_cube.size": true;
     "toolDefaults.litemesh.add_cube.sphere": true;
+    "toolDefaults.litemesh.add_plane": true;
+    "toolDefaults.litemesh.add_plane.size": true;
     "toolDefaults.litemesh.generate_uv": true;
     "toolDefaults.litemesh.generate_uv.margin": true;
     "toolDefaults.litemesh.mark_seam": true;

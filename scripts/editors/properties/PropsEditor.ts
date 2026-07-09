@@ -35,6 +35,8 @@ import {ProceduralMesh} from '../../../addons/builtin/mesh/src/mesh_gen'
 import {CDFlags} from '../../../addons/builtin/mesh/src/customdata'
 import {loadUndoMesh, saveUndoMesh} from '../../../addons/builtin/mesh/src/mesh_ops_base'
 import type {ToolContext, ViewContext} from '../../core/context'
+import messageBus from '../../core/bus'
+import {FeatureFlagManager} from '../../core/feature-flag'
 import {ToolMode} from '../view3d/view3d_toolmode'
 import {SceneObject} from '../../sceneobject/sceneobject'
 import {SettingsEditor} from '../settings/SettingsEditor'
@@ -579,6 +581,9 @@ export class ObjectPanel extends ColumnFrame<ViewContext> {
 
     panel = this.panel('Draw')
     panel.useIcons(false)
+    panel.prop('object.drawMode')
+    panel.prop('object.drawFlag[FORCE_XRAY]')
+    panel.prop('object.drawFlag[WIREFRAME]')
     panel.prop('object.flag[DRAW_WIREFRAME]')
 
     const ob = this.ctx.object
@@ -1089,27 +1094,43 @@ PropsEditor {
     let obDataType: string | undefined
     let obDataUIDatas = new Map<string, string>()
 
+    // Feature flags gate whole panels inside buildPropertiesTab (sculpt layers,
+    // multires, VDM), so a flag flip must rebuild the tab, not wait for restart.
+    let obDataForceRebuild = false
+    messageBus.subscribe(
+      () => (this.isDead() ? undefined : this),
+      FeatureFlagManager,
+      () => {
+        obDataForceRebuild = true
+        this.doOnce(rebuildObDataTab)
+      },
+      'FLAG_SET'
+    )
+
     const rebuildObDataTab = () => {
       const type = this.ctx?.object?.data?.lib_type ?? undefined
 
-      if (type !== obDataType) {
-        if (obDataType !== undefined) {
-          obDataUIDatas.set(obDataType, saveUIData(obDataTab, 'obDataTab'))
+      if (type === obDataType && !obDataForceRebuild) {
+        return
+      }
+      obDataForceRebuild = false
+
+      if (obDataType !== undefined) {
+        obDataUIDatas.set(obDataType, saveUIData(obDataTab, 'obDataTab'))
+      }
+
+      obDataType = this.ctx?.object?.data?.lib_type
+      obDataTab.clear()
+
+      if (obDataType !== undefined && this.ctx?.object?.data !== undefined) {
+        const cls = this.ctx?.object?.data?.constructor as any
+        cls.buildPropertiesTab(obDataTab)
+
+        const uidata = obDataUIDatas.get(obDataType)
+        if (uidata !== undefined) {
+          loadUIData(obDataTab, uidata)
         }
-
-        obDataType = this.ctx?.object?.data?.lib_type
-        obDataTab.clear()
-
-        if (obDataType !== undefined && this.ctx?.object?.data !== undefined) {
-          const cls = this.ctx?.object?.data?.constructor as any
-          cls.buildPropertiesTab(obDataTab)
-
-          const uidata = obDataUIDatas.get(obDataType)
-          if (uidata !== undefined) {
-            loadUIData(obDataTab, uidata)
-          }
-          obDataTab.flushUpdate()
-        }
+        obDataTab.flushUpdate()
       }
     }
     this.updateAfter(rebuildObDataTab)
