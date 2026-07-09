@@ -1,3 +1,5 @@
+import {BinWriter} from 'nstructjs'
+
 export const Endians = {
   BIG   : 0,
   LITTLE: 1,
@@ -13,13 +15,12 @@ let Uint16Buf = new Uint16Array(Uint8Buf.buffer)
 
 export class BinaryWriter {
   constructor() {
-    this.data = []
+    this.data = new BinWriter()
   }
 
   string(s) {
     for (let i = 0; i < s.length; i++) {
       let c = s.charCodeAt(i)
-
       this.data.push(c)
     }
   }
@@ -28,17 +29,13 @@ export class BinaryWriter {
     if (b instanceof BinaryWriter) {
       b = b.data
     }
+    // nstructjs binwriter?
+    if (b instanceof BinWriter) {
+      b = b.finish()
+    }
 
     if (Array.isArray(b) || b instanceof Uint8Array || b instanceof Uint8ClampedArray) {
-      if (b instanceof Array) {
-        this.data = this.data.concat(b)
-      } else {
-        let data = this.data
-
-        for (let i = 0; i < b.length; i++) {
-          data.push(b[i])
-        }
-      }
+      this.data.pushBytes(b)
     } else {
       console.log(b)
       throw new Error('invalid argument to BinaryWriter.prototype.concat()')
@@ -48,37 +45,19 @@ export class BinaryWriter {
   }
 
   int32(c) {
-    this.data.push(c & 255)
-    this.data.push((c >> 8) & 255)
-    this.data.push((c >> 16) & 255)
-    this.data.push((c >> 24) & 255)
+    this.data.i32(c)
   }
 
   float32(f) {
-    Float32Buf[0] = f
-
-    this.data.push(Uint8Buf[0])
-    this.data.push(Uint8Buf[1])
-    this.data.push(Uint8Buf[2])
-    this.data.push(Uint8Buf[3])
+    this.data.f32(f)
   }
 
   float64(f) {
-    Float64Buf[0] = f
-
-    this.data.push(Uint8Buf[0])
-    this.data.push(Uint8Buf[1])
-    this.data.push(Uint8Buf[2])
-    this.data.push(Uint8Buf[3])
-    this.data.push(Uint8Buf[4])
-    this.data.push(Uint8Buf[5])
-    this.data.push(Uint8Buf[6])
-    this.data.push(Uint8Buf[7])
+    this.data.f64(f)
   }
 
   uint16(c) {
-    this.data.push(c & 255)
-    this.data.push((c >> 8) & 255)
+    this.data.u16(c)
   }
 
   bytes(c) {
@@ -86,13 +65,12 @@ export class BinaryWriter {
       for (let i = 0; i < c.length; i++) {
         this.data.push(c.charCodeAt(i))
       }
+    } else if (c instanceof BinWriter) {
+      this.data.pushBytes(c.finish())
+    } else if (c instanceof BinaryWriter) {
+      this.data.pushBytes(c.data.finish())
     } else {
-      if (!Array.isArray(c)) {
-        console.error('eek!')
-      }
-      for (let i = 0; i < c.length; i++) {
-        this.data.push(c[i])
-      }
+      this.data.pushBytes(c)
     }
   }
 
@@ -100,12 +78,11 @@ export class BinaryWriter {
     if (typeof c == 'string' || c instanceof String) {
       c = c.charCodeAt(0)
     }
-
     this.data.push(c)
   }
 
   finish() {
-    return new Uint8Array(this.data)
+    return this.data.finish()
   }
 }
 

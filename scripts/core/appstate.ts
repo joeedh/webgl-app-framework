@@ -57,6 +57,7 @@ import {startStorageSync} from './storage_sync'
 import {applyMissingAddonHooks, installMissingAddonHooks, MissingDataBlock} from './missing_addon'
 import {runFileMigrations} from './file_migrations'
 import './app_ops.js'
+import {BinWriter} from 'nstructjs'
 
 // Install the nstructjs placeholder hooks before any file is loaded.
 // See plan §4 and scripts/core/missing_addon.ts.
@@ -64,7 +65,7 @@ installMissingAddonHooks()
 
 declare let _appstate: AppState
 declare let JSZip: {
-  deflate(data: number[] | Uint8Array): Uint8Array
+  deflate(data: number[] | Uint8Array, options?: {level?: number}): Uint8Array
   inflate(data: Uint8Array): Uint8Array
 }
 
@@ -313,7 +314,7 @@ export class AppState {
       }
 
       file.string(type)
-      const data: number[] = []
+      const data = [] as number[]
 
       nstructjs.manager.write_object(data, object)
 
@@ -326,7 +327,7 @@ export class AppState {
     }
 
     if (!args.save_library) {
-      return file.finish().buffer
+      return file.finish().buffer as ArrayBuffer
     }
 
     writeblock(BlockTypes.LIBRARY, this.datalib)
@@ -352,7 +353,7 @@ export class AppState {
         }
 
         const typeName = block.constructor.blockDefine().typeName
-        const data: number[] = []
+        const data = new nstructjs.BinWriter()
 
         file.string(BlockTypes.DATABLOCK)
 
@@ -362,7 +363,7 @@ export class AppState {
         file.int32(len)
         file.int32(typeName.length)
         file.string(typeName)
-        file.bytes(data as unknown as Uint8Array)
+        file.bytes(data.finish())
       }
     }
 
@@ -371,15 +372,17 @@ export class AppState {
     }
 
     if (docompress) {
-      file.data = JSZip.deflate(file.data as unknown as Uint8Array) as unknown as number[]
+      const fileData = JSZip.deflate(file.data.finish(), {level: 1})
 
+      file.data = new BinWriter()
+      file.data.pushBytes(fileData)
       header.int32(file.data.length)
       header.concat(file)
 
-      return header.finish().buffer
+      return header.finish().buffer as ArrayBuffer
     }
 
-    return file.finish().buffer
+    return file.finish().buffer as ArrayBuffer
   }
 
   testUndoFileIO(): void {
