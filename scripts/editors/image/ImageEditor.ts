@@ -137,7 +137,11 @@ image.ImageEditor {
     const header = this.header!
     let row = header.row().strip()
 
-    row.menu('Image', ['image.open()|Open', Menu.SEP])
+    row.menu('Image', [
+      'image.open()|Open',
+      Menu.SEP,
+      'datalib.default_new(blockType="image" dataPathToSet="imageEditor.imageUser.image")|New',
+    ])
     row.menu('View', [])
 
     const col = header.col()

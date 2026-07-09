@@ -82,7 +82,8 @@ export class BinaryWriter {
   }
 
   finish() {
-    return this.data.finish()
+    const tarray = this.data.finish()
+    return tarray.buffer.slice(0, tarray.length)
   }
 }
 

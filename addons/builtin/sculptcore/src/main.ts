@@ -24,7 +24,8 @@ export function register(api: AddonAPI<IAddon>) {
   api.exportNamespace('sculptcore', {SculptCorePaintMode})
 
   // Contribute to the View3D "Add" menu (cleared automatically on disable).
-  api.menuEntries('add', ['litemesh.add_cube(dimen=100)'])
+  api.menuEntries('add', ['litemesh.add_cube(dimen=2)'])
+  api.menuEntries('add', ['litemesh.add_cube(dimen=100 sphere=1.0)|Add Sphere (Sculptcore)'])
 }
 
 export function unregister() {}

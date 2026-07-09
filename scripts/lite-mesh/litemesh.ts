@@ -998,7 +998,7 @@ export class LiteMesh extends SceneObjectData {
       return
     }
 
-    this.mesh = wasmMesh ?? this.wasm.Mesh_createCube(120, 1.0, 1.0)
+    this.mesh = wasmMesh ?? this.wasm.Mesh_createCube(2, 1.0, 1.0)
     this._initSpatial()
   }
 

@@ -379,10 +379,10 @@ export class AppState {
       header.int32(file.data.length)
       header.concat(file)
 
-      return header.finish().buffer as ArrayBuffer
+      return header.finish()
     }
 
-    return file.finish().buffer as ArrayBuffer
+    return file.finish()
   }
 
   testUndoFileIO(): void {
