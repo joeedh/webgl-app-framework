@@ -22,6 +22,17 @@ Two findings corrected the original plan during implementation:
    (`<manifest-name>` = `webgl-app-framework`). The toolkit reads from there;
    `$SC_CRASHDUMP_DIR` overrides. Crashpad itself **is on by default** — no
    enabling needed.
+
+   > **Per-worktree dump dir (current path).** Crashpad writes under the active
+   > `--user-data-dir`, which `nwjs/launch.mjs` now sets **per-worktree** (see the
+   > NW.js multi-instance model), so dumps actually land in
+   > `…\worktrees\<dir>-<hash8>\<profile>\Crashpad\reports\*.dmp` — **not** the
+   > old `User Data\…` path that `dump.mjs` still defaults to. The launcher
+   > **prints** the exact reports dir on startup; export
+   > `SC_CRASHDUMP_DIR=<that path>` before running `sculptcore/crash/dump.mjs`
+   > (its first-choice override) so the toolkit reads the right dir. The toolkit
+   > wraps the Windows SDK `cdb.exe` at
+   > `C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe`.
 2. **`--crash-test` is a real Chromium switch** NW.js intercepts (it breakpoints
    the browser process at startup, exactly like `--headless`). The self-test flag
    is therefore **`--apptest-crash`** (the established `--apptest-` prefix

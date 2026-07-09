@@ -47,8 +47,34 @@ path. Widgets then resolve `container.prop('mesh.symFlag')` against this tree.
 `defineAPI` by iterating `dataAPIRegistry`; register a new class with
 `registerDataAPI(cls)`. Subclasses chain `super.defineAPI(api, struct)` onto
 their own struct. See the
-[`defineAPI` refactor plan](plans/api-define-defineapi-refactor.md) and
-`CLAUDE.md`'s "Data API paths" for the build/ordering details.
+[`defineAPI` refactor plan](plans/api-define-defineapi-refactor.md).
+
+## How `getDataAPI()` is built (build/ordering)
+
+Subclasses **chain** their parent (`super.defineAPI(api, struct)` re-declares the
+parent's members onto the child's own struct) rather than copying an
+already-built parent struct, so registry-class population is
+**order-independent** — no class needs another to be defined first. Register a
+new class with `registerDataAPI(cls)` in any order.
+
+`getDataAPI()` runs in two passes:
+
+1. **Population pass** — non-class pre-steps (sockets / matrix4 / customdata) →
+   `registerCoreDataAPIClasses()` → a `defineOnce` loop over `dataAPIRegistry` →
+   class-dependent helpers that chain `DataBlock.defineAPI`.
+2. **Attach pass** — explicitly wires the populated structs into the
+   `ToolContext` tree.
+
+The only build-first requirement is the non-class pre-pass structs (`Graph`,
+`VelPan`) that a few `defineAPI`s fetch by reference via `api.getStruct(...)`;
+the population pre-pass builds them ahead of the registry loop. The on-disk
+catalog is **canonically sorted** (lexicographic by normalized path in
+`tools/gen-datapaths.mjs`), so the committed `generated/` files are stable
+regardless of population / traversal order.
+
+The `pathux/valid-datapath` ESLint rule (warn) flags `prop(...)` strings not in
+the catalog; dynamically-indexed paths (e.g. `flag[ENUMNAME]`) warn because the
+walker can't enumerate them — those are expected and harmless.
 
 ## How icons attach to bindings
 

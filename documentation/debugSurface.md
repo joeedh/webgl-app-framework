@@ -45,6 +45,16 @@ The purpose-built reflection / automation surface:
   - ⚠️ Needs a laid-out screen — fine in browser/Playwright and windowed
     NW.js, but **can crash a bare headless boot**.
 
+`showEditor` is the way to satisfy ToolOps that read the **active editor**. The
+node-graph ops (`node.*`, `editors/node/node_ops.ts`) read `ctx.editor` in their
+static `invoke`: when it's a `NodeEditorBase` subclass they auto-fill the op's
+`nodeEditorPath` (used e.g. by `useNodeEditorGraph=1`, which copies the editor's
+current graph path). The only *registered* such editor is `MaterialEditor`
+(areaname `MaterialEditor`, the Shader Editor); `NodeEditorBase` is abstract and
+intentionally unregistered. Pass an explicit `graphPath`/`graphClass` and these
+ops run with **no editor open** (what `tests/integration/node_editor_ops.test.ts`
+does); use `showEditor` only when the op must follow the *editor's* graph.
+
 ## `CTX` (ViewContext) — live state by getter
 
 - State: `scene`, `object`, `mesh`, `material`, `light`, `tetmesh`,

@@ -131,6 +131,17 @@ At module init (`napi_entry.cc`):
    `exports`: `version`, `bindingCount`, `structNames`, `structInfo`,
    `construct`, and the rest of the surface below.
 
+> **Adding a new N-API method is a 4-place change.** A method exported from
+> `source/napi/napi_runtime.{h,cc}` (`define(exports, ...)` in `installExports`)
+> is invisible to the app until it's threaded through the TS layer: (1) add it to
+> the `NativeAddon` type (`typescript/api/nativeBackend.ts`), (2) add a
+> `NativeManager` method that calls `this.addon.<name>(...)`, and (3) — easy to
+> forget — add the entry to `makeNativeInterface` in
+> `typescript/api/nativeManager.ts`, the object the app actually consumes as the
+> `IWasmInterface`. Name the manager/interface entry to match the WASM
+> `INeededWasm` member (`LSTL_*`, `Mesh_*`, …) so both backends are true
+> drop-ins.
+
 ### How a bound object works
 
 `NapiRuntime::getBoundClass(StructType*)` builds **one JS class per struct**

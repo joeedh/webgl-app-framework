@@ -46,8 +46,9 @@ through untouched to the renderer harness):
   `show:false`) and opens DevTools unless `--no-devtools`.
 - `--instance[=NAME]` / `--ephemeral` → run a second window in the SAME worktree
   concurrently by giving it its own Chromium profile subdir (the default profile
-  is per-worktree; see the multi-instance subsection of CLAUDE.md's NW.js
-  harness section). NAME is a persistent profile; bare/ephemeral is a throwaway.
+  is per-worktree; see [Multiple instances & per-worktree
+  profile](#multiple-instances--per-worktree-profile) below). NAME is a
+  persistent profile; bare/ephemeral is a throwaway.
 
 ## Flags
 
@@ -118,6 +119,48 @@ normally — none of the Electron-era fd-redirection workarounds are needed.
 The harness publishes its outcome on `window.__apptestResult`, so an external
 driver (`node nwjs/cdp.mjs eval "return window.__apptestResult"`) can read
 structured results.
+
+## Multiple instances & per-worktree profile
+
+The Chromium `--user-data-dir` holds **only** Chromium internals (single-instance
+lock, GPU cache, Crashpad) — **no** app state (that lives in `<cwd>/.sculptcore`).
+NW.js keys its default `--user-data-dir` on the manifest `name`, which is
+identical in every git worktree, so two worktrees could not run NW.js at once and
+their crash dumps collided. `nwjs/launch.mjs` instead derives the profile
+**per-worktree** via `nwjs/profile_dir.mjs`:
+`%LOCALAPPDATA%\webgl-app-framework\worktrees\<dir>-<hash8>\`, where `hash8` is
+over the case-folded worktree root — so each checkout runs independently and
+never clobbers another's window, lock, or dumps. Within one worktree:
+
+- `pnpm run nwjs` → the shared `default/` profile subdir.
+- `--instance=NAME` → `inst-NAME/` (persistent, named) — the way to run 2+
+  windows in one worktree at once (`--instance=a`, `--instance=b`).
+- bare `--instance` / `--ephemeral` → `inst-auto-<time36>/`, GC'd after a week.
+- The launcher **prints** the chosen profile + Crashpad reports dir on startup.
+- Pass your own `--user-data-dir=…` to opt out of all of this.
+
+### Concurrency-safe `.sculptcore` storage
+
+The shared per-worktree `.sculptcore` (`settings.json`, `feature-flags.json`,
+`startup.bin`, `autosave/`) is written so instances can share it safely:
+
+- `scripts/core/app_storage.ts` writes **atomically** (tmp + rename, with a
+  Windows EPERM retry) and exposes an **optimistic-CAS** `updateText` (read →
+  merge → commit-if-unchanged, retry on conflict) plus a `version` change token.
+- Settings/flags merge **field-level** through CAS: feature flags by per-key mtime
+  (`feature-flag.ts`), settings by baseline-diff (`settings.ts` `mergeSettings`,
+  overriding only fields this instance changed; `addonSettings` per id). The
+  startup file needs no merge — atomic last-snapshot-wins is correct.
+- `scripts/core/storage_sync.ts` polls each shared file's `version` (~1s) and
+  reloads settings/flags when another instance wrote (`startStorageSync`, booted
+  from `appstate.ts`; a no-op in the browser). Consumers `noteLocalWrite` so a
+  poll never reloads an instance's own write. Live addon enable/disable is **not**
+  propagated (too risky); the enabled *flags* still converge in the file.
+- Autosave (`autosave_backend.ts`) namespaces slot files + a recovery pointer per
+  **session** id (`<pid>-<time>-<rand>`), so instances never overwrite each
+  other's backups. `readLatest` scans all per-session pointers for the newest (no
+  single `latest.json` to race); a launch-time GC prunes dead sessions' backups
+  (pid-liveness + a `MAX_DEAD_SESSIONS` cap, keeping the newest crash recoverable).
 
 ## Connecting to the live NW.js renderer over CDP
 

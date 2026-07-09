@@ -2,6 +2,11 @@
 
 How to add or modify the UI icons.
 
+Icons are wired into the **data-path binding system**: enum/bitflag properties
+attach a per-value icon via `prop.icons({KEY: Icons.NAME})` in
+`scripts/data_api/api_define.ts`. To resolve which path/binding an icon feeds,
+see [datapath-bindings.md](datapath-bindings.md).
+
 ## Where the icons live
 
 - **`assets/iconsheet.svg`** — the single source of truth. A hand-authored

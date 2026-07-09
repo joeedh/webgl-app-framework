@@ -16,6 +16,11 @@ Builtin addons today: `mesh`, `mesh_edit`, `curve`, `subsurf`, `tetmesh`,
 the `Mesh` DataBlock, customdata layers, and the BVH — i.e. the framework
 literally cannot render a model without it.
 
+The mesh addon has 100+ registerable classes, collected into the
+auto-generated `addons/builtin/mesh/src/register_classes.ts`. When you add a
+new class that needs registering, either append it manually to that list or
+rerun `node tools/migrate-mesh-registers.js` to regenerate it.
+
 ## Anatomy
 
 ```

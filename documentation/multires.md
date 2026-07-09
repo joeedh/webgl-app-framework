@@ -162,6 +162,12 @@ surfaces a once-per-stroke "add a multires level" note. Enable/Delete are
 undoable; their undo *releases* the store instance rather than freeing it,
 because stroke history holds non-owning pointers into it.
 
+The four VDM ops (`scripts/lite-mesh/litemesh_ops.ts`) are
+`litemesh.vdm_enable` / `vdm_delete` plus the **cross-carrier bake** pair:
+`litemesh.vdm_apply` bakes the VDM displacement into the mesh vertices (moving
+from the texel carrier onto geometry), and `litemesh.vdm_capture` bakes existing
+vertex displacement into the VDM store (the reverse). All are undoable.
+
 ## Persistence (X4 stage 3)
 
 The stack and the VDM store both ride LiteMesh's nstructjs stream: `_data`
