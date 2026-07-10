@@ -3962,66 +3962,10 @@ export class LiteMesh extends SceneObjectData {
     })
   }
 
-  /** Object-mode selection/highlight overlay: the object-AABB box tinted with
-   * the editor color (`frame.uniforms.uColor`, set by ObjectEditor.drawObject).
-   * Skipped in BOUNDS draw mode — drawQ already draws the (tinted) box. */
-  drawOutlineQ(view3d: View3D, queue: DrawQueue, frame: FrameContext, _object: SceneObject) {
-    if (_object?.drawMode === DrawModes.BOUNDS) {
-      return
-    }
-    this._ensureBoundsBatch()
-    const batch = this.boundsBatch
-    if (!batch) {
-      return
-    }
-
-    const uniforms = frame.uniforms
-    const drawMatrix = new Matrix4(uniforms.projectionMatrix)
-    if (uniforms.objectMatrix instanceof Matrix4) {
-      drawMatrix.multiply(uniforms.objectMatrix)
-    }
-    const uniforms2 = {
-      uColor: [1, 1, 1, 1],
-      ...uniforms,
-      drawMatrix,
-      normalMatrix: drawMatrix.copy().makeRotationOnly(),
-    } as IUniformsBlock & Record<string, unknown>
-    if (uniforms2.viewportSize === undefined) {
-      uniforms2.viewportSize = [view3d.glSize[0], view3d.glSize[1], 0, 0]
-    }
-
-    if (isWebGPU()) {
-      const ctx = getActiveWebGpuContext()
-      if (!ctx?.currentPass) {
-        return
-      }
-      const surfaceFormat = navigator.gpu.getPreferredCanvasFormat()
-      if (this.overlayExecutorGPU === undefined) {
-        this.overlayExecutorGPU = this._makeGPUExecutor(
-          ctx,
-          surfaceFormat,
-          false,
-          this._overlayXray ? 'always' : 'less-equal'
-        )
-      }
-      const overlay = this.overlayExecutorGPU
-      overlay.setColorFormats(ctx.currentColorFormats ?? [surfaceFormat])
-      const saved = this.gpuUniforms
-      this.gpuUniforms = uniforms2
-      overlay.dispatch(batch, ctx.currentPass)
-      this.gpuUniforms = saved
-      return
-    }
-
-    queue.scheduleRawGLPass((gl: WebGL2RenderingContext) => {
-      let exec = this.drawBatchExecutor
-      if (exec === undefined) {
-        exec = new WebGLBatchExecutor(gl, this.wasm, Shaders.BasicLineShader2)
-        this.drawBatchExecutor = exec
-      }
-      exec.dispatch(batch, uniforms2)
-    })
-  }
+  /* Object-mode selection is shown by the editor-color surface tint (drawQ
+   * spreads ObjectEditor's uColor into the surface uniforms) — deliberately no
+   * drawOutlineQ override: the AABB box is reserved for the BOUNDS draw mode,
+   * and an all-edges outline is too heavy for sculpt-scale meshes. */
 
   /**
    * WebGPU sibling of the `scheduleRawGLPass` body above. Runs against

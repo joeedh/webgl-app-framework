@@ -259,6 +259,7 @@ export class WebGPUBatchExecutor {
     const bytes = buf.size * buf.elemsize * gpuTypeBytes(buf.type)
 
     let cached = this.bufferCache.get(key)
+    let fresh = false
     if (!cached || cached.uploadedSize !== bytes) {
       cached?.buf.destroy()
       cached = {
@@ -271,12 +272,16 @@ export class WebGPUBatchExecutor {
         uploadedDataPtr: -1,
       }
       this.bufferCache.set(key, cached)
+      fresh = true
     }
 
     // WASM tracks the data pointer to detect a realloc; native relies on the
-    // engine's `update_buffer` dirty flag (the pointer stays in C++).
+    // engine's `update_buffer` dirty flag (the pointer stays in C++). A fresh
+    // GPU buffer must ALWAYS write: a prior executor for the same batch may
+    // have consumed update_buffer already (e.g. the xray flip rebuilds the
+    // overlay executor), and an unwritten VBO draws degenerate zeros.
     const dataPtr = this.wasm.HEAPU8 !== undefined ? (buf as unknown as {data: number}).data : undefined
-    const needsWrite = (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
+    const needsWrite = fresh || (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
     if (needsWrite) {
       const view = this.bufferBytes(buf, bytes)
       cached.buf.write(view)

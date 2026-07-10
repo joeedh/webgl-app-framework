@@ -49,7 +49,8 @@ export enum ObjectFlags {
   HIGHLIGHT = 8,
   ACTIVE = 16,
   INTERNAL = 32,
-  DRAW_WIREFRAME = 64,
+  /* Bit 64 was DRAW_WIREFRAME — folded into DrawFlags.WIREFRAME (loadSTRUCT
+   * migrates old files). Keep the bit reserved. */
 }
 
 function mix(a: IVector4 | number[], b: IVector4 | number[], t: number) {
@@ -392,6 +393,12 @@ SceneObject {
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
     super.loadSTRUCT(reader)
+
+    // Migrate pre-DrawFlags files: ObjectFlags bit 64 was DRAW_WIREFRAME.
+    if (this.flag & 64) {
+      this.flag &= ~64
+      this.drawFlag |= DrawFlags.WIREFRAME
+    }
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
@@ -410,7 +417,7 @@ SceneObject {
     const frame: FrameContext = {gl, uniforms, program}
     const queue = createDrawQueue(frame)
 
-    if (this.flag & ObjectFlags.DRAW_WIREFRAME) {
+    if (this.drawFlag & DrawFlags.WIREFRAME) {
       uniforms.polygonOffset = uniforms.polygonOffset || 0.0
 
       this.data.drawQ(view3d, queue, frame, this)

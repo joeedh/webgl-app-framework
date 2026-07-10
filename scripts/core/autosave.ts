@@ -333,7 +333,7 @@ async function recoverPrompt(state: AppState, msg: string): Promise<boolean> {
 
     const row = popup.row()
     row.button('Recover', () => finish(true))
-    row.button('Discard', () => finish(false))
+    row.button('Cancel', () => finish(false))
   })
 }
 

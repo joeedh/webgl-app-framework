@@ -584,7 +584,6 @@ export class ObjectPanel extends ColumnFrame<ViewContext> {
     panel.prop('object.drawMode')
     panel.prop('object.drawFlag[FORCE_XRAY]')
     panel.prop('object.drawFlag[WIREFRAME]')
-    panel.prop('object.flag[DRAW_WIREFRAME]')
 
     const ob = this.ctx.object
     if (!ob) {
