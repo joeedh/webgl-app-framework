@@ -9,6 +9,11 @@
 - Write all plans to the `documentation/plans` folder (with proper descriptive names; add
   the current date and time to the name).
 
+## Research
+
+- Write all research surveys / write-ups to the `documentation/research` folder (with
+  proper descriptive names). Plans still go in the `documentation/plans` folder.
+
 ## Setup commands
 
 - Install deps: `pnpm i`
