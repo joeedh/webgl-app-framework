@@ -264,6 +264,8 @@ export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
   orbitMode: OrbitTargetModes
 
   localCursor3D: Matrix4
+
+  transformCursor3D = new Matrix4()
   cursorMode: CursorModes
   _viewvec_temps: util.cachering<Vector3>
   T: number
@@ -294,6 +296,8 @@ View3D {
   subViewPortSize     : float;
   subViewPortPos      : vec3;
   renderSettings      : renderengine_realtime.RenderSettings;
+  transformCursor3D   : mat4;
+  localCursor3D       : mat4;
 }
   `
   )
@@ -356,6 +360,20 @@ View3D {
     this.drawmode = DrawModes.TEXTURED
   }
 
+  get cursor3D() {
+    if (this.flag & View3DFlags.LOCAL_CURSOR) {
+      return this.localCursor3D
+    }
+    return this.ctx?.scene?.cursor3D ?? this.localCursor3D
+  }
+
+  set cursor3D(mat: Matrix4) {
+    if (this.flag & View3DFlags.LOCAL_CURSOR || !this.ctx?.scene) {
+      this.localCursor3D.load(mat)
+    }
+    this.ctx.scene.cursor3D.load(mat)
+  }
+
   get cameraMode() {
     const cam = this.activeCamera
     return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC
@@ -366,18 +384,6 @@ View3D {
 
     cam.isPerspective = val === CameraModes.PERSPECTIVE
     cam.regen_mats()
-  }
-
-  get cursor3D() {
-    if (this.flag & View3DFlags.LOCAL_CURSOR) {
-      return this.localCursor3D
-    }
-
-    if (this.ctx?.scene !== undefined) {
-      return this.ctx.scene.cursor3D
-    }
-
-    return this.localCursor3D
   }
 
   get selectmode() {
@@ -597,7 +603,7 @@ View3D {
 
     if (aabb[0].vectorDistance(aabb[1]) === 0.0 && aabb[0].dot(aabb[0]) === 0.0) {
       cent.zero()
-      cent.multVecMatrix(this.cursor3D)
+      cent.multVecMatrix(this.transformCursor3D)
     } else {
       cent.load(aabb[0]).interp(aabb[1], 0.5)
     }
@@ -613,7 +619,7 @@ View3D {
 
     if (cent === undefined) {
       cent = new Vector3()
-      cent.multVecMatrix(this.cursor3D)
+      cent.multVecMatrix(this.transformCursor3D)
     }
 
     const off = new Vector3(cent).sub(this.camera.target)
@@ -731,7 +737,7 @@ View3D {
   }
 
   setCursor(mat: Matrix4) {
-    this.cursor3D.load(mat)
+    this.transformCursor3D.load(mat)
 
     const p = curtemps.next().zero()
     p.multVecMatrix(mat)
@@ -926,9 +932,9 @@ View3D {
   /** Dockable-panel catalog (path.ux dock system, see makePanels in init). */
   definePanels(panels: PanelManager<ViewContext>) {
     panels.panel({
-      id: 'last_command',
-      title: 'Last Command',
-      dock: 'right',
+      id     : 'last_command',
+      title  : 'Last Command',
+      dock   : 'right',
       minSize: [225, undefined],
       build: (c) => {
         const last = document.createElement('last-tool-panel-x') as LastToolPanel<ViewContext>
@@ -1100,7 +1106,7 @@ View3D {
         return
       }
 
-      this.updateCursor()
+      this.updateTransformCursor()
 
       if (!docontrols && e.button === 0) {
         docontrols = true
@@ -1199,9 +1205,9 @@ View3D {
     return ok
   }
 
-  updateCursor() {
+  updateTransformCursor() {
     if (this.cursorMode == CursorModes.TRANSFORM_CENTER) {
-      this.cursor3D.makeIdentity()
+      this.transformCursor3D.makeIdentity()
 
       const res = this.getTransCenter()
       if (res === undefined) {
@@ -1209,9 +1215,9 @@ View3D {
       }
 
       const tcent = res.center
-      this.cursor3D.translate(tcent[0], tcent[1], tcent[2])
+      this.transformCursor3D.translate(tcent[0], tcent[1], tcent[2])
 
-      this.setCursor(this.cursor3D)
+      this.setCursor(this.transformCursor3D)
     }
   }
 
