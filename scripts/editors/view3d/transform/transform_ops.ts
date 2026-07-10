@@ -544,7 +544,7 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
     if (key === keymap['-']) {
       num.sign *= -1
     } else if (key >= keymap['Key0'] && key <= keymap['Key9']) {
-      num.str += reverse_keymap[key]
+      num.str += key - keymap['Key0']
     } else if (key === keymap['.']) {
       if (num.str === '') {
         num.str = '0'
@@ -556,8 +556,6 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
         num.str = num.str.slice(0, num.str.length - 1)
       }
     }
-
-    console.log('Numeric input!', key, this.numericVal)
 
     let f = num.str
     if (f.endsWith('.')) {
@@ -575,8 +573,6 @@ export class TransformOp<InputSet extends PropertySlots = {}, OutputSet extends 
 
     const fval = parseFloat(f) * num.sign
     this.numericSet(fval)
-
-    console.log('Numeric input:', fval, (num.sign ? '-' : '') + num.str)
 
     this.exec(this.modal_ctx! as ViewContext)
     window.redraw_viewport()
