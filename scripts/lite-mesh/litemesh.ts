@@ -2,6 +2,7 @@ import {Container, DataAPI, DataStruct, Matrix4, nstructjs, Vector2, Vector3, Ve
 import {registerDataAPI} from '../data_api/api_define_registry.js'
 import type {ListBoxChangeEvent} from '../path.ux/pathux'
 import type {ScreenPickResult} from '../editors/view3d/findnearest'
+import {FindNearestRet} from '../editors/view3d/findnearest'
 import type {ViewContext} from '../core/context'
 import {AttrSet} from './litemesh_attrSet'
 import {AttrType} from './litemesh_base'
@@ -1916,6 +1917,49 @@ export class LiteMesh extends SceneObjectData {
       // owning wrapper, so the disposer is absent there.
       ;(isectOut as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
     }
+  }
+
+  /** Object-level surface raycast for the core `castViewRay` dispatcher
+   * (3D-cursor placement, transform snap): spatial.castRay in object space,
+   * hit returned world-space with camera distance in `dis`. */
+  castViewRay(
+    ctx: ViewContext,
+    view3d: View3D,
+    object: SceneObject,
+    selectMask: number,
+    mpos: Vector2
+  ): FindNearestRet[] | undefined {
+    if (!(selectMask & this._ownSelectMask())) {
+      return undefined
+    }
+
+    const obmatrix = object.outputs.matrix.getValue()
+    // clip→local = (rendermat∘obmat)^-1 (multiply applies its argument first).
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
+    imat.invert()
+    const d = 0.9999
+    const p1 = new Vector4([mpos[0], mpos[1], -d, 1.0])
+    view3d.unproject(p1, imat)
+    const origin = new Vector3(p1)
+    const p2 = new Vector4([mpos[0], mpos[1], d, 1.0])
+    view3d.unproject(p2, imat)
+    const dir = new Vector3(p2).sub(origin)
+
+    const isect = this.rayCast(origin, dir)
+    if (!isect) {
+      return undefined
+    }
+
+    const ret = new FindNearestRet()
+    ret.object = object
+    ret.p3d.load(isect.p).multVecMatrix(obmatrix)
+
+    const sp = new Vector3(ret.p3d)
+    view3d.project(sp)
+    ret.p2d.loadXY(sp[0], sp[1])
+    ret.dis = new Vector3(ret.p3d).sub(view3d.activeCamera.pos).vectorLength()
+    return [ret]
   }
 
   /** Resolve a ray to the mesh vertex nearest the hit point (the hit triangle's

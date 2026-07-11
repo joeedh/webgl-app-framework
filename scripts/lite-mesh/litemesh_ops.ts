@@ -50,6 +50,59 @@ export abstract class AddLiteMeshShapeOp<Inputs extends PropertySlots = {}> exte
 
   protected abstract makeWasmMesh(wasm: IWasmInterface): WasmMesh
 
+  /** Place a newly created object at the scene 3D cursor, oriented so its +Z
+   * faces the active view3d camera. Headless (no view3d) keeps identity
+   * orientation; translation still comes from the cursor. */
+  protected placeAtCursor(ctx: ToolContext, ob: SceneObject): void {
+    const cursor = ctx.scene?.cursor3D
+    if (!cursor) {
+      return
+    }
+
+    const loc = new Vector3()
+    loc.multVecMatrix(cursor)
+    ob.inputs.loc.setValue(loc)
+
+    const cam = (ctx as unknown as {view3d?: {activeCamera?: {pos: Vector3; up: Vector3}}}).view3d?.activeCamera
+    if (cam) {
+      const z = new Vector3(cam.pos).sub(loc)
+      if (z.dot(z) > 1e-12) {
+        // Orthonormal camera-facing basis: local +Z toward the camera, roll
+        // taken from the camera up (Matrix4.lookat is unsuitable here — it
+        // keeps the raw up vector, so the result shears unless up happens to
+        // be perpendicular to the view ray, and decompose() then returns a
+        // garbage euler).
+        z.normalize()
+        let up = new Vector3(cam.up).normalize()
+        if (Math.abs(up.dot(z)) > 0.99) {
+          up = Math.abs(z[2]) < 0.9 ? new Vector3([0, 0, 1]) : new Vector3([0, 1, 0])
+        }
+        const x = new Vector3(up).cross(z).normalize()
+        const y = new Vector3(z).cross(x)
+
+        const mat = new Matrix4()
+        const m = mat.$matrix
+        m.m11 = x[0]
+        m.m12 = x[1]
+        m.m13 = x[2]
+        m.m21 = y[0]
+        m.m22 = y[1]
+        m.m23 = y[2]
+        m.m31 = z[0]
+        m.m32 = z[1]
+        m.m33 = z[2]
+
+        const dloc = new Vector3()
+        const drot = new Vector3()
+        const dscale = new Vector3()
+        mat.decompose(dloc, drot, dscale)
+        ob.inputs.rot.setValue(drot)
+      }
+    }
+
+    ob.update()
+  }
+
   // Lightweight undo: track + remove the created object/mesh/material. The
   // default ToolOp undo does a full async loadUndoFile, but ToolStack.rerun()
   // re-execs synchronously right after undo() — before that async reload
@@ -79,6 +132,7 @@ export abstract class AddLiteMeshShapeOp<Inputs extends PropertySlots = {}> exte
     litemesh.materials.push(mat)
 
     ctx.scene.add(ob)
+    this.placeAtCursor(ctx, ob)
     ctx.scene.objects.clearSelection()
     ctx.scene.objects.setSelect(ob, true)
     ctx.scene.objects.setActive(ob)

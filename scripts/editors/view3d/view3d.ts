@@ -44,6 +44,8 @@ import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils'
 import {Icons} from '../icon_enum'
 import {NoneWidget} from './widgets/widget_tools'
 import {View3DFlags, CameraModes, view3dProject, view3dUnproject} from './view3d_base'
+import {castViewRay} from './findnearest'
+import {SelMask} from './selectmode'
 import type {Library} from '../../core/lib_api'
 import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
 import type {SceneObject} from '../../sceneobject/sceneobject'
@@ -754,6 +756,49 @@ View3D {
     //this.camera.orbitTarget.load(p);
   }
 
+  /**
+   * Ctrl-click 3D-cursor placement. Raycasts the scene through the screen
+   * point (castViewRay) and moves the cursor to the surface hit; over empty
+   * space the cursor keeps its current depth relative to the camera — its
+   * present position is projected, the screen xy replaced, and the point
+   * unprojected back to 3D. Orientation is preserved; only the translation
+   * moves.
+   */
+  setCursorFromScreen(localX: number, localY: number): void {
+    const ctx = this.ctx
+    if (!ctx?.scene) {
+      return
+    }
+
+    let p: Vector3 | undefined
+    const hits = castViewRay(ctx, SelMask.OBJECT | SelMask.GEOM, new Vector2([localX, localY]), this)
+    if (hits.length > 0) {
+      p = new Vector3(hits[0].p3d)
+    }
+
+    if (p === undefined) {
+      p = new Vector3()
+      p.multVecMatrix(this.cursor3D)
+      const w = this.project(p) // p becomes (screenX, screenY, ndcZ)
+      if (w <= 0) {
+        // Cursor behind the camera — fall back to a mid-range depth.
+        p[2] = 0.5
+      }
+      p[0] = localX
+      p[1] = localY
+      this.unproject(p)
+    }
+
+    const mat = new Matrix4(this.cursor3D)
+    const m = mat.$matrix
+    m.m41 = p[0]
+    m.m42 = p[1]
+    m.m43 = p[2]
+    this.cursor3D = mat
+
+    window.redraw_viewport()
+  }
+
   rebuildHeader() {
     if (this.ctx === undefined) {
       this.doOnce(this.rebuildHeader)
@@ -1107,6 +1152,17 @@ View3D {
       }
 
       this.updateTransformCursor()
+
+      // Ctrl-left-click (no other modifiers) places the 3D cursor — toolmodes
+      // got first crack via doEvent above (e.g. sculpt's ctrl-invert stroke
+      // consumes the event there; box modeling deliberately does not).
+      if (e.button === 0 && e.ctrlKey && !e.shiftKey && !e.altKey && !eventWasTouch(e)) {
+        this.setCursorFromScreen(r[0], r[1])
+        this.pop_ctx_active()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
 
       if (!docontrols && e.button === 0) {
         docontrols = true

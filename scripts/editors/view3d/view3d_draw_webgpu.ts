@@ -45,6 +45,7 @@ import {buildMaterialPipelineDescriptor} from '../../shaders/wgsl_shaders.js'
 import type {Pipeline} from '../../webgpu/pipeline.js'
 import {LightGenWgsl, type IRenderLights} from '../../shadernodes/shader_lib_wgsl.js'
 import {sharedLinearSampler} from '../../shadernodes/shader_nodes_wgsl.js'
+import {nextUniformFrameEpoch} from '../../webgpu/uniform_bindings.js'
 import {ImageNode} from '../../shadernodes/shader_nodes.js'
 import {buildSolidTexturedWgsl} from '../../lite-mesh/litemesh_wgsl.js'
 import {DrawModes} from '../../sceneobject/drawmode.js'
@@ -176,6 +177,9 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
 
   const viewport = primeWebGpuViewport(canvas)
   if (!viewport) return
+
+  // New frame: reset the per-draw uniform-buffer ring (see uniform_bindings).
+  nextUniformFrameEpoch()
 
   if (view3d.activeCamera) viewport.ctx.drawmats = view3d.activeCamera
 

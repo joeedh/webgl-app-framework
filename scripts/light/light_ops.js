@@ -55,7 +55,7 @@ export class AddLightOp extends ToolOp {
       toolpath   : 'light.new',
       icon       : Icons.LIGHT,
       inputs: {
-        position: new Vec3Socket(),
+        position: new Vec3Property(),
         type    : new EnumProperty('POINT', LightTypes),
       },
     }
@@ -69,7 +69,15 @@ export class AddLightOp extends ToolOp {
 
     let ob = new SceneObject()
     ob.data = light
-    ob.inputs.loc.setValue(this.inputs.position.getValue())
+
+    // Default placement is the scene 3D cursor; an explicit position input
+    // (invoke args) still wins.
+    let co = this.inputs.position.getValue()
+    if (!this.inputs.position.wasSet && ctx.scene) {
+      co = new Vector3()
+      co.multVecMatrix(ctx.scene.cursor3D)
+    }
+    ob.inputs.loc.setValue(co)
 
     ctx.datalib.add(ob)
 

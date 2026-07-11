@@ -45,6 +45,12 @@ BoxModelToolMode {
   /** Circle/brush-select radius (screen px). */
   selectRadius = 25
 
+  /* Double-click detection for loop select (pointerdown `detail` is 0 in
+   * Chromium, so track it ourselves). */
+  private _lastClickTime = 0
+  private _lastClickX = 0
+  private _lastClickY = 0
+
   static toolModeDefine(): IToolModeDefine {
     return {
       name        : 'boxmodel',
@@ -127,17 +133,27 @@ BoxModelToolMode {
 
   /** Left-click selection, Blender-style: plain click replace-selects the
    * nearest element in the first enabled selection domain; shift-click toggles
-   * it. Ctrl-click loop-selects (edge loop / face loop; ctrl-shift = the edge
-   * ring, "face loop edge select"), toggling off a fully-selected loop. */
+   * it. Double-click loop-selects (edge loop / face loop; shift-double-click =
+   * the edge ring, "face loop edge select"), toggling off a fully-selected
+   * loop. Ctrl-click is NOT consumed — it is the global 3D-cursor shortcut. */
   on_mousedown(e: PointerEvent, x: number, y: number): boolean | void {
-    if (e.button !== 0 || e.altKey || this.hasWidgetHighlight()) {
+    if (e.button !== 0 || e.altKey || e.ctrlKey || this.hasWidgetHighlight()) {
       return false
     }
     const ctx = this.ctx
     if (!ctx?.view3d || !ctx.object) {
       return false
     }
-    if (e.ctrlKey) {
+
+    const now = performance.now()
+    const dx = x - this._lastClickX
+    const dy = y - this._lastClickY
+    const isDouble = now - this._lastClickTime < 400 && dx * dx + dy * dy < 8 * 8
+    this._lastClickTime = isDouble ? 0 : now // a triple-click starts a new cycle
+    this._lastClickX = x
+    this._lastClickY = y
+
+    if (isDouble) {
       const op = new SelectLoopLiteMeshOp()
       op.inputs.x.setValue(x)
       op.inputs.y.setValue(y)
