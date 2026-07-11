@@ -1153,10 +1153,13 @@ View3D {
 
       this.updateTransformCursor()
 
-      // Ctrl-left-click (no other modifiers) places the 3D cursor — toolmodes
-      // got first crack via doEvent above (e.g. sculpt's ctrl-invert stroke
-      // consumes the event there; box modeling deliberately does not).
-      if (e.button === 0 && e.ctrlKey && !e.shiftKey && !e.altKey && !eventWasTouch(e)) {
+      // Ctrl-left-click/tap (no other modifiers) places the 3D cursor —
+      // toolmodes got first crack via doEvent above (e.g. sculpt's ctrl-invert
+      // stroke consumes the event there; box modeling deliberately does not).
+      // Applies to mouse, pen and touch alike: ctrl is a keyboard modifier, so
+      // holding it while tapping is always an explicit cursor placement (the
+      // ctrl-less touch view gestures are handled below).
+      if (e.button === 0 && e.ctrlKey && !e.shiftKey && !e.altKey) {
         this.setCursorFromScreen(r[0], r[1])
         this.pop_ctx_active()
         e.preventDefault()
