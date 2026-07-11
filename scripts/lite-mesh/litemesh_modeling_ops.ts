@@ -476,7 +476,9 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
       // Screen-space edge pick (3D nearest mis-picks on foreshortened faces).
       idx = mesh.pickEdge(view3d as unknown as View3D, object, lx, ly)
     } else {
-      idx = mesh.pickVert(origin, dir)
+      // Screen-space vert pick (the barycentric pickVert mis-picks on coarse
+      // meshes — a dimen=2 cube face is one huge quad).
+      idx = mesh.pickVertScreen(view3d as unknown as View3D, object, lx, ly)
     }
     if (idx < 0) {
       return -1
@@ -615,8 +617,9 @@ export class SelectPathLiteMeshOp extends LiteMeshSelectOpBase<{mode: EnumProper
   }
 
   private _localRay(view3d: SelModalView3D, obmatrix: Matrix4, lx: number, ly: number) {
-    const imat = new Matrix4(obmatrix)
-    imat.multiply(view3d.activeCamera.rendermat)
+    // clip→local = (rendermat∘obmat)^-1 (multiply applies its argument first).
+    const imat = new Matrix4(view3d.activeCamera.rendermat)
+    imat.multiply(obmatrix)
     imat.invert()
     const d = 0.9999
     const p1 = new Vector4([lx, ly, -d, 1.0])
@@ -904,8 +907,9 @@ export function localRay(
   lx: number,
   ly: number
 ): {origin: Vector3; dir: Vector3} {
-  const imat = new Matrix4(obmatrix)
-  imat.multiply(view3d.activeCamera.rendermat)
+  // clip→local = (rendermat∘obmat)^-1 (multiply applies its argument first).
+  const imat = new Matrix4(view3d.activeCamera.rendermat)
+  imat.multiply(obmatrix)
   imat.invert()
   const d = 0.9999
   const p1 = new Vector4([lx, ly, -d, 1.0])

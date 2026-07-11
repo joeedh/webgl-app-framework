@@ -130,8 +130,27 @@ export function reflectPipelineBindings(wgsl: string): ReflectResult {
 interface UniformSlotState {
   slot: UniformBindingSlot
   writer: UniformWriter | ArrayedStructWriter
-  buffer: GpuBuffer
+  /** Ring of per-draw buffers (index = the instance ring cursor). Slot 0 is
+   * created eagerly; later slots materialize when a frame issues multiple
+   * draws through the same bindings (see `_advanceRing`). */
+  buffers: GpuBuffer[]
+  bufSize: number
+  label: string
 }
+
+/** Frame counter for the per-draw uniform-buffer ring. `queue.writeBuffer`
+ * runs before pass execution, so N same-pipeline draws in one frame sharing
+ * ONE buffer all read the LAST write (every light/widget rendered at one
+ * matrix). Each frame bump resets the ring; within a frame every
+ * write+bind pair takes a fresh buffer. */
+let uniformFrameEpoch = 0
+export function nextUniformFrameEpoch(): void {
+  uniformFrameEpoch++
+}
+
+/** Ring wrap guard — past this many same-bindings draws in one frame the ring
+ * reuses slot 0 (clobber returns, but bounded memory). */
+const UNIFORM_RING_MAX = 256
 
 interface GroupState {
   group: number
@@ -142,8 +161,12 @@ interface GroupState {
 export class UniformBindings {
   readonly device: GPUDevice
   readonly groups: ReadonlyMap<number, GroupState>
-  private readonly bindGroupCache = new Map<GPURenderPipeline, Map<number, GPUBindGroup>>()
+  /** Uniform-only bind groups cached per pipeline, keyed `${group}:${ring}`. */
+  private readonly bindGroupCache = new Map<GPURenderPipeline, Map<string, GPUBindGroup>>()
   private readonly emptyCache = new Map<GPURenderPipeline, Map<number, GPUBindGroup>>()
+  /** Per-draw buffer-ring cursor (see nextUniformFrameEpoch). */
+  private ring = 0
+  private ringEpoch = -1
 
   constructor(device: GPUDevice, wgsl: string, label?: string) {
     this.device = device
@@ -170,12 +193,12 @@ export class UniformBindings {
         writer = new UniformWriter(slot.struct)
         bufSize = Math.max(slot.struct.size, 16)
       }
-      const buffer = new GpuBuffer(device, {
-        label: label ? `${label}.uniforms.g${slot.group}b${slot.binding}` : `uniforms.g${slot.group}b${slot.binding}`,
-        size : Math.max(bufSize, 16), // WGSL uniform buffer min size
-        usage: 'uniform',
-      })
-      getGroup(slot.group).uniforms.push({slot, writer, buffer})
+      const bufLabel = label
+        ? `${label}.uniforms.g${slot.group}b${slot.binding}`
+        : `uniforms.g${slot.group}b${slot.binding}`
+      const size = Math.max(bufSize, 16) // WGSL uniform buffer min size
+      const buffer = new GpuBuffer(device, {label: bufLabel, size, usage: 'uniform'})
+      getGroup(slot.group).uniforms.push({slot, writer, buffers: [buffer], bufSize: size, label: bufLabel})
     }
 
     for (const slot of reflected.resources) {
@@ -189,6 +212,29 @@ export class UniformBindings {
     return this.groups.size === 0
   }
 
+  /** The current ring slot's buffer for a uniform slot, created on demand. */
+  private ringBuffer(s: UniformSlotState): GpuBuffer {
+    let buf = s.buffers[this.ring]
+    if (!buf) {
+      buf = new GpuBuffer(this.device, {label: `${s.label}#${this.ring}`, size: s.bufSize, usage: 'uniform'})
+      s.buffers[this.ring] = buf
+    }
+    return buf
+  }
+
+  /** Step the per-draw buffer ring: reset on a new frame epoch, advance
+   * within a frame so every write+bind pair lands in its own buffer
+   * (queue.writeBuffer runs before pass execution — a shared buffer would
+   * make every same-pipeline draw read the frame's LAST write). */
+  private _advanceRing(): void {
+    if (this.ringEpoch !== uniformFrameEpoch) {
+      this.ringEpoch = uniformFrameEpoch
+      this.ring = 0
+    } else {
+      this.ring = (this.ring + 1) % UNIFORM_RING_MAX
+    }
+  }
+
   // Field names not present in the struct are silently ignored (per
   // `UniformWriter.apply`), so a single broad `IUniformsBlock` can feed
   // multiple pipelines with different schemas.
@@ -196,7 +242,7 @@ export class UniformBindings {
     for (const gs of this.groups.values()) {
       for (const s of gs.uniforms) {
         s.writer.apply(uniforms as Record<string, number | ArrayLike<number>>)
-        this.device.queue.writeBuffer(s.buffer.handle, 0, s.writer.buffer)
+        this.device.queue.writeBuffer(this.ringBuffer(s).handle, 0, s.writer.buffer)
       }
     }
   }
@@ -208,7 +254,7 @@ export class UniformBindings {
   ): GPUBindGroup | undefined {
     const entries: GPUBindGroupEntry[] = []
     for (const s of gs.uniforms) {
-      entries.push({binding: s.slot.binding, resource: {buffer: s.buffer.handle}})
+      entries.push({binding: s.slot.binding, resource: {buffer: this.ringBuffer(s).handle}})
     }
     for (const r of gs.resources) {
       const val = (uniforms as Record<string, unknown>)[r.varName]
@@ -233,20 +279,21 @@ export class UniformBindings {
     const gs = this.groups.get(group)
     if (!gs) return undefined
 
-    // Pure-uniform groups can be cached per-pipeline — the underlying
-    // GpuBuffers are stable. Groups with resource slots cannot be cached:
-    // GPUTextureView identity changes (ring-buffer rotation, target
-    // resizing) and cached entries would point at freed views.
+    // Pure-uniform groups can be cached per-pipeline (keyed with the ring
+    // slot — each ring buffer identity is stable). Groups with resource slots
+    // cannot be cached: GPUTextureView identity changes (ring-buffer rotation,
+    // target resizing) and cached entries would point at freed views.
     if (gs.resources.length === 0) {
       let perPipeline = this.bindGroupCache.get(pipeline)
       if (!perPipeline) {
         perPipeline = new Map()
         this.bindGroupCache.set(pipeline, perPipeline)
       }
-      const hit = perPipeline.get(group)
+      const key = `${group}:${this.ring}`
+      const hit = perPipeline.get(key)
       if (hit) return hit
       const bg = this.buildBindGroup(pipeline, gs, uniforms ?? ({} as IUniformsBlock))
-      if (bg) perPipeline.set(group, bg)
+      if (bg) perPipeline.set(key, bg)
       return bg
     }
 
@@ -290,6 +337,7 @@ export class UniformBindings {
    * the caller sets a contiguous range (see `bind` and litemesh's drawQGPU).
    */
   bindGroupList(pipeline: GPURenderPipeline, uniforms: IUniformsBlock): {group: number; bindGroup: GPUBindGroup}[] {
+    this._advanceRing()
     this.write(uniforms)
     const out: {group: number; bindGroup: GPUBindGroup}[] = []
     const max = this.maxGroup
@@ -314,7 +362,11 @@ export class UniformBindings {
 
   destroy(): void {
     for (const gs of this.groups.values()) {
-      for (const s of gs.uniforms) s.buffer.destroy()
+      for (const s of gs.uniforms) {
+        for (const buf of s.buffers) {
+          buf?.destroy()
+        }
+      }
     }
     this.bindGroupCache.clear()
     this.emptyCache.clear()

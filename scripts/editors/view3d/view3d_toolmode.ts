@@ -1,6 +1,7 @@
 import {KeyMap} from '../editor_base'
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../webgl/simplemesh'
 import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
+import {WidgetSceneCursor} from './widgets/widget_tools.js'
 import {Container, DataAPI, DataStruct, EnumProperty, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
@@ -414,6 +415,14 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     if (!this.transWidget && tcls) {
       this.transWidget = this.ensureUniqueWidget(tcls)
       console.log('making transform widget', tcls.name, this.transformWidget, this.transWidget)
+    }
+
+    // Scene 3D-cursor widget: alive whenever the active view shows the cursor
+    // (its isDead getter removes it via the dead-sweep above when hidden).
+    // The manager-level hasWidget guard keeps toolmode switches from stacking
+    // duplicates (each toolmode has its own _uniqueWidgets registry).
+    if (this.ctx.view3d?._showCursor?.() && !this.ctx.scene.widgets.hasWidget(WidgetSceneCursor)) {
+      this.ensureUniqueWidget(WidgetSceneCursor as unknown as typeof WidgetBase)
     }
 
     /*

@@ -44,6 +44,11 @@ import * as view3d_shaders from '../../shaders/shaders.js'
 import {buildMaterialPipelineDescriptor} from '../../shaders/wgsl_shaders.js'
 import type {Pipeline} from '../../webgpu/pipeline.js'
 import {LightGenWgsl, type IRenderLights} from '../../shadernodes/shader_lib_wgsl.js'
+import {sharedLinearSampler} from '../../shadernodes/shader_nodes_wgsl.js'
+import {nextUniformFrameEpoch} from '../../webgpu/uniform_bindings.js'
+import {ImageNode} from '../../shadernodes/shader_nodes.js'
+import {buildSolidTexturedWgsl} from '../../lite-mesh/litemesh_wgsl.js'
+import {DrawModes} from '../../sceneobject/drawmode.js'
 
 export interface WebGpuViewport {
   gpu: GpuContext
@@ -173,6 +178,9 @@ export function drawViewportWebGpu(view3d: ViewLike): void {
   const viewport = primeWebGpuViewport(canvas)
   if (!viewport) return
 
+  // New frame: reset the per-draw uniform-buffer ring (see uniform_bindings).
+  nextUniformFrameEpoch()
+
   if (view3d.activeCamera) viewport.ctx.drawmats = view3d.activeCamera
 
   const canvasTex = viewport.gpu.canvasContext.getCurrentTexture()
@@ -241,32 +249,21 @@ function clamp(v: number, lo: number, hi: number): number {
  * (say, an unported widget pipeline) doesn't kill the entire frame.
  */
 function drawSceneWebGpu(view3d: ViewLike): void {
-  // Leaving rendered mode (SHOW_RENDER/ONLY_RENDER off): revert any object whose
-  // RealtimeEngine BasePass installed a material draw shader back to the basic
-  // solid shader. Otherwise the solid pass keeps drawing with the material WGSL
-  // (which needs the engine's group1/2 bindings the solid pass lacks) and the
-  // viewport goes blank (#1). setDrawShader('') drops drawShaderReady in C++;
-  // clearing the engine hash lets the BasePass re-push when render mode returns.
+  // Leaving rendered mode (SHOW_RENDER/ONLY_RENDER off): each object either
+  // gets the solid-mode *textured* draw shader (drawMode TEXTURED + an image
+  // node in its material — see updateSolidTexturedDrawShader) or reverts to
+  // the basic solid shader. The engine material WGSL must never leak into the
+  // solid pass (it needs the engine's group1/2 bindings) — that was #1.
   const inRender = view3d.flag !== undefined && view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)
   if (!inRender) {
     const scn = (view3d as ViewLike & {ctx?: {scene?: SceneLike}}).ctx?.scene
     const renderable = scn?.objects?.renderable
     if (renderable) {
       for (const ob of renderable) {
-        const d = ob.data as
-          | (DataLike & {
-              _hasMaterialDrawShader?: boolean
-              _engineDrawShaderHash?: number
-              setDrawShader?: (wgsl: string) => void
-            })
-          | undefined
-        if (d && d._hasMaterialDrawShader && typeof d.setDrawShader === 'function') {
-          try {
-            d.setDrawShader('')
-            d._engineDrawShaderHash = undefined
-          } catch (err) {
-            warnOnce('revertDrawShader', `${(err as Error).message}`)
-          }
+        try {
+          updateSolidTexturedDrawShader(view3d, ob)
+        } catch (err) {
+          warnOnce('solidTexDrawShader', `${(err as Error).message}`)
         }
       }
     }
@@ -279,6 +276,111 @@ function drawSceneWebGpu(view3d: ViewLike): void {
   } catch (err) {
     warnOnce('drawObjects', `${(err as Error).message}`)
   }
+
+  drawSceneWebGpuOverlays(view3d)
+}
+
+/** Duck-typed litemesh surface for the solid-textured draw-shader push. */
+interface SolidTexDataLike extends DataLike {
+  _hasMaterialDrawShader?: boolean
+  _engineDrawShaderHash?: number
+  _solidTexKey?: string
+  solidTexUniforms?: Record<string, unknown>
+  setDrawShader?: (wgsl: string) => void
+  setRequestedAttrs?: (reqs: unknown[]) => void
+  attrItems?: {attrName: string; use: number}[]
+}
+
+/** `AttrUseFlags.UV` (litemesh attr categories; duck-typed to avoid a
+ * lite-mesh import cycle from this draw module). */
+const ATTR_USE_UV = 4
+
+/**
+ * Per-object solid-mode textured draw (drawMode TEXTURED, the default): find
+ * the material's active image node (graph.nodes order — node clicks
+ * pushToFront, so index 0 of its type is the active one), and install a
+ * basic-lit + texture draw shader on the litemesh, sampling the mesh's UV
+ * layer when one exists. Reverts to the plain basic shader when the object
+ * has no ready image (or a non-TEXTURED drawMode) — including the engine
+ * material WGSL left over from render mode (#1).
+ */
+function updateSolidTexturedDrawShader(view3d: ViewLike, ob: SceneObjectLike): void {
+  const d = ob.data as SolidTexDataLike | undefined
+  if (!d || typeof d.setDrawShader !== 'function') {
+    return
+  }
+
+  const device = viewports.get(view3d.canvas)?.gpu.device
+  const drawMode = (ob as unknown as {drawMode?: number}).drawMode ?? DrawModes.TEXTURED
+
+  // The active (first) image node with a ready image, if any.
+  let image: unknown
+  if (device && (drawMode & DrawModes.TEXTURED) !== 0) {
+    const mat = d.materials && d.materials.length > 0 ? d.materials[0] : undefined
+    const nodes = (mat as unknown as {graph?: {nodes?: Iterable<unknown>}} | undefined)?.graph?.nodes
+    if (nodes) {
+      for (const node of nodes) {
+        if (node instanceof ImageNode) {
+          const img = (node as unknown as {imageUser?: {image?: {ready?: boolean}}}).imageUser?.image
+          if (img?.ready) {
+            image = img
+            break
+          }
+        }
+      }
+    }
+  }
+
+  const tex =
+    image && device
+      ? (image as unknown as {getGpuTex(dv: GPUDevice): {view: GPUTextureView} | undefined}).getGpuTex(device)
+      : undefined
+
+  if (!tex || !device) {
+    // Nothing to texture — revert any installed draw shader (engine material
+    // from render mode, or a stale solid-tex shader).
+    if (d._hasMaterialDrawShader) {
+      try {
+        d.setDrawShader('')
+        d._engineDrawShaderHash = undefined
+      } catch (err) {
+        warnOnce('revertDrawShader', `${(err as Error).message}`)
+      }
+    }
+    d._solidTexKey = undefined
+    d.solidTexUniforms = undefined
+    return
+  }
+
+  const imageInfo = image as unknown as {lib_id: number; updateGen?: number}
+  const uvItem = d.attrItems?.find((it) => (it.use & ATTR_USE_UV) !== 0)
+  const key = `solidtex:${imageInfo.lib_id}:${imageInfo.updateGen ?? 0}:${uvItem?.attrName ?? ''}`
+  if (d._solidTexKey !== key) {
+    if (uvItem) {
+      d.setRequestedAttrs?.([
+        {
+          name    : uvItem.attrName,
+          category: ATTR_USE_UV,
+          field   : 'attr_uv',
+          wgslType: 'vec2f',
+          gpuType : 2,
+          elemSize: 2,
+          slot    : 2,
+        },
+      ])
+    } else {
+      d.setRequestedAttrs?.([])
+    }
+    d.setDrawShader(buildSolidTexturedWgsl(!!uvItem))
+    d._solidTexKey = key
+    // Force the engine to re-push its material WGSL when render mode returns.
+    d._engineDrawShaderHash = undefined
+  }
+  // Re-seed every frame: the view identity changes when the image regenerates.
+  d.solidTexUniforms = {solidtex_tex: tex.view, solidtex_smp: sharedLinearSampler(device)}
+}
+
+function drawSceneWebGpuOverlays(view3d: ViewLike): void {
 
   drawGridWebGpu(view3d)
   drawDrawLinesWebGpu(view3d)
@@ -347,6 +449,8 @@ interface MaterialWebGpuState {
   program: {uniforms: IUniformsBlock; name: string; wgslKey?: undefined}
   pipeline: Pipeline
   hash: number
+  /** Seeds `sampler_<id>_tex/_smp` views per frame (image nodes). */
+  setTextureUniforms?: (device: GPUDevice, uniforms: Record<string, unknown>) => void
 }
 
 const materialStates = new WeakMap<object, MaterialWebGpuState>()
@@ -425,7 +529,13 @@ function ensureMaterialPipeline(
   LightGenWgsl.setUniforms(program.uniforms as unknown as Record<string, unknown>, scene, rlights)
   wgpu.pipelineBindings.set(program, pipeline)
 
-  const state: MaterialWebGpuState = {program, pipeline, hash}
+  const gen = (def as {generator?: {setTextureUniforms(d: GPUDevice, u: Record<string, unknown>): void}}).generator
+  const state: MaterialWebGpuState = {
+    program,
+    pipeline,
+    hash,
+    setTextureUniforms: gen ? (device, u) => gen.setTextureUniforms(device, u) : undefined,
+  }
   materialStates.set(mat, state)
   return state
 }
@@ -494,6 +604,10 @@ function drawRenderWebGpu(view3d: ViewLike): void {
 
     const state = ensureMaterialPipeline(wgpu, scene, mat, rlights)
     if (!state) continue
+
+    // Image-node textures: re-seed views/samplers per frame (view identity
+    // changes when an image regenerates).
+    state.setTextureUniforms?.(wgpu.device, state.program.uniforms as unknown as Record<string, unknown>)
 
     try {
       ob.draw(view3d, view3d.gl as WebGL2RenderingContext, uniforms, state.program as unknown as ShaderProgram)

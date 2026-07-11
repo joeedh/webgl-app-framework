@@ -89,6 +89,9 @@ export class FeatureFlagManager implements IBusEmitter<typeof FeatureFlagManager
       flag.value = undefined
       flag.mtime = Date.now()
       this.save()
+      // Resets change the effective value too — same rebuild signal as set().
+      const k = key as FeatureFlagKeys
+      messageBus.emit(this, FeatureFlagManager, 'FLAG_SET', {key: k, value: this.get(k)})
     }
   }
 
@@ -211,7 +214,7 @@ const featureFlags = [
   {
     key        : 'sculptcore.sculpt_layers',
     uiName     : 'Sculpt Layers',
-    description: 'Sculpt-layer stack: the Layer Draw brush + the LiteMesh layer panel (experimental)',
+    description: 'Sculpt-layer stack: the LiteMesh layer panel + edit-target sculpting (experimental)',
     type       : 'bool',
     value      : false,
   },

@@ -165,12 +165,17 @@ export function castViewRay(
     }
   }
 
-  //return closest item
+  // Return the closest item in FRONT of the camera. (A behind-camera hit used
+  // to be able to claim `best` first and then shadow every valid hit, because
+  // the dis>0 guard was only applied to later items.)
   let mindis = 1e17
   let best: FindNearestRet | undefined = undefined
 
   for (const item of ret) {
-    if (item.dis !== undefined && (best === undefined || (item.dis > 0 && item.dis < mindis))) {
+    if (item.dis === undefined || item.dis <= 0) {
+      continue
+    }
+    if (best === undefined || item.dis < mindis) {
       mindis = item.dis
       best = item
     }

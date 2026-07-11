@@ -13,6 +13,13 @@ and the user/developer guides are
 merged to `master` in both repos, gated on both backends (WASM and native
 N-API).
 
+> **Superseded note (2026-07-08):** the sculpt-layer model described below is
+> the plan-era V1 "Layer Draw brush" model. **sculptLayersV2**
+> ([`sculptcore/documentation/plans/sculptLayersV2.md`](../../sculptcore/documentation/plans/sculptLayersV2.md))
+> has since replaced it with the edit-target model (no Layer Draw brush; the
+> targeted layer is edited by every stroke) — the current guide is
+> [`documentation/sculptLayers.md`](../sculptLayers.md).
+
 ## What a user gets
 
 - **Sculpt layers** (`sculptcore.sculpt_layers`): re-weightable displacement

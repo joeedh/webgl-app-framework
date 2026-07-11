@@ -4588,7 +4588,7 @@ export class PaintOp extends PaintOpMesh<
 
     for (const v of vs) {
       origVs.push(new Vector3(v.co))
-      origNs.push(new Vector3(v.co))
+      origNs.push(new Vector3(v.no))
     }
 
     let reproject = false
@@ -4741,7 +4741,12 @@ export class PaintOp extends PaintOpMesh<
         }
 
         if (r === undefined) {
-          throw new Error('no ray')
+          // Ray missed the pre-stroke surface (border verts do this routinely).
+          // Skip the vert — throwing here aborted the whole reproject pass and
+          // left every vert swapped to its pre-stroke position.
+          cdblocks.push(undefined as unknown as CDElemArray)
+          i++
+          continue
         }
 
         const tri = r.tri!

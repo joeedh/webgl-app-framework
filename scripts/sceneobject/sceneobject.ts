@@ -13,6 +13,8 @@ import {
 } from '../path.ux/pathux.js'
 
 import {SocketFlags} from '../core/graph.js'
+import {DrawModes, DrawFlags} from './drawmode'
+import {deleteTsEnumIntegers} from '../util/enum-utils'
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js'
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
@@ -47,7 +49,8 @@ export enum ObjectFlags {
   HIGHLIGHT = 8,
   ACTIVE = 16,
   INTERNAL = 32,
-  DRAW_WIREFRAME = 64,
+  /* Bit 64 was DRAW_WIREFRAME — folded into DrawFlags.WIREFRAME (loadSTRUCT
+   * migrates old files). Keep the bit reserved. */
 }
 
 function mix(a: IVector4 | number[], b: IVector4 | number[], t: number) {
@@ -123,6 +126,8 @@ export class SceneObject<
 > {
   data: OBDATA
   flag: ObjectFlags
+  drawMode: DrawModes
+  drawFlag: DrawFlags
 
   // update generation
   updateGen?: number
@@ -133,6 +138,8 @@ export class SceneObject<
     // is assigned after datablock instantiation
     this.data = data as unknown as OBDATA
     this.flag = 0
+    this.drawMode = DrawModes.TEXTURED
+    this.drawFlag = DrawFlags.NONE
 
     if (data) {
       data.lib_addUser(this)
@@ -220,6 +227,18 @@ export class SceneObject<
       window.redraw_viewport(true)
     })
 
+    ostruct
+      .enum('drawMode', 'drawMode', deleteTsEnumIntegers(DrawModes), 'Draw Mode', 'How the object is drawn in the viewport')
+      .on('change', function () {
+        window.redraw_viewport(true)
+      })
+
+    ostruct
+      .flags('drawFlag', 'drawFlag', deleteTsEnumIntegers(DrawFlags), 'Draw Flags', 'Extra viewport draw options')
+      .on('change', function () {
+        window.redraw_viewport(true)
+      })
+
     return ostruct
   }
 
@@ -227,8 +246,10 @@ export class SceneObject<
     this,
     `
 SceneObject {
-  flag : int;
-  data : DataRef | DataRef.fromBlock(obj.data);
+  flag     : int;
+  drawMode : int;
+  drawFlag : int;
+  data     : DataRef | DataRef.fromBlock(obj.data);
 }
 `
   )
@@ -329,6 +350,9 @@ SceneObject {
 
   copyTo(b: this) {
     super.copyTo(b, false)
+
+    b.drawMode = this.drawMode
+    b.drawFlag = this.drawFlag
   }
 
   copy(addLibUsers = false) {
@@ -338,6 +362,8 @@ SceneObject {
     let ret = super.copy()
 
     ret.flag = this.flag
+    ret.drawMode = this.drawMode
+    ret.drawFlag = this.drawFlag
     ret.data = this.data
 
     if (addLibUsers) {
@@ -367,6 +393,12 @@ SceneObject {
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
     super.loadSTRUCT(reader)
+
+    // Migrate pre-DrawFlags files: ObjectFlags bit 64 was DRAW_WIREFRAME.
+    if (this.flag & 64) {
+      this.flag &= ~64
+      this.drawFlag |= DrawFlags.WIREFRAME
+    }
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
@@ -385,7 +417,7 @@ SceneObject {
     const frame: FrameContext = {gl, uniforms, program}
     const queue = createDrawQueue(frame)
 
-    if (this.flag & ObjectFlags.DRAW_WIREFRAME) {
+    if (this.drawFlag & DrawFlags.WIREFRAME) {
       uniforms.polygonOffset = uniforms.polygonOffset || 0.0
 
       this.data.drawQ(view3d, queue, frame, this)

@@ -4,8 +4,11 @@ import {
   IAreaDef,
   IVector4,
   IVectorOrHigher,
+  LastToolPanel,
   nstructjs,
   Number3,
+  PanelManager,
+  PanelSides,
   util,
 } from '../../path.ux/scripts/pathux'
 
@@ -22,7 +25,7 @@ import {RealtimeEngine} from '../../renderengine/renderengine_realtime'
 import {PackFlags} from '../../path.ux/scripts/core/ui_base'
 import {Editor} from '../editor_base'
 import {Camera, init_webgl} from '../../webgl/webgl'
-import {DrawModes} from './drawmode'
+import {DrawModes} from '../../sceneobject/drawmode'
 import {EnvLightFlags} from '../../scene/scene'
 import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base'
 import * as view3d_shaders from '../../shaders/shaders'
@@ -41,6 +44,8 @@ import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils'
 import {Icons} from '../icon_enum'
 import {NoneWidget} from './widgets/widget_tools'
 import {View3DFlags, CameraModes, view3dProject, view3dUnproject} from './view3d_base'
+import {castViewRay} from './findnearest'
+import {SelMask} from './selectmode'
 import type {Library} from '../../core/lib_api'
 import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
 import type {SceneObject} from '../../sceneobject/sceneobject'
@@ -261,6 +266,8 @@ export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
   orbitMode: OrbitTargetModes
 
   localCursor3D: Matrix4
+
+  transformCursor3D = new Matrix4()
   cursorMode: CursorModes
   _viewvec_temps: util.cachering<Vector3>
   T: number
@@ -291,6 +298,8 @@ View3D {
   subViewPortSize     : float;
   subViewPortPos      : vec3;
   renderSettings      : renderengine_realtime.RenderSettings;
+  transformCursor3D   : mat4;
+  localCursor3D       : mat4;
 }
   `
   )
@@ -353,6 +362,20 @@ View3D {
     this.drawmode = DrawModes.TEXTURED
   }
 
+  get cursor3D() {
+    if (this.flag & View3DFlags.LOCAL_CURSOR) {
+      return this.localCursor3D
+    }
+    return this.ctx?.scene?.cursor3D ?? this.localCursor3D
+  }
+
+  set cursor3D(mat: Matrix4) {
+    if (this.flag & View3DFlags.LOCAL_CURSOR || !this.ctx?.scene) {
+      this.localCursor3D.load(mat)
+    }
+    this.ctx.scene.cursor3D.load(mat)
+  }
+
   get cameraMode() {
     const cam = this.activeCamera
     return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC
@@ -363,18 +386,6 @@ View3D {
 
     cam.isPerspective = val === CameraModes.PERSPECTIVE
     cam.regen_mats()
-  }
-
-  get cursor3D() {
-    if (this.flag & View3DFlags.LOCAL_CURSOR) {
-      return this.localCursor3D
-    }
-
-    if (this.ctx?.scene !== undefined) {
-      return this.ctx.scene.cursor3D
-    }
-
-    return this.localCursor3D
   }
 
   get selectmode() {
@@ -594,7 +605,7 @@ View3D {
 
     if (aabb[0].vectorDistance(aabb[1]) === 0.0 && aabb[0].dot(aabb[0]) === 0.0) {
       cent.zero()
-      cent.multVecMatrix(this.cursor3D)
+      cent.multVecMatrix(this.transformCursor3D)
     } else {
       cent.load(aabb[0]).interp(aabb[1], 0.5)
     }
@@ -610,7 +621,7 @@ View3D {
 
     if (cent === undefined) {
       cent = new Vector3()
-      cent.multVecMatrix(this.cursor3D)
+      cent.multVecMatrix(this.transformCursor3D)
     }
 
     const off = new Vector3(cent).sub(this.camera.target)
@@ -728,7 +739,7 @@ View3D {
   }
 
   setCursor(mat: Matrix4) {
-    this.cursor3D.load(mat)
+    this.transformCursor3D.load(mat)
 
     const p = curtemps.next().zero()
     p.multVecMatrix(mat)
@@ -743,6 +754,49 @@ View3D {
       }
     }
     //this.camera.orbitTarget.load(p);
+  }
+
+  /**
+   * Ctrl-click 3D-cursor placement. Raycasts the scene through the screen
+   * point (castViewRay) and moves the cursor to the surface hit; over empty
+   * space the cursor keeps its current depth relative to the camera — its
+   * present position is projected, the screen xy replaced, and the point
+   * unprojected back to 3D. Orientation is preserved; only the translation
+   * moves.
+   */
+  setCursorFromScreen(localX: number, localY: number): void {
+    const ctx = this.ctx
+    if (!ctx?.scene) {
+      return
+    }
+
+    let p: Vector3 | undefined
+    const hits = castViewRay(ctx, SelMask.OBJECT | SelMask.GEOM, new Vector2([localX, localY]), this)
+    if (hits.length > 0) {
+      p = new Vector3(hits[0].p3d)
+    }
+
+    if (p === undefined) {
+      p = new Vector3()
+      p.multVecMatrix(this.cursor3D)
+      const w = this.project(p) // p becomes (screenX, screenY, ndcZ)
+      if (w <= 0) {
+        // Cursor behind the camera — fall back to a mid-range depth.
+        p[2] = 0.5
+      }
+      p[0] = localX
+      p[1] = localY
+      this.unproject(p)
+    }
+
+    const mat = new Matrix4(this.cursor3D)
+    const m = mat.$matrix
+    m.m41 = p[0]
+    m.m42 = p[1]
+    m.m43 = p[2]
+    this.cursor3D = mat
+
+    window.redraw_viewport()
   }
 
   rebuildHeader() {
@@ -920,8 +974,50 @@ View3D {
     )
   }
 
+  /** Dockable-panel catalog (path.ux dock system, see makePanels in init). */
+  definePanels(panels: PanelManager<ViewContext>) {
+    panels.panel({
+      id     : 'last_command',
+      title  : 'Last Command',
+      dock   : 'right',
+      minSize: [225, undefined],
+      build: (c) => {
+        const last = document.createElement('last-tool-panel-x') as LastToolPanel<ViewContext>
+        c.add(last)
+      },
+    })
+  }
+
+  /** True when node is one of the empty dock-frame skeleton containers
+   *  (built by makePanels), i.e. not interactive UI. */
+  _isDockSkeleton(node: UIBase<ViewContext> | undefined): boolean {
+    const panels = this.panels
+
+    if (node === undefined || panels === undefined) {
+      return false
+    }
+
+    if (node === this.container || node === panels.outer || node === panels.center) {
+      return true
+    }
+
+    if (node === panels.center.parentWidget) {
+      return true
+    }
+
+    for (const side of PanelSides) {
+      if (node === panels.regions[side].container) {
+        return true
+      }
+    }
+
+    return false
+  }
+
   init() {
     super.init()
+
+    this.makePanels(this.container)
 
     /* Prevent pinch zooming. */
     this.addEventListener('pointerdown', (e) => {
@@ -990,7 +1086,13 @@ View3D {
       const node = this.pickElement(x, y)
 
       //console.log(node ? node.tagName : undefined);
-      return node !== this && node !== this.overdraw
+      if (node === this || node === this.overdraw) {
+        return false
+      }
+
+      /* the dock-panel skeleton overlays the viewport; its empty frame
+         containers are not UI */
+      return !this._isDockSkeleton(node)
     }
 
     const on_mousemove = (e: PointerEvent, was_mousemove = true) => {
@@ -1049,7 +1151,21 @@ View3D {
         return
       }
 
-      this.updateCursor()
+      this.updateTransformCursor()
+
+      // Ctrl-left-click/tap (no other modifiers) places the 3D cursor —
+      // toolmodes got first crack via doEvent above (e.g. sculpt's ctrl-invert
+      // stroke consumes the event there; box modeling deliberately does not).
+      // Applies to mouse, pen and touch alike: ctrl is a keyboard modifier, so
+      // holding it while tapping is always an explicit cursor placement (the
+      // ctrl-less touch view gestures are handled below).
+      if (e.button === 0 && e.ctrlKey && !e.shiftKey && !e.altKey) {
+        this.setCursorFromScreen(r[0], r[1])
+        this.pop_ctx_active()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
 
       if (!docontrols && e.button === 0) {
         docontrols = true
@@ -1148,9 +1264,9 @@ View3D {
     return ok
   }
 
-  updateCursor() {
+  updateTransformCursor() {
     if (this.cursorMode == CursorModes.TRANSFORM_CENTER) {
-      this.cursor3D.makeIdentity()
+      this.transformCursor3D.makeIdentity()
 
       const res = this.getTransCenter()
       if (res === undefined) {
@@ -1158,9 +1274,9 @@ View3D {
       }
 
       const tcent = res.center
-      this.cursor3D.translate(tcent[0], tcent[1], tcent[2])
+      this.transformCursor3D.translate(tcent[0], tcent[1], tcent[2])
 
-      this.setCursor(this.cursor3D)
+      this.setCursor(this.transformCursor3D)
     }
   }
 
@@ -1312,6 +1428,8 @@ View3D {
   }
 
   on_area_inactive() {
+    super.on_area_inactive()
+
     this.deleteGraphNodes()
     this.destroy()
     const nonStarted = this as View3D<{started: false}>

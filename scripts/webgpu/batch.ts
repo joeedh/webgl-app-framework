@@ -93,6 +93,38 @@ function cmdTypeToTopology(t: GPUCmdType): GPUPrimitiveTopology {
   }
 }
 
+/**
+ * Color-attachment locations the WGSL fragment entry point (`fs_main`) writes:
+ * an inline `-> @location(n) vec4f` return, or every `@location(n)` member of
+ * its FsOut-style return struct. Used to pad the pipeline's color targets with
+ * `writeMask: 0` for pass attachments the shader does not write (e.g. a
+ * 1-output overlay shader drawn inside the 3-attachment SSS MRT BasePass).
+ */
+export function fragmentOutputLocations(wgsl: string): Set<number> {
+  const locs = new Set<number>()
+  const fm = /@fragment\s+fn\s+\w+\s*\(([\s\S]*?)\)\s*->\s*([^{]+)\{/.exec(wgsl)
+  if (!fm) {
+    locs.add(0)
+    return locs
+  }
+  const ret = fm[2].trim()
+  const inline = /^@location\(\s*(\d+)\s*\)/.exec(ret)
+  if (inline) {
+    locs.add(parseInt(inline[1], 10))
+    return locs
+  }
+  const structName = ret.split(/\s+/)[0]
+  const sm = new RegExp(`struct\\s+${structName}\\s*\\{([\\s\\S]*?)\\}`).exec(wgsl)
+  if (!sm) {
+    locs.add(0)
+    return locs
+  }
+  for (const m of sm[1].matchAll(/@location\(\s*(\d+)\s*\)/g)) {
+    locs.add(parseInt(m[1], 10))
+  }
+  return locs
+}
+
 /** One `@group(n)` → `GPUBindGroup` binding the dispatch loop will set. */
 export interface CommandBindGroup {
   group: number
@@ -157,8 +189,10 @@ export class WebGPUBatchExecutor {
   }
 
   /** Point subsequent draws at a pass with these color attachment format(s),
-   * preserving each target's blend state. No-op when the formats are
-   * unchanged. */
+   * preserving each existing target's blend state. Grows/shrinks to match the
+   * pass — the SSS MRT BasePass has 3 attachments, solid mode has 1. Grown
+   * targets (the SSS data attachments) carry raw data and never blend.
+   * No-op when the formats are unchanged. */
   setColorFormats(formats: GPUTextureFormat[]): void {
     let changed = formats.length !== this.colorTargets.length
     if (!changed) {
@@ -170,7 +204,11 @@ export class WebGPUBatchExecutor {
       }
     }
     if (!changed) return
-    this.colorTargets = this.colorTargets.map((t, i) => ({...t, format: formats[i] ?? t.format}))
+    const prev = this.colorTargets
+    this.colorTargets = formats.map((format, i) => {
+      const t = prev[i]
+      return t ? {...t, format} : {format}
+    })
   }
 
   // --- backend-agnostic seams (see TODO.md "native-electron: de-numbering") ---
@@ -221,6 +259,7 @@ export class WebGPUBatchExecutor {
     const bytes = buf.size * buf.elemsize * gpuTypeBytes(buf.type)
 
     let cached = this.bufferCache.get(key)
+    let fresh = false
     if (!cached || cached.uploadedSize !== bytes) {
       cached?.buf.destroy()
       cached = {
@@ -233,12 +272,16 @@ export class WebGPUBatchExecutor {
         uploadedDataPtr: -1,
       }
       this.bufferCache.set(key, cached)
+      fresh = true
     }
 
     // WASM tracks the data pointer to detect a realloc; native relies on the
-    // engine's `update_buffer` dirty flag (the pointer stays in C++).
+    // engine's `update_buffer` dirty flag (the pointer stays in C++). A fresh
+    // GPU buffer must ALWAYS write: a prior executor for the same batch may
+    // have consumed update_buffer already (e.g. the xray flip rebuilds the
+    // overlay executor), and an unwritten VBO draws degenerate zeros.
     const dataPtr = this.wasm.HEAPU8 !== undefined ? (buf as unknown as {data: number}).data : undefined
-    const needsWrite = (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
+    const needsWrite = fresh || (dataPtr !== undefined && cached.uploadedDataPtr !== dataPtr) || buf.update_buffer
     if (needsWrite) {
       const view = this.bufferBytes(buf, bytes)
       cached.buf.write(view)
@@ -301,11 +344,28 @@ export class WebGPUBatchExecutor {
       }
     })
 
+    // Pad pass attachments the fragment doesn't write with writeMask 0 (a
+    // nonzero-writeMask target with no shader output fails pipeline creation);
+    // more outputs than attachments can't draw — throw so dispatch() skips it.
+    const wgsl = this.opts.wgslForShader(sdef)
+    const outLocs = fragmentOutputLocations(wgsl)
+    let maxLoc = -1
+    for (const loc of outLocs) {
+      maxLoc = Math.max(maxLoc, loc)
+    }
+    if (maxLoc >= this.colorTargets.length) {
+      throw new Error(
+        `WebGPUBatch: shader "${sdef.name}" writes @location(${maxLoc}) but the current pass has ` +
+          `${this.colorTargets.length} color attachment(s)`
+      )
+    }
+    const colorTargets = this.colorTargets.map((t, i) => (outLocs.has(i) ? t : {...t, blend: undefined, writeMask: 0}))
+
     const desc: PipelineDescriptor = {
       label: `WebGPUBatch.pipeline[${sdefPtr}]`,
-      wgsl : this.opts.wgslForShader(sdef),
+      wgsl,
       vertexBuffers,
-      colorTargets: this.colorTargets,
+      colorTargets,
       depthStencil: this.opts.depthStencil,
       primitive   : {topology, cullMode: 'none'},
     }

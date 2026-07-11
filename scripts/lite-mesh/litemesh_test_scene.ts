@@ -44,6 +44,8 @@ import './litemesh_vdmrender_support'
 import './litemesh_boundarytest_support'
 // Side-effect: registers globalThis.__undoMemTest for the undo-memory test.
 import './litemesh_undomem_support'
+// Side-effect: registers globalThis.__solidTexTest for the textured-draw test.
+import './litemesh_solidtextest_support'
 // Side-effect: registers globalThis.__autosaveTest for the autosave round-trip test.
 import './litemesh_autosavetest_support'
 // Side-effect: registers globalThis.__fuzzTest for the sculpt fuzz test.
