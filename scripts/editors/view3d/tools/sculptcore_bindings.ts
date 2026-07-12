@@ -1,14 +1,13 @@
 import {CommandExecutor, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
+import {FalloffShape} from '@sculptcore/api/sculptcore/gpu/FalloffShape'
 import {IWasmInterface} from '@sculptcore/api/api'
 import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/index'
 import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
-import { PaintSample } from './pbvh_paintsample';
-
-/** Mirror of the C++ enum FalloffShape (brush.h); passed to setFalloffShape. */
-const FalloffShape = {Spherical: 0, Cube: 1, Linear: 2, Box: 3} as const
+import {PaintSample} from './pbvh_paintsample'
+import {FalloffKind} from '@sculptcore/api/sculptcore/gpu/FalloffKind'
 
 /** Mirror of C++ enum DeviceType (prop_dynamics.h). */
 const DeviceType = {
@@ -76,7 +75,7 @@ export function configureBrushDynamics(
   for (const chanName in DYNAMIC_CHANNEL_TO_PROP) {
     const propId = DYNAMIC_CHANNEL_TO_PROP[chanName]
     const ch = brush.dynamics.getChannel(chanName, false)
-    if (!ch || !ch.useDynamics) {
+    if (!ch?.useDynamics) {
       continue
     }
     wasmBrush.addPropDynamic(propId, DeviceType.PRESSURE, BasicMix.MULTIPLY, 1.0)
@@ -101,7 +100,7 @@ export function configureBrushDynamics(
     }
     wasmExec.clearUniformDynamics(idx)
     const ch = brush.dynamics.getChannel(entry.name, false)
-    if (!ch || !ch.useDynamics) {
+    if (!ch?.useDynamics) {
       continue
     }
     wasmExec.addUniformDynamic(idx, DeviceType.PRESSURE, BasicMix.MULTIPLY, 1.0)
@@ -144,24 +143,24 @@ export function pushBrushDeviceInputs(wasmBrush: WasmBrush, ps: PaintSample): vo
  * legacy `smooth` kernel survives only for the C++ test harness.
  */
 export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = {
-  [SculptTools.DRAW]       : SculptBrushes.DRAW,
-  [SculptTools.SMOOTH]     : SculptBrushes.BSMOOTH,
-  [SculptTools.INFLATE]    : SculptBrushes.INFLATE,
-  [SculptTools.SHARP]      : SculptBrushes.SHARP,
-  [SculptTools.PINCH]      : SculptBrushes.PINCH,
-  [SculptTools.MASK_PAINT] : SculptBrushes.MASK,
-  [SculptTools.CLAY]       : SculptBrushes.CLAY,
-  [SculptTools.SCRAPE]     : SculptBrushes.SCRAPE,
-  [SculptTools.FILL]       : SculptBrushes.FILL,
-  [SculptTools.WING_SCRAPE]: SculptBrushes.WINGSCRAPE,
-  [SculptTools.COLOR]      : SculptBrushes.COLOR,
-  [SculptTools.PAINT_SMOOTH]: SculptBrushes.COLORSMOOTH,
-  [SculptTools.POLYGROUP]  : SculptBrushes.POLYGROUP,
-  [SculptTools.KELVINLET]  : SculptBrushes.KELVINLET,
-  [SculptTools.GRAB]       : SculptBrushes.GRAB,
-  [SculptTools.SNAKE]      : SculptBrushes.SNAKEHOOK,
+  [SculptTools.DRAW]         : SculptBrushes.DRAW,
+  [SculptTools.SMOOTH]       : SculptBrushes.BSMOOTH,
+  [SculptTools.INFLATE]      : SculptBrushes.INFLATE,
+  [SculptTools.SHARP]        : SculptBrushes.SHARP,
+  [SculptTools.PINCH]        : SculptBrushes.PINCH,
+  [SculptTools.MASK_PAINT]   : SculptBrushes.MASK,
+  [SculptTools.CLAY]         : SculptBrushes.CLAY,
+  [SculptTools.SCRAPE]       : SculptBrushes.SCRAPE,
+  [SculptTools.FILL]         : SculptBrushes.FILL,
+  [SculptTools.WING_SCRAPE]  : SculptBrushes.WINGSCRAPE,
+  [SculptTools.COLOR]        : SculptBrushes.COLOR,
+  [SculptTools.PAINT_SMOOTH] : SculptBrushes.COLORSMOOTH,
+  [SculptTools.POLYGROUP]    : SculptBrushes.POLYGROUP,
+  [SculptTools.KELVINLET]    : SculptBrushes.KELVINLET,
+  [SculptTools.GRAB]         : SculptBrushes.GRAB,
+  [SculptTools.SNAKE]        : SculptBrushes.SNAKEHOOK,
   [SculptTools.FEATURE_ALIGN]: SculptBrushes.FEATURE_ALIGN,
-  [SculptTools.LAYER_DRAW] : SculptBrushes.LAYERDRAW,
+  [SculptTools.LAYER_DRAW]   : SculptBrushes.LAYERDRAW,
 }
 
 /** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
@@ -275,7 +274,7 @@ export function buildBrushProgram(
  * members that `loadProps` leaves untouched.
  */
 export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush): void {
-  wasmBrush.setFalloffShape(FalloffShape.Spherical)
+  wasmBrush.falloff_shape = FalloffShape.SPHERICAL
   wasmBrush.planeoff = 0.0
   wasmBrush.planeSide = 1.0
 
@@ -309,9 +308,17 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
     }
   }
 
+  wasmBrush.falloff_kind = FalloffKind.CURVE
+  let t = 0
+  const dt = 1.0 / (wasmBrush.falloffCurveSize - 1)
+  for (let i = 0; i < wasmBrush.falloffCurveSize; i++, t += dt) {
+    const f = brush.falloff.evaluate(t)
+    wasmBrush.setFalloffCurveEntry(i, f)
+  }
+
   // SQUARE brushes get the stroke-aligned oriented cuboid falloff.
   if (brush.flag & BrushFlags.SQUARE) {
-    wasmBrush.setFalloffShape(FalloffShape.Box)
+    wasmBrush.falloff_shape = FalloffShape.BOX
   }
 }
 

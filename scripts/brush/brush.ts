@@ -521,11 +521,11 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.SHARP]
   brush.strength = 0.5
-  brush.autosmooth = 0.25
+  brush.autosmooth = 0.0
   brush.dynamics.autosmooth.useDynamics = false
-  brush.flag |= BrushFlags.INVERT
+  brush.flag |= BrushFlags.INVERT | BrushFlags.ACCUMULATE
   brush.pinch = 0.5
-  brush.spacing = 0.09
+  brush.spacing = 0.1
   brush.dynamics.strength.useDynamics = true
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SHARP)
 
