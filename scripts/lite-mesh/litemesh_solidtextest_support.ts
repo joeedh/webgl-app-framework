@@ -40,7 +40,7 @@ async function solidTexTest(): Promise<SolidTexTestResult> {
     return {backend, error: 'no app context'}
   }
 
-  ctx.api.execTool(ctx, 'litemesh.add_cube(dimen=8)')
+  ctx.api.execTool(ctx, 'litemesh.add_cube(goalFaces=294)')
   // UV layer (VERTEX domain, Float2, use=UV=4 — mirrors the Add UV button).
   ctx.api.execTool(ctx, 'litemesh.add_attr(domain=1 type=2 use=4)')
 

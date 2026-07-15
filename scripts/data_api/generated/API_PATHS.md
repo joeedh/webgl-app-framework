@@ -727,7 +727,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.add_attr.type` | prop | IntProperty | Type |  |
 | `toolDefaults.litemesh.add_attr.use` | prop | IntProperty | Use |  |
 | `toolDefaults.litemesh.add_cube` | struct |  |  |  |
-| `toolDefaults.litemesh.add_cube.dimen` | prop | IntProperty | Dimen | range 1..1024 |
+| `toolDefaults.litemesh.add_cube.goalFaces` | prop | IntProperty | Goal Faces | range 0..6291456 |
 | `toolDefaults.litemesh.add_cube.size` | prop | FloatProperty | Size |  |
 | `toolDefaults.litemesh.add_cube.sphere` | prop | FloatProperty | Sphere | range 0..1 |
 | `toolDefaults.litemesh.add_plane` | struct |  |  |  |

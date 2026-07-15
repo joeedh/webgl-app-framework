@@ -522,7 +522,7 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.add_attr.type"
   | "toolDefaults.litemesh.add_attr.use"
   | "toolDefaults.litemesh.add_cube"
-  | "toolDefaults.litemesh.add_cube.dimen"
+  | "toolDefaults.litemesh.add_cube.goalFaces"
   | "toolDefaults.litemesh.add_cube.size"
   | "toolDefaults.litemesh.add_cube.sphere"
   | "toolDefaults.litemesh.add_plane"
@@ -1310,7 +1310,7 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.add_attr.type": true;
     "toolDefaults.litemesh.add_attr.use": true;
     "toolDefaults.litemesh.add_cube": true;
-    "toolDefaults.litemesh.add_cube.dimen": true;
+    "toolDefaults.litemesh.add_cube.goalFaces": true;
     "toolDefaults.litemesh.add_cube.size": true;
     "toolDefaults.litemesh.add_cube.sphere": true;
     "toolDefaults.litemesh.add_plane": true;

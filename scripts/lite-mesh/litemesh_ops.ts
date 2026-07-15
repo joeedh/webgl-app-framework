@@ -177,7 +177,7 @@ export abstract class AddLiteMeshShapeOp<Inputs extends PropertySlots = {}> exte
 
 export class AddLiteMeshCubeOp extends AddLiteMeshShapeOp<{
   sphere: FloatProperty
-  dimen: IntProperty
+  goalFaces: IntProperty
   size: FloatProperty
 }> {
   static tooldef() {
@@ -185,9 +185,9 @@ export class AddLiteMeshCubeOp extends AddLiteMeshShapeOp<{
       toolpath: 'litemesh.add_cube',
       uiname  : 'Add Cube (SculptCore)',
       inputs: {
-        sphere: new FloatProperty(0.0).setRange(0.0, 1.0).noUnits(),
-        dimen : new IntProperty(50).setRange(1, 1024).noUnits(),
-        size  : new FloatProperty(1.0),
+        sphere   : new FloatProperty(0.0).setRange(0.0, 1.0).noUnits(),
+        goalFaces: new IntProperty(0).setRange(0, 1024 * 1024 * 6).noUnits(),
+        size     : new FloatProperty(1.0),
       },
       outputs: {
         newObjectId: new IntProperty(-1).noUnits().private(),
@@ -196,9 +196,22 @@ export class AddLiteMeshCubeOp extends AddLiteMeshShapeOp<{
   }
 
   protected makeWasmMesh(wasm: IWasmInterface): WasmMesh {
-    const {sphere, size, dimen} = this.getInputs()
-    return wasm.Mesh_createCube(dimen, size, sphere)
+    const {sphere, size, goalFaces} = this.getInputs()
+    return wasm.Mesh_createCube(goalFacesToDimen(goalFaces), size, sphere)
   }
+}
+
+/**
+ * A cube face is a `dimen x dimen` vertex grid, so the mesh has
+ * `6 * (dimen - 1)**2` faces. Invert that, picking the `dimen` whose face
+ * count is closest to `goalFaces`; a goal of 0 (or less) yields a simple
+ * 6-face cube (`dimen === 2`).
+ */
+function goalFacesToDimen(goalFaces: number): number {
+  if (goalFaces <= 6) {
+    return 2
+  }
+  return Math.max(2, Math.round(Math.sqrt(goalFaces / 6)) + 1)
 }
 ToolOp.register(AddLiteMeshCubeOp)
 

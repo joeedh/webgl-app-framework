@@ -6547,16 +6547,16 @@
       "indexed": false,
       "dynamic": false
     },
-    "toolDefaults.litemesh.add_cube.dimen": {
+    "toolDefaults.litemesh.add_cube.goalFaces": {
       "kind": "prop",
       "ownerStruct": "add_cube",
       "indexed": false,
       "propType": "IntProperty",
-      "uiname": "Dimen",
-      "description": "Dimen",
+      "uiname": "Goal Faces",
+      "description": "Goal Faces",
       "range": [
-        1,
-        1024
+        0,
+        6291456
       ],
       "decimalPlaces": 4,
       "step": 0.1
