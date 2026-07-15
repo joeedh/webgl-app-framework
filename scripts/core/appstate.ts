@@ -704,6 +704,7 @@ export class AppState {
     const type = file.string(4)
     const len = file.int32()
 
+    console.log('len', len)
     const data = file.bytes(len)
     const dataView = new DataView(new Uint8Array(data).buffer)
 

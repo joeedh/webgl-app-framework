@@ -99,12 +99,8 @@ export class BinaryReader {
   }
 
   bytes(n) {
-    let ret = []
-
-    for (let i = 0; i < n; i++) {
-      ret.push(this.view.getUint8(this.i++))
-    }
-
+    const ret = new Uint8Array(this.view.buffer.slice(this.i, this.i + n))
+    this.i += n
     return ret
   }
 
