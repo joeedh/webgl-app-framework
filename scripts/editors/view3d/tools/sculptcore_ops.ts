@@ -658,7 +658,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
     if (!this.gpu || this.gpu.shadow) {
       mesh.regenTreeBatch()
-      mesh.spatial.update(mesh.wasm.gpu)
+      if (this.gpu?.shadow) {
+        // Shadow-verify diffs CPU buffers per dab — keep the eager full update.
+        mesh.spatial.update(mesh.wasm.gpu)
+      } else {
+        // Per-dab: only the query-correctness half (split/merge, tris, bounds,
+        // normals). The GPU buffer half runs once per frame in drawQ.
+        mesh.spatial.updateQueries()
+      }
     }
     window.redraw_viewport(true)
   }
@@ -721,9 +728,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // Dyntopo changes the seam/feature topology; refresh the overlay batch.
     if (mesh instanceof LiteMesh) {
       mesh.markSeamsDirty()
-      // The stroke path's own spatial.update calls consume the flush the draw
-      // path bumps meshRevision on; bump at stroke end so wireframe/points
-      // overlays rebuild (per-dab rebuilds would thaw topology, O(all edges)).
+      // Bump at stroke end so wireframe/points overlays rebuild (per-dab
+      // rebuilds would thaw topology, O(all edges)); drawQ's per-frame bump
+      // mid-stroke doesn't cover a stroke that ends between frames.
       mesh.meshRevision++
       // Fold the stroke into the multires grids store (no-op without a stack).
       mesh.multiresWriteback()

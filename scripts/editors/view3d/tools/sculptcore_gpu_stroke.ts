@@ -660,7 +660,9 @@ export class GpuStrokeController {
 
   private refreshMesh() {
     this.mesh.regenTreeBatch()
-    this.mesh.spatial.update(this.mesh.wasm.gpu)
+    // Queries half only: this call exists for query currency after a GPU
+    // readback; the redraw's drawQ full update runs the GPU buffer half.
+    this.mesh.spatial.updateQueries()
     this.mesh.regenBounds()
     window.redraw_viewport()
   }
