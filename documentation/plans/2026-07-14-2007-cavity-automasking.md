@@ -120,32 +120,33 @@ GPU emission actually does with the index.
 - A settings hash (mirror Blender's `settings_hash()`) folding blur-steps / factor
   / curve control points, so changing a setting mid-session invalidates cleanly.
 
-## GPU parity — the one real fork
+## GPU parity — CPU-precompute, GPU-consume
 
 sculptcore brushes run CPU **and** GPU (WGSL/SPIR-V/…), A/B verified bit-for-bit,
 and `strength()` is mirrored as `brush_strength()`. The cavity BFS is far too
-expensive (and topology-walking) to run per-dab on the GPU. Two options:
+expensive (and topology-walking) to run per-dab on the GPU — so it never does.
 
-**Option A (recommended) — CPU-precompute, GPU-consume.** Cavity is computed once
-per vertex per stroke regardless of dab count, so treat the cached
-`.brush.automask.cavity` attr as a **second, engine-owned per-vertex scalar
-channel** — exactly like the painted mask buffer already uploaded to the GPU. The
-CPU fills it lazily; the GPU `brush_strength(p, vIdx)` just reads `automask[vIdx]`
-and multiplies. The expensive walk never touches the GPU. Requires: the GPU marshal
-uploads the automask buffer (piggyback on the mask-attr upload path in
-`gpu_marshal.cc`), and the GPU `strength` emission indexes it by vertex id.
+The design: cavity is computed once per vertex per stroke regardless of dab count,
+so the cached `.brush.automask.cavity` attr is treated as a **second,
+engine-owned per-vertex scalar channel** — exactly like the painted mask buffer
+already uploaded to the GPU. The CPU fills it lazily on the host; the GPU
+`brush_strength(p, vIdx)` just reads `automask[vIdx]` and multiplies. The expensive
+walk stays entirely CPU-side, and the CPU/GPU paths remain bit-for-bit equal
+because both read the *same* precomputed per-vertex value.
 
-*Wrinkle:* under dyntopo the buffer must be (re)filled for verts touched this dab
-before the GPU dispatch — fold the lazy fill into the same pre-dab CPU pass that
-already materializes `.brush.orig.*`.
+Requirements:
 
-**Option B (simpler first cut) — gate GPU off.** When `automask_cavity` is active,
-force the CPU brush path (like other CPU-only features). Ship correctness first,
-add Option A's buffer upload as a follow-up. The `strength` intrinsic still gains
-the vert-index arg; the GPU emission just ignores it until A lands.
+- The GPU marshal uploads the automask buffer, piggybacking on the existing
+  mask-attr upload path in `gpu_marshal.cc`.
+- The GPU `strength` intrinsic emission indexes the buffer by vertex id (the same
+  vert index threaded through the CPU seam).
+- **Dyntopo:** the buffer must be (re)filled for every vert touched this dab
+  *before* the GPU dispatch. Fold that lazy fill into the same pre-dab CPU pass
+  that already materializes `.brush.orig.*`, so the GPU always sees current values
+  for freshly split verts.
 
-Recommendation: **ship Option B, then A.** B de-risks the heuristic and the seam
-without entangling the GPU marshal; A is a mechanical buffer-upload follow-up.
+This keeps the GPU brush path enabled under automasking from the start — there is
+no CPU-only fallback mode.
 
 ## Milestones
 
@@ -153,19 +154,21 @@ without entangling the GPU marshal; A is a mechanical buffer-upload follow-up.
   compute keyed by `strokeGen`. Unit test on a known concave/convex mesh (sphere
   vs. crease) asserting sign and monotonicity. No brush wiring yet — test the
   factor function directly.
-- **M2 — Strength seam.** Thread vert index through `strength()` + the DSL intrinsic
-  emission (all backends), multiply the factor in on the CPU path. Regenerate
-  kernels (`make.mjs codegen`); confirm existing A/B verify still passes with
-  automasking **off** (bit-identical — the multiply is `*= 1.0` when disabled).
-- **M3 — Brush settings + TS bridge.** `Brush` fields, `defineBindings`, TS sync,
+- **M2 — Strength seam (CPU).** Thread vert index through `strength()` + the DSL
+  intrinsic emission (all backends), multiply the factor in on the CPU path.
+  Regenerate kernels (`make.mjs codegen`); confirm existing A/B verify still passes
+  with automasking **off** (bit-identical — the multiply is `*= 1.0` when disabled).
+- **M3 — GPU consume.** Upload the `.brush.automask.cavity` buffer via `gpu_marshal`
+  (piggyback the mask-attr path), GPU `brush_strength(p, vIdx)` reads and multiplies,
+  and the dyntopo pre-dab CPU fill runs before dispatch. A/B verify CPU vs GPU with
+  automasking **on** — bit-for-bit equal because both read the same precomputed
+  buffer. The GPU path is never gated off.
+- **M4 — Brush settings + TS bridge.** `Brush` fields, `defineBindings`, TS sync,
   cavity curve. A UI toggle + factor slider. Drive a stroke headlessly
   (debug_app / `--eval`) and confirm cracks deepen faster than ridges; inverted
   flips it.
-- **M4 — Curve remap.** `cavity_use_curve` + `cavityCurve` LUT, settings hash for
+- **M5 — Curve remap.** `cavity_use_curve` + `cavityCurve` LUT, settings hash for
   invalidation.
-- **M5 (follow-up) — GPU Option A.** Upload the cavity buffer via `gpu_marshal`,
-  GPU `brush_strength` reads it, dyntopo pre-dab fill. Re-enable GPU path under
-  automasking and A/B verify.
 
 ## Files touched
 
@@ -174,7 +177,7 @@ without entangling the GPU marshal; A is a mechanical buffer-upload follow-up.
 - `source/brush/brush.h` — cavity settings fields + bindings + `cavityCurve`.
 - `source/brush/compiler/emit_*.cc` — `strength` intrinsic gains vert-index arg.
 - `source/brush/kernels/generated/*.gen.h` — regenerated (no hand edits).
-- `source/brush/gpu_marshal.{h,cc}` — M5 buffer upload.
+- `source/brush/gpu_marshal.{h,cc}` — M3 automask buffer upload.
 - TS bridge (`sculptcore_bindings.ts` + brush TS) — settings sync, UI.
 - `tests/test_brush_*` (new `test_automask_cavity.cc`) — heuristic + integration.
 
