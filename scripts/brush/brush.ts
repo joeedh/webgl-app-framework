@@ -72,6 +72,8 @@ SculptBrush {
   cavityFactor : float;
   cavityBlurSteps : int;
   cavityCurve : Curve1D;
+  enhanceRings : int;
+  enhanceInner : int;
 }`
   )
 
@@ -84,6 +86,11 @@ SculptBrush {
   cavityFactor = 1.0
   cavityBlurSteps = 2
   cavityCurve = new Curve1D()
+
+  // Enhance-details brush: outer smoothing depth (feature scale) and inner depth
+  // (0 = high-pass / classic unsharp, >=1 = difference-of-smooths band-pass).
+  enhanceRings = 4
+  enhanceInner = 1
 
   smoothProj = 0.0 //how much smoothing should project to surface
   spacingMode = BrushSpacingModes.EVEN
@@ -204,6 +211,15 @@ SculptBrush {
     bst.curve1d('cavityCurve', 'cavityCurve', 'Cavity Curve')
 
     bst
+      .int('enhanceRings', 'enhanceRings', 'Detail Scale', 'Enhance-details outer smoothing depth (feature scale)')
+      .range(1, 8)
+      .noUnits()
+    bst
+      .int('enhanceInner', 'enhanceInner', 'Detail Inner', 'Inner depth: 0 = high-pass, >=1 = band-pass (rejects noise)')
+      .range(0, 6)
+      .noUnits()
+
+    bst
       .float('smoothProj', 'smoothProj', 'Projection', 'How much smoothing should project to surface')
       .range(0.0, 0.97)
       .noUnits()
@@ -258,6 +274,8 @@ SculptBrush {
     r = r && feq(this.cavityFactor, b.cavityFactor)
     r = r && this.cavityBlurSteps === b.cavityBlurSteps
     r = r && this.cavityCurve.equals(b.cavityCurve)
+    r = r && this.enhanceRings === b.enhanceRings
+    r = r && this.enhanceInner === b.enhanceInner
     const cavMask = BrushFlags.AUTOMASK_CAVITY | BrushFlags.AUTOMASK_CAVITY_INVERT
     r = r && (this.flag & cavMask) === (b.flag & cavMask)
     r = r && feq(this.rakeCurvatureFactor, b.rakeCurvatureFactor)
@@ -318,6 +336,8 @@ SculptBrush {
     d.add(this.cavityFactor)
     d.add(this.cavityBlurSteps)
     this.cavityCurve.calcHashKey(d)
+    d.add(this.enhanceRings)
+    d.add(this.enhanceInner)
     d.add(this.normalfac)
     this.falloff.calcHashKey(d)
     d.add(this.color)
@@ -359,6 +379,8 @@ SculptBrush {
     b.cavityFactor = this.cavityFactor
     b.cavityBlurSteps = this.cavityBlurSteps
     b.cavityCurve = this.cavityCurve.copy()
+    b.enhanceRings = this.enhanceRings
+    b.enhanceInner = this.enhanceInner
     b.autosmooth = this.autosmooth
     b.autosmoothInflate = this.autosmoothInflate
 
@@ -537,6 +559,12 @@ export function makeDefaultBrushes() {
   // Designed to be used with dyntopo — enable it by default on this brush.
   brush.dynTopoSC.overrideMask |= DynTopoOverridesSC.ENABLED
   brush.dynTopoSC.flag |= DynTopoFlagsSC.ENABLED
+
+  // Enhance details: gentle default strength so detail amplification doesn't
+  // blow up, smooth falloff like the other neighbor brushes.
+  brush = bmap[SculptTools.ENHANCE]
+  brush.strength = 0.5
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
@@ -760,6 +788,12 @@ export function makeDefaultBrushes_MediumRes() {
 
   brush.dynamics.strength.curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
   brush.dynamics.strength.useDynamics = true
+
+  // Enhance details: gentle default strength so detail amplification doesn't
+  // blow up, smooth falloff like the other neighbor brushes.
+  brush = bmap[SculptTools.ENHANCE]
+  brush.strength = 0.5
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5

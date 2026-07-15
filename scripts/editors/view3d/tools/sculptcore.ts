@@ -248,6 +248,12 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     cav.prop(path + '.brush.cavityCurve')
     cav.closed = true
 
+    // Enhance-details brush params (only used by the Enhance tool).
+    const enh = col.panel('Enhance Details')
+    enh.prop(path + '.brush.enhanceRings')
+    enh.prop(path + '.brush.enhanceInner')
+    enh.closed = true
+
     doChannel('sharp')
 
     col.useIcons(false)

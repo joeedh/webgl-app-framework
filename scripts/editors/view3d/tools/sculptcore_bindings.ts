@@ -161,6 +161,7 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.SNAKE]        : SculptBrushes.SNAKEHOOK,
   [SculptTools.FEATURE_ALIGN]: SculptBrushes.FEATURE_ALIGN,
   [SculptTools.LAYER_DRAW]   : SculptBrushes.LAYERDRAW,
+  [SculptTools.ENHANCE]      : SculptBrushes.ENHANCE,
 }
 
 /** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
@@ -403,6 +404,9 @@ export function builSculptcoreBrush({
   wasmBrush.cavity_inverted = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY_INVERT)
   wasmBrush.cavity_factor = brush.cavityFactor
   wasmBrush.cavity_blur_steps = brush.cavityBlurSteps
+  // Enhance-details params (read by the host pre-pass in enhance.h).
+  wasmBrush.enhance_rings = brush.enhanceRings
+  wasmBrush.enhance_inner = brush.enhanceInner
   wasmBrush.cavity_use_curve = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY_CURVE)
   if (wasmBrush.cavity_use_curve) {
     let ct = 0

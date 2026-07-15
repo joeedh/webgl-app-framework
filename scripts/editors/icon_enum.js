@@ -150,5 +150,6 @@ export let Icons = {
   VERTEX_POINTS           : 142,
   SELECTION_OVERLAY       : 143,
   SCULPT_FEATURE_ALIGN    : 144,
+  SCULPT_ENHANCE          : 145,
 }
 setIconMap(Icons)

@@ -292,6 +292,8 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.dynamics.strength"
   | "scene.tools.sculptcore.brush.dynamics.strength.curve"
   | "scene.tools.sculptcore.brush.dynamics.strength.useDynamics"
+  | "scene.tools.sculptcore.brush.enhanceInner"
+  | "scene.tools.sculptcore.brush.enhanceRings"
   | "scene.tools.sculptcore.brush.falloff"
   | "scene.tools.sculptcore.brush.falloff2"
   | "scene.tools.sculptcore.brush.flag"
@@ -1078,6 +1080,8 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.dynamics.strength": true;
     "scene.tools.sculptcore.brush.dynamics.strength.curve": true;
     "scene.tools.sculptcore.brush.dynamics.strength.useDynamics": true;
+    "scene.tools.sculptcore.brush.enhanceInner": true;
+    "scene.tools.sculptcore.brush.enhanceRings": true;
     "scene.tools.sculptcore.brush.falloff": true;
     "scene.tools.sculptcore.brush.falloff2": true;
     "scene.tools.sculptcore.brush.flag": true;

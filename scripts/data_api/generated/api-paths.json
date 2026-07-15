@@ -4018,6 +4018,34 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "scene.tools.sculptcore.brush.enhanceInner": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Detail Inner",
+      "description": "Inner depth: 0 = high-pass, >=1 = band-pass (rejects noise)",
+      "range": [
+        0,
+        6
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.enhanceRings": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Detail Scale",
+      "description": "Enhance-details outer smoothing depth (feature scale)",
+      "range": [
+        1,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.brush.falloff": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",
@@ -4597,6 +4625,7 @@
         "KELVINLET",
         "FEATURE_ALIGN",
         "LAYER_DRAW",
+        "ENHANCE",
         "PAINT",
         "PAINT_SMOOTH",
         "COLOR_BOUNDARY",
@@ -4953,6 +4982,7 @@
         "POLYGROUP",
         "KELVINLET",
         "FEATURE_ALIGN",
+        "ENHANCE",
         "PAINT_SMOOTH"
       ]
     },

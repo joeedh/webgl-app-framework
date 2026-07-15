@@ -40,6 +40,9 @@ export enum SculptTools {
    * sculpt layer's delta attr. Retired from the picker in sculptLayersV2 —
    * kept as an engine/test fixture. */
   LAYER_DRAW = 22,
+  /* Enhance details (sculptcore ENHANCE): amplifies surface detail by
+     subtracting the normal-direction Laplacian — the inverse of smooth. */
+  ENHANCE = 23,
   PAINT = 128,
   PAINT_SMOOTH = 129,
   COLOR_BOUNDARY = 130,
