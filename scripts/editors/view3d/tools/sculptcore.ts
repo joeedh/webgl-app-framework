@@ -239,6 +239,15 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     p = doChannel('concaveFilter')
     p.prop(path + '.brush.flag[INVERT_CONCAVE_FILTER]')
 
+    const cav = col.panel('Cavity Masking')
+    cav.prop(path + '.brush.flag[AUTOMASK_CAVITY]')
+    cav.prop(path + '.brush.flag[AUTOMASK_CAVITY_INVERT]')
+    cav.prop(path + '.brush.cavityFactor')
+    cav.prop(path + '.brush.cavityBlurSteps')
+    cav.prop(path + '.brush.flag[AUTOMASK_CAVITY_CURVE]')
+    cav.prop(path + '.brush.cavityCurve')
+    cav.closed = true
+
     doChannel('sharp')
 
     col.useIcons(false)

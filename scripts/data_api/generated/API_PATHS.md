@@ -406,6 +406,9 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
 | `scene.tools.sculptcore.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |
 | `scene.tools.sculptcore.brush.bgcolor` | prop | Vec4Property | Secondary Color | range 0..1 |
+| `scene.tools.sculptcore.brush.cavityBlurSteps` | prop | IntProperty | Cavity Blur | range 0..8 |
+| `scene.tools.sculptcore.brush.cavityCurve` | prop | Curve1DProperty | Cavity Curve |  |
+| `scene.tools.sculptcore.brush.cavityFactor` | prop | FloatProperty | Cavity Factor | range 0..5 |
 | `scene.tools.sculptcore.brush.color` | prop | Vec4Property | Primary Color | range 0..1 |
 | `scene.tools.sculptcore.brush.concaveFilter` | prop | FloatProperty | Concave Wash | range 0..1 |
 | `scene.tools.sculptcore.brush.dynTopo` | struct |  |  |  |
@@ -464,7 +467,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynamics.strength.useDynamics` | prop | BoolProperty | Use Dynamics |  |
 | `scene.tools.sculptcore.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculptcore.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE} |
+| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE, AUTOMASK_CAVITY, AUTOMASK_CAVITY_INVERT, AUTOMASK_CAVITY_CURVE} |
 | `scene.tools.sculptcore.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `scene.tools.sculptcore.brush.graph_id` | prop | IntProperty | Graph ID |  |
 | `scene.tools.sculptcore.brush.inputs` | list |  |  |  |

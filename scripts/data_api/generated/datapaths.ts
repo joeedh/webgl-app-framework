@@ -233,6 +233,9 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.autosmooth"
   | "scene.tools.sculptcore.brush.autosmoothInflate"
   | "scene.tools.sculptcore.brush.bgcolor"
+  | "scene.tools.sculptcore.brush.cavityBlurSteps"
+  | "scene.tools.sculptcore.brush.cavityCurve"
+  | "scene.tools.sculptcore.brush.cavityFactor"
   | "scene.tools.sculptcore.brush.color"
   | "scene.tools.sculptcore.brush.concaveFilter"
   | "scene.tools.sculptcore.brush.dynTopo"
@@ -1016,6 +1019,9 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.autosmooth": true;
     "scene.tools.sculptcore.brush.autosmoothInflate": true;
     "scene.tools.sculptcore.brush.bgcolor": true;
+    "scene.tools.sculptcore.brush.cavityBlurSteps": true;
+    "scene.tools.sculptcore.brush.cavityCurve": true;
+    "scene.tools.sculptcore.brush.cavityFactor": true;
     "scene.tools.sculptcore.brush.color": true;
     "scene.tools.sculptcore.brush.concaveFilter": true;
     "scene.tools.sculptcore.brush.dynTopo": true;

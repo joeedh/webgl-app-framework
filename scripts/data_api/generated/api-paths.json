@@ -3342,6 +3342,43 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "scene.tools.sculptcore.brush.cavityBlurSteps": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Cavity Blur",
+      "description": "Cavity automask blur radius (rings)",
+      "range": [
+        0,
+        8
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "scene.tools.sculptcore.brush.cavityCurve": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "Curve1DProperty",
+      "uiname": "Cavity Curve",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.sculptcore.brush.cavityFactor": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Cavity Factor",
+      "description": "Cavity automasking strength",
+      "range": [
+        0,
+        5
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.brush.color": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",
@@ -4020,7 +4057,10 @@
         "LINE_FALLOFF",
         "SQUARE",
         "USE_LINE_CURVE",
-        "ACCUMULATE"
+        "ACCUMULATE",
+        "AUTOMASK_CAVITY",
+        "AUTOMASK_CAVITY_INVERT",
+        "AUTOMASK_CAVITY_CURVE"
       ]
     },
     "scene.tools.sculptcore.brush.graph_flag": {

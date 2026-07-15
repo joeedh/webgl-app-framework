@@ -384,6 +384,11 @@ export class GpuBrushStroke {
     if (this.has(23)) {
       this.upload(23, new Uint8Array(this.elemCount * 4), BufferUsage.STORAGE | BufferUsage.COPY_DST)
     }
+    // Cavity automask (binding 24): one f32 per vertex, identity 1.0 from the
+    // C-API when cavity masking is off (so GPU strength == CPU strength).
+    if (this.has(24)) {
+      this.upload(24, this.data(GpuBrushData.AUTOMASK).slice(), BufferUsage.STORAGE | BufferUsage.COPY_DST)
+    }
     if (this.has(11)) {
       this.ensureBuf(11, this.elemCount * VEC3_STRIDE, BufferUsage.STORAGE | BufferUsage.COPY_DST)
     }

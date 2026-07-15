@@ -69,12 +69,21 @@ SculptBrush {
   spacingMode: int;
   sharp      : float;
   smoothRadiusMul : float;
+  cavityFactor : float;
+  cavityBlurSteps : int;
+  cavityCurve : Curve1D;
 }`
   )
 
   flag = BrushFlags.SHARED_SIZE
 
   smoothRadiusMul = 1.0
+
+  // Cavity automasking strength scale and BFS blur radius (rings). Enabled via
+  // BrushFlags.AUTOMASK_CAVITY; see automask.h.
+  cavityFactor = 1.0
+  cavityBlurSteps = 2
+  cavityCurve = new Curve1D()
 
   smoothProj = 0.0 //how much smoothing should project to surface
   spacingMode = BrushSpacingModes.EVEN
@@ -185,6 +194,16 @@ SculptBrush {
     bst.float('pinch', 'pinch', 'Pinch').range(0.0, 1.0).noUnits()
 
     bst
+      .float('cavityFactor', 'cavityFactor', 'Cavity Factor', 'Cavity automasking strength')
+      .range(0.0, 5.0)
+      .noUnits()
+    bst
+      .int('cavityBlurSteps', 'cavityBlurSteps', 'Cavity Blur', 'Cavity automask blur radius (rings)')
+      .range(0, 8)
+      .noUnits()
+    bst.curve1d('cavityCurve', 'cavityCurve', 'Cavity Curve')
+
+    bst
       .float('smoothProj', 'smoothProj', 'Projection', 'How much smoothing should project to surface')
       .range(0.0, 0.97)
       .noUnits()
@@ -236,6 +255,11 @@ SculptBrush {
     r = r && feq(this.tool, b.tool)
     r = r && feq(this.rake, b.rake)
     r = r && feq(this.pinch, b.pinch)
+    r = r && feq(this.cavityFactor, b.cavityFactor)
+    r = r && this.cavityBlurSteps === b.cavityBlurSteps
+    r = r && this.cavityCurve.equals(b.cavityCurve)
+    const cavMask = BrushFlags.AUTOMASK_CAVITY | BrushFlags.AUTOMASK_CAVITY_INVERT
+    r = r && (this.flag & cavMask) === (b.flag & cavMask)
     r = r && feq(this.rakeCurvatureFactor, b.rakeCurvatureFactor)
     r = r && feq(this.autosmooth, b.autosmooth)
     r = r && feq(this.smoothProj, b.smoothProj)
@@ -291,6 +315,9 @@ SculptBrush {
     d.add(this.planeNormalMode)
     d.add(this.rake)
     d.add(this.pinch)
+    d.add(this.cavityFactor)
+    d.add(this.cavityBlurSteps)
+    this.cavityCurve.calcHashKey(d)
     d.add(this.normalfac)
     this.falloff.calcHashKey(d)
     d.add(this.color)
@@ -329,6 +356,9 @@ SculptBrush {
     b.concaveFilter = this.concaveFilter
     b.rake = this.rake
     b.pinch = this.pinch
+    b.cavityFactor = this.cavityFactor
+    b.cavityBlurSteps = this.cavityBlurSteps
+    b.cavityCurve = this.cavityCurve.copy()
     b.autosmooth = this.autosmooth
     b.autosmoothInflate = this.autosmoothInflate
 

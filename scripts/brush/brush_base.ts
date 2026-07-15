@@ -45,6 +45,14 @@ export enum BrushFlags {
    * vertex's stroke-start position so repeated passes converge. See
    * sculptcore/documentation/plans/nonAccumMode.md. Deform brushes only. */
   ACCUMULATE = 2048,
+  /* Cavity automasking: scale brush strength by a per-vertex local-convexity
+     factor (masks convex bumps by default). See sculptcore automask.h and
+     documentation/plans/2026-07-14-2007-cavity-automasking.md. */
+  AUTOMASK_CAVITY = 4096,
+  /* Invert cavity automasking (mask concavities instead of convexities). */
+  AUTOMASK_CAVITY_INVERT = 8192,
+  /* Reshape the cavity factor through `cavityCurve` instead of the linear remap. */
+  AUTOMASK_CAVITY_CURVE = 16384,
 }
 
 export enum DynTopoModes {

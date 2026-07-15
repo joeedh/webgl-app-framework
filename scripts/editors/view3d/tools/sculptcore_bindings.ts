@@ -397,6 +397,20 @@ export function builSculptcoreBrush({
   wasmBrush.projection = brush.smoothProj
   // Feature-align rake strength (read by the featurealign kernel as ctx.brush.rake).
   wasmBrush.rake = brush.rake
+  // Cavity automasking: a per-vertex convexity factor the executor computes and
+  // strength() multiplies in (automask.h). Booleans ride BrushFlags bits.
+  wasmBrush.automask_cavity = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY)
+  wasmBrush.cavity_inverted = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY_INVERT)
+  wasmBrush.cavity_factor = brush.cavityFactor
+  wasmBrush.cavity_blur_steps = brush.cavityBlurSteps
+  wasmBrush.cavity_use_curve = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY_CURVE)
+  if (wasmBrush.cavity_use_curve) {
+    let ct = 0
+    const cdt = 1.0 / (wasmBrush.cavityCurveSize - 1)
+    for (let i = 0; i < wasmBrush.cavityCurveSize; i++, ct += cdt) {
+      wasmBrush.setCavityCurveEntry(i, brush.cavityCurve.evaluate(ct))
+    }
+  }
 
   // Per-tool plane / wing / falloff uniforms (runs before the caller's
   // writeProps() so props-backed scalars round-trip through loadProps).
