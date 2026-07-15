@@ -31,6 +31,14 @@ export class BrushOp<InputSlots extends PropertySlots = {}, OutputSlots extends 
     this._undo = undefined
   }
 
+  static invoke(ctx: ToolContext, args: any) {
+    const tool = super.invoke(ctx, args)
+    if (ctx.toolmode && !('dataPath' in args)) {
+      tool.inputs.dataPath.setValue('scene.tools.' + ctx.toolmode.constructor.toolModeDefine().name)
+    }
+    return tool
+  }
+
   getBrush(ctx: ToolContext): SculptBrush | undefined {
     const brush = ctx.api.getValue(ctx, this.inputs.dataPath.getValue()) as SculptBrush | undefined
 
@@ -128,7 +136,7 @@ export class LoadDefaultBrush<
     if (brush.name === comb?.name && brush.tool === comb?.tool) {
       brush2 = comb
     } else {
-      for (const k in DefaultBrushes) {
+      for (const k in DefaultBrushes.brushes) {
         const brush3 = DefaultBrushes.brushes[k]
 
         if (brush3.tool === brush.tool) {

@@ -132,7 +132,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     const row = container.row()
     row.add(browser)
     row.useIcons(true)
-    row.tool("brush.load_default(dataPath='scene.tools.sculpt.brush')")
+    row.tool("brush.load_default(dataPath='scene.tools.sculptcore.brush')")
 
     const col = container.col()
     let strip

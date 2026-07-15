@@ -2064,15 +2064,13 @@
         "8",
         "16",
         "32",
-        "64",
         "NONE",
         "SELECT",
         "HIDE",
         "LOCKED",
         "HIGHLIGHT",
         "ACTIVE",
-        "INTERNAL",
-        "DRAW_WIREFRAME"
+        "INTERNAL"
       ]
     },
     "object.graph_flag": {
@@ -2348,15 +2346,13 @@
         "8",
         "16",
         "32",
-        "64",
         "NONE",
         "SELECT",
         "HIDE",
         "LOCKED",
         "HIGHLIGHT",
         "ACTIVE",
-        "INTERNAL",
-        "DRAW_WIREFRAME"
+        "INTERNAL"
       ]
     },
     "objects[n].graph_flag": {
@@ -6354,9 +6350,11 @@
       "kind": "prop",
       "ownerStruct": "new",
       "indexed": false,
-      "propType": "Vec3Socket",
-      "uiname": "Vector",
-      "description": "Vector"
+      "propType": "Vec3Property",
+      "uiname": "Position",
+      "description": "Position",
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.light.new.type": {
       "kind": "prop",
@@ -7452,9 +7450,11 @@
       "kind": "prop",
       "ownerStruct": "new",
       "indexed": false,
-      "propType": "Vec3Socket",
-      "uiname": "Vector",
-      "description": "Vector"
+      "propType": "Vec3Property",
+      "uiname": "Position",
+      "description": "Position",
+      "decimalPlaces": 4,
+      "step": 0.1
     },
     "toolDefaults.material.new.type": {
       "kind": "prop",

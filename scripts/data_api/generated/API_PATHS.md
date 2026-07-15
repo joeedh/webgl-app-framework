@@ -273,7 +273,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `object.data` | dynamicStruct |  |  | dynamic |
 | `object.drawFlag` | prop | FlagProperty | Draw Flags | enum {NONE, FORCE_XRAY, WIREFRAME, TEXTURED} |
 | `object.drawMode` | prop | EnumProperty | Draw Mode | enum {BOUNDS, WIRE, SOLID, TEXTURED} |
-| `object.flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, 64, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL, DRAW_WIREFRAME} |
+| `object.flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL} |
 | `object.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `object.graph_id` | prop | IntProperty | Graph ID |  |
 | `object.inputs` | list |  |  |  |
@@ -302,7 +302,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `objects[n].data` | dynamicStruct |  |  | dynamic |
 | `objects[n].drawFlag` | prop | FlagProperty | Draw Flags | enum {NONE, FORCE_XRAY, WIREFRAME, TEXTURED} |
 | `objects[n].drawMode` | prop | EnumProperty | Draw Mode | enum {BOUNDS, WIRE, SOLID, TEXTURED} |
-| `objects[n].flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, 64, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL, DRAW_WIREFRAME} |
+| `objects[n].flag` | prop | FlagProperty | Flag | enum {0, 1, 2, 4, 8, 16, 32, NONE, SELECT, HIDE, LOCKED, HIGHLIGHT, ACTIVE, INTERNAL} |
 | `objects[n].graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `objects[n].graph_id` | prop | IntProperty | Graph ID |  |
 | `objects[n].inputs` | list |  |  |  |
@@ -708,7 +708,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.light.new` | struct |  |  |  |
 | `toolDefaults.light.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
 | `toolDefaults.light.new.name` | prop | StringProperty | Name |  |
-| `toolDefaults.light.new.position` | prop | Vec3Socket | Vector |  |
+| `toolDefaults.light.new.position` | prop | Vec3Property | Position |  |
 | `toolDefaults.light.new.type` | prop | EnumProperty | Type | enum {POINT, SUN, AREA_DISK, AREA_RECT} |
 | `toolDefaults.listbox` | struct |  |  |  |
 | `toolDefaults.listbox.set_active` | struct |  |  |  |
@@ -806,7 +806,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.material.new` | struct |  |  |  |
 | `toolDefaults.material.new.dataPathToSet` | prop | StringProperty | Data Path To Set |  |
 | `toolDefaults.material.new.name` | prop | StringProperty | Name |  |
-| `toolDefaults.material.new.position` | prop | Vec3Socket | Vector |  |
+| `toolDefaults.material.new.position` | prop | Vec3Property | Position |  |
 | `toolDefaults.material.new.type` | prop | EnumProperty | Type | enum {POINT, SUN, AREA_DISK, AREA_RECT} |
 | `toolDefaults.material.unlink` | struct |  |  |  |
 | `toolDefaults.material.unlink.dataPathToUnset` | prop | StringProperty | Data Path To Unset |  |
