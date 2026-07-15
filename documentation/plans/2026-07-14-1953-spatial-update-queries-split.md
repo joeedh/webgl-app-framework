@@ -80,6 +80,30 @@ bool updateQueries();                /* new bound method: Update_Queries only */
   a ~1M-tri mesh; note dabs/frame and ms split. This is the A side of the
   final A/B. Keep the numbers in this plan file.
 
+**M0 results (2026-07-14, native backend, headless NW.js, litemesh-cube
+subdiv=288 ≈ 1.0M tris, 61-point interpolated stroke → 21 samples / 42
+per-dab `spatial.update` calls, radius 120px, strength 0.6):**
+
+| scene | update calls | avg ms | min ms | max ms | total ms |
+|---|---|---|---|---|---|
+| draw brush | 42 | 4.70 | 3.30 | 12.70 | 197.2 |
+| dyntopo    | 42 | 5.70 | 2.90 | 12.50 | 239.6 |
+
+All 42 per-dab updates land inside one render frame (headless synchronous
+stroke; interactively a fast stroke similarly batches many dabs per frame), so
+the full-update GPU half runs ~42× per rendered frame where once would do.
+
+**M4 A/B (same scenes/driver, per-dab site → `updateQueries()`):**
+
+| scene | avg ms | max ms | total ms | vs M0 |
+|---|---|---|---|---|
+| draw brush | 3.67 | 5.0 | 154.1 | −22% avg, −61% max |
+| dyntopo    | 4.80 | 11.5 | 201.4 | −16% avg |
+
+The removed share (partition/plan/fill/upload/batch) now runs once per frame
+in drawQ. Remaining per-dab cost is the queries half — normals dominate (the
+planned follow-up moves normals to the draw half).
+
 ### M1 — Engine split (sculptcore C++)
 
 1. `spatial.h`: add `UpdatePhases`, `updateQueries()`, `pendingGpuTopology_`,
