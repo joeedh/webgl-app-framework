@@ -179,7 +179,7 @@ SculptBrush {
     bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
 
     bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
-    bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(1.0)
+    bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(2.5).expRate(1.75)
     bst.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()

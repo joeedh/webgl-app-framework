@@ -1,5 +1,5 @@
 ## UI stuff
-[ ]: in TS app make vert/face/edge selection mode buttons in 
+[x]: in TS app make vert/face/edge selection mode buttons in 
      sculptcore modeling mode behave like an enum, and only 
 	 combines modes when holding shift (so clicking 'face' 
 	 should switch to just face mode, clicking it against 
@@ -29,23 +29,28 @@ enabled selection modes.
 
 ### Face Mode Select similar
 [ ]: Area
-[ ]: Materal
+[ ]: Materal              (BLOCKED: no per-face material attr exists yet)
 [ ]: Edge Count
 [ ]: Normal
 [ ]: Coplanar
-[ ]: Flat vs smooth shading state
+[ ]: Flat vs smooth shading state  (BLOCKED: no per-face smooth/flat attr yet)
 [ ]: Poly groups
 
 ## Other Stuff
 [ ]: A toolop where the user clicks a face and extrude region is 
      invoked on all the faces with the same poly group.  Exposed as 
 	 an icon in sculptcore's header.
-[ ]: Fix shift-f setting of radius in sculptcore toolmode
-[ ]: Give brush radius datapath property a bigger step size and 
+[x]: Fix shift-f setting of radius in sculptcore toolmode
+     (SetBrushRadius wrote sharedBrushRadius to a hardcoded `bvh` toolmode
+      while sculptcore read its own; undoPre also captured the wrong value)
+[x]: Give brush radius datapath property a bigger step size and 
      more aggressive slider exponent.
 [ ]: Support world space brush radius mode.  Primary (non-symmetry) brush dabs
      should keep track of the last valid world and screen space radii, to be used
 	 when switching modes.
+NOTE: materials are per-SceneObject today; sculptcore has no per-face material
+      index attr. The two items below need that attr added first (same
+      BuiltinAttr pattern as the existing `group` polygroup int attr).
 [ ]: Support assigning materials to selected faces in modelling mode.  Button should live
      in material tab in properties editor.
 [ ]: Support assiging materials in sculptcore mode by clicking a face, then

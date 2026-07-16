@@ -8,7 +8,7 @@
  * holds the small amount of view/tool state the C++ side and the LiteMesh draw
  * path read (`boxModelSelMode`, `drawSelectionOverlay`, `xray`, `selectRadius`).
  */
-import {Container, DataAPI, DataStruct, HotKey, KeyMap, nstructjs} from '../../../path.ux/pathux'
+import {Container, DataAPI, DataStruct, HotKey, IconCheck, KeyMap, nstructjs} from '../../../path.ux/pathux'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
@@ -93,6 +93,38 @@ BoxModelToolMode {
     return st
   }
 
+  /**
+   * Vertex / edge / face chips, Blender-style: a plain click switches to exactly
+   * that domain, shift-click toggles it into/out of the set. The default flag-prop
+   * expansion toggles each bit independently, which lets a plain click clear the
+   * last domain and leave nothing selectable — hence the hand-built chips.
+   */
+  static buildSelModeChips(strip: Container<ViewContext>, name: string): void {
+    const path = `scene.tools.${name}.boxModelSelMode`
+    const uinames = {VERTEX: 'Vertex', EDGE: 'Edge', FACE: 'Face'}
+
+    for (const key of ['VERTEX', 'EDGE', 'FACE'] as const) {
+      const bit: number = SelMask[key]
+      // `useIcons(true)` on the strip makes every check an IconCheck.
+      const chip = strip.check(`${path}[${key}]`, uinames[key]) as IconCheck<ViewContext>
+
+      chip.description = `${uinames[key]} select mode (shift-click to combine modes)`
+
+      chip._on_press = (e?: Event): void => {
+        const ctx = chip.ctx
+        const cur = chip.getPathValue(ctx, path) as number
+        let next: number = bit
+
+        if ((e as MouseEvent | undefined)?.shiftKey) {
+          next = cur & bit ? cur & ~bit : cur | bit
+        }
+
+        // Never leave every domain off — the viewport would select nothing.
+        chip.setPathValue(ctx, path, next || cur)
+      }
+    }
+  }
+
   static buildHeader(header: Container<ViewContext>, addHeaderRow: () => Container<ViewContext>): void {
     super.buildHeader(header, addHeaderRow)
 
@@ -100,8 +132,7 @@ BoxModelToolMode {
 
     let strip = header.strip()
     strip.useIcons(true)
-    // Vertex / edge / face selection-mode chips (multi-select via the flag prop).
-    strip.prop(`scene.tools.${name}.boxModelSelMode`)
+    this.buildSelModeChips(strip, name)
     strip.prop(`scene.tools.${name}.drawSelectionOverlay`)
     strip.prop(`scene.tools.${name}.drawWireframe`)
     strip.prop(`scene.tools.${name}.drawPoints`)

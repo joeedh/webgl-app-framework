@@ -4258,7 +4258,7 @@
         350
       ],
       "decimalPlaces": 4,
-      "step": 1
+      "step": 2.5
     },
     "scene.tools.sculptcore.brush.rake": {
       "kind": "prop",

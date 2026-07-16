@@ -377,12 +377,8 @@ export class SetBrushRadius extends ToolOp<
     let radius: number
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      const bvhtool = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase
-      if (bvhtool) {
-        radius = bvhtool.sharedBrushRadius
-      } else {
-        radius = brush.radius
-      }
+      const paintmode = this._paintToolMode(ctx)
+      radius = paintmode ? paintmode.sharedBrushRadius : brush.radius
     } else {
       radius = brush.radius
     }
@@ -399,12 +395,20 @@ export class SetBrushRadius extends ToolOp<
     this.modalEnd(false)
   }
 
+  /** SHARED_SIZE stores the radius on the paint toolmode instead of the brush, and
+   * each paint toolmode keeps its own `sharedBrushRadius` — so this must follow the
+   * active mode. Resolving a fixed mode strands the write in sculptcore mode. */
+  private _paintToolMode(ctx: ToolContext): PaintToolModeBase | undefined {
+    const toolmode = ctx.toolmode
+    return toolmode instanceof PaintToolModeBase ? toolmode : undefined
+  }
+
   exec(ctx: ToolContext): void {
     const brush = ctx.datalib.get(this.inputs.brush.getValue())
 
     if (brush) {
       if (brush.flag & BrushFlags.SHARED_SIZE) {
-        const toolmode = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase
+        const toolmode = this._paintToolMode(ctx)
 
         if (toolmode) {
           toolmode.sharedBrushRadius = this.inputs.radius.getValue()
@@ -421,7 +425,11 @@ export class SetBrushRadius extends ToolOp<
     this._undo = {}
 
     if (brush) {
-      this._undo.radius = brush.radius
+      const toolmode = this._paintToolMode(ctx)
+
+      // Capture whichever value exec() will overwrite, or undo restores a stale radius.
+      this._undo.radius =
+        brush.flag & BrushFlags.SHARED_SIZE && toolmode ? toolmode.sharedBrushRadius : brush.radius
       this._undo.brushref = DataRef.fromBlock(brush)
     }
   }
@@ -439,7 +447,7 @@ export class SetBrushRadius extends ToolOp<
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      const toolmode = ctx.scene.toolmode_namemap.bvh as PaintToolModeBase | undefined
+      const toolmode = this._paintToolMode(ctx)
 
       if (toolmode) {
         toolmode.sharedBrushRadius = undo.radius
