@@ -6,7 +6,8 @@
 //
 // Usage (from any worktree of this repo):
 //   node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>]
-//                                       [--submodules require-pushed|remote-master] [--no-emsdk]
+//                                       [--submodules require-pushed|remote-master]
+//                                       [--build-jobs <n>] [--no-emsdk]
 //
 //   <name>               worktree is created at <main-worktree>-<name>
 //   --base <ref>         branch point for the new branch (default: master)
@@ -18,6 +19,9 @@
 //                          remote-master   ignore the pinned commits and put each
 //                                          submodule on a new branch at its remote
 //                                          master tip.
+//   --build-jobs <n>     cap sculptcore builds in the new worktree to n CPU cores:
+//                        writes BUILD_JOBS=n into its sculptcore/local-build-options.mjs
+//                        (seeded from this worktree's options file, else the example)
 //   --no-emsdk           don't point WASM builds at the main worktree's emsdk (default: do)
 //
 // It does NOT build anything and never touches the persistent -agent worktree.
@@ -58,11 +62,13 @@ let base = 'master'
 let branch = null
 let noEmsdk = false
 let submodMode = 'require-pushed'
+let buildJobs = 0
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   if (a === '--base') base = argv[++i]
   else if (a === '--branch') branch = argv[++i]
   else if (a === '--submodules') submodMode = argv[++i]
+  else if (a === '--build-jobs') buildJobs = Number(argv[++i])
   else if (a === '--no-emsdk') noEmsdk = true
   else if (a.startsWith('--')) die(`unknown flag ${a}`)
   else if (name === null) name = a
@@ -70,10 +76,13 @@ for (let i = 0; i < argv.length; i++) {
 }
 if (!name)
   die(
-    'usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--submodules require-pushed|remote-master] [--no-emsdk]'
+    'usage: node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] [--submodules require-pushed|remote-master] [--build-jobs <n>] [--no-emsdk]'
   )
 if (submodMode !== 'require-pushed' && submodMode !== 'remote-master') {
   die(`--submodules must be 'require-pushed' or 'remote-master', got '${submodMode}'`)
+}
+if (buildJobs && (!Number.isInteger(buildJobs) || buildJobs < 1)) {
+  die(`--build-jobs must be a positive integer, got '${buildJobs}'`)
 }
 branch = branch || name
 
@@ -142,6 +151,34 @@ function branchSubmodulesFromRemoteMaster() {
     `git switch -c ${branch} 2>/dev/null || git switch ${branch}`,
   ])
   console.log(`submodules: each on new branch '${branch}' at its remote master tip`)
+}
+
+// --- cap build parallelism via sculptcore's local-build-options.mjs ---
+// BUILD_JOBS feeds every make.mjs build mode (wasm/native/node, debug/sbrush
+// targets, deps builds). Seed the new worktree's (gitignored) options file from
+// this worktree's, else from the tracked example, so the user's other knobs
+// carry over; then set/override BUILD_JOBS.
+if (buildJobs > 0) {
+  const destOpts = Path.join(DEST, 'sculptcore', 'local-build-options.mjs')
+  const seeds = [
+    Path.join(MAIN, 'sculptcore', 'local-build-options.mjs'),
+    Path.join(DEST, 'sculptcore', 'local-build-options.mjs.example'),
+  ]
+  const seed = seeds.find((p) => fs.existsSync(p))
+  let text = seed ? fs.readFileSync(seed, 'utf8') : 'export default {\n}\n'
+  if (/^\s*BUILD_JOBS\s*:/m.test(text)) {
+    text = text.replace(/^(\s*BUILD_JOBS\s*:\s*)\d+/m, `$1${buildJobs}`)
+  } else {
+    text = text.replace(
+      /\n}\s*$/,
+      `\n\n  /** Max parallel compile jobs, all build modes (0 = all cores). */\n  BUILD_JOBS: ${buildJobs},\n}\n`
+    )
+  }
+  if (!/^\s*BUILD_JOBS\s*:/m.test(text)) {
+    die(`could not set BUILD_JOBS in ${seed ?? '(builtin template)'} — unexpected file shape`)
+  }
+  fs.writeFileSync(destOpts, text)
+  console.log(`build jobs    : capped at ${buildJobs} (BUILD_JOBS in sculptcore/local-build-options.mjs)`)
 }
 
 // --- resolve a shared emsdk to borrow (avoid the 2.4 GB reinstall) ---

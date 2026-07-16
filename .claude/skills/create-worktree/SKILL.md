@@ -20,7 +20,8 @@ worktree (it's reserved for secondary agent work and is often in use).
 
 ```sh
 node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] \
-                                   [--submodules require-pushed|remote-master] [--no-emsdk]
+                                   [--submodules require-pushed|remote-master] \
+                                   [--build-jobs <n>] [--no-emsdk]
 ```
 
 - Creates the worktree at `<main-worktree>-<name>` (e.g.
@@ -52,6 +53,13 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] \
   forwards it to every server it (re)starts. Without it sccache falls back to
   the TCP-port server, whose port can stay bound after the launcher kills the
   server on a new-worktree join — the stall the named-pipe mode exists to fix.
+- `--build-jobs <n>` caps sculptcore builds in the new worktree to `n` CPU
+  cores: it writes `BUILD_JOBS: n` into the worktree's (gitignored)
+  `sculptcore/local-build-options.mjs`, seeded from the current worktree's
+  options file (else the tracked example) so other local knobs carry over.
+  `BUILD_JOBS` feeds every `make.mjs` build mode (wasm/native/node, the
+  debug/sbrush targets, and local deps builds); the `-j`/`--jobs` CLI flag
+  still overrides it per invocation.
 - Points WASM builds at the main worktree's emsdk via `SCULPTCORE_EMSDK_DIR`
   (set in `worktree-env`, honored by `configureEnv.mjs`), so they reuse the
   existing ~2.4 GB install instead of re-running `install-emsdk` (pass
@@ -77,7 +85,12 @@ node tools/new-worktree.mjs <name> [--base <ref>] [--branch <branch>] \
 
    Then run `node tools/new-worktree.mjs <name> [--submodules <mode>]`. (To base
    it on an in-progress feature branch instead of `master`, pass
-   `--base <branch>`.)
+   `--base <branch>`.) If the user gave a core count for builds — or asked for
+   the worktree to build "lightly"/in the background — pass it as
+   `--build-jobs <n>`; it becomes `BUILD_JOBS` in the worktree's
+   `sculptcore/local-build-options.mjs` and caps all sculptcore build modes
+   there. Don't ask about it unprompted; the default (all cores) is right for
+   dedicated worktrees.
 2. `cd` into the new worktree and load the env **in the shell you'll build from**
    (env vars are per-shell):
    - PowerShell: `. .\worktree-env.ps1`
