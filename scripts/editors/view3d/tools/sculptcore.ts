@@ -33,7 +33,7 @@ import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh'
 import {BVHFlags} from '../../../../addons/builtin/mesh/src/bvh'
 import type {ISurfaceSampler} from '../../../util/spatial'
 import type {LiteMesh} from '../../../lite-mesh/index'
-import {DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../../../brush/index'
+import {BrushRadiusModes, DynTopoSettings, DynTopoSettingsSC, SculptBrush} from '../../../brush/index'
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
@@ -386,6 +386,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(path + '.dynamics.radius.useDynamics')
     strip.prop(`scene.tools.${name}.brushRadius`)
     strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
+    // Via the ToolOp, not the raw `radiusMode` datapath: switching the unit has
+    // to rescale the stored radius or the brush changes size on the switch.
+    strip.tool('brush.set_radius_mode(mode=SCREEN)')
+    strip.tool('brush.set_radius_mode(mode=WORLD)')
 
     strip.prop(path + '.dynamics.strength.useDynamics')
     strip.prop(path + '.strength')
@@ -935,8 +939,19 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
-    const r = this._radius !== undefined ? this._radius : radius
+    const r = this._radius !== undefined ? this._radius : this.overlayScreenRadius(brush, radius)
     drawCircle(x, y, r)
+  }
+
+  /** The cursor ring is drawn in screen space, so a WORLD-unit radius has to be
+   * converted back through the last dab's world-units-per-pixel. Before any dab
+   * that factor is unknown; draw the raw value rather than nothing. */
+  private overlayScreenRadius(brush: SculptBrush, radius: number): number {
+    if (brush.radiusMode !== BrushRadiusModes.WORLD || this.lastScreenRadius <= 0) {
+      return radius
+    }
+    const dist = this.lastWorldRadius / this.lastScreenRadius
+    return dist > 0 ? radius / dist : radius
   }
 }
 ToolMode.register(SculptCorePaintMode)

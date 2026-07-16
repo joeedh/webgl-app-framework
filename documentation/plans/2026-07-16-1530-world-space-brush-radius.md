@@ -4,9 +4,15 @@ ImmediateTODOs: *"Support world space brush radius mode. Primary (non-symmetry)
 brush dabs should keep track of the last valid world and screen space radii, to
 be used when switching modes."*
 
-Status: **designed, not implemented.** Not blocked — see Verification below; the
-app drives fine over CDP. The risky parts (brush overlay, `F` modal) are
-invisible to typecheck, so they must be exercised on a live app.
+Status: **implemented and verified on a live app** (see Verification). All the
+traps below were hit and handled; two are worth re-reading before touching this
+code again (`calcRadius` double-apply, SHARED_SIZE indirection).
+
+Known gap: the **pbvh** toolmode's own dab path does not honour `radiusMode` and
+never populates the tracked radii, so world mode is sculptcore-only. The UI is
+only built in sculptcore's header. Not verified: the tracking write itself
+(`applyDabOne`) — it needs a real stroke on a mesh; the conversion either side of
+it is verified.
 
 ## Today
 
@@ -98,6 +104,12 @@ Follow that shape rather than inventing a new one.
 - **`pbvh.ts` shares `SculptBrush`.** The legacy pbvh toolmode reads the same
   brush. Decide explicitly whether it honours `radiusMode` or pins to SCREEN;
   doing nothing means it silently misreads a world radius as pixels.
+  *Resolved:* left alone — pbvh isn't even instantiated in the app today
+  (`toolmode_namemap` holds only `sculptcore`), and the UI is sculptcore-only.
+- **SHARED_SIZE is the DEFAULT brush flag**, and it keeps the live radius on the
+  toolmode (`sharedBrushRadius`), not on `brush.radius`. Any conversion that
+  rewrites `brush.radius` alone is a silent no-op in the default configuration.
+  This bit the first cut of `set_radius_mode`.
 - **GPU brush path** (`this.gpu.dab(..., radius, filterRadius, ...)`, `:621`)
   takes the world radius — correct once (3) lands, but worth a soak check under
   flag `sculptcore.gpu_brush`.

@@ -12,6 +12,7 @@ import {PropFlags} from '../../../path.ux/scripts/pathux.js'
 import {
   Curve1DProperty,
   Vec2Property,
+  EnumProperty,
   FlagProperty,
   FloatProperty,
   keymap,
@@ -30,6 +31,7 @@ import {
 
 import {
   BrushFlags,
+  BrushRadiusModes,
   SculptBrush,
   SculptTools,
   BrushSpacingModes,
@@ -351,7 +353,9 @@ export class SetBrushRadius extends ToolOp<
 
     if (this.first) {
       this.first = false
-      this.cent_mpos.load(mpos).subScalar(brush.radius / devicePixelRatio / Math.sqrt(2.0))
+      // Screen-space pivot, so a WORLD-unit radius has to be converted first.
+      const screenRadius = this._toScreenRadius(ctx, brush, brush.radius)
+      this.cent_mpos.load(mpos).subScalar(screenRadius / devicePixelRatio / Math.sqrt(2.0))
 
       this.start_mpos.load(mpos)
       this.last_mpos.load(mpos)
@@ -401,6 +405,18 @@ export class SetBrushRadius extends ToolOp<
   private _paintToolMode(ctx: ToolContext): PaintToolModeBase | undefined {
     const toolmode = ctx.toolmode
     return toolmode instanceof PaintToolModeBase ? toolmode : undefined
+  }
+
+  /** Convert `radius` (in the brush's own unit) to screen pixels — this modal's
+   * geometry is screen-space. A WORLD-unit radius converts through the last
+   * dab's world-units-per-pixel; before any dab that factor is unknown. */
+  private _toScreenRadius(ctx: ToolContext, brush: SculptBrush, radius: number): number {
+    const toolmode = this._paintToolMode(ctx)
+    if (brush.radiusMode !== BrushRadiusModes.WORLD || !toolmode || toolmode.lastScreenRadius <= 0) {
+      return radius
+    }
+    const dist = toolmode.lastWorldRadius / toolmode.lastScreenRadius
+    return dist > 0 ? radius / dist : radius
   }
 
   exec(ctx: ToolContext): void {
@@ -469,6 +485,126 @@ export class SetBrushRadius extends ToolOp<
 }
 
 ToolOp.register(SetBrushRadius)
+
+/**
+ * Switch the unit `brush.radius` is expressed in, rewriting the stored value so
+ * the brush keeps its current on-screen size across the switch (55 px and 55
+ * mesh units are wildly different sizes). The world-units-per-pixel factor comes
+ * from the last primary dab that hit the surface; before any dab there is
+ * nothing to convert through, so the value is left alone.
+ */
+export class SetBrushRadiusMode extends ToolOp<
+  {mode: EnumProperty; brush: DataRefProperty<SculptBrush>},
+  {},
+  ToolContext,
+  ViewContext
+> {
+  _undo: {radius?: number; shared?: number; radiusMode?: number; brushref?: DataRef} | undefined
+
+  static canRun(ctx: ToolContext): boolean {
+    return ctx.toolmode instanceof PaintToolModeBase
+  }
+
+  static tooldef(): any {
+    return {
+      uiname  : 'Set Radius Unit',
+      toolpath: 'brush.set_radius_mode',
+      inputs  : {
+        mode : new EnumProperty(BrushRadiusModes.SCREEN, {SCREEN: BrushRadiusModes.SCREEN, WORLD: BrushRadiusModes.WORLD}),
+        brush: new DataRefProperty(SculptBrush),
+      },
+    }
+  }
+
+  static invoke(ctx: ViewContext, args: any) {
+    const tool = super.invoke(ctx, args) as SetBrushRadiusMode
+
+    const toolmode = ctx.toolmode
+    if (!(toolmode instanceof PaintToolModeBase)) {
+      return tool
+    }
+
+    const brush = toolmode.getBrush()
+    if (brush && !('brush' in args)) {
+      tool.inputs.brush.setValue(brush)
+    }
+
+    return tool
+  }
+
+  /** The paint toolmode owning `sharedBrushRadius` / the tracked radii. */
+  private _paintToolMode(ctx: ToolContext): PaintToolModeBase | undefined {
+    const toolmode = ctx.toolmode
+    return toolmode instanceof PaintToolModeBase ? toolmode : undefined
+  }
+
+  undoPre(ctx: ToolContext): void {
+    const brush = ctx.datalib.get<SculptBrush>(this.inputs.brush.getValue())
+
+    this._undo = {}
+    if (brush) {
+      const toolmode = this._paintToolMode(ctx)
+      this._undo.radius = brush.radius
+      this._undo.shared = toolmode?.sharedBrushRadius
+      this._undo.radiusMode = brush.radiusMode
+      this._undo.brushref = DataRef.fromBlock(brush)
+    }
+  }
+
+  undo(ctx: ToolContext): void {
+    const undo = this._undo
+    if (!undo?.brushref || undo.radius === undefined || undo.radiusMode === undefined) {
+      return
+    }
+
+    const brush = ctx.datalib.get<SculptBrush>(undo.brushref)
+    if (!brush) {
+      return
+    }
+
+    const toolmode = this._paintToolMode(ctx)
+    brush.radius = undo.radius
+    brush.radiusMode = undo.radiusMode
+    if (toolmode && undo.shared !== undefined) {
+      toolmode.sharedBrushRadius = undo.shared
+    }
+  }
+
+  exec(ctx: ToolContext): void {
+    const brush = ctx.datalib.get<SculptBrush>(this.inputs.brush.getValue())
+    if (!brush) {
+      return
+    }
+
+    const mode = this.inputs.mode.getValue() as number
+    if (mode === brush.radiusMode) {
+      return
+    }
+
+    const toolmode = this._paintToolMode(ctx)
+    const screen = toolmode ? toolmode.lastScreenRadius : 0
+    const world = toolmode ? toolmode.lastWorldRadius : 0
+
+    // Both are only set by a dab that hit the surface; without them the factor
+    // is unknown, so switch the unit and leave the number as the user set it.
+    if (screen > 0 && world > 0) {
+      const dist = world / screen
+      const convert = (r: number) => (mode === BrushRadiusModes.WORLD ? r * dist : r / dist)
+
+      // SHARED_SIZE keeps the live radius on the toolmode, so converting
+      // brush.radius alone would be a no-op in the default configuration.
+      if (brush.flag & BrushFlags.SHARED_SIZE && toolmode) {
+        toolmode.sharedBrushRadius = convert(toolmode.sharedBrushRadius)
+      } else {
+        brush.radius = convert(brush.radius)
+      }
+    }
+
+    brush.radiusMode = mode
+  }
+}
+
+ToolOp.register(SetBrushRadiusMode)
 
 const co = new Vector3()
 const t1 = new Vector3()
@@ -556,6 +692,8 @@ export abstract class PaintToolModeBase extends ToolMode {
     tool                   : int;
     slots                  : iterkeys(PaintToolSlot);
     sharedBrushRadius      : float;
+    lastScreenRadius       : float;
+    lastWorldRadius        : float;
     dynTopo                : DynTopoSettings;
     reprojectCustomData    : bool;
   }`
@@ -568,6 +706,12 @@ export abstract class PaintToolModeBase extends ToolMode {
   drawDispDisField: boolean
   reprojectCustomData: boolean
   sharedBrushRadius: number
+  /** Screen (px) and world radii of the last primary dab that hit the surface;
+   * their ratio is the world-units-per-pixel that `brush.set_radius_mode`
+   * converts through. 0 = no dab yet, so there is nothing to convert with.
+   * Only the sculptcore dab path populates these. */
+  lastScreenRadius: number
+  lastWorldRadius: number
   gridEditDepth: number
   enableMaxEditDepth: boolean
   dynTopo: DynTopoSettings
@@ -603,6 +747,8 @@ export abstract class PaintToolModeBase extends ToolMode {
     this.reprojectCustomData = false
 
     this.sharedBrushRadius = 55
+    this.lastScreenRadius = 0
+    this.lastWorldRadius = 0
 
     this.gridEditDepth = 2
     this.enableMaxEditDepth = false

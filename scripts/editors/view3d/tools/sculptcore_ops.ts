@@ -150,7 +150,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       wasm: getWasmImmediate()!,
       brush,
       mesh     : ctx.object!.data as LiteMesh,
-      radius   : this.calcRadius(brush.radius),
+      radius   : brush.radius,
       invert   : false,
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
@@ -261,7 +261,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       wasm: getWasmImmediate()!,
       brush,
       mesh     : ctx.object!.data as LiteMesh,
-      radius   : this.calcRadius(brush.radius),
+      radius   : brush.radius,
       invert   : ps.invert,
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
@@ -272,10 +272,6 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.wasmBrush = result.wasmBrush
     this.executor = result.wasmExec
     return {brush, ...result}
-  }
-
-  calcRadius(screenRadius: number): number {
-    return screenRadius
   }
 
   /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
@@ -419,7 +415,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     const viewvec = new Vector3(ps.viewvec)
     const isect = mesh.rayCast(origin, viewvec)
 
-    let radius = this.calcRadius(ps.radius)
+    // Still in the brush's own unit here; resolved to world once `dist` is known.
+    let radius = ps.radius
 
     let p: Vector3
     let normal: Vector3
@@ -460,7 +457,15 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     view3dUnproject(m2, ps.view3dSize, ps.irendermat)
 
     const dist = m2.vectorDistance(p)
-    radius *= dist
+    radius = brush.resolveWorldRadius(radius, dist)
+
+    // Remember both radii from a primary dab that actually hit the surface;
+    // brush.set_radius_mode converts through them so the on-screen brush size
+    // doesn't jump when the unit changes. Mirror dabs share the primary's size.
+    if (mirrorIdx === 0 && isect !== undefined && dist > 0) {
+      toolmode.lastWorldRadius = radius
+      toolmode.lastScreenRadius = radius / dist
+    }
 
     const brushType = toolToSculptBrush(brush.tool)
     if (brushType === undefined) {

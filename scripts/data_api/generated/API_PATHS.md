@@ -483,6 +483,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.planeNormalMode` | prop | EnumProperty | Plane Normal | enum {VIEW, SURFACE} |
 | `scene.tools.sculptcore.brush.planeoff` | prop | FloatProperty | planeoff | range -3.5..3.5 |
 | `scene.tools.sculptcore.brush.radius` | prop | FloatProperty | Radius | range 0.1..350 |
+| `scene.tools.sculptcore.brush.radiusMode` | prop | EnumProperty | Radius Unit | enum {SCREEN, WORLD} |
 | `scene.tools.sculptcore.brush.rake` | prop | FloatProperty | Rake | range 0..1 |
 | `scene.tools.sculptcore.brush.rakeCurvatureFactor` | prop | FloatProperty | Curvature Factor | range 0..1 |
 | `scene.tools.sculptcore.brush.sharp` | prop | FloatProperty | Sharpening | range 0..1 |
@@ -628,6 +629,9 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.brush.set_radius` | struct |  |  |  |
 | `toolDefaults.brush.set_radius.brush` | prop | DataRefProperty | Brush |  |
 | `toolDefaults.brush.set_radius.radius` | prop | FloatProperty | Radius |  |
+| `toolDefaults.brush.set_radius_mode` | struct |  |  |  |
+| `toolDefaults.brush.set_radius_mode.brush` | prop | DataRefProperty | Brush |  |
+| `toolDefaults.brush.set_radius_mode.mode` | prop | EnumProperty | Mode | enum {SCREEN, WORLD} |
 | `toolDefaults.brush.swap_colors` | struct |  |  |  |
 | `toolDefaults.brush.swap_colors.dataPath` | prop | StringProperty | Data Path |  |
 | `toolDefaults.bvh` | struct |  |  |  |

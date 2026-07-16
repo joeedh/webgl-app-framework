@@ -310,6 +310,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.planeNormalMode"
   | "scene.tools.sculptcore.brush.planeoff"
   | "scene.tools.sculptcore.brush.radius"
+  | "scene.tools.sculptcore.brush.radiusMode"
   | "scene.tools.sculptcore.brush.rake"
   | "scene.tools.sculptcore.brush.rakeCurvatureFactor"
   | "scene.tools.sculptcore.brush.sharp"
@@ -423,6 +424,9 @@ export type GeneratedDataPath =
   | "toolDefaults.brush.set_radius"
   | "toolDefaults.brush.set_radius.brush"
   | "toolDefaults.brush.set_radius.radius"
+  | "toolDefaults.brush.set_radius_mode"
+  | "toolDefaults.brush.set_radius_mode.brush"
+  | "toolDefaults.brush.set_radius_mode.mode"
   | "toolDefaults.brush.swap_colors"
   | "toolDefaults.brush.swap_colors.dataPath"
   | "toolDefaults.bvh"
@@ -1101,6 +1105,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.planeNormalMode": true;
     "scene.tools.sculptcore.brush.planeoff": true;
     "scene.tools.sculptcore.brush.radius": true;
+    "scene.tools.sculptcore.brush.radiusMode": true;
     "scene.tools.sculptcore.brush.rake": true;
     "scene.tools.sculptcore.brush.rakeCurvatureFactor": true;
     "scene.tools.sculptcore.brush.sharp": true;
@@ -1214,6 +1219,9 @@ declare module "@framework/pathux" {
     "toolDefaults.brush.set_radius": true;
     "toolDefaults.brush.set_radius.brush": true;
     "toolDefaults.brush.set_radius.radius": true;
+    "toolDefaults.brush.set_radius_mode": true;
+    "toolDefaults.brush.set_radius_mode.brush": true;
+    "toolDefaults.brush.set_radius_mode.mode": true;
     "toolDefaults.brush.swap_colors": true;
     "toolDefaults.brush.swap_colors.dataPath": true;
     "toolDefaults.bvh": true;

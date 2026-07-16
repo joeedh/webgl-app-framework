@@ -22,6 +22,7 @@ import {
   SculptTools,
   SculptIcons,
   BrushFlags,
+  BrushRadiusModes,
   DynTopoFlags,
   DynTopoOverrides,
   BrushSpacingModes,
@@ -74,10 +75,14 @@ SculptBrush {
   cavityCurve : Curve1D;
   enhanceRings : int;
   enhanceInner : int;
+  radiusMode : int;
 }`
   )
 
   flag = BrushFlags.SHARED_SIZE
+
+  /** Unit `radius` is in; see BrushRadiusModes and resolveWorldRadius. */
+  radiusMode = BrushRadiusModes.SCREEN
 
   smoothRadiusMul = 1.0
 
@@ -180,6 +185,12 @@ SculptBrush {
 
     bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
     bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(2.5).expRate(1.75)
+    bst
+      .enum('radiusMode', 'radiusMode', deleteTsEnumIntegers(BrushRadiusModes), 'Radius Unit')
+      .descriptions({
+        SCREEN: 'Radius is in screen pixels; the sculpted footprint changes as you zoom',
+        WORLD : 'Radius is in mesh units; the sculpted footprint stays fixed as you zoom',
+      })
     bst.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
@@ -249,6 +260,24 @@ SculptBrush {
     return bst
   }
 
+  /**
+   * Resolve `radius` to mesh/world units for a dab. `dist` is the
+   * world-units-per-screen-pixel at the dab point, so a SCREEN-mode radius
+   * scales with the view while a WORLD-mode one is already in mesh units.
+   * Mirrors DynTopoSettingsSC.resolveEdgeGoal.
+   */
+  resolveWorldRadius(radius: number, dist: number): number {
+    return this.radiusMode === BrushRadiusModes.WORLD ? radius : radius * dist
+  }
+
+  /** Inverse of resolveWorldRadius: mesh units -> the unit `radius` is stored in. */
+  worldRadiusToLocal(worldRadius: number, dist: number): number {
+    if (this.radiusMode === BrushRadiusModes.WORLD) {
+      return worldRadius
+    }
+    return dist > 0 ? worldRadius / dist : worldRadius
+  }
+
   equals(b: this, fast = true, ignoreRadiusStrength = false): boolean {
     if (fast) {
       const key1 = this.calcHashKey()
@@ -264,6 +293,7 @@ SculptBrush {
     if (!ignoreRadiusStrength) {
       r = r && feq(this.strength, b.strength)
       r = r && feq(this.radius, b.radius)
+      r = r && this.radiusMode === b.radiusMode
     }
 
     r = r && feq(this.smoothRadiusMul, b.smoothRadiusMul)
@@ -313,6 +343,7 @@ SculptBrush {
     if (!ignoreRadiusStrength) {
       d.add(this.strength)
       d.add(this.radius)
+      d.add(this.radiusMode)
     }
 
     d.add(this.smoothRadiusMul)
@@ -389,6 +420,7 @@ SculptBrush {
     b.normalfac = this.normalfac
     b.strength = this.strength
     b.radius = this.radius
+    b.radiusMode = this.radiusMode
     b.planeoff = this.planeoff
     b.planeNormalMode = this.planeNormalMode
 

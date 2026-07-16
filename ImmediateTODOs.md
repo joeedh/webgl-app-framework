@@ -45,9 +45,13 @@ enabled selection modes.
       while sculptcore read its own; undoPre also captured the wrong value)
 [x]: Give brush radius datapath property a bigger step size and 
      more aggressive slider exponent.
-[ ]: Support world space brush radius mode.  Primary (non-symmetry) brush dabs
+[x]: Support world space brush radius mode.  Primary (non-symmetry) brush dabs
      should keep track of the last valid world and screen space radii, to be used
 	 when switching modes.
+     (SculptBrush.radiusMode + resolveWorldRadius; brush.set_radius_mode converts
+      through the tracked radii. Note pbvh's own dab path does not honour
+      radiusMode -- it never populates the tracked radii. See
+      documentation/plans/2026-07-16-1530-world-space-brush-radius.md)
 NOTE: materials are per-SceneObject today; sculptcore has no per-face material
       index attr. The two items below need that attr added first (same
       BuiltinAttr pattern as the existing `group` polygroup int attr).

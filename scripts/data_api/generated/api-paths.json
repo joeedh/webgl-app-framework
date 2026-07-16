@@ -4260,6 +4260,19 @@
       "decimalPlaces": 4,
       "step": 2.5
     },
+    "scene.tools.sculptcore.brush.radiusMode": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Radius Unit",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "SCREEN",
+        "WORLD"
+      ]
+    },
     "scene.tools.sculptcore.brush.rake": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",
@@ -5612,6 +5625,37 @@
       "description": "Radius",
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "toolDefaults.brush.set_radius_mode": {
+      "kind": "struct",
+      "ownerStruct": "brush",
+      "structName": "set_radius_mode",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.brush.set_radius_mode.brush": {
+      "kind": "prop",
+      "ownerStruct": "set_radius_mode",
+      "indexed": false,
+      "propType": "DataRefProperty",
+      "uiname": "Brush",
+      "description": "Brush",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.brush.set_radius_mode.mode": {
+      "kind": "prop",
+      "ownerStruct": "set_radius_mode",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Mode",
+      "description": "Mode",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "SCREEN",
+        "WORLD"
+      ]
     },
     "toolDefaults.brush.swap_colors": {
       "kind": "struct",

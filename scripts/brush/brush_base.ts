@@ -28,6 +28,14 @@ export const BrushSpacingModes = {
   EVEN: 1,
 }
 
+/** Unit `SculptBrush.radius` is expressed in. SCREEN pixels scale with the view
+ * (zooming changes the sculpted footprint); WORLD units are mesh-space and stay
+ * fixed. Resolved per dab by `SculptBrush.resolveWorldRadius`. */
+export enum BrushRadiusModes {
+  SCREEN = 0,
+  WORLD = 1,
+}
+
 export enum BrushFlags {
   SELECT = 1,
   SHARED_SIZE = 2,
