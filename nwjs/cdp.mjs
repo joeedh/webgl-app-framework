@@ -47,7 +47,12 @@ if (mode === 'list') {
   process.exit(0)
 }
 
-const page = targets.find((p) => p.type === 'page' && p.webSocketDebuggerUrl) || targets[0]
+// DevTools is itself a `page` target and usually sorts ahead of the app window,
+// so prefer a non-devtools page: attaching to DevTools silently evals against
+// the wrong context (window._appstate reads as undefined there).
+const isPage = (p) => p.type === 'page' && p.webSocketDebuggerUrl
+const page =
+  targets.find((p) => isPage(p) && !p.url.startsWith('devtools://')) || targets.find(isPage) || targets[0]
 if (!page?.webSocketDebuggerUrl) {
   console.error('[cdp] no page target with a webSocketDebuggerUrl')
   process.exit(1)
