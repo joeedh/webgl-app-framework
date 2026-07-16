@@ -4,9 +4,9 @@ ImmediateTODOs: *"Support world space brush radius mode. Primary (non-symmetry)
 brush dabs should keep track of the last valid world and screen space radii, to
 be used when switching modes."*
 
-Status: **designed, not implemented.** Blocked on runtime verification — the
-NW.js harness hangs in a fresh worktree, and the risky parts of this change
-(brush overlay, `F` modal) are invisible to typecheck.
+Status: **designed, not implemented.** Not blocked — see Verification below; the
+app drives fine over CDP. The risky parts (brush overlay, `F` modal) are
+invisible to typecheck, so they must be exercised on a live app.
 
 ## Today
 
@@ -102,14 +102,31 @@ Follow that shape rather than inventing a new one.
   takes the world radius — correct once (3) lands, but worth a soak check under
   flag `sculptcore.gpu_brush`.
 
-## Verification (the reason this is not implemented yet)
+## Verification
 
 Typecheck cannot see any of the traps above. This needs the app driven for real:
 set a world radius, orbit/zoom, and confirm the dab footprint stays fixed in
 world space while the cursor ring tracks it; then toggle the mode and confirm
 the on-screen size does **not** jump; then `F`-drag in both modes.
 
-The NW.js harness currently hangs in a fresh worktree (`node nwjs/launch.mjs
---apptest-headless --eval ...` never returns; 13 integration suites fail with
-`dump not written`). Unblock that first — see `env_nwjs_jest_wedge` (kill
-per-worktree strays) and `documentation/native-electron-test-harness.md`.
+Working recipe (used to verify the `F`/sharedBrushRadius fix in `840a1406`):
+
+```sh
+node nwjs/launch.mjs --remote-debug --ephemeral    # prints the CDP port
+node nwjs/cdp.mjs --port=<PORT> eval "return ..."  # NB: --port=N, and `return`
+```
+
+Drive ToolOps non-modally from the eval, the way `boxmodel.ts` does:
+
+```js
+const op = ctx.api.createTool(ctx, 'brush.set_radius(radius=123)')
+op.is_modal = false                 // else it waits for pointer input forever
+ctx.toolstack.execTool(ctx, op)
+```
+
+path.ux widgets live in **shadow DOM** — `document.querySelectorAll` finds
+nothing; walk `el.shadowRoot` recursively to reach the header chips.
+
+Note the `--eval` *flag* path (`launch.mjs --headless --eval`) does hang, and 13
+jest integration suites fail with `dump not written` — but neither blocks manual
+CDP verification. See `env_nwjs_jest_wedge`.
