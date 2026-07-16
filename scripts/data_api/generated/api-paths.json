@@ -3704,6 +3704,20 @@
       "decimalPlaces": 2,
       "step": 0.1
     },
+    "scene.tools.sculptcore.brush.dynTopoSC.maxCollapses": {
+      "kind": "prop",
+      "ownerStruct": "DynTopoSettingsSC",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Collapse Budget",
+      "description": "Max collapses per dab (0 = unlimited; bounds decimation-mode dabs the way Split Budget bounds refinement)",
+      "range": [
+        0,
+        200000
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": {
       "kind": "prop",
       "ownerStruct": "DynTopoSettingsSC",
@@ -3759,6 +3773,7 @@
         "DO_FLIPS",
         "DO_SMOOTH",
         "PRESERVE_FEATURES",
+        "MAX_COLLAPSES",
         "DYNTOPO_SPACING",
         "EDGE_MODE",
         "EDGE_SIZE",
@@ -4812,6 +4827,20 @@
       "decimalPlaces": 2,
       "step": 0.1
     },
+    "scene.tools.sculptcore.dynTopo.maxCollapses": {
+      "kind": "prop",
+      "ownerStruct": "DynTopoSettingsSC",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Collapse Budget",
+      "description": "Max collapses per dab (0 = unlimited; bounds decimation-mode dabs the way Split Budget bounds refinement)",
+      "range": [
+        0,
+        200000
+      ],
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "scene.tools.sculptcore.dynTopo.maxRounds": {
       "kind": "prop",
       "ownerStruct": "DynTopoSettingsSC",
@@ -4867,6 +4896,7 @@
         "DO_FLIPS",
         "DO_SMOOTH",
         "PRESERVE_FEATURES",
+        "MAX_COLLAPSES",
         "DYNTOPO_SPACING",
         "EDGE_MODE",
         "EDGE_SIZE",
@@ -5154,6 +5184,16 @@
       "propType": "BoolProperty",
       "uiname": "sculptcore.auto_defrag",
       "description": "Auto-compact mesh DRAM layout at stroke end when fragmented (dyntopo)",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "settings.featureFlags.sculptcore_backface_cull": {
+      "kind": "prop",
+      "ownerStruct": "FeatureFlagManager",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Backface Culling",
+      "description": "Cull back-facing triangles when drawing the sculpt surface (needs consistent winding)",
       "decimalPlaces": 4,
       "step": 0.05
     },

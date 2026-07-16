@@ -282,3 +282,210 @@ counters, `__scProf`/`__frameProf`/`__ubProf`/`__gpuUploadProf`/
 `__getWebGpuDevice` TS globals) was stripped when the fixes were committed —
 re-instrument from this session's diff (or the description above) to re-run
 the surveys. The `globalThis.__SC_GPU_TRI_TARGET` override is permanent.
+
+## Dab-side fixes (2026-07-15 late session)
+
+Five per-dab fixes landed after the frame-side commit (parent `31fcfe78` / sc
+`0ed6ae0`), measured with the same driver/scene (native backend, 1.5M cube,
+radius 120px). Steady-state averages over the 5 non-warmup strokes:
+
+| stage | sample avg | stroke wall | uploads/stroke | upload ms |
+|---|---|---|---|---|
+| baseline (post frame fixes) | 180.9 ms | 1953 ms | 339 MB | 272 ms |
+| +1 normals off per-dab + parallel bounds refit | 56.5 ms | 640 ms | 332 MB | 110 ms |
+| +2 meshlog capture walk-elision stamps | 49.6 ms | 576 ms | 332 MB | 110 ms |
+| +3 merge cadence (frame-counted, !frozen) | ~same | ~same | ~same | ~same |
+| +4 `Spatial_UpdateGPUGeom` channel-split slices | 50.3 ms | 585 ms | 199 MB | 63 ms |
+| +5 coPrev page-wise memcpy | 49.1 ms | 572 ms | 199 MB | 58 ms |
+
+1. **`Update_Normals` phase bit** — per-dab `updateQueries()` runs
+   split/merge/tris/bounds only; the per-frame `update(gpu)` refreshes each
+   normals-dirty leaf once instead of once per overlapping dab. Plus a
+   parallel leaf-refit pass in `regenDirtyBounds`. `uq` 70.6→5.9 ms/dab, and
+   `applyDab` itself halved (cache pressure relief).
+2. **Capture walk-elision** — `SpatialNode.captureStamps[8]` per sub-command
+   slot; `exec()` hands `execPre` only not-yet-walked leaves (topology-stable
+   strokes only: `!stepHasDyntopo`). logSave 16.7→13.4 ms; the remainder is
+   genuine frontier capture volume.
+3. **Merge cadence** — `applyDeferredMerge` now counts only `Update_Gpu`
+   (frame) calls and holds while topology is frozen. Previously per-dab
+   `updateQueries()` drove the cadence, firing merges mid-stroke → RegenTris →
+   GPU repartition + full owner regens (the ~2 s fill spike class).
+4. **Channel-split GPU slices** — pure-deform kernels (compiler test:
+   `!isPaint && saves ⊆ {v.co, v.no, f.no}`) flag the new
+   `Spatial_UpdateGPUGeom`; `update_gpu_node_slice` then fills/uploads pos+nor
+   only, leaving attribute streams untouched. Uploads 332→199 MB — the rest is
+   honest pos+nor (corner-expanded, no index buffer).
+5. **coPrev page-wise memcpy** — the Jacobi snapshot copies attr pages with
+   `memcpy` instead of the per-element paged accessor. Bandwidth-bound ~3 ms
+   floor at 1.5M; region-scoping was rejected (neighbor reads make the safe
+   refresh set ≈ the whole capacity).
+
+**Misdiagnosis corrected:** the earlier "18× filter over-selection" was wrong.
+The harness brush (120px in the small hidden window) genuinely covers ~40% of
+the object (~600k verts in falloff — `movedVerts` counters), and `filterNodes`
+is honest. Costs that scale with region are real work at this brush size.
+
+**Pre-existing native ctest failures** (verified on pristine master, both-repos
+stash + rebuild): `test_debug_script`, `test_dyntopo_multistep_gpu`,
+`test_spatial_update_split`. Gate used: `sculptcore_brushes` 36/36 (both
+backends) + `test_spatial_merge`/`test_spatial_dyntopo`/`test_spatial_rebalance`.
+
+## Parallel meshlog capture (2026-07-15 late, second pass)
+
+The dominant remaining dab cost — the serial `execPre` undo-capture walk — is
+now parallel (`sculptcore/source/meshlog/parallel_capture.h`, called from the
+regenerated kernel Pre stages; `ChunkElemData::appendRows` reserves rows).
+Three phases: parallel per-node needs-capture counts → serial prefix-sum row
+reservation (the only shared mutation) → parallel disjoint row fill + stamp
+updates. Leaf element ownership is unique, so stamp reads/writes never race;
+BOOL capture sets (none today) fall back to serial (shared bitset words).
+
+Same driver/scene, steady-state clay:
+
+| metric | before | after |
+|---|---|---|
+| logSave per exec (avg / first-dab max) | 13.4 ms / 136 ms | 2.4 ms / ~18 ms |
+| applyDabNative | 41-56 ms | 13.5-27 ms |
+| sample.total | 44-64 ms | 21-40 ms |
+| stroke wall | 480-720 ms | 301-500 ms |
+
+Cumulative from the session baseline: **per-sample 181 → ~25 ms (7×)**. The
+first-dab capture spike (the mouse-down hitch) also collapsed 136→~18 ms.
+
+Gates: `sculptcore_brushes` 36/36 (both backends, includes undo readbacks),
+`test_brush*`, `test_meshlog_topo`, `test_spatial_merge`/`_rebalance` — all on
+rebuilt native + node.
+
+Implementation note: the first version kept per-node element lists in a
+`Vector<Vector<int>>` and crashed with heap corruption (`bases.resize` AV,
+Crashpad-verified) — litestl nested-Vector construction is not safe for this
+pattern (same family as the known `remove_at` double-free). The landed version
+uses flat count/offset vectors and re-tests the (untouched) stamps in phase 3.
+
+Whole-process CPU during the headless run peaks ~26% of 16 logical CPUs (was
+~22%) while completing strokes 2× faster — the harness idles between strokes
+(hidden-window RAF), so dab throughput, not utilization, is the metric that
+moved. Remaining serial per dab: TS/raycast glue (~5 ms), coPrev bandwidth
+copy (~3 ms, could be a parallel page copy), attr resolve.
+
+## Live-app fixes: castRay pruning + incremental coPrev (2026-07-15, third pass)
+
+Live (windowed, CDP-driven) profiling showed that at a realistic brush size
+(~190 leaves filtered) the fixed serial costs dominated the 24-32 ms sample:
+coPrev's full-mesh snapshot (3 ms × up to 4 execs/sample) and castRay's
+unordered BVH descent (2.3-5.3 ms × 2 mirror casts). Both fixed:
+
+- **castRay near-first + best-t pruning** (`node.h` + `math::aabbRayEnter` in
+  litestl geom.h): visit the closer child first, skip subtrees whose AABB
+  entry distance exceeds the best hit. 2.3-5.3 ms → **0.22-0.39 ms** per cast.
+- **coPrev incremental refresh** (`brush_executor.h` + `SpatialNode.coPrevStamp`):
+  full page-copied snapshot once per stroke, then each needsCoPrev exec
+  refreshes only the verts of nodes touched since the previous refresh
+  (kernels only move verts of the node sets they run over, so untouched
+  entries — including neighbor reads — stay valid). Gated on `!stepHasDyntopo`
+  like the capture stamps. 3 ms → **0.4-1.8 ms avg** per exec (max = the
+  per-stroke full copy).
+
+Live steady state: smooth **11 ms/sample** (native dab 4 ms), clay ~25 ms
+(kernel — the parallel part — is now the largest slice). Sustained 40-stroke
+loop: 360 dabs at 32 ms/sample incl. per-stroke overheads, CPU peak ~45%
+(≈7 cores), ~27% sustained — up from 22% peak / 12% avg at session start.
+
+**parallel_for use-after-free fixed** (`litestl/util/task.h`): the completion
+Signal decremented `remaining` BEFORE locking `done_mutex`, so a
+spuriously-woken caller could observe 0, return, and unwind the stack the
+mutex/cv live on before the worker's lock/notify — Crashpad-verified AV
+(`notify_one` on a destroyed cv) under rapid consecutive strokes; the pre-
+rewrite parallel_for had the same shape. Decrement now happens under the lock.
+
+Live-profiling recipe gotchas (also in memory): CDP evals need an explicit
+`return`; without `--no-devtools` the first CDP page target is the DevTools
+window; a hidden/minimized window suspends RAF *and* throttles timers (drive
+work inline in the eval); the strokeTester runs dabs synchronously so RAF
+never interleaves mid-stroke.
+
+## Real mouse stroke (2026-07-15, final validation)
+
+Driver: [`2026-07-15-mouse-stroke-profile-driver.mjs`](2026-07-15-mouse-stroke-profile-driver.mjs)
+— synthesizes a genuine drag through Chromium's input pipeline
+(`Input.dispatchMouseEvent` over CDP, 120 moves @ ~83Hz) with the window
+visible, and a per-RAF recorder correlating dabs to frames. Chromium coalesces
+mouse moves to one per RAF, so the interactive cadence is exactly
+1 dab/frame.
+
+| stroke | fps during stroke | dab (sample.total) | applyDabNative | notes |
+|---|---|---|---|---|
+| first after load (cold) | 28.9 | 23.9 ms | 10.9 ms | **348 ms first-dab hitch** (lazy attr materialization + first capture + JIT) |
+| second (warm) | **59.1** | 6.8 ms | 2.3 ms | rayCast 0.20 ms, coPrev 0.44 ms, logSave 0.22 ms |
+
+Warm real-mouse sculpting on the 1.5M mesh runs at display rate; the frame
+(dab 6.8 ms + draw, ~12 MB slice upload) fits the 16.7 ms budget. Remaining
+UX item: the cold first-stroke mouse-down hitch (~350 ms) — a candidate for
+load-time prewarm (materialize the AttrSaver/orig columns + a hidden dab).
+
+## Dyntopo real mouse stroke (2026-07-15, addendum)
+
+Driver: [`2026-07-15-mouse-stroke-dyntopo-driver.mjs`](2026-07-15-mouse-stroke-dyntopo-driver.mjs)
+(same input synthesis; triangulates the mesh and enables dyntopo — NOTE: on the
+**toolmode's** `dynTopoSC`, not the brush's; the mousedown handler rebuilds the
+brush copy's flags from the toolmode defaults). Defaults: clay 55 px, detail
+10% of radius (PERCENT), maxSplits 1024, dynTopoSpacing 0.25, mirror on.
+
+| stroke | fps | sample.total | dab.dyntopo | remesh ops |
+|---|---|---|---|---|
+| first (cold) | 2.0 | 505 ms | 401 ms ×20 | 156k collapses, 281k flips, **0 splits**, 5 rounds; 1.494M→1.411M verts |
+| second (same path) | 2.7 | 367 ms | 212 ms | 87k collapses, 115k flips |
+
+Findings:
+1. **Decimation mode**: the default detail (10% of a 55 px brush) is far
+   coarser than this mesh, so dyntopo mass-collapses the region — ~8k
+   collapses + 14k flips per dyntopo dab across up to `maxRounds` 5 rounds.
+   `maxSplits` (1024) budgets only splits; **collapses have no per-dab budget**,
+   so collapse-heavy dabs run unbounded (200-650 ms). A `maxCollapses` budget
+   (defer excess, like the split budget that fixed the split cascade) is the
+   big lever.
+2. **Per-dab full CSR rebuild**: the TS bridge hardcodes `setNeighborMode(1)`
+   (CSR); each dyntopo dab bumps `topo_stamp`, so the autosmooth exec's
+   `ensureRing1` rebuilds the entire ~1.4M-vert neighbor cache every dab
+   (26-63 ms, measured inside the coPrev scope). Under dyntopo the topology is
+   live/thawed — bsmooth could use LiveDisk neighbors and skip the cache.
+3. Uploads 286-372 MB/stroke (topology churn → owner regens, expected).
+4. **Flaky pre-existing crash**: `Mesh_triangulate` AV'd once out of three runs
+   at 1.5M (fan callback reading the `.face.list` builtin attr,
+   `triangulate.h:29` via `mesh_c_api.cc:51`) — untouched code this session;
+   deserves its own investigation.
+
+## Dyntopo fixes (2026-07-15, final addendum)
+
+All three dyntopo-profile findings fixed (uncommitted, gated on
+`sculptcore_brushes` 36/36 + `test_dyntopo_*`/`test_spatial_dyntopo`/
+`test_meshlog_topo`/`test_brush`):
+
+1. **`max_collapses` per-dab budget** (`DynTopoParams.max_collapses`, TS
+   `DynTopoSettingsSC.maxCollapses`, default 1024, override bit
+   `MAX_COLLAPSES = 1<<14`) — the split budget's analog for decimation-mode
+   dabs — **plus a candidate-collection cap at 8× the remaining budget** for
+   both splits and collapses, so a budgeted dab no longer collects/shuffles/
+   MIS-walks the whole region's out-of-band edges to apply 2% of them.
+2. **`effectiveNeighborMode()`** — a dyntopo step forces LiveDisk neighbors
+   (topology is thawed anyway; CSR was an O(mesh) `ensureRing1` rebuild every
+   dab because each dyntopo dab bumps `topo_stamp`).
+3. **`triangulateMesh` thaws frozen topology at entry** — the "flaky"
+   `Mesh_triangulate` AV was deterministic: any brush stroke freezes topology
+   (dropping the live `f.l`/loop link columns), and a subsequent triangulate
+   read the freed pages. Deterministic headless repro (gen → stroke →
+   `Mesh_triangulate`) crashed before, survives now. The `n_ngon_faces`
+   counter was verified exact (1.494M→0 across triangulate + strokes at
+   500-subdiv), so counter drift is ruled out.
+
+Real-mouse dyntopo strokes, defaults, 1.5M:
+
+| stage | fps | dab.dyntopo | coPrev scope |
+|---|---|---|---|
+| before | 2.0-2.7 | 212-401 ms | 26-63 ms (CSR rebuild) |
+| + collapse budget + LiveDisk | 6.2-6.9 | 114-128 ms | 2.6 ms |
+| + candidate-collection cap | **10.5-11.5** | **62 ms** | 2.7 ms |
+
+Remaining dyntopo cost is the region seed scan + the (unbudgeted) flip
+companion work — real remesh work, further gains need parallel dyntopo.

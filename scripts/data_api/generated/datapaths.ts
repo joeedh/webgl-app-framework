@@ -259,6 +259,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.dynTopoSC.edgeSize"
   | "scene.tools.sculptcore.brush.dynTopoSC.flag"
   | "scene.tools.sculptcore.brush.dynTopoSC.grade"
+  | "scene.tools.sculptcore.brush.dynTopoSC.maxCollapses"
   | "scene.tools.sculptcore.brush.dynTopoSC.maxRounds"
   | "scene.tools.sculptcore.brush.dynTopoSC.maxSplits"
   | "scene.tools.sculptcore.brush.dynTopoSC.mode"
@@ -353,6 +354,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.dynTopo.edgeSize"
   | "scene.tools.sculptcore.dynTopo.flag"
   | "scene.tools.sculptcore.dynTopo.grade"
+  | "scene.tools.sculptcore.dynTopo.maxCollapses"
   | "scene.tools.sculptcore.dynTopo.maxRounds"
   | "scene.tools.sculptcore.dynTopo.maxSplits"
   | "scene.tools.sculptcore.dynTopo.mode"
@@ -379,6 +381,7 @@ export type GeneratedDataPath =
   | "settings.brushSet"
   | "settings.featureFlags"
   | "settings.featureFlags.sculptcore_auto_defrag"
+  | "settings.featureFlags.sculptcore_backface_cull"
   | "settings.featureFlags.sculptcore_gpu_brush"
   | "settings.featureFlags.sculptcore_gpu_brush_grab"
   | "settings.featureFlags.sculptcore_gpu_brush_verify"
@@ -1047,6 +1050,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.dynTopoSC.edgeSize": true;
     "scene.tools.sculptcore.brush.dynTopoSC.flag": true;
     "scene.tools.sculptcore.brush.dynTopoSC.grade": true;
+    "scene.tools.sculptcore.brush.dynTopoSC.maxCollapses": true;
     "scene.tools.sculptcore.brush.dynTopoSC.maxRounds": true;
     "scene.tools.sculptcore.brush.dynTopoSC.maxSplits": true;
     "scene.tools.sculptcore.brush.dynTopoSC.mode": true;
@@ -1141,6 +1145,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.dynTopo.edgeSize": true;
     "scene.tools.sculptcore.dynTopo.flag": true;
     "scene.tools.sculptcore.dynTopo.grade": true;
+    "scene.tools.sculptcore.dynTopo.maxCollapses": true;
     "scene.tools.sculptcore.dynTopo.maxRounds": true;
     "scene.tools.sculptcore.dynTopo.maxSplits": true;
     "scene.tools.sculptcore.dynTopo.mode": true;
@@ -1167,6 +1172,7 @@ declare module "@framework/pathux" {
     "settings.brushSet": true;
     "settings.featureFlags": true;
     "settings.featureFlags.sculptcore_auto_defrag": true;
+    "settings.featureFlags.sculptcore_backface_cull": true;
     "settings.featureFlags.sculptcore_gpu_brush": true;
     "settings.featureFlags.sculptcore_gpu_brush_grab": true;
     "settings.featureFlags.sculptcore_gpu_brush_verify": true;

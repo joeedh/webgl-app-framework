@@ -232,7 +232,6 @@ PaintSampleProperty {
 
   setValue(b: Iterable<PaintSample>): this {
     super.setValue(b instanceof Array ? b : Array.from(b))
-    debugger
     this.data.length = 0
     for (const item of b) {
       this.data.push(item)

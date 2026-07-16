@@ -432,10 +432,11 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.dynTopoSC.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
 | `scene.tools.sculptcore.brush.dynTopoSC.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
 | `scene.tools.sculptcore.brush.dynTopoSC.grade` | prop | FloatProperty | Grade | range 0..8 |
+| `scene.tools.sculptcore.brush.dynTopoSC.maxCollapses` | prop | IntProperty | Collapse Budget | range 0..200000 |
 | `scene.tools.sculptcore.brush.dynTopoSC.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.brush.dynTopoSC.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
 | `scene.tools.sculptcore.brush.dynTopoSC.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.brush.dynTopoSC.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, MAX_COLLAPSES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculptcore.brush.dynTopoSC.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculptcore.brush.dynamics` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.dynamics.autosmooth` | struct |  |  |  |
@@ -526,10 +527,11 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.dynTopo.edgeSize` | prop | FloatProperty | Detail Size | range 0.0001..200 |
 | `scene.tools.sculptcore.dynTopo.flag` | prop | FlagProperty | Flag | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES} |
 | `scene.tools.sculptcore.dynTopo.grade` | prop | FloatProperty | Grade | range 0..8 |
+| `scene.tools.sculptcore.dynTopo.maxCollapses` | prop | IntProperty | Collapse Budget | range 0..200000 |
 | `scene.tools.sculptcore.dynTopo.maxRounds` | prop | IntProperty | Max Rounds | range 1..200 |
 | `scene.tools.sculptcore.dynTopo.maxSplits` | prop | IntProperty | Split Budget | range 0..200000 |
 | `scene.tools.sculptcore.dynTopo.mode` | prop | EnumProperty | Refine Mode | enum {SUBDIVIDE, COLLAPSE, BOTH} |
-| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
+| `scene.tools.sculptcore.dynTopo.overrides` | prop | FlagProperty | Overrides | enum {ENABLED, DO_FLIPS, DO_SMOOTH, PRESERVE_FEATURES, MAX_COLLAPSES, DYNTOPO_SPACING, EDGE_MODE, EDGE_SIZE, COLLAPSE_RATIO, GRADE, MODE, SMOOTH_LAMBDA, MAX_SPLITS, MAX_ROUNDS, NONE, EVERYTHING} |
 | `scene.tools.sculptcore.dynTopo.smoothLambda` | prop | FloatProperty | Smooth Amount | range 0..1 |
 | `scene.tools.sculptcore.dynTopoStatsLabel` | prop | StringProperty | DynTopo Stats |  |
 | `scene.tools.sculptcore.gpuBrushStatsLabel` | prop | StringProperty | GPU Brush Stats |  |
@@ -569,6 +571,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.brushSet` | prop | EnumProperty | Brush Set | enum {0, 1, HIGH_RES, MEDIUM_RES, DEFAULT} |
 | `settings.featureFlags` | struct |  |  |  |
 | `settings.featureFlags.sculptcore_auto_defrag` | prop | BoolProperty | sculptcore.auto_defrag |  |
+| `settings.featureFlags.sculptcore_backface_cull` | prop | BoolProperty | Backface Culling |  |
 | `settings.featureFlags.sculptcore_gpu_brush` | prop | BoolProperty | GPU Brushes |  |
 | `settings.featureFlags.sculptcore_gpu_brush_grab` | prop | BoolProperty | GPU Grab Brush |  |
 | `settings.featureFlags.sculptcore_gpu_brush_verify` | prop | BoolProperty | GPU Brush Shadow-Verify |  |

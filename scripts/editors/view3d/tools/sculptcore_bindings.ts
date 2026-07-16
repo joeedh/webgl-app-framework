@@ -341,6 +341,7 @@ export function configureDynTopoParams(
   params.grade = dt.grade
   params.max_rounds = dt.maxRounds
   params.max_splits = dt.maxSplits
+  params.max_collapses = dt.maxCollapses
   params.smooth_lambda = dt.smoothLambda
   params.do_flips = !!(dt.flag & DynTopoFlagsSC.DO_FLIPS)
   params.do_smooth = !!(dt.flag & DynTopoFlagsSC.DO_SMOOTH)

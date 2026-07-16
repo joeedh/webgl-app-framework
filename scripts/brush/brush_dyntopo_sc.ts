@@ -17,6 +17,7 @@ const apiKeyMap: {[k: string]: string} = {
   mode         : 'MODE',
   smoothLambda : 'SMOOTH_LAMBDA',
   maxSplits    : 'MAX_SPLITS',
+  maxCollapses : 'MAX_COLLAPSES',
   maxRounds    : 'MAX_ROUNDS',
   dynTopoSpacing: 'DYNTOPO_SPACING',
 }
@@ -54,6 +55,7 @@ export class DynTopoSettingsSC {
     mode          : int;
     smoothLambda  : float;
     maxSplits     : int;
+    maxCollapses  : int;
     maxRounds     : int;
     dynTopoSpacing : float;
   }`
@@ -73,6 +75,10 @@ export class DynTopoSettingsSC {
   // single-round (~25fps+ on a ~5M-tri mesh); excess splits defer to later
   // dabs. 0 = unlimited triggers the round-2 cascade (~110ms/dab at 5M).
   maxSplits = 1024
+  /* Per-dab collapse budget (the maxSplits analog for decimation-mode dabs,
+   * where the detail target is coarser than the mesh). Same latency math as
+   * the split budget: ~0.02-0.04ms per collapse+flip. 0 = unlimited. */
+  maxCollapses = 1024
   maxRounds = 5
   // Remesh spacing, independent of the brush-dab spacing: dyntopo runs only
   // once per this much stroke travel (units of 2·radius, like brush spacing),
@@ -134,6 +140,7 @@ export class DynTopoSettingsSC {
     d.add(this.mode)
     d.add(this.smoothLambda)
     d.add(this.maxSplits)
+    d.add(this.maxCollapses)
     d.add(this.maxRounds)
     d.add(this.dynTopoSpacing)
 
@@ -148,6 +155,7 @@ export class DynTopoSettingsSC {
     r = r && this.edgeMode === b.edgeMode
     r = r && this.mode === b.mode
     r = r && this.maxSplits === b.maxSplits
+    r = r && this.maxCollapses === b.maxCollapses
     r = r && this.maxRounds === b.maxRounds
 
     r = r && feq(this.edgeSize, b.edgeSize)
@@ -190,6 +198,7 @@ export class DynTopoSettingsSC {
     if (!(mask & dyn.MODE)) this.mode = b.mode
     if (!(mask & dyn.SMOOTH_LAMBDA)) this.smoothLambda = b.smoothLambda
     if (!(mask & dyn.MAX_SPLITS)) this.maxSplits = b.maxSplits
+    if (!(mask & dyn.MAX_COLLAPSES)) this.maxCollapses = b.maxCollapses
     if (!(mask & dyn.MAX_ROUNDS)) this.maxRounds = b.maxRounds
     if (!(mask & dyn.DYNTOPO_SPACING)) this.dynTopoSpacing = b.dynTopoSpacing
 
@@ -206,6 +215,7 @@ export class DynTopoSettingsSC {
     this.mode = b.mode
     this.smoothLambda = b.smoothLambda
     this.maxSplits = b.maxSplits
+    this.maxCollapses = b.maxCollapses
     this.maxRounds = b.maxRounds
     this.dynTopoSpacing = b.dynTopoSpacing
 
@@ -287,6 +297,16 @@ export class DynTopoSettingsSC {
       'maxSplits',
       'Split Budget',
       'Max splits per dab (0 = unlimited; default 1024 keeps large dabs ~25fps+ at 5M tris)'
+    )
+      .range(0, 200000)
+      .expRate(1.75)
+      .slideSpeed(2.0)
+      .noUnits()
+    st.int(
+      'maxCollapses',
+      'maxCollapses',
+      'Collapse Budget',
+      'Max collapses per dab (0 = unlimited; bounds decimation-mode dabs the way Split Budget bounds refinement)'
     )
       .range(0, 200000)
       .expRate(1.75)
