@@ -285,6 +285,7 @@ export class GpuBrushStroke {
     co: string
     no: string
     mask: string
+    automask: string | null
     nbrMeta: string | null
     nbrVerts: string | null
     texture: null
@@ -340,11 +341,11 @@ export class GpuBrushStroke {
       return false
     }
     this.bindings = parsed
-    // The dispatcher fills bindings 0-13 + 22/23; a kernel wanting an attr
-    // slot (>=14, except 22/23) needs marshaling this class doesn't do yet —
-    // fail loudly at begin, not silently at draw.
+    // The dispatcher fills bindings 0-13 + 22/23/24; a kernel wanting an attr
+    // slot (>=14, other than those) needs marshaling this class doesn't do
+    // yet — fail loudly at begin, not silently at draw.
     for (const b of this.bindings) {
-      if (b.binding >= 14 && b.binding !== 22 && b.binding !== 23) {
+      if (b.binding >= 14 && b.binding !== 22 && b.binding !== 23 && b.binding !== 24) {
         this.log(`kernel '${this.kernel}' wants unsupported binding ${b.binding}`)
         return false
       }
@@ -441,6 +442,7 @@ export class GpuBrushStroke {
         co          : b64(new Uint8Array(coStrided.buffer)),
         no          : b64(new Uint8Array(noStrided.buffer)),
         mask        : b64(mask),
+        automask    : this.has(24) ? b64(this.data(GpuBrushData.AUTOMASK).slice()) : null,
         nbrMeta     : this.has(12) ? b64(this.data(GpuBrushData.NBR_META).slice()) : null,
         nbrVerts    : this.has(12) ? b64(this.data(GpuBrushData.NBR_VERTS).slice()) : null,
         texture     : null,

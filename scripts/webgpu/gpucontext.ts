@@ -51,9 +51,18 @@ export class GpuContext {
     if (adapter.features.has('timestamp-query') && !requiredFeatures.includes('timestamp-query')) {
       requiredFeatures.push('timestamp-query')
     }
+    // The sbrush compute kernels bind up to 9 read/read-write storage buffers
+    // (co/no/mask/unique/nodes/stroke/co_prev + orig-co 22 + automask 24) —
+    // over the spec default of 8. Request up to 16 when the adapter has them;
+    // an explicit caller limit still wins.
+    const requiredLimits: Record<string, number> = {...opts.requiredLimits}
+    const maxStorage = adapter.limits.maxStorageBuffersPerShaderStage
+    if (requiredLimits.maxStorageBuffersPerShaderStage === undefined && maxStorage > 8) {
+      requiredLimits.maxStorageBuffersPerShaderStage = Math.min(maxStorage, 16)
+    }
     const device = await adapter.requestDevice({
       requiredFeatures,
-      requiredLimits: opts.requiredLimits,
+      requiredLimits,
     })
 
     const canvasContext = opts.canvas.getContext('webgpu') as GPUCanvasContext | null
