@@ -212,6 +212,13 @@ const featureFlags = [
     value      : false,
   },
   {
+    key        : 'sculptcore.backface_cull',
+    uiName     : 'Backface Culling',
+    description: 'Cull back-facing triangles when drawing the sculpt surface (needs consistent winding)',
+    type       : 'bool',
+    value      : false,
+  },
+  {
     key        : 'sculptcore.sculpt_layers',
     uiName     : 'Sculpt Layers',
     description: 'Sculpt-layer stack: the LiteMesh layer panel + edit-target sculpting (experimental)',

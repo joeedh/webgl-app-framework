@@ -60,6 +60,13 @@ export const LiteMeshDisplayMode = {
 
 /** Element domains (mirror the C++ `ElemType`, which isn't bound to TS). */
 export const AttrDomain = {VERTEX: 1, EDGE: 2, CORNER: 4, LIST: 8, FACE: 16} as const
+/** Default GPU-owner aggregation target (tris per draw command). 32k won the
+ * 2026-07-15 empirical sweep on a 1.5M-vert mesh (2k..128k): lowest GPU frame
+ * time framed AND zoomed, flat main-thread cost (dispatch is cached/bundled),
+ * mid-pack dab + dirty-frame cost; 128k regressed uploads, 2k regressed
+ * draw-call overhead. */
+const DEFAULT_GPU_TRI_TARGET = 1 << 15
+
 const ATTR_DOMAIN_LABEL: Record<number, string> = {1: 'vert', 2: 'edge', 4: 'corner', 8: 'list', 16: 'face'}
 /** Bound `AttrType` integer values are the C++ bitflags (FLOAT=1, FLOAT4=8, …). */
 const ATTR_TYPE_LABEL: Record<number, string> = {
@@ -961,6 +968,9 @@ export class LiteMesh extends SceneObjectData {
    * xray state flips (`_overlayXray`). */
   private overlayExecutorGPU?: WebGPUBatchExecutor
   private _overlayXray = false
+  /** cullMode baked into the surface executor's pipelines; a
+   * `sculptcore.backface_cull` flag flip rebuilds the executor. */
+  private _surfaceBackfaceCull = false
   private gpuUniforms?: IUniformsBlock
   /** Per-pipeline reflected uniform bindings for the GPU draw path. Kept on the
    * instance (not a closure WeakMap) so `setDrawShader` can dispose them when a
@@ -1050,7 +1060,12 @@ export class LiteMesh extends SceneObjectData {
   /** Build the spatial tree + draw batches over `this.mesh`. Shared by the
    * constructor and the deserialization path. */
   private _initSpatial(): void {
-    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 32, 1 << 13)
+    // Aggregation target (tris) per GPU owner node — the draw-command count is
+    // ~totalTris/target. Overridable for perf experiments via the global
+    // (rebuildSpatialFromEdit() applies it to a live mesh).
+    const gpuTriTarget =
+      (globalThis as unknown as {__SC_GPU_TRI_TARGET?: number}).__SC_GPU_TRI_TARGET ?? DEFAULT_GPU_TRI_TARGET
+    this.spatial = this.wasm.Mesh_buildSpatialTree(this.mesh, 1024, 32, gpuTriTarget)
     this.spatial.update(this.wasm.gpu)
     this.spatial.setColorDisplayMode(this._displayColorMode)
     this.drawBatch = this.spatial.getDrawBatch()
@@ -3834,7 +3849,8 @@ export class LiteMesh extends SceneObjectData {
       drawWireframe || objDrawMode === DrawModes.WIRE || (objDrawFlag & DrawFlags.WIREFRAME) !== 0
     const xrayAll = xray || (objDrawFlag & DrawFlags.FORCE_XRAY) !== 0
     ;(this.spatial as unknown as {setDisplayMask?: (on: boolean) => void}).setDisplayMask?.(drawMask)
-    if (this.spatial.update(this.wasm.gpu)) {
+    const spatialFlushed = this.spatial.update(this.wasm.gpu)
+    if (spatialFlushed) {
       // The tree flushed pending geometry/attribute edits → the serialized form
       // changed; invalidate the autosave blob cache (M2).
       this.meshRevision++
@@ -3849,6 +3865,12 @@ export class LiteMesh extends SceneObjectData {
       }
     }
     this.drawBatch = this.spatial.getDrawBatch()
+    // Push-model buffer refresh: geometry/attrs changed this frame, so
+    // re-upload the cached batch's dirty buffers now (dispatch no longer polls
+    // update_buffer per buffer per frame).
+    if (spatialFlushed && this.drawBatch && this.drawBatchExecutorGPU) {
+      this.drawBatchExecutorGPU.flushBatchBuffers(this.drawBatch)
+    }
     // Rebuild only when the seam *set* changes (markSeamsDirty), not on every
     // geometry update: `.edge.vs` is freed under frozen topology, so a per-dab
     // rebuild would thaw in the sculpt hot path. The overlay therefore tracks
@@ -4054,9 +4076,20 @@ export class LiteMesh extends SceneObjectData {
       }
     }
 
-    // The tree surface writes depth and tests less-equal.
-    if (this.drawBatchExecutorGPU === undefined) {
-      this.drawBatchExecutorGPU = this._makeGPUExecutor(ctx, surfaceFormat, true, 'less-equal')
+    // The tree surface writes depth and tests less-equal. Backface culling is
+    // opt-in (flag `sculptcore.backface_cull`); cullMode is baked into the
+    // executor's pipelines, so a flag flip rebuilds the executor (same pattern
+    // as the xray-driven overlay executor rebuild below).
+    const backfaceCull = FeatureFlags.get('sculptcore.backface_cull') === true
+    if (this.drawBatchExecutorGPU === undefined || this._surfaceBackfaceCull !== backfaceCull) {
+      this.drawBatchExecutorGPU = this._makeGPUExecutor(
+        ctx,
+        surfaceFormat,
+        true,
+        'less-equal',
+        backfaceCull ? 'back' : 'none'
+      )
+      this._surfaceBackfaceCull = backfaceCull
     }
     // The box-modeling overlays ride above the surface (no depth write) and honor
     // xray by switching the depth test to 'always'. Rebuild when xray flips, since
@@ -4078,7 +4111,12 @@ export class LiteMesh extends SceneObjectData {
     // X3 tessellated tier: substitute the amplified render-level draw for the
     // batch when its async state is ready; fall back to the batch otherwise.
     const tessDrawn = drawSurface && this._drawTessellated(ctx, pass, fmts)
-    if (!tessDrawn && this.drawBatch && drawSurface) main.dispatch(this.drawBatch, pass)
+    if (!tessDrawn && this.drawBatch && drawSurface) {
+      // Frustum-cull the surface's GPU nodes against the current view (the
+      // engine keeps per-command AABBs on the batch).
+      const cullMatrix = (uniforms.drawMatrix as Matrix4 | undefined)?.getAsArray?.()
+      main.dispatch(this.drawBatch, pass, cullMatrix ? {cullMatrix} : undefined)
+    }
     if (drawBVH && this.treeBatch) main.dispatch(this.treeBatch, pass)
     if (this.seamBatch && drawFeatures) main.dispatch(this.seamBatch, pass)
     if (this.wireframeBatch && drawWireframe) overlay.dispatch(this.wireframeBatch, pass)
@@ -4094,7 +4132,8 @@ export class LiteMesh extends SceneObjectData {
     ctx: NonNullable<ReturnType<typeof getActiveWebGpuContext>>,
     surfaceFormat: GPUTextureFormat,
     depthWriteEnabled: boolean,
-    depthCompare: GPUCompareFunction
+    depthCompare: GPUCompareFunction,
+    cullMode: GPUCullMode = 'none'
   ): WebGPUBatchExecutor {
     const bindingsCache = this.gpuBindingsCache
     const self: LiteMesh = this
@@ -4103,6 +4142,7 @@ export class LiteMesh extends SceneObjectData {
       wasm         : this.wasm,
       pipelineCache: ctx.pipelineCache,
       wgslForShader: wgslForSpatialShader,
+      cullMode,
       // Node VBOs double as compute-scatter targets during a GPU brush stroke
       // (gpuGlobalBrushes.md M3/D4); copy-src serves the §9.6 scatter
       // self-check + buffer-signature debug reads.

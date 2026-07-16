@@ -1,0 +1,120 @@
+SCPROF ==== stroke ====
+SCPROF dab.total      n=18     total=   495.36ms avg= 27.5199ms max= 298.054ms
+SCPROF dab.filter     n=18     total=     0.84ms avg=  0.0465ms max=   0.083ms
+SCPROF dab.execPre    n=36     total=   172.94ms avg=  4.8038ms max=  24.064ms
+SCPROF dab.attrRes    n=36     total=     2.29ms avg=  0.0637ms max=   2.249ms
+SCPROF dab.logSave    n=36     total=   109.35ms avg=  3.0375ms max=  24.035ms
+SCPROF dab.coPrev     n=18     total=    61.23ms avg=  3.4019ms max=  11.359ms
+SCPROF dab.kernel     n=36     total=    68.01ms avg=  1.8891ms max=   6.465ms
+SCPROF dab.execPost   n=36     total=     0.02ms avg=  0.0006ms max=   0.001ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0047ms max=   0.005ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0005ms max=   0.001ms
+SCPROF uq.total       n=20     total=   174.07ms avg=  8.7035ms max=  26.269ms
+SCPROF uq.split       n=20     total=     0.01ms avg=  0.0005ms max=   0.001ms
+SCPROF uq.merge       n=2      total=     1.09ms avg=  0.5444ms max=   0.560ms
+SCPROF uq.tris        n=20     total=     0.76ms avg=  0.0378ms max=   0.075ms
+SCPROF uq.bounds      n=20     total=    76.73ms avg=  3.8365ms max=   6.517ms
+SCPROF uq.normals     n=20     total=    95.47ms avg=  4.7734ms max=  26.256ms
+SCPROF nodesFiltered avg=155.3/dab
+SCPROF frame-gpu total=9.122ms fill=9.122ms batch=0.001ms (queriesHalf=0.103ms) regenOwners=0 regenJobs=0 sliceUpdates=632 (verts=2633310) failed=0 flaggedUpload=2481 bufs 358.6MB
+SCPROF seam-batch total=267.051ms thaw=259.355ms recompute=0.000ms
+SCPROF ==== stroke ====
+SCPROF dab.total      n=8      total=   617.04ms avg= 77.1306ms max= 317.854ms
+SCPROF dab.filter     n=8      total=     1.43ms avg=  0.1787ms max=   0.289ms
+SCPROF dab.execPre    n=16     total=   303.92ms avg= 18.9950ms max=  83.075ms
+SCPROF dab.attrRes    n=16     total=     0.02ms avg=  0.0014ms max=   0.003ms
+SCPROF dab.logSave    n=16     total=   274.11ms avg= 17.1319ms max=  83.073ms
+SCPROF dab.coPrev     n=8      total=    29.76ms avg=  3.7203ms max=  10.370ms
+SCPROF dab.kernel     n=16     total=   106.58ms avg=  6.6610ms max=  11.485ms
+SCPROF dab.execPost   n=16     total=     0.01ms avg=  0.0008ms max=   0.001ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0011ms max=   0.001ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0007ms max=   0.001ms
+SCPROF uq.total       n=9      total=   297.23ms avg= 33.0255ms max=  53.520ms
+SCPROF uq.split       n=9      total=     0.00ms avg=  0.0005ms max=   0.001ms
+SCPROF uq.merge       n=1      total=     0.44ms avg=  0.4421ms max=   0.442ms
+SCPROF uq.tris        n=9      total=     0.35ms avg=  0.0393ms max=   0.052ms
+SCPROF uq.bounds      n=9      total=   162.84ms avg= 18.0938ms max=  29.492ms
+SCPROF uq.normals     n=9      total=   133.58ms avg= 14.8419ms max=  23.991ms
+SCPROF nodesFiltered avg=758.1/dab
+SCPROF frame-gpu total=32.763ms fill=32.763ms batch=0.000ms (queriesHalf=0.134ms) regenOwners=0 regenJobs=0 sliceUpdates=1851 (verts=7682268) failed=0 flaggedUpload=2181 bufs 328.6MB
+SCPROF seam-batch total=281.495ms thaw=268.688ms recompute=0.000ms
+SCPROF ==== stroke ====
+SCPROF dab.total      n=11     total=   771.36ms avg= 70.1238ms max= 331.151ms
+SCPROF dab.filter     n=11     total=     2.11ms avg=  0.1917ms max=   0.317ms
+SCPROF dab.execPre    n=22     total=   441.73ms avg= 20.0784ms max= 130.860ms
+SCPROF dab.attrRes    n=22     total=     0.03ms avg=  0.0015ms max=   0.006ms
+SCPROF dab.logSave    n=22     total=   400.99ms avg= 18.2268ms max= 130.858ms
+SCPROF dab.coPrev     n=11     total=    40.67ms avg=  3.6971ms max=   9.940ms
+SCPROF dab.kernel     n=22     total=   159.00ms avg=  7.2274ms max=  11.395ms
+SCPROF dab.execPost   n=22     total=     0.02ms avg=  0.0011ms max=   0.005ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0011ms max=   0.001ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0006ms max=   0.001ms
+SCPROF uq.total       n=14     total=   510.39ms avg= 36.4563ms max=  63.603ms
+SCPROF uq.split       n=14     total=     0.01ms avg=  0.0005ms max=   0.001ms
+SCPROF uq.merge       n=2      total=     1.02ms avg=  0.5101ms max=   0.610ms
+SCPROF uq.tris        n=14     total=     0.63ms avg=  0.0452ms max=   0.094ms
+SCPROF uq.bounds      n=14     total=   267.77ms avg= 19.1263ms max=  32.690ms
+SCPROF uq.normals     n=14     total=   240.95ms avg= 17.2104ms max=  33.832ms
+SCPROF nodesFiltered avg=893.8/dab
+SCPROF frame-gpu total=35.405ms fill=35.405ms batch=0.000ms (queriesHalf=0.152ms) regenOwners=0 regenJobs=0 sliceUpdates=2173 (verts=8933304) failed=0 flaggedUpload=2481 bufs 358.6MB
+SCPROF seam-batch total=297.922ms thaw=285.524ms recompute=0.000ms
+SCPROF ==== stroke ====
+SCPROF dab.total      n=10     total=   443.87ms avg= 44.3866ms max= 238.091ms
+SCPROF dab.filter     n=10     total=     1.42ms avg=  0.1418ms max=   0.200ms
+SCPROF dab.execPre    n=10     total=   269.22ms avg= 26.9218ms max=  98.692ms
+SCPROF dab.attrRes    n=10     total=     0.00ms avg=  0.0004ms max=   0.001ms
+SCPROF dab.logSave    n=10     total=   224.89ms avg= 22.4886ms max=  85.518ms
+SCPROF dab.origStamp  n=10     total=    44.31ms avg=  4.4313ms max=  13.172ms
+SCPROF dab.kernel     n=10     total=    37.64ms avg=  3.7640ms max=   5.681ms
+SCPROF dab.execPost   n=10     total=     0.01ms avg=  0.0012ms max=   0.002ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0021ms max=   0.002ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0008ms max=   0.001ms
+SCPROF uq.total       n=13     total=   312.43ms avg= 24.0335ms max=  37.181ms
+SCPROF uq.split       n=13     total=     0.01ms avg=  0.0005ms max=   0.001ms
+SCPROF uq.merge       n=1      total=     0.42ms avg=  0.4181ms max=   0.418ms
+SCPROF uq.tris        n=13     total=     0.57ms avg=  0.0437ms max=   0.070ms
+SCPROF uq.bounds      n=13     total=   166.01ms avg= 12.7701ms max=  21.333ms
+SCPROF uq.normals     n=13     total=   145.42ms avg= 11.1862ms max=  18.315ms
+SCPROF nodesFiltered avg=668.4/dab
+SCPROF frame-gpu total=28.898ms fill=28.898ms batch=0.000ms (queriesHalf=0.523ms) regenOwners=0 regenJobs=0 sliceUpdates=1824 (verts=7469376) failed=0 flaggedUpload=2235 bufs 306.8MB
+SCPROF seam-batch total=292.940ms thaw=278.017ms recompute=0.000ms
+SCPROF ==== stroke ====
+SCPROF dab.total      n=10     total=   611.52ms avg= 61.1523ms max= 208.216ms
+SCPROF dab.filter     n=10     total=     1.72ms avg=  0.1722ms max=   0.228ms
+SCPROF dab.execPre    n=20     total=   394.22ms avg= 19.7110ms max= 110.278ms
+SCPROF dab.attrRes    n=20     total=     0.05ms avg=  0.0023ms max=   0.004ms
+SCPROF dab.logSave    n=20     total=   330.65ms avg= 16.5326ms max=  99.083ms
+SCPROF dab.coPrev     n=20     total=    63.49ms avg=  3.1746ms max=  11.191ms
+SCPROF dab.kernel     n=20     total=   137.76ms avg=  6.8880ms max=  11.702ms
+SCPROF dab.execPost   n=20     total=     0.01ms avg=  0.0007ms max=   0.001ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0009ms max=   0.001ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0008ms max=   0.001ms
+SCPROF uq.total       n=13     total=   408.58ms avg= 31.4294ms max=  49.092ms
+SCPROF uq.split       n=13     total=     0.01ms avg=  0.0006ms max=   0.001ms
+SCPROF uq.merge       n=2      total=     0.87ms avg=  0.4345ms max=   0.449ms
+SCPROF uq.tris        n=13     total=     0.48ms avg=  0.0366ms max=   0.057ms
+SCPROF uq.bounds      n=13     total=   215.63ms avg= 16.5872ms max=  25.924ms
+SCPROF uq.normals     n=13     total=   191.59ms avg= 14.7374ms max=  25.648ms
+SCPROF nodesFiltered avg=842.4/dab
+SCPROF frame-gpu total=32.392ms fill=32.392ms batch=0.000ms (queriesHalf=0.173ms) regenOwners=0 regenJobs=0 sliceUpdates=2047 (verts=8453070) failed=0 flaggedUpload=2334 bufs 343.7MB
+SCPROF seam-batch total=277.159ms thaw=268.068ms recompute=0.000ms
+SCPROF ==== stroke ====
+SCPROF dab.total      n=14     total=   651.84ms avg= 46.5598ms max= 147.836ms
+SCPROF dab.filter     n=14     total=     1.93ms avg=  0.1380ms max=   0.182ms
+SCPROF dab.execPre    n=28     total=   425.99ms avg= 15.2139ms max=  71.862ms
+SCPROF dab.attrRes    n=28     total=     0.06ms avg=  0.0022ms max=   0.004ms
+SCPROF dab.logSave    n=28     total=   341.01ms avg= 12.1789ms max=  68.552ms
+SCPROF dab.coPrev     n=28     total=    84.87ms avg=  3.0312ms max=   9.159ms
+SCPROF dab.kernel     n=28     total=   149.94ms avg=  5.3549ms max=  10.595ms
+SCPROF dab.execPost   n=28     total=     0.02ms avg=  0.0008ms max=   0.001ms
+SCPROF log.begin      n=1      total=     0.00ms avg=  0.0012ms max=   0.001ms
+SCPROF log.end        n=1      total=     0.00ms avg=  0.0007ms max=   0.001ms
+SCPROF uq.total       n=17     total=   418.20ms avg= 24.6000ms max=  38.584ms
+SCPROF uq.split       n=17     total=     0.01ms avg=  0.0006ms max=   0.001ms
+SCPROF uq.merge       n=2      total=     0.93ms avg=  0.4650ms max=   0.515ms
+SCPROF uq.tris        n=17     total=     0.68ms avg=  0.0402ms max=   0.074ms
+SCPROF uq.bounds      n=17     total=   212.56ms avg= 12.5038ms max=  20.656ms
+SCPROF uq.normals     n=17     total=   203.99ms avg= 11.9996ms max=  20.811ms
+SCPROF nodesFiltered avg=640.9/dab
+SCPROF frame-gpu total=31.000ms fill=31.000ms batch=0.000ms (queriesHalf=0.142ms) regenOwners=0 regenJobs=0 sliceUpdates=2026 (verts=8302488) failed=0 flaggedUpload=2394 bufs 338.3MB
+SCPROF seam-batch total=265.783ms thaw=257.878ms recompute=0.000ms
