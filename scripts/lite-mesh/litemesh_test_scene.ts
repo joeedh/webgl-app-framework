@@ -56,6 +56,8 @@ import './litemesh_selectflushtest_support'
 import './litemesh_multirestest_support'
 // Side-effect: registers globalThis.__materialFragTest for the material draw-split measurement.
 import './litemesh_materialfragtest_support'
+// Side-effect: registers globalThis.__selectSimilarTest for the select-similar test.
+import './litemesh_selectsimilartest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

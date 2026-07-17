@@ -15,26 +15,38 @@ The TS toolops should be exposed to the user via a menu that's
 popped up on 'shift-g' and populated with the tools for the 
 enabled selection modes.
 
+DONE: Select Similar implemented as Mesh::selectSimilar (one C++ gather dispatch,
+      criterion implies domain) + litemesh.select_similar ToolOp (seeded from the
+      active element, Blender-style) + a shift-G popup menu in BoxModelToolMode
+      that lists the criteria for the enabled selection modes. Verified end to end
+      headlessly (tests/integration/sculptcore_selectsimilar.test.ts, 5/5 wasm):
+      FACE_MATERIAL count matches an independent faceMaterial() count, FACE_SIDES
+      selects every quad, VERT_EDGES isolates the 8 valence-distinct cube corners,
+      selection undoes. threshold input: fraction for AREA/LENGTH, radians for
+      NORMAL/DIRECTION/DIHEDRAL/COPLANAR, ignored for exact-match criteria.
+
 ### Vertex Mode Select Similar:
-[ ]: Similar normal
-[ ]: Face count
-[ ]: Edge count
+[x]: Similar normal    (VERT_NORMAL, angle threshold)
+[x]: Face count        (VERT_FACES)
+[x]: Edge count        (VERT_EDGES = valence)
 
 ### Edge Mode Select Similar:
-[ ]: Length
-[ ]: Direction
-[ ]: Face count
-[ ]: Face angles
-[ ]: Poly groups
+[x]: Length            (EDGE_LENGTH, relative threshold)
+[x]: Direction         (EDGE_DIRECTION, undirected angle)
+[x]: Face count        (EDGE_FACES)
+[x]: Face angles       (EDGE_DIHEDRAL, angle threshold)
+[ ]: Poly groups       (DEFERRED: edges have no group attr; semantics ambiguous --
+                        select edges whose incident faces share the seed's group?
+                        needs a decision before implementing)
 
 ### Face Mode Select similar
-[ ]: Area
-[ ]: Materal              (BLOCKED: no per-face material attr exists yet)
-[ ]: Edge Count
-[ ]: Normal
-[ ]: Coplanar
+[x]: Area              (FACE_AREA, relative threshold)
+[x]: Materal           (FACE_MATERIAL -- per-face material attr now exists)
+[x]: Edge Count        (FACE_SIDES = corner count)
+[x]: Normal            (FACE_NORMAL, angle threshold)
+[x]: Coplanar          (FACE_COPLANAR = normal angle + in-plane distance)
 [ ]: Flat vs smooth shading state  (BLOCKED: no per-face smooth/flat attr yet)
-[ ]: Poly groups
+[x]: Poly groups       (FACE_GROUP)
 
 ## Other Stuff
 [x]: A toolop where the user clicks a face and extrude region is 

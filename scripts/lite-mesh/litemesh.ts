@@ -2238,6 +2238,33 @@ export class LiteMesh extends SceneObjectData {
     return n
   }
 
+  /**
+   * Select every element similar to `seed` under `criterion`
+   * (Mesh::SimilarCriterion; the criterion implies the domain). The gathered
+   * index Vector is handed straight to selectIndices, so indices never cross
+   * into JS. `domain` (0 vert / 1 edge / 2 face) must match the criterion's
+   * domain. Caller owns selectionBeginStep/EndStep. Returns the count.
+   */
+  selectSimilar(
+    log: IMeshLogSelect,
+    criterion: number,
+    seed: number,
+    threshold: number,
+    domain: number
+  ): number {
+    const out = this._intVecOut()
+    ;(
+      this.mesh as unknown as {selectSimilar(c: number, s: number, t: number, o: never): void}
+    ).selectSimilar(criterion, seed, threshold, out.vec as never)
+
+    const n = out.read().length
+    if (n === 0) {
+      return 0
+    }
+    log.selectIndices(this.mesh, domain, out.vec, 1)
+    return n
+  }
+
   /** Material slot of a face — an index into SceneObjectData.materials, not a
    * datablock id. 0 (and an absent attr) = the object's first material. */
   faceMaterial(face: number): number {

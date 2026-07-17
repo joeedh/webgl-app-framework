@@ -8,7 +8,18 @@
  * holds the small amount of view/tool state the C++ side and the LiteMesh draw
  * path read (`boxModelSelMode`, `drawSelectionOverlay`, `xray`, `selectRadius`).
  */
-import {Container, DataAPI, DataStruct, HotKey, IconCheck, KeyMap, nstructjs} from '../../../path.ux/pathux'
+import {
+  Container,
+  DataAPI,
+  DataStruct,
+  HotKey,
+  IconCheck,
+  KeyMap,
+  Menu,
+  createMenu,
+  startMenu,
+  nstructjs,
+} from '../../../path.ux/pathux'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
@@ -50,6 +61,11 @@ BoxModelToolMode {
   private _lastClickTime = 0
   private _lastClickX = 0
   private _lastClickY = 0
+
+  /* Last cursor screen position, so the shift-G popup opens under the mouse
+   * (a keymap callback gets only ctx, no event). */
+  private _lastScreenX = 0
+  private _lastScreenY = 0
 
   static toolModeDefine(): IToolModeDefine {
     return {
@@ -128,6 +144,75 @@ BoxModelToolMode {
   /** Material tab: put the selected faces on the chooser's active slot. */
   static buildMaterialPanel(container: Container<ViewContext>, slot: number): void {
     container.tool(`litemesh.assign_material(slot=${slot})`)
+  }
+
+  /**
+   * The shift-G "Select Similar" popup: a submenu of criteria per enabled
+   * selection domain (each entry runs litemesh.select_similar, which is seeded
+   * from the active element of that domain). Returns undefined when nothing is
+   * selectable. One domain active → its criteria directly; several → a menu of
+   * per-domain submenus.
+   */
+  static buildSelectSimilarMenu(ctx: ViewContext, mode: number): Menu | undefined {
+    // createMenu's CTX constraint doesn't accept ViewContext (invariant `api`),
+    // so cast across the path.ux boundary in one place.
+    const mk = (title: string, templ: unknown[]): Menu =>
+      createMenu(ctx as never, title, templ as never) as unknown as Menu
+    const item = (label: string, type: string): [string, () => void] => [
+      label,
+      (): void => {
+        ctx.api.execTool(ctx, `litemesh.select_similar(type=${type})`)
+      },
+    ]
+
+    const sections: Menu[] = []
+    if (mode & SelMask.FACE) {
+      sections.push(
+        mk('Faces', [
+          item('Material', 'FACE_MATERIAL'),
+          item('Poly Group', 'FACE_GROUP'),
+          item('Area', 'FACE_AREA'),
+          item('Normal', 'FACE_NORMAL'),
+          item('Coplanar', 'FACE_COPLANAR'),
+          item('Sides', 'FACE_SIDES'),
+        ])
+      )
+    }
+    if (mode & SelMask.EDGE) {
+      sections.push(
+        mk('Edges', [
+          item('Length', 'EDGE_LENGTH'),
+          item('Direction', 'EDGE_DIRECTION'),
+          item('Face Count', 'EDGE_FACES'),
+          item('Face Angle', 'EDGE_DIHEDRAL'),
+        ])
+      )
+    }
+    if (mode & SelMask.VERTEX) {
+      sections.push(
+        mk('Vertices', [
+          item('Normal', 'VERT_NORMAL'),
+          item('Edge Count', 'VERT_EDGES'),
+          item('Face Count', 'VERT_FACES'),
+        ])
+      )
+    }
+
+    if (sections.length === 0) {
+      return undefined
+    }
+    if (sections.length === 1) {
+      return sections[0]
+    }
+    return mk('Select Similar', sections)
+  }
+
+  /** shift-G handler: pop the Select Similar menu under the cursor. */
+  private _popupSelectSimilar(ctx: ViewContext): void {
+    const menu = BoxModelToolMode.buildSelectSimilarMenu(ctx, this.boxModelSelMode)
+    if (menu) {
+      startMenu(menu, this._lastScreenX, this._lastScreenY)
+    }
   }
 
   static buildHeader(header: Container<ViewContext>, addHeaderRow: () => Container<ViewContext>): void {
@@ -221,6 +306,8 @@ BoxModelToolMode {
    * domain under the cursor and hand it to the LiteMesh selection overlay
    * (cyan; setHover no-ops when unchanged). */
   on_mousemove(e: PointerEvent, x: number, y: number): boolean | void {
+    this._lastScreenX = e.x
+    this._lastScreenY = e.y
     if (e.buttons !== 0) {
       return // dragging — modal ops own the pointer
     }
@@ -259,6 +346,7 @@ BoxModelToolMode {
       // LiteMeshTransType bridge (litemesh_transtype.ts) supplies the movable
       // verts, so constraints / numeric entry / snapping all come for free.
       new HotKey('G', [], 'view3d.translate()'),
+      new HotKey('G', ['shift'], (ctx) => this._popupSelectSimilar(ctx as ViewContext)),
       new HotKey('R', [], 'view3d.rotate()'),
       new HotKey('S', [], 'view3d.scale()'),
       new HotKey('E', [], 'litemesh.extrude_region(transform=true)'),

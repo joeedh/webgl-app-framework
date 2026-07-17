@@ -726,6 +726,96 @@ export class SelectPolyGroupLiteMeshOp extends SelectNearestLiteMeshOp {
   }
 }
 
+/** Select-similar criteria. Values MUST match Mesh::SimilarCriterion (mesh.h);
+ * the value range implies the domain (0-5 face, 6-9 edge, 10-12 vert). */
+export const SimilarCriteria = {
+  FACE_MATERIAL : 0,
+  FACE_GROUP    : 1,
+  FACE_AREA     : 2,
+  FACE_NORMAL   : 3,
+  FACE_COPLANAR : 4,
+  FACE_SIDES    : 5,
+  EDGE_LENGTH   : 6,
+  EDGE_DIRECTION: 7,
+  EDGE_FACES    : 8,
+  EDGE_DIHEDRAL : 9,
+  VERT_NORMAL   : 10,
+  VERT_EDGES    : 11,
+  VERT_FACES    : 12,
+}
+
+/** Domain (0 vert / 1 edge / 2 face) a criterion operates in. */
+export function similarCriterionDomain(criterion: number): number {
+  if (criterion <= SimilarCriteria.FACE_SIDES) {
+    return 2
+  }
+  if (criterion <= SimilarCriteria.EDGE_DIHEDRAL) {
+    return 1
+  }
+  return 0
+}
+
+/**
+ * Select every element similar to the active element under a criterion (Blender's
+ * "select similar to active"). Non-modal: seeded from the MeshLog active vert /
+ * edge / face for the criterion's domain, so the shift-G menu runs it with no
+ * extra click. `extend` (default) grows the current selection; off replaces it.
+ * The bulk gather + `select` writes live in C++ (Mesh::selectSimilar), so this
+ * rides the same undoable MeshLog step as every other selection op.
+ */
+export class SelectSimilarLiteMeshOp extends LiteMeshSelectOpBase<{
+  type: EnumProperty
+  threshold: FloatProperty
+  extend: BoolProperty
+}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.select_similar',
+      uiname  : 'Select Similar',
+      icon    : Icons.SELECT_INVERSE,
+      inputs  : {
+        type     : new EnumProperty(SimilarCriteria.FACE_MATERIAL, SimilarCriteria),
+        // Fraction for AREA/LENGTH, radians for NORMAL/DIRECTION/DIHEDRAL/COPLANAR,
+        // ignored for the exact-match integer criteria.
+        threshold: new FloatProperty(0.1).noUnits().setRange(0, Math.PI).setStep(0.05),
+        extend   : new BoolProperty(true),
+      },
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    const criterion = this.inputs.type.getValue() as number
+    const threshold = this.inputs.threshold.getValue()
+    const domain = similarCriterionDomain(criterion)
+
+    const log = this._log()
+    const seed = domain === 2 ? log.activeFace() : domain === 1 ? log.activeEdge() : log.activeVert()
+    if (seed < 0) {
+      return // nothing active in this domain to be similar to
+    }
+
+    log.selectionBeginStep()
+    if (!this.inputs.extend.getValue()) {
+      for (const d of [0, 1, 2]) {
+        log.selectAllElems(mesh.mesh, d, 0)
+      }
+    }
+    const n = mesh.selectSimilar(log, criterion, seed, threshold, domain)
+    log.setActiveElem(domain, seed)
+    log.selectionEndStep()
+
+    if (n === 0) {
+      return
+    }
+    this._logStepId = log.lastStepId()
+    this._refreshOverlay(mesh, log)
+  }
+}
+
 /**
  * Click a face, then extrude every face sharing its poly group as one region and
  * grab it — the sculpt-mode way to pull a painted group out. A macro so the
@@ -1481,6 +1571,7 @@ export const BoxModelSelectOps = [
   SelectCircleLiteMeshOp,
   SelectNearestLiteMeshOp,
   SelectPolyGroupLiteMeshOp,
+  SelectSimilarLiteMeshOp,
   SelectLoopLiteMeshOp,
   SelectPathLiteMeshOp,
 ]
