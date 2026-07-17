@@ -59,7 +59,16 @@ NOTE: the per-face material attr now exists (int16 "material" face attr indexing
       SceneObjectData.materials). See documentation/plans/2026-07-16-1700-per-face-material-attribute.md.
       Steps 1-3 below are done; the VIEWPORT STILL DRAWS SLOT 0 EVERYWHERE --
       assignment is authored/persisted but not previewed until step 4 (the
-      renderer), which is the real project and starts with a measurement.
+      renderer), which is the real project.
+      Step 4a (the measurement that gates step 4) is DONE: realistic material
+      layouts cost 1.55-1.92x draw commands (82 -> 127-157 on 1.5M tris), under
+      the 246 that profile at 2.0ms/frame -> step 4 is tractable, no per-node
+      material cap needed. BUT that is a lower bound requiring same-slot geometry
+      to merge across leaves; a per-(leaf x slot) draw costs 1223+ commands
+      (40-71ms regime). Preferred design: split mixed leaves at assign time
+      (81-89% of leaves are already single-slot). The pipeline/render-bundle cost
+      is still unmeasured and could dominate.
+      See documentation/research/2026-07-16-2250-material-draw-split-measurement.md.
 [x]: Support assigning materials to selected faces in modelling mode.  Button should live
      in material tab in properties editor.
      (litemesh.assign_material; boxmodel contributes the button)

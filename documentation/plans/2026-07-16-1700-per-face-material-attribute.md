@@ -203,6 +203,53 @@ leaves straddle a boundary. If it's a few percent, the command multiplier is
 the design needs a cap (materials-per-node) or a different approach. That
 measurement is cheap and decides the whole shape of step 4.
 
+### Step 4a — DONE. Measured 2026-07-16; results changed the design.
+
+Full write-up:
+[2026-07-16-2250-material-draw-split-measurement.md](../research/2026-07-16-2250-material-draw-split-measurement.md).
+Instrument: `SpatialTree::materialStats(perLeaf, out)` + `__materialFragTest`.
+
+On 1.5M tris (747,654 faces, 1101 leaves, **82 draw commands today**):
+
+| scenario | leaf straddle | cmds after | multiplier |
+|---|---|---|---|
+| `halves2` | 11.1% | 127 | **1.55x** |
+| `quarters4` | 18.7% | 157 | **1.92x** |
+| `sides6` | 16.0% | 154 | **1.88x** |
+| `speckle4` (control) | 100% | 328 | 4.00x |
+
+**Verdict: tractable.** Realistic layouts cost **1.55–1.92x** commands (82 →
+127–157), well under the 246 commands that profile at 2.0ms/frame. The
+mitigating argument holds — cost tracks material *boundaries*, not material
+*count* (`sides6`/6 slots is cheaper than `quarters4`/4 slots). The ~1.11x
+estimate above was optimistic by ~1.5x; leaves are elongated AABBs, not compact
+patches. No materials-per-node cap is needed.
+
+**But those numbers are a *lower bound*, and only one design reaches them.**
+They assume same-slot geometry merges *across* leaves. If instead every
+(leaf × slot) run is its own draw, the cost is **1223–1317 commands** — past the
+827 that profile at 40–71ms. The two bounds are 10x apart and straddle
+viability.
+
+Correction to "Shape of the work" below: **item 1 (sort tris within each leaf) is
+not sufficient, and reordering whole `LeafSlice`s is not either.** Per-leaf
+contiguity is load-bearing (`fill_leaf_slice` refills one leaf's contiguous
+range) and conflicts with per-slot contiguity — both hold only when every leaf is
+single-slot. Since the measurement shows **81–89% of leaves already are**, prefer:
+
+1. **Split mixed leaves along material boundaries at assign time** so every leaf
+   is pure; then LeafSlice reordering hits the lower bound *and* keeps per-leaf
+   contiguity. Costs ~11–19% more leaves. Assignment is rare and explicit, so
+   paying there is right.
+2. Full tri sort across the GPU node — hits the lower bound, breaks incremental
+   refill.
+3. Per-leaf runs — unusable.
+
+**Still unmeasured:** the pipeline / `GPURenderBundle` cost. N materials means N
+pipelines and more bind-group switches inside the bundle; command count says
+nothing about that, and it could dominate. A real frame-time comparison against
+the 2026-07-15 baseline is still required before step 4 is declared safe.
+
 ## Verification
 
 Steps 1–3 are drivable over CDP without the renderer (see

@@ -54,6 +54,8 @@ import './litemesh_fuzztest_support'
 import './litemesh_selectflushtest_support'
 // Side-effect: registers globalThis.__multiresTest for the multires subsurf test.
 import './litemesh_multirestest_support'
+// Side-effect: registers globalThis.__materialFragTest for the material draw-split measurement.
+import './litemesh_materialfragtest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

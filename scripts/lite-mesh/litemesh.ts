@@ -2249,6 +2249,28 @@ export class LiteMesh extends SceneObjectData {
     return (this.mesh as unknown as {maxFaceMaterial(): number}).maxFaceMaterial()
   }
 
+  /**
+   * How far material assignment cuts across the spatial tree: one entry per GPU
+   * node (in drawBatch command order) or per leaf, each carrying the count and
+   * bitmask of distinct slots it touches. Diagnostic for the draw-splitting
+   * design — summing `distinct` over GPU nodes gives the draw-command count
+   * that splitting by material would cost.
+   */
+  materialStats(perLeaf: boolean): {id: number; distinct: number; mask: number}[] {
+    const out = this._intVecOut()
+    ;(this.spatial as unknown as {materialStats(p: boolean, o: never): void}).materialStats(
+      perLeaf,
+      out.vec as never
+    )
+
+    const arr = out.read()
+    const res: {id: number; distinct: number; mask: number}[] = []
+    for (let i = 0; i + 2 < arr.length; i += 3) {
+      res.push({id: arr[i], distinct: arr[i + 1], mask: arr[i + 2]})
+    }
+    return res
+  }
+
   /** A material assignment's before-state: the faces touched and the slot each
    * one had. Small (only the assigned faces) and enough to undo exactly. */
   private _materialSnapshot(vec: unknown): {faces: number[]; prior: number[]} {
