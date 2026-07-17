@@ -410,6 +410,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.cavityCurve` | prop | Curve1DProperty | Cavity Curve |  |
 | `scene.tools.sculptcore.brush.cavityFactor` | prop | FloatProperty | Cavity Factor | range 0..5 |
 | `scene.tools.sculptcore.brush.color` | prop | Vec4Property | Primary Color | range 0..1 |
+| `scene.tools.sculptcore.brush.colorMixMode` | prop | EnumProperty | Color Mix | enum {MIX, MULTIPLY, SCREEN, OVERLAY, DIFFERENCE, ADD, SUBTRACT, DARKEN, LIGHTEN} |
 | `scene.tools.sculptcore.brush.concaveFilter` | prop | FloatProperty | Concave Wash | range 0..1 |
 | `scene.tools.sculptcore.brush.dynTopo` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.dynTopo.decimateFactor` | prop | FloatProperty | Decimate Factor | range 0..1 |
@@ -808,6 +809,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.select_all.mode` | prop | EnumProperty | Mode | enum {ALL, NONE, AUTO} |
 | `toolDefaults.litemesh.select_circle` | struct |  |  |  |
 | `toolDefaults.litemesh.select_circle.radius` | prop | FloatProperty | Radius | range 1..500 |
+| `toolDefaults.litemesh.select_similar` | struct |  |  |  |
+| `toolDefaults.litemesh.select_similar.extend` | prop | BoolProperty | Extend |  |
+| `toolDefaults.litemesh.select_similar.threshold` | prop | FloatProperty | Threshold | range 0..3.141592653589793 |
+| `toolDefaults.litemesh.select_similar.type` | prop | EnumProperty | Type | enum {FACE_MATERIAL, FACE_GROUP, FACE_AREA, FACE_NORMAL, FACE_COPLANAR, FACE_SIDES, EDGE_LENGTH, EDGE_DIRECTION, EDGE_FACES, EDGE_DIHEDRAL, VERT_NORMAL, VERT_EDGES, VERT_FACES} |
 | `toolDefaults.litemesh.subdivide` | struct |  |  |  |
 | `toolDefaults.litemesh.subdivide.numCuts` | prop | IntProperty | Num Cuts | range 1..32 |
 | `toolDefaults.litemesh.symmetrize` | struct |  |  |  |

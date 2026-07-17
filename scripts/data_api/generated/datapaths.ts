@@ -237,6 +237,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.cavityCurve"
   | "scene.tools.sculptcore.brush.cavityFactor"
   | "scene.tools.sculptcore.brush.color"
+  | "scene.tools.sculptcore.brush.colorMixMode"
   | "scene.tools.sculptcore.brush.concaveFilter"
   | "scene.tools.sculptcore.brush.dynTopo"
   | "scene.tools.sculptcore.brush.dynTopo.decimateFactor"
@@ -603,6 +604,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.select_all.mode"
   | "toolDefaults.litemesh.select_circle"
   | "toolDefaults.litemesh.select_circle.radius"
+  | "toolDefaults.litemesh.select_similar"
+  | "toolDefaults.litemesh.select_similar.extend"
+  | "toolDefaults.litemesh.select_similar.threshold"
+  | "toolDefaults.litemesh.select_similar.type"
   | "toolDefaults.litemesh.subdivide"
   | "toolDefaults.litemesh.subdivide.numCuts"
   | "toolDefaults.litemesh.symmetrize"
@@ -1036,6 +1041,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.cavityCurve": true;
     "scene.tools.sculptcore.brush.cavityFactor": true;
     "scene.tools.sculptcore.brush.color": true;
+    "scene.tools.sculptcore.brush.colorMixMode": true;
     "scene.tools.sculptcore.brush.concaveFilter": true;
     "scene.tools.sculptcore.brush.dynTopo": true;
     "scene.tools.sculptcore.brush.dynTopo.decimateFactor": true;
@@ -1402,6 +1408,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.select_all.mode": true;
     "toolDefaults.litemesh.select_circle": true;
     "toolDefaults.litemesh.select_circle.radius": true;
+    "toolDefaults.litemesh.select_similar": true;
+    "toolDefaults.litemesh.select_similar.extend": true;
+    "toolDefaults.litemesh.select_similar.threshold": true;
+    "toolDefaults.litemesh.select_similar.type": true;
     "toolDefaults.litemesh.subdivide": true;
     "toolDefaults.litemesh.subdivide.numCuts": true;
     "toolDefaults.litemesh.symmetrize": true;

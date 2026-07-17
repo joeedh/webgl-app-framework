@@ -3393,6 +3393,27 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "scene.tools.sculptcore.brush.colorMixMode": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Color Mix",
+      "description": "How the color brush blends onto the vertex color",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "MIX",
+        "MULTIPLY",
+        "SCREEN",
+        "OVERLAY",
+        "DIFFERENCE",
+        "ADD",
+        "SUBTRACT",
+        "DARKEN",
+        "LIGHTEN"
+      ]
+    },
     "scene.tools.sculptcore.brush.concaveFilter": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",
@@ -7478,6 +7499,62 @@
       ],
       "decimalPlaces": 4,
       "step": 0.1
+    },
+    "toolDefaults.litemesh.select_similar": {
+      "kind": "struct",
+      "ownerStruct": "litemesh",
+      "structName": "select_similar",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.select_similar.extend": {
+      "kind": "prop",
+      "ownerStruct": "select_similar",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Extend",
+      "description": "Extend",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.select_similar.threshold": {
+      "kind": "prop",
+      "ownerStruct": "select_similar",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Threshold",
+      "description": "Threshold",
+      "range": [
+        0,
+        3.141592653589793
+      ],
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "toolDefaults.litemesh.select_similar.type": {
+      "kind": "prop",
+      "ownerStruct": "select_similar",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Type",
+      "description": "Type",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "FACE_MATERIAL",
+        "FACE_GROUP",
+        "FACE_AREA",
+        "FACE_NORMAL",
+        "FACE_COPLANAR",
+        "FACE_SIDES",
+        "EDGE_LENGTH",
+        "EDGE_DIRECTION",
+        "EDGE_FACES",
+        "EDGE_DIHEDRAL",
+        "VERT_NORMAL",
+        "VERT_EDGES",
+        "VERT_FACES"
+      ]
     },
     "toolDefaults.litemesh.subdivide": {
       "kind": "struct",
