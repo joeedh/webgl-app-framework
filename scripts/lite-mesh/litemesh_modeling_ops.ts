@@ -531,6 +531,140 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
   }
 }
 
+/** Shared undo for the assign-material ops: the touched faces and the slot each
+ * had. Small (only the assigned faces) and restores exactly. */
+type MaterialSnapshot = {faces: number[]; prior: number[]}
+
+abstract class LiteMeshAssignMaterialOpBase<Inputs extends PropertySlots = {}> extends LiteMeshSelectOpBase<
+  Inputs & {slot: IntProperty}
+> {
+  _matUndo: MaterialSnapshot | undefined
+
+  /** The material slot to assign. Defaults to the properties editor's active
+   * slot when the caller didn't pin one. */
+  _slot(ctx: ToolContext): number {
+    return this.inputs.slot.getValue()
+  }
+
+  undoPre(_ctx: ToolContext): void {
+    this._matUndo = undefined
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._matUndo) {
+      mesh.restoreMaterialSnapshot(this._matUndo)
+      window.redraw_viewport()
+    }
+  }
+
+  /** The select base replays the MeshLog on redo, which knows nothing about the
+   * material attr — that silently redid nothing. Re-apply the recorded faces
+   * instead (also right for the modal pick op, whose exec() isn't the edit). */
+  redo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh && this._matUndo) {
+      this._matUndo = mesh.assignMaterialToFaces(this._matUndo.faces, this._slot(ctx))
+      window.redraw_viewport()
+    }
+  }
+
+  calcUndoMem(_ctx: ToolContext): number {
+    return this._matUndo ? this._matUndo.faces.length * 8 : 0
+  }
+}
+
+/**
+ * Put every selected face on a material slot. Faces are gathered and handed
+ * back to C++ as the same bound Vector, so the indices never cross into JS.
+ */
+export class LiteMeshAssignMaterialOp extends LiteMeshAssignMaterialOpBase {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.assign_material',
+      uiname  : 'Assign to Selected',
+      inputs  : {slot: new IntProperty(0)},
+    }
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    if (!mesh) {
+      return
+    }
+    this._matUndo = mesh.assignMaterialToSelected(this._slot(ctx))
+    // No GPU refresh: nothing reads the material attr during VBO fill yet, so
+    // the assignment is authored and persisted but not previewed until the
+    // renderer honours slots (step 4 of the per-face-material plan).
+    window.redraw_viewport()
+  }
+}
+
+/**
+ * Click a face, then put every face sharing its poly group on a material slot —
+ * the sculpt-mode counterpart of assign-to-selection. Modal so the click picks
+ * the group; group 0 (unpainted) assigns nothing.
+ */
+export class LiteMeshAssignMaterialPolyGroupOp extends LiteMeshAssignMaterialOpBase<{
+  x: FloatProperty
+  y: FloatProperty
+}> {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.assign_material_polygroup',
+      uiname  : 'Assign by Poly Group',
+      icon    : Icons.SCULPT_POLYGROUP,
+      is_modal: true,
+      inputs  : {
+        slot: new IntProperty(0),
+        x   : new FloatProperty(0).private(),
+        y   : new FloatProperty(0).private(),
+      },
+    }
+  }
+
+  _assignAt(ctx: ToolContext, lx: number, ly: number): void {
+    const view3d = (ctx as unknown as SelModalCtx).view3d
+    const object = (ctx as unknown as SelModalCtx).object
+    const mesh = this._getMesh(ctx)
+    if (!view3d || !object || !mesh) {
+      return
+    }
+
+    const obmatrix = object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(view3d, obmatrix, lx, ly)
+    const face = mesh.pickFace(origin, dir)
+    if (face < 0) {
+      return
+    }
+
+    const group = mesh.faceGroup(face)
+    if (group === 0) {
+      return
+    }
+
+    this._matUndo = mesh.assignMaterialToPolyGroup(group, this._slot(ctx))
+    // No GPU refresh: nothing reads the material attr during VBO fill yet, so
+    // the assignment is authored and persisted but not previewed until the
+    // renderer honours slots (step 4 of the per-face-material plan).
+    window.redraw_viewport()
+  }
+
+  on_pointerdown(e: PointerEvent): void {
+    const ctx = this.modal_ctx as unknown as SelModalCtx | undefined
+    if (e.button === 2) {
+      this.modalEnd(true)
+      return
+    }
+    if (e.button !== 0 || !ctx?.view3d || !ctx.object) {
+      return
+    }
+    const m = ctx.view3d.getLocalMouse(e.x, e.y)
+    this._assignAt(ctx as unknown as ToolContext, m[0], m[1])
+    this.modalEnd(false)
+  }
+}
+
 /**
  * Click a face and select every face sharing its poly group (the `group` int
  * face attr the polygroup brush paints). Always picks in the face domain: this
@@ -1361,6 +1495,8 @@ export const BoxModelTopoOps = [
   LiteMeshInsetOp,
   LiteMeshBevelOp,
   LiteMeshExtrudePolyGroupOp,
+  LiteMeshAssignMaterialOp,
+  LiteMeshAssignMaterialPolyGroupOp,
 ]
 
 for (const op of BoxModelSelectOps) {

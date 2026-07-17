@@ -6686,6 +6686,40 @@
       "decimalPlaces": 4,
       "step": 0.1
     },
+    "toolDefaults.litemesh.assign_material": {
+      "kind": "struct",
+      "ownerStruct": "litemesh",
+      "structName": "assign_material",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.assign_material.slot": {
+      "kind": "prop",
+      "ownerStruct": "assign_material",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Slot",
+      "description": "Slot",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
+    "toolDefaults.litemesh.assign_material_polygroup": {
+      "kind": "struct",
+      "ownerStruct": "litemesh",
+      "structName": "assign_material_polygroup",
+      "indexed": false,
+      "dynamic": false
+    },
+    "toolDefaults.litemesh.assign_material_polygroup.slot": {
+      "kind": "prop",
+      "ownerStruct": "assign_material_polygroup",
+      "indexed": false,
+      "propType": "IntProperty",
+      "uiname": "Slot",
+      "description": "Slot",
+      "decimalPlaces": 4,
+      "step": 0.1
+    },
     "toolDefaults.litemesh.generate_uv": {
       "kind": "struct",
       "ownerStruct": "litemesh",

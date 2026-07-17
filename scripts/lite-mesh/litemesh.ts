@@ -2293,6 +2293,41 @@ export class LiteMesh extends SceneObjectData {
     return this._assignMaterial(out.vec, slot)
   }
 
+  /**
+   * Put a material assignment's before-state back (undo). Groups the faces by
+   * their prior slot so it's one bulk call per distinct slot rather than per
+   * face — which is only possible because `setBoundIntVector` can hand C++ a
+   * JS-computed index set. One scratch Vector is reused across the slots.
+   */
+  restoreMaterialSnapshot(snap: {faces: number[]; prior: number[]}): void {
+    const bySlot = new Map<number, number[]>()
+    for (let i = 0; i < snap.faces.length; i++) {
+      const slot = snap.prior[i]
+      let list = bySlot.get(slot)
+      if (!list) {
+        bySlot.set(slot, (list = []))
+      }
+      list.push(snap.faces[i])
+    }
+
+    const out = this._intVecOut()
+    for (const [slot, faces] of bySlot) {
+      this.wasm.setBoundIntVector(out.vec as never, faces)
+      ;(this.mesh as unknown as {setFacesMaterial(f: never, s: number): void}).setFacesMaterial(
+        out.vec as never,
+        slot
+      )
+    }
+  }
+
+  /** Put an explicit face list on material slot `slot`; returns the before-state.
+   * The index set comes from the app, so this needs the JS->C++ Vector fill. */
+  assignMaterialToFaces(faces: number[], slot: number): {faces: number[]; prior: number[]} {
+    const out = this._intVecOut()
+    this.wasm.setBoundIntVector(out.vec as never, faces)
+    return this._assignMaterial(out.vec, slot)
+  }
+
   /** Put every face in poly-group `group` on material slot `slot`. */
   assignMaterialToPolyGroup(group: number, slot: number): {faces: number[]; prior: number[]} {
     const out = this._intVecOut()

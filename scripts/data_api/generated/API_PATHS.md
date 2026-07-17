@@ -739,6 +739,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `toolDefaults.litemesh.add_cube.sphere` | prop | FloatProperty | Sphere | range 0..1 |
 | `toolDefaults.litemesh.add_plane` | struct |  |  |  |
 | `toolDefaults.litemesh.add_plane.size` | prop | FloatProperty | Size |  |
+| `toolDefaults.litemesh.assign_material` | struct |  |  |  |
+| `toolDefaults.litemesh.assign_material.slot` | prop | IntProperty | Slot |  |
+| `toolDefaults.litemesh.assign_material_polygroup` | struct |  |  |  |
+| `toolDefaults.litemesh.assign_material_polygroup.slot` | prop | IntProperty | Slot |  |
 | `toolDefaults.litemesh.generate_uv` | struct |  |  |  |
 | `toolDefaults.litemesh.generate_uv.margin` | prop | FloatProperty | Margin | range 0..0.25 |
 | `toolDefaults.litemesh.mark_seam` | struct |  |  |  |

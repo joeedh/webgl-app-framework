@@ -534,6 +534,10 @@ export type GeneratedDataPath =
   | "toolDefaults.litemesh.add_cube.sphere"
   | "toolDefaults.litemesh.add_plane"
   | "toolDefaults.litemesh.add_plane.size"
+  | "toolDefaults.litemesh.assign_material"
+  | "toolDefaults.litemesh.assign_material.slot"
+  | "toolDefaults.litemesh.assign_material_polygroup"
+  | "toolDefaults.litemesh.assign_material_polygroup.slot"
   | "toolDefaults.litemesh.generate_uv"
   | "toolDefaults.litemesh.generate_uv.margin"
   | "toolDefaults.litemesh.mark_seam"
@@ -1329,6 +1333,10 @@ declare module "@framework/pathux" {
     "toolDefaults.litemesh.add_cube.sphere": true;
     "toolDefaults.litemesh.add_plane": true;
     "toolDefaults.litemesh.add_plane.size": true;
+    "toolDefaults.litemesh.assign_material": true;
+    "toolDefaults.litemesh.assign_material.slot": true;
+    "toolDefaults.litemesh.assign_material_polygroup": true;
+    "toolDefaults.litemesh.assign_material_polygroup.slot": true;
     "toolDefaults.litemesh.generate_uv": true;
     "toolDefaults.litemesh.generate_uv.margin": true;
     "toolDefaults.litemesh.mark_seam": true;
