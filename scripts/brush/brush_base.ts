@@ -51,6 +51,28 @@ export enum ColorMixModes {
   LIGHTEN = 8,
 }
 
+/* How the stroke driver turns pointer input into dabs. Path (default) is the
+ * existing arc-length Catmull-Rom/Bezier walk. Anchored fixes the dab origin
+ * on the first input and re-derives a live radius or angle from the drag
+ * vector on every subsequent input (see anchoredLiveMode) — it replaces the
+ * old bespoke grabAnchor mechanism and unifies Grab/Kelvinlet/Snake Hook onto
+ * one anchor implementation. DragDot follows the live cursor, emitting one
+ * rollback-able preview dab per pointer move. */
+export enum StrokeMethod {
+  PATH = 0,
+  ANCHORED = 1,
+  DRAG_DOT = 2,
+}
+
+/* For StrokeMethod.ANCHORED, which scalar the drag vector's length/angle
+ * drives live: RADIUS scales the brush radius by drag distance (e.g. Grab),
+ * ANGLE maps the drag vector's screen-space angle onto a rotation (e.g. a
+ * twist-style tool). Per-brush configurable rather than a fixed mapping. */
+export enum AnchoredLiveMode {
+  RADIUS = 0,
+  ANGLE = 1,
+}
+
 export enum BrushFlags {
   SELECT = 1,
   SHARED_SIZE = 2,

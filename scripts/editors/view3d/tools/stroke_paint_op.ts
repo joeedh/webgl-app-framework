@@ -14,9 +14,11 @@ import {PaintSample} from './pbvh_paintsample.js'
 import {BrushProperty, PaintSampleProperty, PaintToolModeBase} from './pbvh_base.js'
 import {BrushFlags, SculptTools} from '../../../brush/index'
 import {
+  AnchoredLiveMode,
   BrushStrokeDriver,
   IStrokeProjection,
   StrokeInput,
+  StrokeMethod,
   StrokeParamProvider,
   StrokeParams,
   StrokeRayCast,
@@ -78,6 +80,17 @@ export abstract class StrokeDriverOp<
   /** Override to drive even spacing in world units instead of screen pixels. */
   getSpaceMode(): StrokeSpaceMode {
     return StrokeSpaceMode.SCREEN
+  }
+
+  /** Override to switch the driver off the default arc-length Path walk onto
+   * StrokeMethod.ANCHORED or .DRAG_DOT. */
+  getStrokeMethod(): StrokeMethod {
+    return StrokeMethod.PATH
+  }
+
+  /** ANCHORED only: which scalar the anchor->cursor drag drives live. */
+  getAnchoredLiveMode(): AnchoredLiveMode {
+    return AnchoredLiveMode.RADIUS
   }
 
   /** Object local->world matrix so the driver emits object-local PaintSamples
@@ -171,11 +184,13 @@ export abstract class StrokeDriverOp<
     this.lastEvent = undefined
 
     this.driver = new BrushStrokeDriver({
-      projection  : this.makeProjection(),
-      getParams   : this.makeParamProvider(),
-      spaceMode   : this.getSpaceMode(),
-      rayCast     : this.makeRayCast(),
-      objectMatrix: () => this.getObjectMatrix(),
+      projection      : this.makeProjection(),
+      getParams       : this.makeParamProvider(),
+      spaceMode       : this.getSpaceMode(),
+      rayCast         : this.makeRayCast(),
+      objectMatrix    : () => this.getObjectMatrix(),
+      strokeMethod    : this.getStrokeMethod(),
+      anchoredLiveMode: this.getAnchoredLiveMode(),
     })
 
     if (this.timer !== undefined) {

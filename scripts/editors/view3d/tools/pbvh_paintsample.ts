@@ -49,6 +49,8 @@ PaintSample {
   pressure       : float;
   hit            : bool;
   useAltBrush    : bool;
+  anchorVec      : vec3;
+  liveAngle      : float;
 }`
   )
 
@@ -120,6 +122,12 @@ PaintSample {
   mpos = new Vector2()
   /** triggered by shift key */
   useAltBrush = false
+  /** Anchored stroke method: object-local vector from the fixed anchor to the
+   * live cursor position (see StrokeMethod.ANCHORED). Zero outside Anchored. */
+  anchorVec: Vector3
+  /** Anchored stroke method, AnchoredLiveMode.ANGLE: screen-space angle
+   * (radians) from the anchor to the live cursor. Zero otherwise. */
+  liveAngle = 0
 
   constructor() {
     this.origp = new Vector4()
@@ -159,6 +167,7 @@ PaintSample {
 
     this.vec = new Vector3()
     this.dvec = new Vector3()
+    this.anchorVec = new Vector3()
 
     this.autosmoothInflate = 0.0
     this.concaveFilter = 0.0
@@ -218,9 +227,11 @@ PaintSample {
 
     this.vec.mul(mul4)
     this.dvec.mul(mul4)
+    this.anchorVec.mul(mul4)
 
     this.angle *= mul4[0] * mul4[1] * mul4[2]
     this.futureAngle *= mul4[0] * mul4[1] * mul4[2]
+    this.liveAngle *= mul4[0] * mul4[1] * mul4[2]
 
     this.mirrored = !this.mirrored
     return this
@@ -241,6 +252,8 @@ PaintSample {
 
     b.vec.load(this.vec)
     b.dvec.load(this.dvec)
+    b.anchorVec.load(this.anchorVec)
+    b.liveAngle = this.liveAngle
 
     b.origp.load(this.origp)
     b.p.load(this.p)

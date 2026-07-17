@@ -30,6 +30,8 @@ import {
   PlaneNormalModes,
   DynTopoOverridesSC,
   DynTopoFlagsSC,
+  StrokeMethod,
+  AnchoredLiveMode,
 } from './brush_base'
 import {DynTopoSettings} from './brush_dyntopo'
 import {DynTopoSettingsSC} from './brush_dyntopo_sc'
@@ -69,6 +71,8 @@ SculptBrush {
   dynTopoSC  : DynTopoSettingsSC;
   rakeCurvatureFactor : float;
   spacingMode: int;
+  strokeMethod : int;
+  anchoredLiveMode : int;
   sharp      : float;
   smoothRadiusMul : float;
   cavityFactor : float;
@@ -104,6 +108,8 @@ SculptBrush {
 
   smoothProj = 0.0 //how much smoothing should project to surface
   spacingMode = BrushSpacingModes.EVEN
+  strokeMethod = StrokeMethod.PATH
+  anchoredLiveMode = AnchoredLiveMode.RADIUS
 
   texUser = new ProceduralTexUser()
 
@@ -185,6 +191,19 @@ SculptBrush {
       EVEN: 'Fixed distance between brush points',
       NONE: 'Use raw brush points',
     })
+
+    bst.enum('strokeMethod', 'strokeMethod', deleteTsEnumIntegers(StrokeMethod), 'Stroke Method').descriptions({
+      PATH    : 'Sample dabs along the drawn path',
+      ANCHORED: 'Fix the origin on mouse-down; drag derives a live radius or angle',
+      DRAG_DOT: 'Follow the cursor, previewing one dab at a time',
+    })
+
+    bst
+      .enum('anchoredLiveMode', 'anchoredLiveMode', deleteTsEnumIntegers(AnchoredLiveMode), 'Anchored Live')
+      .descriptions({
+        RADIUS: 'Drag distance scales the brush radius',
+        ANGLE : 'Drag angle drives a live rotation',
+      })
 
     bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
 
@@ -307,6 +326,8 @@ SculptBrush {
 
     r = r && feq(this.smoothRadiusMul, b.smoothRadiusMul)
     r = r && this.spacingMode === b.spacingMode
+    r = r && this.strokeMethod === b.strokeMethod
+    r = r && this.anchoredLiveMode === b.anchoredLiveMode
     r = r && feq(this.tool, b.tool)
     r = r && feq(this.rake, b.rake)
     r = r && feq(this.pinch, b.pinch)
@@ -358,6 +379,8 @@ SculptBrush {
 
     d.add(this.smoothRadiusMul)
     d.add(this.spacingMode)
+    d.add(this.strokeMethod)
+    d.add(this.anchoredLiveMode)
     d.add(this.flag)
     d.add(this.tool)
 
@@ -411,6 +434,8 @@ SculptBrush {
     b.smoothRadiusMul = this.smoothRadiusMul
 
     b.spacingMode = this.spacingMode
+    b.strokeMethod = this.strokeMethod
+    b.anchoredLiveMode = this.anchoredLiveMode
     b.spacing = this.spacing
 
     b.smoothProj = this.smoothProj
@@ -609,6 +634,9 @@ export function makeDefaultBrushes() {
   brush.strength = 0.5
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
+  // Snake Hook's dab tracks the live (deforming) raycast surface each dab
+  // rather than a fixed anchor plane, so it stays on the default Path stroke
+  // method instead of Anchored (see stroke_driver.ts / sculptcore_ops.ts).
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
   brush.autosmooth = 0.8
@@ -643,6 +671,7 @@ export function makeDefaultBrushes() {
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
+  brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
@@ -707,6 +736,7 @@ export function makeDefaultBrushes() {
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
+  brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
@@ -838,6 +868,9 @@ export function makeDefaultBrushes_MediumRes() {
   brush.strength = 0.5
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
+  // Snake Hook's dab tracks the live (deforming) raycast surface each dab
+  // rather than a fixed anchor plane, so it stays on the default Path stroke
+  // method instead of Anchored (see stroke_driver.ts / sculptcore_ops.ts).
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
   brush.autosmooth = 0.8
@@ -873,6 +906,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
+  brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
@@ -942,6 +976,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
+  brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED

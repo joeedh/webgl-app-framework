@@ -3,7 +3,7 @@ import type {ToolContext, ViewContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {Matrix4, ToolOp, Vector2, Vector3, Vector4} from '../../../path.ux/pathux'
 import {StrokeDriverOp} from './stroke_paint_op'
-import {BrushStrokeDriver, IStrokeHit, StrokeInput, StrokeRayCast} from './stroke_driver'
+import {AnchoredLiveMode, BrushStrokeDriver, IStrokeHit, StrokeInput, StrokeRayCast} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {DefaultBrushes, type SculptBrush} from '../../../brush/index'
@@ -21,6 +21,7 @@ import {
   DynTopoEdgeModeSC,
   DynTopoFlagsSC,
   SculptTools,
+  StrokeMethod,
   resolvePlaneDabNormal,
 } from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
@@ -83,17 +84,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   /** Poly-group id for the active stroke (computed once on the first dab:
    * a fresh maxFaceGroup()+1, or the sampled id under the cursor with shift). */
   strokeGroupId?: number
-  /** Per-mirror-image previous dab object-local surface center, for grab brushes
-   * (kelvinlet): grabTo = thisDab − prevDab. Index 0 = primary dab, 1..n =
-   * SymAxisMap mirror images; each image traces its own path so its grab delta
-   * must not be shared. Empty until the first dab of the stroke. */
+  /** Per-mirror-image previous dab object-local surface center, for Snake Hook
+   * (the one grab-family tool still on strokeMethod=Path): grabTo = thisDab −
+   * prevDab. Index 0 = primary dab, 1..n = SymAxisMap mirror images; each image
+   * traces its own path so its grab delta must not be shared. Empty until the
+   * first dab of the stroke. */
   prevDabLocal: (Vector3 | undefined)[] = []
-  /** Per-mirror-image grab anchor: the first dab's surface point (`co`) and the
-   * stroke's fixed view direction (`nrm`, object-local). Grab-style brushes
-   * (grab/snakehook/kelvinlet) project each later dab onto the plane through
-   * `co` with normal `nrm` so they drag in the *view* plane, not along the
-   * curved surface. Empty until the first dab. */
-  grabAnchor: ({co: Vector3; nrm: Vector3} | undefined)[] = []
 
   /** Previous *primary* dab surface center, and the current stroke tangent
    * derived from it. The oriented Box falloff (and wing-scrape) follow this
@@ -181,7 +177,6 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
     this.strokeGroupId = undefined
     this.prevDabLocal = []
-    this.grabAnchor = []
     this.prevPrimaryDabCenter = undefined
     this.curStrokeDir = undefined
     this.dabSeed = 1
@@ -285,6 +280,20 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     return {brush, ...result}
   }
 
+  calcRadius(screenRadius: number): number {
+    return screenRadius
+  }
+
+  /** Read the active brush's configured stroke method (base class defaults to
+   * Path for any StrokeDriverOp that doesn't override this). */
+  getStrokeMethod(): StrokeMethod {
+    return this.inputs.brush.getValue().strokeMethod
+  }
+
+  getAnchoredLiveMode(): AnchoredLiveMode {
+    return this.inputs.brush.getValue().anchoredLiveMode
+  }
+
   /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
   getProgram(): BrushProgram {
     if (!this.brushProgram) {
@@ -363,8 +372,15 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // XXX move this into the base class and out of applyDab
     if (view3d !== undefined) {
       view3d.resetDrawLines()
-      toolmode.mpos[0] = ps.screenP[0] + view3d.pos![0]
-      toolmode.mpos[1] = ps.screenP[1] + view3d.pos![1]
+      // ps.screenP is the dab's origin -- the live cursor for Path/DragDot, but
+      // the FIXED anchor for the whole Anchored stroke (see emitAnchored). mpos
+      // must track the real pointer regardless, so hover redraws after an
+      // Anchored stroke don't stick at the anchor, and so drawBrush's Anchored
+      // aim line has a live far endpoint.
+      const liveX = this.lastEvent ? this.lastEvent.x : ps.screenP[0] + view3d.pos![0]
+      const liveY = this.lastEvent ? this.lastEvent.y : ps.screenP[1] + view3d.pos![1]
+      toolmode.mpos[0] = liveX
+      toolmode.mpos[1] = liveY
       toolmode.drawBrush(view3d, true, ps.screenP[0] + view3d.pos![0], ps.screenP[1] + view3d.pos![1])
     }
 
@@ -422,9 +438,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
     const mesh = ctx.object!.data as LiteMesh
 
-    const origin = new Vector3(ps.vieworigin)
     const viewvec = new Vector3(ps.viewvec)
-    const isect = mesh.rayCast(origin, viewvec)
 
     // Still in the brush's own unit here; resolved to world once `dist` is known.
     let radius = ps.radius
@@ -432,28 +446,22 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     let p: Vector3
     let normal: Vector3
     let isectFace = -1
-    if (isect !== undefined) {
+    if (brush.strokeMethod === StrokeMethod.ANCHORED) {
+      // Anchored: the driver already resolved the fixed dab position/normal
+      // (ps.p / ps.vec, object-local — BrushStrokeDriver.emitAnchored) and,
+      // for Grab-family kernels, the live anchor->cursor drag (ps.anchorVec).
+      // No per-dab raycast; the dab center never moves off the anchor.
+      p = new Vector3(ps.p)
+      normal = new Vector3(ps.vec)
+    } else {
+      const origin = new Vector3(ps.vieworigin)
+      const isect = mesh.rayCast(origin, viewvec)
+      if (isect === undefined) {
+        return
+      }
       p = isect.p
       normal = isect.normal
       isectFace = isect.face
-    } else {
-      // Grab-family drag over empty space: once the stroke is anchored, keep
-      // dragging in the anchor plane (the grab point comes from that plane, not a
-      // fresh surface cast) instead of ending the stroke (#35). The first dab
-      // still needs a surface hit to place the anchor; other brushes need a hit
-      // every dab.
-      const anchor = this.grabAnchor[mirrorIdx]
-      if (!isGrabTool(brush.tool) || anchor === undefined) {
-        return
-      }
-      const q = new Vector3(anchor.co)
-      const denom = viewvec.dot(anchor.nrm)
-      if (Math.abs(denom) > 1e-7) {
-        const s = (anchor.co.dot(anchor.nrm) - origin.dot(anchor.nrm)) / denom
-        q.load(new Vector3(viewvec).mulScalar(s).add(origin))
-      }
-      p = q
-      normal = new Vector3(anchor.nrm)
     }
 
     const p4 = new Vector4().load3(p)
@@ -562,52 +570,35 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // object-local here (same vector the dab raycast used).
       const dabNormal = resolvePlaneDabNormal(brush.tool, brush.planeNormalMode, normal, viewvec)
 
-      // Grab-style brushes (grab/snakehook/kelvinlet): pull the region in the
-      // stroke-movement direction (see applyGrabDabState). The displacement must
-      // track the *view* plane, not the curved surface — otherwise dragging
-      // snaps geometry along the surface normal plane (#18/#19/#34). Project each
-      // dab's view ray onto the plane through the stroke anchor (first dab's
-      // surface point) with the stroke's fixed view normal.
+      // Grab-style brushes (grab/snakehook/kelvinlet) pull the region in the
+      // stroke-movement direction (see applyGrabDabState).
       let dabCenter: number[] | Vector3 = p
       // Node-filter radius. Grab/kelvinlet widen it by the cumulative drag below
       // (the falloff still uses the brush radius via wasmBrush.radius), so the
       // deformed region's leaves stay in the filter and can't shrink + tear (#35).
       let filterRadius = radius
       if (isGrabTool(brush.tool)) {
-        let q = new Vector3(p)
-        const anchor = this.grabAnchor[mirrorIdx]
-        if (anchor === undefined) {
-          const nrm = new Vector3(viewvec)
-          nrm.normalize()
-          this.grabAnchor[mirrorIdx] = {co: new Vector3(p), nrm}
-        } else {
-          const denom = viewvec.dot(anchor.nrm)
-          if (Math.abs(denom) > 1e-7) {
-            const s = (anchor.co.dot(anchor.nrm) - origin.dot(anchor.nrm)) / denom
-            q = new Vector3(viewvec).mulScalar(s).add(origin)
-          }
-        }
         if (brush.tool === SculptTools.SNAKE) {
-          // Snakehook: per-dab drag — grabFrom = current center, grabTo = step.
-          this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, q, this.prevDabLocal[mirrorIdx])
+          // Snakehook (strokeMethod=Path): dab tracks the live raycast surface
+          // each dab; grabFrom = current center, grabTo = step since last dab.
+          this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, p, this.prevDabLocal[mirrorIdx])
         } else {
-          // Grab / kelvinlet: deform a region FIXED at the stroke-start anchor,
-          // from each vert's orig position (#35). grabFrom = anchor (fixed elastic
-          // center); grabTo = CUMULATIVE drag (q − anchor), so the from-orig kernel
-          // recomputes the absolute pull each dab and follows the cursor. dab center
-          // = anchor so the falloff stays centered and the kernel reads orig. Widen
-          // the node filter by the cumulative drag so moved leaves stay in the set.
-          const a = this.grabAnchor[mirrorIdx]!.co
+          // Grab / kelvinlet (strokeMethod=Anchored): deform a region FIXED at
+          // the stroke anchor, from each vert's orig position (#35). grabFrom =
+          // anchor (p, fixed); grabTo = the driver's live anchor->cursor drag
+          // (ps.anchorVec, object-local, tracks the view plane not the curved
+          // surface — see BrushStrokeDriver.projectOntoAnchorPlane), so the
+          // from-orig kernel recomputes the absolute pull each dab. Widen the
+          // node filter by the drag length so moved leaves stay in the set.
           const gf = wasmBrush.grabFrom.vec
           const gt = wasmBrush.grabTo.vec
-          gf[0] = a[0]
-          gf[1] = a[1]
-          gf[2] = a[2]
-          gt[0] = q[0] - a[0]
-          gt[1] = q[1] - a[1]
-          gt[2] = q[2] - a[2]
-          dabCenter = a
-          filterRadius = radius + new Vector3(q).sub(new Vector3(a)).vectorLength()
+          gf[0] = p[0]
+          gf[1] = p[1]
+          gf[2] = p[2]
+          gt[0] = ps.anchorVec[0]
+          gt[1] = ps.anchorVec[1]
+          gt[2] = ps.anchorVec[2]
+          filterRadius = radius + ps.anchorVec.vectorLength()
           // Symmetry: the primary image re-bases every touched vert from orig
           // (Absolute); mirror images add their pull onto it (Add) so shared verts
           // sum instead of the last pass overwriting.
@@ -670,11 +661,34 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         }
       }
 
+      // Anchored/Drag Dot live preview (step 2a): every dab but the stroke's
+      // last is provisional — rolled back the instant the next one lands —
+      // so a long drag never leaves a trail of committed partial dabs behind
+      // (required for Drag Dot's discrete-stamp semantics; a memory-bloat
+      // optimization for Grab/Kelvinlet's idempotent from-orig kernel). Under
+      // symmetry, one driver tick's primary dab (mirrorIdx 0) starts the
+      // preview session and each mirror image extends it with its own region
+      // (extendPreviewDab) rather than resetting it — the whole group of
+      // dabs then rolls back together as one unit when the NEXT tick's
+      // primary dab lands.
+      const doPreview = brush.strokeMethod !== StrokeMethod.PATH
+
       // One unified dab: dyntopo pre-pass (if params != null), node filter,
       // deform, and per-dab topo-chunk seal — all in the executor, one order
       // shared by every client. The seed only matters when dyntopo is on.
       // Skipped on the pure-GPU branch (the kernel dispatch replaces it).
       if (!this.gpu || this.gpu.shadow) {
+        if (doPreview && mirrorIdx === 0 && wasmExec.previewActive()) {
+          wasmExec.rollbackPreviewDab()
+          mesh.spatial.updateQueries()
+        }
+        if (doPreview) {
+          if (mirrorIdx === 0) {
+            wasmExec.beginPreviewDab(wasm.float3(dabCenter), filterRadius)
+          } else {
+            wasmExec.extendPreviewDab(wasm.float3(dabCenter), filterRadius)
+          }
+        }
         wasmExec.applyDab(
           prog,
           wasm.float3(dabCenter),
@@ -740,6 +754,11 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   }
 
   private finishStrokeTail(ctx: ToolContext): void {
+    // Anchored/Drag Dot: the last dab was applied as a preview (applyDabOne has
+    // no "this is the final sample" signal), so keep its effect and drop the
+    // snapshot bookkeeping here -- otherwise previewActive() stays stale and
+    // the next stroke's first preview dab rolls back against the wrong step.
+    this.executor?.commitPreviewDab()
     // Release the stroke-long topology thaw the dyntopo path held (no-op if the
     // executor never ran a dyntopo dab).
     this.executor?.endDynTopoStroke()
@@ -1279,11 +1298,13 @@ window._sculptcoreStrokeTester = {
     tool.modal_ctx = ctx
 
     const driver = new BrushStrokeDriver({
-      projection  : tool.makeProjection(),
-      getParams   : tool.makeParamProvider(),
-      spaceMode   : tool.getSpaceMode(),
-      rayCast     : tool.makeRayCast(),
-      objectMatrix: () => tool.getObjectMatrix(),
+      projection      : tool.makeProjection(),
+      getParams       : tool.makeParamProvider(),
+      spaceMode       : tool.getSpaceMode(),
+      rayCast         : tool.makeRayCast(),
+      objectMatrix    : () => tool.getObjectMatrix(),
+      strokeMethod    : tool.getStrokeMethod(),
+      anchoredLiveMode: tool.getAnchoredLiveMode(),
     })
 
     // Normalized (0..1) viewport coords -> window/client coords, undoing the
@@ -1325,9 +1346,24 @@ window._sculptcoreStrokeTester = {
 
     // Run non-modally: execTool then does undoPre -> exec -> execPost
     // synchronously (exec replays inputs.samples through applyDab and closes the
-    // meshlog step), as a normal undoable toolstack entry.
+    // meshlog step), as a normal undoable toolstack entry. undoPre() re-snapshots
+    // symmetryAxes from ctx.toolmode (A.4, for the real interactive/replay path),
+    // which would silently clobber the override above -- drive it through the
+    // toolmode too, for the duration of this call, so callers asking for
+    // symmetryAxes: 0 (e.g. every Anchored/Drag Dot preview-rollback test) get it.
+    const paintMode = ctx.toolmode as SculptCorePaintMode | undefined
+    const prevSymmetryAxes = paintMode?.symmetryAxes
+    if (paintMode) {
+      paintMode.symmetryAxes = symmetryAxes
+    }
     tool.is_modal = false
-    ctx.toolstack.execTool(ctx, tool)
+    try {
+      ctx.toolstack.execTool(ctx, tool)
+    } finally {
+      if (paintMode && prevSymmetryAxes !== undefined) {
+        paintMode.symmetryAxes = prevSymmetryAxes
+      }
+    }
 
     // The interactive path leans on the render loop to refresh the spatial tree;
     // do it explicitly so headless callers see up-to-date geometry immediately.

@@ -403,6 +403,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.pan.type` | prop | StringProperty | Type |  |
 | `scene.tools.sculptcore` | struct |  |  |  |
 | `scene.tools.sculptcore.brush` | struct |  |  |  |
+| `scene.tools.sculptcore.brush.anchoredLiveMode` | prop | EnumProperty | Anchored Live | enum {RADIUS, ANGLE} |
 | `scene.tools.sculptcore.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
 | `scene.tools.sculptcore.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |
 | `scene.tools.sculptcore.brush.bgcolor` | prop | Vec4Property | Secondary Color | range 0..1 |
@@ -493,6 +494,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.spacing` | prop | FloatProperty | Spacing | range 0.01..12 |
 | `scene.tools.sculptcore.brush.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
 | `scene.tools.sculptcore.brush.strength` | prop | FloatProperty | Strength | range 0.001..2 |
+| `scene.tools.sculptcore.brush.strokeMethod` | prop | EnumProperty | Stroke Method | enum {PATH, ANCHORED, DRAG_DOT} |
 | `scene.tools.sculptcore.brush.texUser` | struct |  |  |  |
 | `scene.tools.sculptcore.brush.texUser.flag` | prop | FlagProperty | flag | enum {1, 2, 4, 8, 16, 32, SELECT, RAKE, CONSTANT_SIZE, FANCY_RAKE, ORIGINAL_CO, CURVED} |
 | `scene.tools.sculptcore.brush.texUser.mode` | prop | EnumProperty | Mode | enum {0, 1, 2, GLOBAL, VIEWPLANE, VIEW_REPEAT} |

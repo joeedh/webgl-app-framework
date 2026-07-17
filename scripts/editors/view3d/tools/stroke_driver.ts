@@ -15,6 +15,8 @@ import {PaintSample} from './pbvh_paintsample.js'
 import {Bezier} from '../../../util/bezier.js'
 import {Matrix4, Vector2, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js'
 import {arcLengthWalk, crToBezier, Cubic, evalCubic, lerpV, subCubic, Vec} from '../../../util/stroke_math.js'
+import {AnchoredLiveMode, StrokeMethod} from '../../../brush/brush_base.js'
+export {AnchoredLiveMode, StrokeMethod} from '../../../brush/brush_base.js'
 
 /** Centripetal Catmull-Rom: no cusps/loops on clustered jittery input. */
 const ALPHA = 0.5
@@ -87,6 +89,15 @@ export interface StrokeDriverOptions {
    * internal control-point / spacing / raycast math stays in world space.
    * Absent => samples stay world space (identity conversion). */
   objectMatrix?: () => Matrix4 | undefined
+  /** Default StrokeMethod.PATH (unchanged arc-length walk). ANCHORED fixes the
+   * dab origin on the first input and re-emits at the anchor on every later
+   * input, carrying the anchor->cursor vector (ps.anchorVec) and, per
+   * anchoredLiveMode, a live radius (ps.radius) or angle (ps.liveAngle).
+   * DRAG_DOT follows the cursor, emitting one dab per input. Neither mode
+   * arc-length-walks or spacing-gates — one input event is one dab. */
+  strokeMethod?: StrokeMethod
+  /** ANCHORED only: which scalar the anchor->cursor drag drives live. */
+  anchoredLiveMode?: AnchoredLiveMode
 }
 
 interface ControlPoint {
@@ -117,6 +128,10 @@ export class BrushStrokeDriver {
   private rawEmitted = false
   private ended = false
   private done = false
+  // StrokeMethod.ANCHORED: the fixed dab origin, set on the first ingested input.
+  private anchorCP: ControlPoint | undefined
+  // StrokeMethod.DRAG_DOT: the live positioning-preview origin, updated on every input.
+  private previewCP: ControlPoint | undefined
 
   private out: PaintSample[] = []
   private _rendermat = new Matrix4()
@@ -140,6 +155,19 @@ export class BrushStrokeDriver {
     return this.done
   }
 
+  /** ANCHORED only: the fixed anchor's local view3d screen position, once
+   * established (undefined before the first input or outside Anchored). */
+  getAnchorScreen(): Vec | undefined {
+    return this.anchorCP?.screen
+  }
+
+  /** DRAG_DOT only: the live positioning-preview's local view3d screen
+   * position, once established (undefined before the first input or outside
+   * Drag Dot). Mirrors {@link getAnchorScreen}. */
+  getPreviewScreen(): Vec | undefined {
+    return this.previewCP?.screen
+  }
+
   reset(): void {
     this.inQueue.length = 0
     this.cps.length = 0
@@ -151,6 +179,8 @@ export class BrushStrokeDriver {
     this.rawEmitted = false
     this.ended = false
     this.done = false
+    this.anchorCP = undefined
+    this.previewCP = undefined
     this.out.length = 0
   }
 
@@ -220,36 +250,52 @@ export class BrushStrokeDriver {
 
     const vv = proj.getViewVec(screen[0], screen[1])
     const viewvec: Vec = [vv[0], vv[1], vv[2]]
-    const origin = proj.cameraPos()
+    const originV3 = proj.cameraPos()
+    const origin: Vec = [originV3[0], originV3[1], originV3[2]]
 
     const params = this.opts.getParams(input.pressure)
+    const method = this.opts.strokeMethod ?? StrokeMethod.PATH
 
     let world: Vec
     let normal: Vec
     let hit = false
 
-    const r = this.opts.rayCast?.(new Vector3(origin), new Vector3(vv))
-    if (r) {
-      world = [r.p[0], r.p[1], r.p[2]]
-      normal = [r.normal[0], r.normal[1], r.normal[2]]
-      hit = true
-      this.firstHit = true
-      this.lastHitWorld = world.slice()
-    } else if (this.firstHit) {
-      // miss after a real hit: project the last hit onto the camera-facing
-      // plane at the cursor (sampleViewRay grab/snake fallback)
-      world = this.synthesizeMiss(screen)
-      normal = viewvec.slice()
-    } else if (this.opts.spaceMode === StrokeSpaceMode.SCREEN) {
-      // screen-mode before any surface exists: best-effort world position
-      world = [origin[0] + viewvec[0], origin[1] + viewvec[1], origin[2] + viewvec[2]]
-      normal = viewvec.slice()
+    if (method === StrokeMethod.ANCHORED && this.anchorCP) {
+      // Grab-family drag over empty space (#35): once anchored, every later
+      // input projects onto the plane through the anchor, facing the camera
+      // as it was AT ANCHOR TIME (anchorCP.viewvec) rather than the live
+      // surface normal — so the drag tracks the view plane, not the curved
+      // (and, for Grab/Kelvinlet, actively deforming) mesh surface.
+      world = this.projectOntoAnchorPlane(origin, viewvec)
+      normal = this.anchorCP.viewvec.slice()
     } else {
-      // world-mode before any hit: no plane to project onto yet, discard
-      return
+      const r = this.opts.rayCast?.(new Vector3(origin), new Vector3(vv))
+      if (r) {
+        world = [r.p[0], r.p[1], r.p[2]]
+        normal = [r.normal[0], r.normal[1], r.normal[2]]
+        hit = true
+        this.firstHit = true
+        this.lastHitWorld = world.slice()
+      } else if (method === StrokeMethod.ANCHORED) {
+        // Anchored can't start a stroke over empty space: the first input
+        // needs a real surface hit to establish the anchor.
+        return
+      } else if (this.firstHit) {
+        // miss after a real hit: project the last hit onto the camera-facing
+        // plane at the cursor (sampleViewRay grab/snake fallback)
+        world = this.synthesizeMiss(screen)
+        normal = viewvec.slice()
+      } else if (this.opts.spaceMode === StrokeSpaceMode.SCREEN) {
+        // screen-mode before any surface exists: best-effort world position
+        world = [origin[0] + viewvec[0], origin[1] + viewvec[1], origin[2] + viewvec[2]]
+        normal = viewvec.slice()
+      } else {
+        // world-mode before any hit: no plane to project onto yet, discard
+        return
+      }
     }
 
-    this.cps.push({
+    const cp: ControlPoint = {
       screen,
       world,
       normal,
@@ -262,7 +308,17 @@ export class BrushStrokeDriver {
       invert  : input.invert,
       useAltBrush: input.useAltBrush,
       params,
-    })
+    }
+
+    if (method === StrokeMethod.ANCHORED) {
+      this.ingestAnchored(cp)
+      return
+    } else if (method === StrokeMethod.DRAG_DOT) {
+      this.emitDot(cp)
+      return
+    }
+
+    this.cps.push(cp)
 
     // first control point => one raw, non-interpolated dab
     if (!this.rawEmitted) {
@@ -279,7 +335,25 @@ export class BrushStrokeDriver {
     }
   }
 
+  /** StrokeMethod.ANCHORED: fix the anchor on the first input, then emit one
+   * dab per later input at the anchor, carrying the live anchor->cursor vector. */
+  private ingestAnchored(cp: ControlPoint): void {
+    if (!this.anchorCP) {
+      this.anchorCP = cp
+      this.emitAnchored(cp, cp)
+      return
+    }
+    this.emitAnchored(this.anchorCP, cp)
+  }
+
   private flush(): void {
+    const method = this.opts.strokeMethod ?? StrokeMethod.PATH
+    if (method !== StrokeMethod.PATH) {
+      // ANCHORED/DRAG_DOT already emitted one dab per input; no trailing
+      // spline segment to flush.
+      return
+    }
+
     const L = this.cps.length
     if (L >= 2) {
       this.emitSegment(L - 2, true)
@@ -312,6 +386,54 @@ export class BrushStrokeDriver {
     ps.futureAngle = 0
     ps.curve = undefined
 
+    this.prevEmitted = ps
+    this.out.push(ps)
+  }
+
+  /** StrokeMethod.ANCHORED: a dab centered on `anchor`, carrying the live
+   * anchor->cur vector (ps.anchorVec) and, per anchoredLiveMode, a live
+   * radius (ps.radius) or angle (ps.liveAngle) derived from the screen-space
+   * drag. Not arc-length walked — one input is one dab. */
+  private emitAnchored(anchor: ControlPoint, cur: ControlPoint): void {
+    const ps = this.makeSample(anchor.world, anchor.screen, anchor, anchor, 0, anchor.normal, anchor.hit)
+    ps.isInterp = false
+    ps.strokeS = this.strokeS
+    ps.dstrokeS = 0
+    ps.curve = undefined
+
+    const worldVec: Vec = [cur.world[0] - anchor.world[0], cur.world[1] - anchor.world[1], cur.world[2] - anchor.world[2]]
+    const localVec = this.toLocalDir(worldVec)
+    ps.anchorVec[0] = localVec[0]
+    ps.anchorVec[1] = localVec[1]
+    ps.anchorVec[2] = localVec[2]
+
+    const dx = cur.screen[0] - anchor.screen[0]
+    const dy = cur.screen[1] - anchor.screen[1]
+
+    if ((this.opts.anchoredLiveMode ?? AnchoredLiveMode.RADIUS) === AnchoredLiveMode.ANGLE) {
+      ps.liveAngle = Math.atan2(dy, dx)
+    } else {
+      const dragPx = Math.sqrt(dx * dx + dy * dy)
+      if (dragPx > 1e-5) {
+        ps.radius = dragPx
+      }
+    }
+
+    this.prevEmitted = ps
+    this.out.push(ps)
+  }
+
+  /** StrokeMethod.DRAG_DOT: one dab centered on the live cursor per input. */
+  private emitDot(cp: ControlPoint): void {
+    const ps = this.makeSample(cp.world, cp.screen, cp, cp, 0, cp.normal, cp.hit)
+    ps.isInterp = false
+    ps.strokeS = this.strokeS
+    ps.dstrokeS = 0
+    ps.angle = 0
+    ps.futureAngle = 0
+    ps.curve = undefined
+
+    this.previewCP = cp
     this.prevEmitted = ps
     this.out.push(ps)
   }
@@ -404,6 +526,32 @@ export class BrushStrokeDriver {
     this._tmpV3[2] = p[2] as number
     this._tmpV3.multVecMatrix(this._iobmat)
     return [this._tmpV3[0], this._tmpV3[1], this._tmpV3[2]]
+  }
+
+  /** World direction -> object-local direction (translation-free; identity
+   * when no object matrix). Used for the Anchored drag vector. */
+  private toLocalDir(v: Vec): Vec {
+    this._tmpV3[0] = v[0]
+    this._tmpV3[1] = v[1]
+    this._tmpV3[2] = v[2]
+    this._tmpV3.multVecMatrix(this._iobmatDir)
+    return [this._tmpV3[0], this._tmpV3[1], this._tmpV3[2]]
+  }
+
+  /** ANCHORED, post-anchor: intersect the current view ray with the plane
+   * through anchorCP.world, facing the camera as it was at anchor time
+   * (anchorCP.viewvec as the plane normal). Degenerate (ray parallel to the
+   * plane) falls back to the anchor position itself. */
+  private projectOntoAnchorPlane(origin: Vec, viewvec: Vec): Vec {
+    const anchor = this.anchorCP!
+    const n = anchor.viewvec
+    const denom = viewvec[0] * n[0] + viewvec[1] * n[1] + viewvec[2] * n[2]
+    if (Math.abs(denom) > 1e-7) {
+      const d = (anchor.world[0] - origin[0]) * n[0] + (anchor.world[1] - origin[1]) * n[1] + (anchor.world[2] - origin[2]) * n[2]
+      const s = d / denom
+      return [origin[0] + viewvec[0] * s, origin[1] + viewvec[1] * s, origin[2] + viewvec[2] * s]
+    }
+    return anchor.world.slice()
   }
 
   /** Fill the position / view / interpolated-param fields of a PaintSample. */

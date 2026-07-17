@@ -230,6 +230,7 @@ export type GeneratedDataPath =
   | "scene.tools.pan.type"
   | "scene.tools.sculptcore"
   | "scene.tools.sculptcore.brush"
+  | "scene.tools.sculptcore.brush.anchoredLiveMode"
   | "scene.tools.sculptcore.brush.autosmooth"
   | "scene.tools.sculptcore.brush.autosmoothInflate"
   | "scene.tools.sculptcore.brush.bgcolor"
@@ -320,6 +321,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.spacing"
   | "scene.tools.sculptcore.brush.spacingMode"
   | "scene.tools.sculptcore.brush.strength"
+  | "scene.tools.sculptcore.brush.strokeMethod"
   | "scene.tools.sculptcore.brush.texUser"
   | "scene.tools.sculptcore.brush.texUser.flag"
   | "scene.tools.sculptcore.brush.texUser.mode"
@@ -1034,6 +1036,7 @@ declare module "@framework/pathux" {
     "scene.tools.pan.type": true;
     "scene.tools.sculptcore": true;
     "scene.tools.sculptcore.brush": true;
+    "scene.tools.sculptcore.brush.anchoredLiveMode": true;
     "scene.tools.sculptcore.brush.autosmooth": true;
     "scene.tools.sculptcore.brush.autosmoothInflate": true;
     "scene.tools.sculptcore.brush.bgcolor": true;
@@ -1124,6 +1127,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.spacing": true;
     "scene.tools.sculptcore.brush.spacingMode": true;
     "scene.tools.sculptcore.brush.strength": true;
+    "scene.tools.sculptcore.brush.strokeMethod": true;
     "scene.tools.sculptcore.brush.texUser": true;
     "scene.tools.sculptcore.brush.texUser.flag": true;
     "scene.tools.sculptcore.brush.texUser.mode": true;

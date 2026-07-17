@@ -27,6 +27,7 @@ import {
   DynTopoOverridesSC,
   SculptIcons,
   SculptTools,
+  StrokeMethod,
 } from '../../../brush/brush_base.js'
 import {SelMask} from '../selectmode.js'
 import type {Mesh} from '../../../../addons/builtin/mesh/src/mesh'
@@ -145,6 +146,16 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.useIcons(false)
     strip.label('Spacing')
     strip.prop(path + '.brush.spacingMode')
+
+    strip = settings.row().strip()
+    strip.useIcons(false)
+    strip.label('Stroke Method')
+    strip.prop(path + '.brush.strokeMethod')
+
+    strip = settings.row().strip()
+    strip.useIcons(false)
+    strip.label('Anchored Live')
+    strip.prop(path + '.brush.anchoredLiveMode')
 
     function doChannel(chName: string, settingsPanel: PanelContents<ViewContext> = settings) {
       const strip = settingsPanel.col()
@@ -927,7 +938,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     // XXX haveModal is too granular, leads to bad code
     // in brush.set_radius() toolop
-    if (haveModal() && !force && !(this.ctx?.toolstack?.head instanceof SculptPaintOp)) {
+    const activeOp = this.ctx?.toolstack?.head
+    if (haveModal() && !force && !(activeOp instanceof SculptPaintOp)) {
       return
     }
 
@@ -948,6 +960,28 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     const r = this._radius !== undefined ? this._radius : this.overlayScreenRadius(brush, radius)
     drawCircle(x, y, r)
+
+    // Anchored: (x, y) is the fixed anchor for the whole stroke (applyDab
+    // pins the cursor overlay there), so draw a line out to the live pointer
+    // (this.mpos) -- the drag distance/direction the anchor->cursor vector
+    // (radius or angle, per anchoredLiveMode) is otherwise invisible.
+    if (activeOp instanceof SculptPaintOp && activeOp.getStrokeMethod() === StrokeMethod.ANCHORED && activeOp.driver?.getAnchorScreen()) {
+      this._brush_lines.push(view3d.overdraw!.line([x, y], [this.mpos[0], this.mpos[1]], 'rgb(255,175,75)'))
+    }
+
+    // Drag Dot: (x, y) already tracks the live positioning-preview origin
+    // (applyDab's ps.screenP is the dab origin, which for Drag Dot is the
+    // live cursor -- see the comment on that call site), but draw an extra,
+    // visually-distinct footprint circle off the driver's own preview
+    // accessor so the not-yet-committed dab is explicit rather than
+    // incidental, and stays correct even if drawBrush's default (x, y) ever
+    // stops tracking the dab origin.
+    if (activeOp instanceof SculptPaintOp && activeOp.getStrokeMethod() === StrokeMethod.DRAG_DOT) {
+      const preview = activeOp.driver?.getPreviewScreen()
+      if (preview) {
+        this._brush_lines.push(view3d.overdraw!.circle([preview[0], preview[1]], r, 'rgb(120,200,255)'))
+      }
+    }
   }
 
   /** The cursor ring is drawn in screen space, so a WORLD-unit radius has to be

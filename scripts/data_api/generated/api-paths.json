@@ -3302,6 +3302,19 @@
       "indexed": false,
       "dynamic": false
     },
+    "scene.tools.sculptcore.brush.anchoredLiveMode": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Anchored Live",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "RADIUS",
+        "ANGLE"
+      ]
+    },
     "scene.tools.sculptcore.brush.autosmooth": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",
@@ -4399,6 +4412,20 @@
       ],
       "decimalPlaces": 4,
       "step": 0.015
+    },
+    "scene.tools.sculptcore.brush.strokeMethod": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "EnumProperty",
+      "uiname": "Stroke Method",
+      "decimalPlaces": 4,
+      "step": 0.05,
+      "enumItems": [
+        "PATH",
+        "ANCHORED",
+        "DRAG_DOT"
+      ]
     },
     "scene.tools.sculptcore.brush.texUser": {
       "kind": "struct",
