@@ -305,6 +305,8 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
       for (let i = 0; i < 4; i++) {
         vec[i] = brush.color[i] ?? 0
       }
+      // Blend mode (color.sbrush `mixMode` switch; matches ColorMixModes).
+      wasmBrush.mixMode = brush.colorMixMode
       break
     }
   }

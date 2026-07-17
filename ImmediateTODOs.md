@@ -96,8 +96,14 @@ NOTE: the per-face material attr now exists (int16 "material" face attr indexing
      and drive an nwjs test of stroking with a brush texture.  Also make sure textures 
 	 for color paint brushes work (they should read the texture color and multiply by
 	 the brush color).
-[ ]: Create a standard set of color mix modes for the color paint brush (e.g. mix, multiply,
+[x]: Create a standard set of color mix modes for the color paint brush (e.g. mix, multiply,
      difference, screen, overlay, etc).
+     (9 modes MIX/MULTIPLY/SCREEN/OVERLAY/DIFFERENCE/ADD/SUBTRACT/DARKEN/LIGHTEN in
+      color.sbrush `mixMode` switch; SculptBrush.colorMixMode enum prop marshaled via
+      configureToolUniforms; Brush::mixMode uniform. Required fixing DSL vector-component
+      access (.x/.y/.z) in the sbrush C++ backend -- emit_cpp now lowers a proven vector
+      swizzle to litestl Vec operator[]. Verified end to end:
+      tests/integration/sculptcore_colormix.test.ts, 5/5 wasm.)
 
 
 

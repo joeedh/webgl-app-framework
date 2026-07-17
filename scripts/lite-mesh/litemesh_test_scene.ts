@@ -58,6 +58,8 @@ import './litemesh_multirestest_support'
 import './litemesh_materialfragtest_support'
 // Side-effect: registers globalThis.__selectSimilarTest for the select-similar test.
 import './litemesh_selectsimilartest_support'
+// Side-effect: registers globalThis.__colorMixTest for the color-brush mix-mode test.
+import './litemesh_colormixtest_support'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.

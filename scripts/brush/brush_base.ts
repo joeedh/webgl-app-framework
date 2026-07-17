@@ -36,6 +36,21 @@ export enum BrushRadiusModes {
   WORLD = 1,
 }
 
+/** How the color paint brush blends its color onto the vertex color layer.
+ * Values MUST match the `mixMode` switch in color.sbrush. MIX reproduces the
+ * original straight lerp. */
+export enum ColorMixModes {
+  MIX = 0,
+  MULTIPLY = 1,
+  SCREEN = 2,
+  OVERLAY = 3,
+  DIFFERENCE = 4,
+  ADD = 5,
+  SUBTRACT = 6,
+  DARKEN = 7,
+  LIGHTEN = 8,
+}
+
 export enum BrushFlags {
   SELECT = 1,
   SHARED_SIZE = 2,

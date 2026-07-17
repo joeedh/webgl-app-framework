@@ -23,6 +23,7 @@ import {
   SculptIcons,
   BrushFlags,
   BrushRadiusModes,
+  ColorMixModes,
   DynTopoFlags,
   DynTopoOverrides,
   BrushSpacingModes,
@@ -76,6 +77,7 @@ SculptBrush {
   enhanceRings : int;
   enhanceInner : int;
   radiusMode : int;
+  colorMixMode : int;
 }`
   )
 
@@ -83,6 +85,9 @@ SculptBrush {
 
   /** Unit `radius` is in; see BrushRadiusModes and resolveWorldRadius. */
   radiusMode = BrushRadiusModes.SCREEN
+
+  /** Blend mode for the color paint brush; see ColorMixModes and color.sbrush. */
+  colorMixMode = ColorMixModes.MIX
 
   smoothRadiusMul = 1.0
 
@@ -206,6 +211,9 @@ SculptBrush {
     bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
+    bst.enum('colorMixMode', 'colorMixMode', deleteTsEnumIntegers(ColorMixModes), 'Color Mix').description(
+      'How the color brush blends onto the vertex color'
+    )
     bst.float('concaveFilter', 'concaveFilter', 'Concave Wash').range(0.0, 1.0).noUnits()
     bst.float('rake', 'rake', 'Rake').range(0.0, 1.0).noUnits()
     bst.float('normalfac', 'normalfac', 'Normal Fac').range(0.0, 1.0).noUnits()
@@ -294,6 +302,7 @@ SculptBrush {
       r = r && feq(this.strength, b.strength)
       r = r && feq(this.radius, b.radius)
       r = r && this.radiusMode === b.radiusMode
+      r = r && this.colorMixMode === b.colorMixMode
     }
 
     r = r && feq(this.smoothRadiusMul, b.smoothRadiusMul)
@@ -339,6 +348,7 @@ SculptBrush {
       d.add(this.color[i as Number4])
       d.add(this.bgcolor[i as Number4])
     }
+    d.add(this.colorMixMode)
 
     if (!ignoreRadiusStrength) {
       d.add(this.strength)
@@ -421,6 +431,7 @@ SculptBrush {
     b.strength = this.strength
     b.radius = this.radius
     b.radiusMode = this.radiusMode
+    b.colorMixMode = this.colorMixMode
     b.planeoff = this.planeoff
     b.planeNormalMode = this.planeNormalMode
 
