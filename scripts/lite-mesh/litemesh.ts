@@ -2238,6 +2238,69 @@ export class LiteMesh extends SceneObjectData {
     return n
   }
 
+  /** Material slot of a face — an index into SceneObjectData.materials, not a
+   * datablock id. 0 (and an absent attr) = the object's first material. */
+  faceMaterial(face: number): number {
+    return (this.mesh as unknown as {faceMaterial(f: number): number}).faceMaterial(face)
+  }
+
+  /** Highest material slot any face references (0 = mesh is single-material). */
+  maxFaceMaterial(): number {
+    return (this.mesh as unknown as {maxFaceMaterial(): number}).maxFaceMaterial()
+  }
+
+  /** A material assignment's before-state: the faces touched and the slot each
+   * one had. Small (only the assigned faces) and enough to undo exactly. */
+  private _materialSnapshot(vec: unknown): {faces: number[]; prior: number[]} {
+    const prev = this._intVecOut()
+    ;(this.mesh as unknown as {facesMaterialSlots(f: never, o: never): void}).facesMaterialSlots(
+      vec as never,
+      prev.vec as never
+    )
+
+    const fsrc = this.wasm.getBoundVector(
+      (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string}}).findVectorClass('int32').buildFullName(),
+      vec as never
+    ) as ArrayLike<number>
+    const psrc = prev.read()
+
+    const faces: number[] = []
+    const prior: number[] = []
+    for (let i = 0; i < fsrc.length; i++) {
+      faces.push(fsrc[i])
+      prior.push(psrc[i])
+    }
+    return {faces, prior}
+  }
+
+  /** Assign `faces` (a bound Vector) to `slot`, returning the undo snapshot. */
+  private _assignMaterial(vec: unknown, slot: number): {faces: number[]; prior: number[]} {
+    const snap = this._materialSnapshot(vec)
+    if (snap.faces.length > 0) {
+      ;(this.mesh as unknown as {setFacesMaterial(f: never, s: number): void}).setFacesMaterial(vec as never, slot)
+    }
+    return snap
+  }
+
+  /**
+   * Put every currently-selected face on material slot `slot`. The selection is
+   * gathered and handed back to C++ as the same bound Vector, so the indices
+   * never cross into JS. Returns the before-state for undo.
+   */
+  assignMaterialToSelected(slot: number): {faces: number[]; prior: number[]} {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {selectedElems(d: number, o: never): void}).selectedElems(2, out.vec as never)
+    return this._assignMaterial(out.vec, slot)
+  }
+
+  /** Put every face in poly-group `group` on material slot `slot`. */
+  assignMaterialToPolyGroup(group: number, slot: number): {faces: number[]; prior: number[]} {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {facesInGroup(g: number, o: never): void}).facesInGroup(group, out.vec as never)
+    return this._assignMaterial(out.vec, group === 0 ? 0 : slot)
+  }
+
+
   /** Read a single edge's EDGE_SEAM bit (0/1). */
   edgeSeam(e: number): number {
     return (this.mesh as unknown as {edgeSeam(e: number): number}).edgeSeam(e)

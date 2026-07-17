@@ -360,15 +360,15 @@ SceneObjectData {
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     super.dataLink(getblock, getblock_addUser)
 
-    const mats = [] as Material[]
+    // Slot positions are load-bearing: per-face material indices reference them,
+    // so an unresolvable material must leave a hole rather than shift every
+    // later slot down onto the wrong faces.
+    const mats = [] as Array<Material | undefined>
 
     //non-datablock materials are allowed
 
     for (let i = 0; i < this.materials.length; i++) {
-      const mat = getblock_addUser<Material>(this.materials[i] as unknown as number, this)
-      if (mat) {
-        mats.push(mat)
-      }
+      mats.push(getblock_addUser<Material>(this.materials[i] as unknown as number, this))
     }
 
     this.materials = mats
