@@ -406,6 +406,10 @@ export interface IMeshLogSelect {
   selectionBeginStep(): void
   selectionEndStep(): void
   selectOne(m: unknown, domain: number, idx: number, state: boolean): void
+  /** `indices` is a bound Vector<int> handle, NOT a JS array — the generated
+   * signature says `int32[]` but the binding runtime rejects a plain array
+   * ("missing litestl::util::Vector binding"). Build one via _intVecOut(). */
+  selectIndices(m: unknown, domain: number, indices: unknown, state: number): void
   selectAllElems(m: unknown, domain: number, state: number): void
   selectShortestPath(m: unknown, vEnd: number, state: number): number
   /** kind 0 = edge loop, 1 = edge ring, 2 = face loop; seeded at an edge. A
@@ -2207,6 +2211,31 @@ export class LiteMesh extends SceneObjectData {
     const res: number[] = []
     for (let i = 0; i < arr.length; i++) res.push(arr[i])
     return res
+  }
+
+  /** Poly-group id of a face (0 = unassigned; the polygroup brush paints these). */
+  faceGroup(face: number): number {
+    return (this.mesh as unknown as {faceGroup(f: number): number}).faceGroup(face)
+  }
+
+  /**
+   * Select every face in poly-group `group`, returning how many were selected.
+   * The gathered index Vector is handed straight back to selectIndices, so the
+   * indices never cross into JS — a group can cover most of the mesh, and a
+   * per-face selectOne loop would be one binding round trip each.
+   * Caller owns the surrounding selectionBeginStep/EndStep.
+   */
+  selectPolyGroup(log: IMeshLogSelect, group: number): number {
+    const out = this._intVecOut()
+    ;(this.mesh as unknown as {facesInGroup(g: number, o: never): void}).facesInGroup(group, out.vec as never)
+
+    const n = out.read().length
+    if (n === 0) {
+      return 0
+    }
+
+    log.selectIndices(this.mesh, 2, out.vec, 1)
+    return n
   }
 
   /** Read a single edge's EDGE_SEAM bit (0/1). */

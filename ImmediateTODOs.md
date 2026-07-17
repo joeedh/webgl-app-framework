@@ -37,9 +37,12 @@ enabled selection modes.
 [ ]: Poly groups
 
 ## Other Stuff
-[ ]: A toolop where the user clicks a face and extrude region is 
+[x]: A toolop where the user clicks a face and extrude region is 
      invoked on all the faces with the same poly group.  Exposed as 
 	 an icon in sculptcore's header.
+     (litemesh.extrude_polygroup = macro [select_polygroup, extrude_region,
+      translate]; backed by the new C++ Mesh::facesInGroup. NOT yet verified
+      against a mesh that actually has painted poly groups -- see below.)
 [x]: Fix shift-f setting of radius in sculptcore toolmode
      (SetBrushRadius wrote sharedBrushRadius to a hardcoded `bvh` toolmode
       while sculptcore read its own; undoPre also captured the wrong value)

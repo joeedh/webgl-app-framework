@@ -532,6 +532,92 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
 }
 
 /**
+ * Click a face and select every face sharing its poly group (the `group` int
+ * face attr the polygroup brush paints). Always picks in the face domain: this
+ * is driven from sculpt mode, which has no vert/edge/face selection mode of its
+ * own. Group 0 means "unassigned", so clicking unpainted geometry selects
+ * nothing rather than every ungrouped face on the mesh.
+ */
+export class SelectPolyGroupLiteMeshOp extends SelectNearestLiteMeshOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.select_polygroup',
+      uiname  : 'Select Poly Group',
+      icon    : Icons.SCULPT_POLYGROUP,
+      is_modal: true,
+      inputs  : {
+        toggle: new BoolProperty(false).private(),
+        x     : new FloatProperty(0).private(),
+        y     : new FloatProperty(0).private(),
+        useXY : new BoolProperty(false).private(),
+      },
+    }
+  }
+
+  _pickAndSelect(ctx: ToolContext, lx: number, ly: number): number {
+    const view3d = (ctx as unknown as SelModalCtx).view3d
+    const object = (ctx as unknown as SelModalCtx).object
+    const mesh = this._getMesh(ctx)
+    if (!view3d || !object || !mesh) {
+      return -1
+    }
+
+    const obmatrix = object.outputs.matrix.getValue()
+    const {origin, dir} = localRay(view3d, obmatrix, lx, ly)
+    const idx = mesh.pickFace(origin, dir)
+    if (idx < 0) {
+      return -1
+    }
+
+    const group = mesh.faceGroup(idx)
+    if (group === 0) {
+      return -1
+    }
+
+    const log = this._log()
+    log.selectionBeginStep()
+    for (const d of [0, 1, 2]) {
+      log.selectAllElems(mesh.mesh, d, 0)
+    }
+    const n = mesh.selectPolyGroup(log, group)
+    log.setActiveElem(2, idx)
+    log.selectionEndStep()
+
+    if (n === 0) {
+      return -1
+    }
+    this._logStepId = log.lastStepId()
+    this._refreshOverlay(mesh, log)
+    return idx
+  }
+}
+
+/**
+ * Click a face, then extrude every face sharing its poly group as one region and
+ * grab it — the sculpt-mode way to pull a painted group out. A macro so the
+ * pick, the extrude and the grab collapse into one undo step.
+ */
+export class LiteMeshExtrudePolyGroupOp extends ToolOp {
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.extrude_polygroup',
+      uiname  : 'Extrude Poly Group',
+      icon    : Icons.EXTRUDE,
+      inputs  : {},
+    }
+  }
+
+  static invoke(_ctx: ViewContext, _args: Record<string, unknown>): ToolOp {
+    // Pick first, then extrude + grab — the same macro extrude_region builds for
+    // transform=1, with the poly-group pick prepended.
+    const select = new SelectPolyGroupLiteMeshOp() as unknown as ToolOp
+    const extrude = new LiteMeshExtrudeRegionOp() as unknown as ToolOp
+
+    return makeTransformMacro(extrude, true, select) as unknown as ToolOp
+  }
+}
+
+/**
  * Loop select seeded at the edge under the cursor (the toolmode's ctrl-click):
  * edge mode selects the edge LOOP (end-to-end chain), ctrl-shift the edge RING
  * (the parallel edges a face loop crosses — "face loop edge select"), and face
@@ -746,8 +832,13 @@ export abstract class LiteMeshTopoOpBase<
 /** Build the geom-op + TranslateOp macro for a "T" tool (one undo unit). The
  * geom op's `normalSpace` output is wired to the translate's constraint space and
  * the constraint is locked to that space's Z (the extrude normal). */
-function makeTransformMacro(tool: ToolOp, constrainNormal = true): ToolMacro<ToolContext> {
+function makeTransformMacro(tool: ToolOp, constrainNormal = true, first?: ToolOp): ToolMacro<ToolContext> {
   const macro = new ToolMacro<ToolContext>()
+  // `first` runs ahead of the geom op (e.g. a modal pick that sets up the
+  // selection the op then acts on), still inside the one undo unit.
+  if (first) {
+    macro.add(first)
+  }
   macro.add(tool)
   const translate = new TranslateOp()
   translate.inputs.selmask.setValue(SelMask.GEOM)
@@ -1255,6 +1346,7 @@ export const BoxModelSelectOps = [
   SelectBoxLiteMeshOp,
   SelectCircleLiteMeshOp,
   SelectNearestLiteMeshOp,
+  SelectPolyGroupLiteMeshOp,
   SelectLoopLiteMeshOp,
   SelectPathLiteMeshOp,
 ]
@@ -1268,6 +1360,7 @@ export const BoxModelTopoOps = [
   LiteMeshLoopCutOp,
   LiteMeshInsetOp,
   LiteMeshBevelOp,
+  LiteMeshExtrudePolyGroupOp,
 ]
 
 for (const op of BoxModelSelectOps) {

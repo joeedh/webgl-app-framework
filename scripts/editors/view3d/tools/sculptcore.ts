@@ -380,6 +380,9 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     // dyntopo on a quad mesh pays a per-dab triangulate prepass + scans an
     // unbalanced BVH; one-time triangulating fixes both.
     strip.prop(`scene.tools.${name}.symmetryAxes`)
+    // Click a face -> extrude every face in its poly group (the polygroup brush
+    // paints the groups; this pulls a painted region out).
+    strip.tool('litemesh.extrude_polygroup()')
 
     row = addHeaderRow()
     strip = row.strip()
