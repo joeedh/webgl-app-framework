@@ -83,6 +83,11 @@ queries):
 | Select nearest | `litemesh.select_nearest()` | left click | `pickVert`/`pickEdge`/`pickFace` in the first enabled domain; sets the domain's active element |
 | Loop select | `litemesh.select_loop(ring=...)` | ctrl-click / ctrl-shift-click | edge loop (`walkEdgeLoop`), edge ring, or face loop from the edge under the cursor |
 | Select shortest path | `litemesh.select_path()` | click | Dijkstra from the active vertex; endpoint becomes the new active vertex |
+| Select similar | `litemesh.select_similar(type=...)` | `Shift+G` menu | `Mesh::selectSimilar` — grows the selection with elements matching the active one under a criterion (face material/group/area/normal/coplanar/sides, edge length/direction/face-count/dihedral, vert normal/valence/face-count); `threshold` fuzzes the non-exact criteria |
+
+`Shift+G` opens a popup (`buildSelectSimilarMenu`) with a submenu of criteria per
+enabled selection domain; each entry runs `select_similar` seeded from that
+domain's active element (Blender's "select similar to active", no extra click).
 
 Left click runs `select_nearest` non-modally through the toolmode's
 `on_mousedown` (plain click replaces the selection, shift toggles the picked
