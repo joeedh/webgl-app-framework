@@ -55,16 +55,21 @@ enabled selection modes.
       through the tracked radii. Note pbvh's own dab path does not honour
       radiusMode -- it never populates the tracked radii. See
       documentation/plans/2026-07-16-1530-world-space-brush-radius.md)
-NOTE: materials are per-SceneObject today; sculptcore has no per-face material
-      index attr. The two items below need that attr added first (same
-      BuiltinAttr pattern as the existing `group` polygroup int attr).
-[ ]: Support assigning materials to selected faces in modelling mode.  Button should live
+NOTE: the per-face material attr now exists (int16 "material" face attr indexing
+      SceneObjectData.materials). See documentation/plans/2026-07-16-1700-per-face-material-attribute.md.
+      Steps 1-3 below are done; the VIEWPORT STILL DRAWS SLOT 0 EVERYWHERE --
+      assignment is authored/persisted but not previewed until step 4 (the
+      renderer), which is the real project and starts with a measurement.
+[x]: Support assigning materials to selected faces in modelling mode.  Button should live
      in material tab in properties editor.
-[ ]: Support assiging materials in sculptcore mode by clicking a face, then
+     (litemesh.assign_material; boxmodel contributes the button)
+[x]: Support assiging materials in sculptcore mode by clicking a face, then
      all faces with the same polygroup gets the same material.  Button should also live in
 	 material tab in properties editor.
-[ ]: Create a toolmode callback for toolmodes to extend the material tab in the properties
+     (litemesh.assign_material_polygroup; sculptcore contributes the button)
+[x]: Create a toolmode callback for toolmodes to extend the material tab in the properties
      editor and use it for the prior two items.
+     (ToolMode.buildMaterialPanel(container, slot), called from MaterialPanel.rebuild)
 
 [ ]: Expose brush texture settings in the TS app, make sure assigning an image works 
      and drive an nwjs test of stroking with a brush texture.  Also make sure textures 

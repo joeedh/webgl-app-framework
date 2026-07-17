@@ -125,6 +125,11 @@ BoxModelToolMode {
     }
   }
 
+  /** Material tab: put the selected faces on the chooser's active slot. */
+  static buildMaterialPanel(container: Container<ViewContext>, slot: number): void {
+    container.tool(`litemesh.assign_material(slot=${slot})`)
+  }
+
   static buildHeader(header: Container<ViewContext>, addHeaderRow: () => Container<ViewContext>): void {
     super.buildHeader(header, addHeaderRow)
 

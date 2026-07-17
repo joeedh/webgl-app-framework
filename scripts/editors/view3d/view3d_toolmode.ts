@@ -172,6 +172,14 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
 
   static buildSettings(container: ViewContainer) {}
 
+  /**
+   * Contribute rows to the properties editor's Material tab for the active
+   * material slot — e.g. box-modeling's "Assign to Selected". Called by
+   * MaterialPanel.rebuild with the slot the chooser has active, so an op bound
+   * here should take `slot=${slot}`. Only the active toolmode contributes.
+   */
+  static buildMaterialPanel(container: ViewContainer, slot: number) {}
+
   dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {}
 
   static buildHeader(header: ViewContainer, addHeaderRow: () => ViewContainer) {}

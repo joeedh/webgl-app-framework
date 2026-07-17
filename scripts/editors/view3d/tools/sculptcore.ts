@@ -497,6 +497,12 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     return st
   }
 
+  /** Material tab: click a face to put its whole poly group on the chooser's
+   * active slot. Sculpt mode has no face selection, so the group is the unit. */
+  static buildMaterialPanel(container: Container<ViewContext>, slot: number): void {
+    container.tool(`litemesh.assign_material_polygroup(slot=${slot})`)
+  }
+
   defineKeyMap(): void {
     this.keymap = new KeyMap([
       new HotKey('F', [], 'brush.set_radius()'),
