@@ -319,9 +319,15 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
     wasmBrush.setFalloffCurveEntry(i, f)
   }
 
-  // SQUARE brushes get the stroke-aligned oriented cuboid falloff.
+  // SQUARE brushes get the stroke-aligned oriented Box falloff: equal in-plane
+  // half-extents (a square footprint) and a large along-normal extent so the
+  // normal axis never clips the dab (a square column through the surface).
   if (brush.flag & BrushFlags.SQUARE) {
     wasmBrush.falloff_shape = FalloffShape.BOX
+    const ext = (wasmBrush.falloff_extent as unknown as {vec: number[]}).vec
+    ext[0] = 1.0
+    ext[1] = 1.0
+    ext[2] = 1000.0
   }
 }
 

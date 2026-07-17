@@ -95,6 +95,15 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * curved surface. Empty until the first dab. */
   grabAnchor: ({co: Vector3; nrm: Vector3} | undefined)[] = []
 
+  /** Previous *primary* dab surface center, and the current stroke tangent
+   * derived from it. The oriented Box falloff (and wing-scrape) follow this
+   * tangent; under mirror symmetry the shared sculptcore ring buffer can't
+   * derive a per-image tangent, so the primary tangent is computed here and each
+   * mirror image reflects it across its symmetry plane(s). Undefined until the
+   * second dab of the stroke (the first has no previous center). */
+  prevPrimaryDabCenter?: Vector3
+  curStrokeDir?: Vector3
+
   /** GPU stroke controller (plans/gpuGlobalBrushes.md §5); undefined = CPU
    * path. Decided once per stroke on the first primary dab (D5). */
   gpu?: GpuStrokeController
@@ -173,6 +182,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.strokeGroupId = undefined
     this.prevDabLocal = []
     this.grabAnchor = []
+    this.prevPrimaryDabCenter = undefined
+    this.curStrokeDir = undefined
     this.dabSeed = 1
     this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
@@ -602,6 +613,33 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           // sum instead of the last pass overwriting.
           wasmExec.setGrabAccumAdd(mirrorIdx > 0)
         }
+      }
+
+      // Stroke tangent for the oriented Box falloff + wing-scrape, mirror-aware:
+      // the primary dab derives it from consecutive primary centers, each mirror
+      // image reflects it (host owns it so sculptcore won't re-derive a corrupt one).
+      let strokeDir: Vector3 | undefined
+      if (mirrorIdx === 0) {
+        if (this.prevPrimaryDabCenter !== undefined) {
+          const d = new Vector3(p).sub(this.prevPrimaryDabCenter)
+          if (d.dot(d) > 1e-14) {
+            d.normalize()
+            this.curStrokeDir = d
+          }
+        }
+        this.prevPrimaryDabCenter = new Vector3(p)
+        strokeDir = this.curStrokeDir
+      } else if (this.curStrokeDir !== undefined && mirrorFlips !== undefined) {
+        strokeDir = new Vector3(this.curStrokeDir).mul(mirrorFlips)
+      }
+      if (strokeDir !== undefined) {
+        const sd = (wasmBrush.strokeDir as unknown as {vec: number[]}).vec
+        sd[0] = strokeDir[0]
+        sd[1] = strokeDir[1]
+        sd[2] = strokeDir[2]
+        wasmBrush.strokeDirHostSet = true
+      } else {
+        wasmBrush.strokeDirHostSet = false
       }
 
       // GPU stroke branch (plans/gpuGlobalBrushes.md §5): eligibility is
