@@ -70,7 +70,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   get gpuBrushStatsLabel(): string {
     const s = (window as unknown as {DEBUG?: {gpuBrush?: {lastStats?: Record<string, number | boolean | string>}}})
       .DEBUG?.gpuBrush?.lastStats
-    if (!s || !s.dabs) {
+    if (!s?.dabs) {
       return 'GPU Brush: —'
     }
     const ms = (v: unknown) => (typeof v === 'number' ? v.toFixed(1) : '0')
@@ -490,9 +490,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     st.struct('_apiDynTopoSC', 'dynTopo', 'DynTopo', api.mapStruct(DynTopoSettingsSC))
     st.bool('_apiInheritDynTopoSC', 'inheritDynTopo', 'Inherit Everything')
 
-    st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors').icon(
-      Icons.REPROJECT_CUSTOM_DATA
-    )
+    st.bool('reprojectCustomData', 'reprojectCustomData', 'Reproject UVs & colors').icon(Icons.REPROJECT_CUSTOM_DATA)
 
     return st
   }
@@ -854,9 +852,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       let brush = this.getBrush()
 
       const isColor =
-        brush.tool === SculptTools.COLOR ||
-        brush.tool === SculptTools.PAINT ||
-        brush.tool === SculptTools.PAINT_SMOOTH
+        brush.tool === SculptTools.COLOR || brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH
       const smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH
 
       // Ctrl-click with a color brush is the eyedropper: sample the vertex color
@@ -929,6 +925,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   drawBrush(view3d: View3D, force = false, x = this.mpos[0], y = this.mpos[1]): void {
     this.clearBrushLines()
 
+    // XXX haveModal is too granular, leads to bad code
+    // in brush.set_radius() toolop
     if (haveModal() && !force && !(this.ctx?.toolstack?.head instanceof SculptPaintOp)) {
       return
     }

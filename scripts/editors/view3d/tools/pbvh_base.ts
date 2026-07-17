@@ -51,7 +51,7 @@ import {MeshFlags} from '../../../../addons/builtin/mesh/src/mesh.js'
 
 import * as util from '../../../util/util.js'
 import {SceneObject, SceneObjectData} from '../../../sceneobject/index.js'
-import { enumValues } from '../../../util/enum-utils.js';
+import {enumValues} from '../../../util/enum-utils.js'
 
 export interface ISampleViewRet {
   origco: Vector3
@@ -393,6 +393,14 @@ export class SetBrushRadius extends ToolOp<
     this.inputs.radius.setValue(radius)
 
     this.exec(ctx)
+    window.redraw_viewport_p(false).then(() => {
+      // XXX find less hackish way of getting brush to draw
+      // since drawBrush by default hides it in modal toolops
+      const toolmode = ctx.toolmode
+      if (ctx.view3d && toolmode instanceof PaintToolModeBase) {
+        toolmode.drawBrush(ctx.view3d, true)
+      }
+    })
   }
 
   on_pointerup(e: PointerEvent): void {
@@ -444,8 +452,7 @@ export class SetBrushRadius extends ToolOp<
       const toolmode = this._paintToolMode(ctx)
 
       // Capture whichever value exec() will overwrite, or undo restores a stale radius.
-      this._undo.radius =
-        brush.flag & BrushFlags.SHARED_SIZE && toolmode ? toolmode.sharedBrushRadius : brush.radius
+      this._undo.radius = brush.flag & BrushFlags.SHARED_SIZE && toolmode ? toolmode.sharedBrushRadius : brush.radius
       this._undo.brushref = DataRef.fromBlock(brush)
     }
   }
@@ -509,8 +516,11 @@ export class SetBrushRadiusMode extends ToolOp<
     return {
       uiname  : 'Set Radius Unit',
       toolpath: 'brush.set_radius_mode',
-      inputs  : {
-        mode : new EnumProperty(BrushRadiusModes.SCREEN, {SCREEN: BrushRadiusModes.SCREEN, WORLD: BrushRadiusModes.WORLD}),
+      inputs: {
+        mode: new EnumProperty(BrushRadiusModes.SCREEN, {
+          SCREEN: BrushRadiusModes.SCREEN,
+          WORLD : BrushRadiusModes.WORLD,
+        }),
         brush: new DataRefProperty(SculptBrush),
       },
     }
@@ -799,7 +809,7 @@ export abstract class PaintToolModeBase extends ToolMode {
     return this.slots[tool].resolveBrush(this.ctx)
   }
 
-  abstract drawBrush(view3d: View3D): void
+  abstract drawBrush(view3d: View3D, force?: boolean): void
 
   protected clearBrushLines(): void {
     for (const l of this._brush_lines) {
