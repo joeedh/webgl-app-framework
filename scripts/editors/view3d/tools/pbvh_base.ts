@@ -275,7 +275,7 @@ export class SetBrushRadius extends ToolOp<
   start_mpos: Vector2
   cent_mpos: Vector2
   first: boolean
-  _undo: {radius?: number; brushref?: DataRef} | undefined
+  _undo: {radius?: number; sharedMode?: number; brushref?: DataRef} | undefined
   rand: util.MersenneRandom
 
   constructor() {
@@ -324,7 +324,7 @@ export class SetBrushRadius extends ToolOp<
     }
 
     if (!('radius' in args)) {
-      const radius = brush.flag & BrushFlags.SHARED_SIZE ? toolmode.sharedBrushRadius : brush.radius
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? toolmode.sharedRadiusFor(brush.radiusMode) : brush.radius
       tool.inputs.radius.setValue(radius)
     }
 
@@ -382,7 +382,7 @@ export class SetBrushRadius extends ToolOp<
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
       const paintmode = this._paintToolMode(ctx)
-      radius = paintmode ? paintmode.sharedBrushRadius : brush.radius
+      radius = paintmode ? paintmode.sharedRadiusFor(brush.radiusMode) : brush.radius
     } else {
       radius = brush.radius
     }
@@ -435,7 +435,8 @@ export class SetBrushRadius extends ToolOp<
         const toolmode = this._paintToolMode(ctx)
 
         if (toolmode) {
-          toolmode.sharedBrushRadius = this.inputs.radius.getValue()
+          // The radius input rides in the brush's own unit; tag the store with it.
+          toolmode.setSharedRadius(this.inputs.radius.getValue(), brush.radiusMode)
         }
       } else {
         brush.radius = this.inputs.radius.getValue()
@@ -453,6 +454,7 @@ export class SetBrushRadius extends ToolOp<
 
       // Capture whichever value exec() will overwrite, or undo restores a stale radius.
       this._undo.radius = brush.flag & BrushFlags.SHARED_SIZE && toolmode ? toolmode.sharedBrushRadius : brush.radius
+      this._undo.sharedMode = toolmode?.sharedRadiusMode
       this._undo.brushref = DataRef.fromBlock(brush)
     }
   }
@@ -473,7 +475,7 @@ export class SetBrushRadius extends ToolOp<
       const toolmode = this._paintToolMode(ctx)
 
       if (toolmode) {
-        toolmode.sharedBrushRadius = undo.radius
+        toolmode.setSharedRadius(undo.radius, undo.sharedMode ?? toolmode.sharedRadiusMode)
       }
     } else {
       brush.radius = undo.radius
@@ -506,7 +508,7 @@ export class SetBrushRadiusMode extends ToolOp<
   ToolContext,
   ViewContext
 > {
-  _undo: {radius?: number; shared?: number; radiusMode?: number; brushref?: DataRef} | undefined
+  _undo: {radius?: number; shared?: number; sharedMode?: number; radiusMode?: number; brushref?: DataRef} | undefined
 
   static canRun(ctx: ToolContext): boolean {
     return ctx.toolmode instanceof PaintToolModeBase
@@ -556,6 +558,7 @@ export class SetBrushRadiusMode extends ToolOp<
       const toolmode = this._paintToolMode(ctx)
       this._undo.radius = brush.radius
       this._undo.shared = toolmode?.sharedBrushRadius
+      this._undo.sharedMode = toolmode?.sharedRadiusMode
       this._undo.radiusMode = brush.radiusMode
       this._undo.brushref = DataRef.fromBlock(brush)
     }
@@ -576,7 +579,7 @@ export class SetBrushRadiusMode extends ToolOp<
     brush.radius = undo.radius
     brush.radiusMode = undo.radiusMode
     if (toolmode && undo.shared !== undefined) {
-      toolmode.sharedBrushRadius = undo.shared
+      toolmode.setSharedRadius(undo.shared, undo.sharedMode ?? toolmode.sharedRadiusMode)
     }
   }
 
@@ -595,19 +598,17 @@ export class SetBrushRadiusMode extends ToolOp<
     const screen = toolmode ? toolmode.lastScreenRadius : 0
     const world = toolmode ? toolmode.lastWorldRadius : 0
 
-    // Both are only set by a dab that hit the surface; without them the factor
-    // is unknown, so switch the unit and leave the number as the user set it.
-    if (screen > 0 && world > 0) {
+    // SHARED_SIZE keeps the live radius on the toolmode, so converting
+    // brush.radius alone would be a no-op in the default configuration.
+    if (brush.flag & BrushFlags.SHARED_SIZE && toolmode) {
+      // sharedRadiusFor converts from the tagged unit (no-op when it already
+      // matches); retagging keeps readers in the other unit from misreading.
+      toolmode.setSharedRadius(toolmode.sharedRadiusFor(mode), mode)
+    } else if (screen > 0 && world > 0) {
+      // Both are only set by a dab that hit the surface; without them the factor
+      // is unknown, so switch the unit and leave the number as the user set it.
       const dist = world / screen
-      const convert = (r: number) => (mode === BrushRadiusModes.WORLD ? r * dist : r / dist)
-
-      // SHARED_SIZE keeps the live radius on the toolmode, so converting
-      // brush.radius alone would be a no-op in the default configuration.
-      if (brush.flag & BrushFlags.SHARED_SIZE && toolmode) {
-        toolmode.sharedBrushRadius = convert(toolmode.sharedBrushRadius)
-      } else {
-        brush.radius = convert(brush.radius)
-      }
+      brush.radius = mode === BrushRadiusModes.WORLD ? brush.radius * dist : brush.radius / dist
     }
 
     brush.radiusMode = mode
@@ -702,6 +703,7 @@ export abstract class PaintToolModeBase extends ToolMode {
     tool                   : int;
     slots                  : iterkeys(PaintToolSlot);
     sharedBrushRadius      : float;
+    sharedRadiusMode       : int;
     lastScreenRadius       : float;
     lastWorldRadius        : float;
     dynTopo                : DynTopoSettings;
@@ -716,6 +718,11 @@ export abstract class PaintToolModeBase extends ToolMode {
   drawDispDisField: boolean
   reprojectCustomData: boolean
   sharedBrushRadius: number
+  /** The unit `sharedBrushRadius` is currently expressed in (BrushRadiusModes).
+   * The shared value follows whichever brush last wrote it, so a SHARED_SIZE
+   * brush whose own radiusMode differs must convert through sharedRadiusFor()
+   * — reading raw treats world units as px (sub-pixel dab spacing). */
+  sharedRadiusMode: number
   /** Screen (px) and world radii of the last primary dab that hit the surface;
    * their ratio is the world-units-per-pixel that `brush.set_radius_mode`
    * converts through. 0 = no dab yet, so there is nothing to convert with.
@@ -757,6 +764,7 @@ export abstract class PaintToolModeBase extends ToolMode {
     this.reprojectCustomData = false
 
     this.sharedBrushRadius = 55
+    this.sharedRadiusMode = BrushRadiusModes.SCREEN
     this.lastScreenRadius = 0
     this.lastWorldRadius = 0
 
@@ -807,6 +815,23 @@ export abstract class PaintToolModeBase extends ToolMode {
     }
 
     return this.slots[tool].resolveBrush(this.ctx)
+  }
+
+  /** `sharedBrushRadius` expressed in `mode` units. Converts through the last
+   * dab's world-units-per-pixel when the shared value's unit differs; before
+   * any dab that factor is unknown and the raw value is returned. */
+  sharedRadiusFor(mode: number): number {
+    if (mode === this.sharedRadiusMode || this.lastScreenRadius <= 0 || this.lastWorldRadius <= 0) {
+      return this.sharedBrushRadius
+    }
+    const dist = this.lastWorldRadius / this.lastScreenRadius
+    return mode === BrushRadiusModes.WORLD ? this.sharedBrushRadius * dist : this.sharedBrushRadius / dist
+  }
+
+  /** Store the shared radius together with the unit it is expressed in. */
+  setSharedRadius(value: number, mode: number): void {
+    this.sharedBrushRadius = value
+    this.sharedRadiusMode = mode
   }
 
   abstract drawBrush(view3d: View3D, force?: boolean): void

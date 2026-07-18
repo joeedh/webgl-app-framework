@@ -203,7 +203,7 @@ view3d.BVHToolMode {
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      return this.sharedBrushRadius
+      return this.sharedRadiusFor(brush.radiusMode)
     } else {
       return brush.radius
     }
@@ -217,7 +217,7 @@ view3d.BVHToolMode {
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      this.sharedBrushRadius = val
+      this.setSharedRadius(val, brush.radiusMode)
     } else {
       brush.radius = val
     }
@@ -452,7 +452,7 @@ view3d.BVHToolMode {
       return
     }
 
-    const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+    const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedRadiusFor(brush.radiusMode) : brush.radius
 
     const r = this._radius !== undefined ? this._radius : radius
     drawCircle(this.mpos[0], this.mpos[1], r)
@@ -531,7 +531,7 @@ view3d.BVHToolMode {
         brush = this.getBrush(smoothtool)
       }
 
-      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedRadiusFor(brush.radiusMode) : brush.radius
 
       brush = brush.copy()
 

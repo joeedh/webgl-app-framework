@@ -734,7 +734,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      return this.sharedBrushRadius
+      return this.sharedRadiusFor(brush.radiusMode)
     } else {
       return brush.radius
     }
@@ -748,7 +748,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      this.sharedBrushRadius = val
+      this.setSharedRadius(val, brush.radiusMode)
     } else {
       brush.radius = val
     }
@@ -881,7 +881,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         brush = this.getBrush(smoothtool)
       }
 
-      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+      // sharedBrushRadius is unit-tagged; convert into this brush's radiusMode
+      // (a SCREEN-mode smooth brush reading a WORLD-unit number floods the
+      // stroke with sub-pixel-spaced dabs).
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedRadiusFor(brush.radiusMode) : brush.radius
 
       brush = brush.copy()
       brush.dynTopo.loadDefaults(this.dynTopo)
@@ -956,7 +959,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       return
     }
 
-    const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+    const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedRadiusFor(brush.radiusMode) : brush.radius
 
     const r = this._radius !== undefined ? this._radius : this.overlayScreenRadius(brush, radius)
     drawCircle(x, y, r)
