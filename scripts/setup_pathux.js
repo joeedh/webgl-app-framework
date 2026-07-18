@@ -99,7 +99,7 @@ export function setupIconsSvg() {
 
 export async function setupPathux() {
   await loadConfigLocal()
-  
+
   config.pathuxConfig.DEBUG = config.DEBUG || {}
   cconst2.loadConstants(config.pathuxConfig)
   window.DEBUG = cconst2.DEBUG

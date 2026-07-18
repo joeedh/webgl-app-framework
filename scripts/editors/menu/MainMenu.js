@@ -22,7 +22,6 @@ const menuSize = 27
 import * as platform from '../../core/platform.js'
 import {addonManager} from '@framework/api'
 
-
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
     super()

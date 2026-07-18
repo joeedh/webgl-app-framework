@@ -11,11 +11,14 @@ const WPROJ = '/examples/ts2.wproj'
 
 const browser = await chromium.launch({
   channel: 'chromium',
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
+  args   : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
 })
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.log('[pageerror]', String(e)))
-page.on('console', (m) => { const t = m.type(); if (t === 'error' || t === 'warning') console.log(`[${t}]`, m.text()) })
+page.on('console', (m) => {
+  const t = m.type()
+  if (t === 'error' || t === 'warning') console.log(`[${t}]`, m.text())
+})
 
 await page.goto(`${BASE}/?renderer=webgpu`)
 await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout: 60000})
@@ -28,8 +31,11 @@ await page.evaluate(() => {
     const g = globalThis
     const mesh = g._appstate?.ctx?.object?.data
     if (!mesh) return null
-    const wasm = mesh.wasm, spatial = mesh.spatial
-    try { spatial.update?.(wasm.gpu) } catch (e) {}
+    const wasm = mesh.wasm,
+      spatial = mesh.spatial
+    try {
+      spatial.update?.(wasm.gpu)
+    } catch (e) {}
     const buffersVec = wasm.gpu?.buffers
     const buffers = wasm.HEAPU8 !== undefined ? buffersVec : wasm.getBoundVector('', buffersVec)
     const chunks = []
@@ -37,42 +43,57 @@ await page.evaluate(() => {
     for (let i = 0; i < (buffers.length | 0); i++) {
       const buf = buffers[i]
       if (!buf || buf.name !== 'position' || !(buf.size | 0) || !(buf.elemsize | 0)) continue
-      const floatCount = (buf.size | 0) * (buf.elemsize | 0), bytes = floatCount * 4
+      const floatCount = (buf.size | 0) * (buf.elemsize | 0),
+        bytes = floatCount * 4
       let u8
       if (wasm.HEAPU8 !== undefined) u8 = new Uint8Array(wasm.HEAPU8.buffer, buf.data, bytes)
       else u8 = wasm.pointerBytes?.(buf, 'data', bytes)
       if (!u8 || u8.length < bytes) continue
       const f = new Float32Array(u8.buffer.slice(u8.byteOffset, u8.byteOffset + bytes))
-      chunks.push(f); total += f.length
+      chunks.push(f)
+      total += f.length
     }
     const out = new Float32Array(total)
     let o = 0
-    for (const c of chunks) { out.set(c, o); o += c.length }
+    for (const c of chunks) {
+      out.set(c, o)
+      o += c.length
+    }
     return out
   }
   // element-wise + sorted-multiset diff
   window.__diff = (pa, pb) => {
-    const a = window.__snaps[pa], b = window.__snaps[pb]
+    const a = window.__snaps[pa],
+      b = window.__snaps[pb]
     if (!a || !b) return {error: 'missing snap'}
     const n = Math.min(a.length, b.length)
-    let nDiff = 0, worst = 0
+    let nDiff = 0,
+      worst = 0
     for (let j = 0; j < n; j += 3) {
-      const dx = a[j] - b[j], dy = a[j + 1] - b[j + 1], dz = a[j + 2] - b[j + 2]
+      const dx = a[j] - b[j],
+        dy = a[j + 1] - b[j + 1],
+        dz = a[j + 2] - b[j + 2]
       const d = Math.sqrt(dx * dx + dy * dy + dz * dz)
       if (d > 1e-6) nDiff++
       if (d > worst) worst = d
     }
     // sorted multiset
     const toVecs = (arr) => {
-      const m = (arr.length / 3) | 0, v = new Array(m)
+      const m = (arr.length / 3) | 0,
+        v = new Array(m)
       for (let i = 0; i < m; i++) v[i] = [arr[3 * i], arr[3 * i + 1], arr[3 * i + 2]]
       v.sort((p, q) => p[0] - q[0] || p[1] - q[1] || p[2] - q[2])
       return v
     }
-    const va = toVecs(a), vb = toVecs(b), m = Math.min(va.length, vb.length)
-    let ms = 0, msw = 0
+    const va = toVecs(a),
+      vb = toVecs(b),
+      m = Math.min(va.length, vb.length)
+    let ms = 0,
+      msw = 0
     for (let i = 0; i < m; i++) {
-      const dx = va[i][0] - vb[i][0], dy = va[i][1] - vb[i][1], dz = va[i][2] - vb[i][2]
+      const dx = va[i][0] - vb[i][0],
+        dy = va[i][1] - vb[i][1],
+        dz = va[i][2] - vb[i][2]
       const d = Math.sqrt(dx * dx + dy * dy + dz * dz)
       if (d > 1e-5) ms++
       if (d > msw) msw = d
@@ -85,11 +106,17 @@ await page.evaluate(() => {
 await page.evaluate(async (url) => {
   const buf = await fetch(url).then((r) => r.arrayBuffer())
   await window._appstate.loadFileAsync(buf, {
-    load_library: true, load_screen: false, load_settings: false,
-    reset_toolstack: true, reset_context: true,
+    load_library   : true,
+    load_screen    : false,
+    load_settings  : false,
+    reset_toolstack: true,
+    reset_context  : true,
   })
 }, WPROJ)
-await page.evaluate(() => { window.__rafReal = window.requestAnimationFrame; window.requestAnimationFrame = () => 0 })
+await page.evaluate(() => {
+  window.__rafReal = window.requestAnimationFrame
+  window.requestAnimationFrame = () => 0
+})
 
 const len = await page.evaluate(async () => {
   await window._appstate.ctx.replay(() => true)
@@ -120,7 +147,9 @@ while (cur >= 1) {
   results.push(r)
   const d = r.d
   const tag = (d.ms ?? 0) > 50 ? '  <<< LOSSY' : ''
-  console.log(`step cur=${r.c}: undo->${r.afterUndo} redo->${r.afterRedo} | nDiff=${d.nDiff} worst=${(d.worst||0).toFixed(5)} ms=${d.ms} msw=${(d.msw||0).toFixed(5)}${tag}`)
+  console.log(
+    `step cur=${r.c}: undo->${r.afterUndo} redo->${r.afterRedo} | nDiff=${d.nDiff} worst=${(d.worst || 0).toFixed(5)} ms=${d.ms} msw=${(d.msw || 0).toFixed(5)}${tag}`
+  )
   cur = r.descend
 }
 

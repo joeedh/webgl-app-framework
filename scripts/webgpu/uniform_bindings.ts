@@ -322,8 +322,8 @@ export class UniformBindings {
     let bg = perPipeline.get(group)
     if (!bg) {
       bg = this.device.createBindGroup({
-        label : `UniformBindings.empty.g${group}`,
-        layout: pipeline.getBindGroupLayout(group),
+        label  : `UniformBindings.empty.g${group}`,
+        layout : pipeline.getBindGroupLayout(group),
         entries: [],
       })
       perPipeline.set(group, bg)

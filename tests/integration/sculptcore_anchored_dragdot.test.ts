@@ -55,13 +55,31 @@ interface AnchoredDragDotResult {
 // GRAB: anchor at center, drag straight to one final offset point vs. via
 // three unrelated intermediate points before landing on that SAME point --
 // both must leave the mesh identically displaced.
-const ANCHOR_DIRECT = [[0.5, 0.5], [0.62, 0.42]]
-const ANCHOR_WANDER = [[0.5, 0.5], [0.58, 0.3], [0.3, 0.6], [0.66, 0.34], [0.62, 0.42]]
+const ANCHOR_DIRECT = [
+  [0.5, 0.5],
+  [0.62, 0.42],
+]
+const ANCHOR_WANDER = [
+  [0.5, 0.5],
+  [0.58, 0.3],
+  [0.3, 0.6],
+  [0.66, 0.34],
+  [0.62, 0.42],
+]
 
 // Drag Dot: a stamp positioned straight at its final point vs. dragged there
 // through unrelated intermediate positions -- same requirement.
-const DOT_DIRECT = [[0.5, 0.5], [0.6, 0.45]]
-const DOT_WANDER = [[0.5, 0.5], [0.42, 0.62], [0.66, 0.34], [0.55, 0.58], [0.6, 0.45]]
+const DOT_DIRECT = [
+  [0.5, 0.5],
+  [0.6, 0.45],
+]
+const DOT_WANDER = [
+  [0.5, 0.5],
+  [0.42, 0.62],
+  [0.66, 0.34],
+  [0.55, 0.58],
+  [0.6, 0.45],
+]
 
 const DRIVER = `(function () {
   var r = {ok: false}
@@ -113,10 +131,14 @@ const DRIVER = `(function () {
 
 function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
-      cwd     : REPO_ROOT,
-      encoding: 'utf-8',
-    }).trim()
+    const exe = execFileSync(
+      'node',
+      ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"],
+      {
+        cwd     : REPO_ROOT,
+        encoding: 'utf-8',
+      }
+    ).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
   } catch {
     return undefined

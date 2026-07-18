@@ -81,7 +81,7 @@ function topoSig(lite: LiteMesh): TopoSig {
 function runQuadRemeshTest(): QuadRemeshTestResult {
   const backend = (globalThis as {__SCULPTCORE_BACKEND?: string}).__SCULPTCORE_BACKEND ?? 'wasm'
   const result: QuadRemeshTestResult = {
-    ok     : false,
+    ok: false,
     backend,
     success: false,
     before : {ngon: 0, leaf: 0},

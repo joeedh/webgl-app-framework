@@ -148,12 +148,7 @@ export interface WalkResult {
  * continuous across abutting segments. Arc length is approximated by `fine`
  * straight chords; within a chord the parameter is interpolated linearly.
  */
-export function arcLengthWalk(
-  B: Cubic,
-  spacingDist: number,
-  carryIn = 0,
-  fine = 32
-): WalkResult {
+export function arcLengthWalk(B: Cubic, spacingDist: number, carryIn = 0, fine = 32): WalkResult {
   const ts: number[] = []
   if (spacingDist <= EPS) return {ts, carryOut: carryIn}
 

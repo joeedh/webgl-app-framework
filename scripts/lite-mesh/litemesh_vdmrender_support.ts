@@ -170,7 +170,19 @@ function vdmRenderTest(
       wasm.SpatialTree_fillDetailCarrier(mesh.spatial, 1)
       const store = wasm.VdmStore_new(1024, 32)
       result.texelsTouched = wasm.Mesh_vdmSplatDab(
-        mesh.mesh, mesh.spatial, store, c[0], c[1], c[2], n[0], n[1], n[2], radius, strength, 0.0, 0
+        mesh.mesh,
+        mesh.spatial,
+        store,
+        c[0],
+        c[1],
+        c[2],
+        n[0],
+        n[1],
+        n[2],
+        radius,
+        strength,
+        0.0,
+        0
       )
       result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
       mesh.attachVdmStore(store) // LiteMesh owns + uploads it from here on
@@ -179,17 +191,29 @@ function vdmRenderTest(
       // Patch space + adjacency come from the multires stack's S2 grids.
       const store = wasm.VdmStore_new(64, 16)
       const links = numVecOut(mesh, 'int32')
-      ;(mesh._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(
-        links.vec as never
-      )
+      ;(mesh._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(links.vec as never)
       const linkArr = links.read()
       const gridCount = (linkArr.length / 8) | 0
       ;(store as unknown as {configurePtex(g: number, r: number, l: never): void}).configurePtex(
-        gridCount, 0, links.vec as never
+        gridCount,
+        0,
+        links.vec as never
       )
       result.charts = gridCount
       result.texelsTouched = wasm.Mesh_vdmSplatDab(
-        mesh.mesh, mesh.spatial, store, c[0], c[1], c[2], n[0], n[1], n[2], radius, strength, 0.0, 0
+        mesh.mesh,
+        mesh.spatial,
+        store,
+        c[0],
+        c[1],
+        c[2],
+        n[0],
+        n[1],
+        n[2],
+        radius,
+        strength,
+        0.0,
+        0
       )
       result.tileCount = (store as unknown as {tileCount(): number}).tileCount()
       mesh.attachVdmStore(store)
@@ -286,8 +310,19 @@ function vdmRenderTest(
           const c2 = [0, 1, 2].map((i) => ((n[i] * 0.8 + perp[i] * 0.6) / len) * R)
           const n2 = [0, 1, 2].map((i) => c2[i] / R)
           result.texels2 = wasm.Mesh_vdmSplatDab(
-            mesh.mesh, mesh.spatial, mesh.vdmStore!,
-            c2[0], c2[1], c2[2], n2[0], n2[1], n2[2], radius * 0.7, strength, 0.0, 0
+            mesh.mesh,
+            mesh.spatial,
+            mesh.vdmStore!,
+            c2[0],
+            c2[1],
+            c2[2],
+            n2[0],
+            n2[1],
+            n2[2],
+            radius * 0.7,
+            strength,
+            0.0,
+            0
           )
           const t1 = Date.now()
           // Generous window: under full-suite load (many sequential NW boots)
@@ -312,7 +347,7 @@ function vdmRenderTest(
       })() as unknown as VdmRenderResult
     }
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__evalTestResult = result
   return result

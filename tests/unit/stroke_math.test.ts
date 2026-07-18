@@ -178,9 +178,7 @@ describe('arcLengthWalk', () => {
     const single = arcLengthWalk(straightLine(10), d, 0, 128).ts.length
     const firstHalf = straightLine(5)
     const secondHalf = straightLine(5)
-    const naive =
-      arcLengthWalk(firstHalf, d, 0, 128).ts.length +
-      arcLengthWalk(secondHalf, d, 0, 128).ts.length
+    const naive = arcLengthWalk(firstHalf, d, 0, 128).ts.length + arcLengthWalk(secondHalf, d, 0, 128).ts.length
     expect(naive).toBeGreaterThanOrEqual(single)
   })
 

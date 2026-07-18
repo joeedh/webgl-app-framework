@@ -3,14 +3,23 @@
 import {chromium} from '@playwright/test'
 const PORT = process.env.E2E_PORT ?? 5099
 const BASE = `http://localhost:${PORT}`
-const browser = await chromium.launch({channel: 'chromium', args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist']})
+const browser = await chromium.launch({
+  channel: 'chromium',
+  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
+})
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.log('[pageerror]', String(e)))
 await page.goto(`${BASE}/?renderer=webgpu`)
 await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout: 60000})
 await page.evaluate(async (url) => {
   const buf = await fetch(url).then((r) => r.arrayBuffer())
-  await window._appstate.loadFileAsync(buf, {load_library: true, load_screen: false, load_settings: false, reset_toolstack: true, reset_context: true})
+  await window._appstate.loadFileAsync(buf, {
+    load_library: true,
+    load_screen: false,
+    load_settings: false,
+    reset_toolstack: true,
+    reset_context: true,
+  })
 }, '/examples/ts2.wproj')
 
 const info = await page.evaluate(() => {
@@ -38,7 +47,9 @@ const info = await page.evaluate(() => {
     } else if (co && co[0] !== undefined) {
       out.coIdx0 = co[0]
     }
-  } catch (e) { out.err = String(e) }
+  } catch (e) {
+    out.err = String(e)
+  }
   return out
 })
 console.log(JSON.stringify(info, null, 2))

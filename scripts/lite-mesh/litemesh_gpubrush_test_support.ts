@@ -225,7 +225,13 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
       redoMaxDiff  : maxAbsDiff(gpuCo, redoCo),
       stats        : g.DEBUG?.gpuBrush?.lastStats,
       fixture      : opts.capture ? g.DEBUG?.gpuBrush?.lastFixture : undefined,
-      lens         : [before?.length ?? -1, cpuCo?.length ?? -1, gpuCo?.length ?? -1, undoCo?.length ?? -1, redoCo?.length ?? -1],
+      lens: [
+        before?.length ?? -1,
+        cpuCo?.length ?? -1,
+        gpuCo?.length ?? -1,
+        undoCo?.length ?? -1,
+        redoCo?.length ?? -1,
+      ],
     }
 
     // --- optional shadow-verify pass (§9.3) ----------------------------------
@@ -281,9 +287,7 @@ async function gpuBrushTest(opts: TestOpts = {}): Promise<GpuBrushTestResult> {
       if (tool === SculptTools.KELVINLET) {
         const dbg2 = ensureGpuBrushDebug()
         result.selfCheck = dbg2.lastSelfCheck
-        const worldStats = dbg2.lastStats as unknown as
-          | {gpuResident?: boolean; scatterDispatches?: number}
-          | undefined
+        const worldStats = dbg2.lastStats as unknown as {gpuResident?: boolean; scatterDispatches?: number} | undefined
         result.gpuResident = worldStats?.gpuResident
         result.scatterDispatches = worldStats?.scatterDispatches
         result.worldParityMaxDiff = maxAbsDiff(cpu2, gpu2)

@@ -488,8 +488,7 @@ export class SelectNearestLiteMeshOp extends LiteMeshSelectOpBase<{
     log.selectionBeginStep()
     if (this.inputs.toggle.getValue()) {
       // Shift: toggle the picked element; it becomes active when selected.
-      const cur =
-        (mesh.mesh as unknown as {elemSelected(d: number, i: number): number}).elemSelected(domain, idx) !== 0
+      const cur = (mesh.mesh as unknown as {elemSelected(d: number, i: number): number}).elemSelected(domain, idx) !== 0
       log.selectOne(mesh.mesh, domain, idx, !cur)
       if (!cur) {
         log.setActiveElem(domain, idx)
@@ -615,7 +614,7 @@ export class LiteMeshAssignMaterialPolyGroupOp extends LiteMeshAssignMaterialOpB
       uiname  : 'Assign by Poly Group',
       icon    : Icons.SCULPT_POLYGROUP,
       is_modal: true,
-      inputs  : {
+      inputs: {
         slot: new IntProperty(0),
         x   : new FloatProperty(0).private(),
         y   : new FloatProperty(0).private(),
@@ -679,7 +678,7 @@ export class SelectPolyGroupLiteMeshOp extends SelectNearestLiteMeshOp {
       uiname  : 'Select Poly Group',
       icon    : Icons.SCULPT_POLYGROUP,
       is_modal: true,
-      inputs  : {
+      inputs: {
         toggle: new BoolProperty(false).private(),
         x     : new FloatProperty(0).private(),
         y     : new FloatProperty(0).private(),
@@ -773,7 +772,7 @@ export class SelectSimilarLiteMeshOp extends LiteMeshSelectOpBase<{
       toolpath: 'litemesh.select_similar',
       uiname  : 'Select Similar',
       icon    : Icons.SELECT_INVERSE,
-      inputs  : {
+      inputs: {
         type     : new EnumProperty(SimilarCriteria.FACE_MATERIAL, SimilarCriteria),
         // Fraction for AREA/LENGTH, radians for NORMAL/DIRECTION/DIHEDRAL/COPLANAR,
         // ignored for the exact-match integer criteria.
@@ -875,12 +874,7 @@ export class SelectLoopLiteMeshOp extends LiteMeshSelectOpBase<{
     if (!view3d || !object || !mesh) {
       return
     }
-    const seed = mesh.pickEdge(
-      view3d as unknown as View3D,
-      object,
-      this.inputs.x.getValue(),
-      this.inputs.y.getValue()
-    )
+    const seed = mesh.pickEdge(view3d as unknown as View3D, object, this.inputs.x.getValue(), this.inputs.y.getValue())
     if (seed < 0) {
       return
     }
@@ -1246,7 +1240,7 @@ export class LiteMeshSubdivideOp extends LiteMeshTopoOpBase<{numCuts: IntPropert
       toolpath: 'litemesh.subdivide',
       uiname  : 'Subdivide',
       icon    : Icons.SUBDIVIDE,
-      inputs  : {
+      inputs: {
         numCuts: new IntProperty(1).setRange(1, 32).noUnits().saveLastValue(),
       },
     }
@@ -1596,4 +1590,3 @@ for (const op of BoxModelSelectOps) {
 for (const op of BoxModelTopoOps) {
   ToolOp.register(op)
 }
-

@@ -566,8 +566,7 @@ export class GpuBrushStroke {
     const t0 = performance.now()
     let bytes = 0
 
-    const uvertsChanged =
-      this.wasm.GpuBrush_info(this.session, GpuBrushInfo.UVERTS_CHANGED) !== 0
+    const uvertsChanged = this.wasm.GpuBrush_info(this.session, GpuBrushInfo.UVERTS_CHANGED) !== 0
     if (uvertsChanged || !this.bufs.get(3)) {
       bytes += this.upload(3, this.data(GpuBrushData.UVERTS), BufferUsage.STORAGE | BufferUsage.COPY_DST)
       bytes += this.upload(4, this.data(GpuBrushData.NODE_META), BufferUsage.STORAGE | BufferUsage.COPY_DST)
@@ -772,10 +771,7 @@ export class GpuBrushStroke {
 
   /** ensure + writeBuffer; returns bytes written. */
   private upload(binding: number, bytes: Uint8Array | Float32Array, usage: number): number {
-    const view =
-      bytes instanceof Uint8Array
-        ? bytes
-        : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     const buf = this.ensureBuf(binding, view.byteLength, usage)
     if (view.byteLength) {
       this.device.queue.writeBuffer(buf, 0, view, 0, view.byteLength)
@@ -827,8 +823,8 @@ export class GpuBrushStroke {
       entries.push({binding: b.binding, resource: {buffer: buf}})
     }
     return this.device.createBindGroup({
-      label  : `gpuBrush.${this.kernel}.bg`,
-      layout : this.bgLayout,
+      label : `gpuBrush.${this.kernel}.bg`,
+      layout: this.bgLayout,
       entries,
     })
   }
@@ -892,9 +888,7 @@ export class GpuBrushStroke {
         this.tripInFlight = false
         if (tripped && !this.stats.tripwireTripped) {
           this.stats.tripwireTripped = true
-          this.log(
-            `non-finite tripwire: kernel '${this.kernel}' produced NaN/Inf at dab ${this.stats.dispatches}`
-          )
+          this.log(`non-finite tripwire: kernel '${this.kernel}' produced NaN/Inf at dab ${this.stats.dispatches}`)
         }
       })
       .catch(() => {

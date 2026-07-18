@@ -9,10 +9,10 @@
 // SECURITY: the API key lives in keys/meshy.txt (gitignored). This script
 // refuses to run if that path is git-TRACKED, and never prints the key.
 
-import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve, join } from 'node:path'
+import {execFileSync} from 'node:child_process'
+import {readFileSync, writeFileSync, existsSync, mkdirSync} from 'node:fs'
+import {fileURLToPath} from 'node:url'
+import {dirname, resolve, join} from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '..')
@@ -26,7 +26,7 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-  const a = { pollMs: 3000, out: defaultOut }
+  const a = {pollMs: 3000, out: defaultOut}
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]
     if (k === '--prompt') a.prompt = argv[++i]
@@ -42,7 +42,13 @@ function parseArgs(argv) {
 }
 
 function slugify(s) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'meshy'
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'meshy'
+  )
 }
 
 // Refuse to run if the key file is tracked by git (it must stay gitignored).
@@ -50,7 +56,7 @@ function assertKeyUntracked() {
   if (!existsSync(keyPath)) fail(`no key at keys/meshy.txt (place your Meshy key there)`)
   try {
     execFileSync('git', ['ls-files', '--error-unmatch', keyPath], {
-      cwd: repoRoot,
+      cwd  : repoRoot,
       stdio: 'ignore',
     })
     // exit 0 → the file IS tracked → unsafe.
@@ -77,15 +83,15 @@ async function main() {
 
   const key = readFileSync(keyPath, 'utf8').trim()
   if (!key) fail('keys/meshy.txt is empty')
-  const auth = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
+  const auth = {Authorization: `Bearer ${key}`, 'Content-Type': 'application/json'}
 
   process.stdout.write('PROGRESS 0 generating\n')
 
   // 1. Create a preview task (untextured base mesh — what we want to remesh).
   let res = await fetch(API, {
-    method: 'POST',
+    method : 'POST',
     headers: auth,
-    body: JSON.stringify({ mode: 'preview', prompt: args.prompt, ai_model: 'meshy-5' }),
+    body   : JSON.stringify({mode: 'preview', prompt: args.prompt, ai_model: 'meshy-5'}),
   })
   if (!res.ok) fail(`create failed: HTTP ${res.status} ${await res.text()}`)
   const created = await res.json()
@@ -96,7 +102,7 @@ async function main() {
   let modelUrl = null
   for (;;) {
     await sleep(args.pollMs)
-    res = await fetch(`${API}/${id}`, { headers: auth })
+    res = await fetch(`${API}/${id}`, {headers: auth})
     if (!res.ok) fail(`poll failed: HTTP ${res.status}`)
     const task = await res.json()
     const pct = Math.min(95, Math.max(0, task.progress | 0))
@@ -117,7 +123,7 @@ async function main() {
   if (!dl.ok) fail(`download failed: HTTP ${dl.status}`)
   const buf = Buffer.from(await dl.arrayBuffer())
 
-  if (!existsSync(args.out)) mkdirSync(args.out, { recursive: true })
+  if (!existsSync(args.out)) mkdirSync(args.out, {recursive: true})
   let name = args.name ? slugify(args.name) : slugify(args.prompt)
   let outPath = join(args.out, `${name}.obj`)
   let n = 2

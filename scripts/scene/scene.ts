@@ -449,7 +449,6 @@ propIslandOnly : bool;
       busgetter,
       ToolMode,
       () => {
-
         // Scene.toolModeProp should have been updated already
         const key = Scene.toolModeProp.keys[this.toolmode_i]
         this.toolmode_i = Scene.toolModeProp.values[key] as number

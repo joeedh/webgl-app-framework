@@ -61,10 +61,14 @@ interface BrushTestResult {
 /** Resolve the NW.js executable via the nwjs/ workspace package. */
 function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
-      cwd     : REPO_ROOT,
-      encoding: 'utf-8',
-    }).trim()
+    const exe = execFileSync(
+      'node',
+      ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"],
+      {
+        cwd     : REPO_ROOT,
+        encoding: 'utf-8',
+      }
+    ).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
   } catch {
     return undefined

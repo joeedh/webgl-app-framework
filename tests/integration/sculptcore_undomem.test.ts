@@ -53,10 +53,14 @@ interface UndoMemTestResult {
 /** Resolve the NW.js executable via the nwjs/ workspace package. */
 function resolveNwjsExe(): string | undefined {
   try {
-    const exe = execFileSync('node', ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"], {
-      cwd     : REPO_ROOT,
-      encoding: 'utf-8',
-    }).trim()
+    const exe = execFileSync(
+      'node',
+      ['-e', "require('nw').findpath().then(p=>process.stdout.write(p),()=>process.exit(1))"],
+      {
+        cwd     : REPO_ROOT,
+        encoding: 'utf-8',
+      }
+    ).trim()
     return exe && fs.existsSync(exe) ? exe : undefined
   } catch {
     return undefined
@@ -160,7 +164,7 @@ maybe.each(backends.map((b) => [b] as const))('sculptcore undo memory (%s)', (ba
     expect(r.truncatedSizes).toEqual([0, 0])
   })
 
-  test('toolstack memory trim frees the dropped op\'s MeshLog step', () => {
+  test("toolstack memory trim frees the dropped op's MeshLog step", () => {
     // limitMemory always keeps the newest 3 ops, so of our 4 the oldest drops.
     expect(r.droppedStepIds).toEqual([r.stepIds![0]])
     expect(r.keptStepIds).toHaveLength(3)

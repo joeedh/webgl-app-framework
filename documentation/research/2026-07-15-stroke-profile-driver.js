@@ -24,8 +24,7 @@
 
     // Keep points near the viewport center so every dab's raycast hits the
     // sphere (y=0.7 missed entirely in the first run; edges were ~50% misses).
-    const mkPoints = (y, n) =>
-      Array.from({length: n}, (_, i) => [0.3 + (0.4 * i) / (n - 1), y])
+    const mkPoints = (y, n) => Array.from({length: n}, (_, i) => [0.3 + (0.4 * i) / (n - 1), y])
 
     const fp = globalThis.__frameProf
 

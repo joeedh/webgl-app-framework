@@ -17,8 +17,8 @@ import {BrushProperty, PaintOpBase, PaintOpMesh, PathPoint, PaintSampleProperty}
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
 import type {ViewContext} from '../../../core/context.js'
 import {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
-;import { PaintSample } from './pbvh_paintsample.js';
-(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
+import {PaintSample} from './pbvh_paintsample.js'
+;(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
   let boxverts: any[] = [
     [-d, -d, -d],
     [-d, d, -d],

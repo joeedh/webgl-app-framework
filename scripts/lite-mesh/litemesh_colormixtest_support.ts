@@ -100,7 +100,8 @@ function meanPainted(before: Float32Array, after: Float32Array): ModeMean {
   let sg = 0
   let sb = 0
   for (let i = 0; i + 3 < after.length; i += 4) {
-    const d = Math.abs(after[i] - before[i]) + Math.abs(after[i + 1] - before[i + 1]) + Math.abs(after[i + 2] - before[i + 2])
+    const d =
+      Math.abs(after[i] - before[i]) + Math.abs(after[i + 1] - before[i + 1]) + Math.abs(after[i + 2] - before[i + 2])
     if (d > 0.02) {
       painted++
       sr += after[i]
@@ -125,9 +126,9 @@ async function colorMixTest(): Promise<ColorMixTestResult> {
 
     const brush = DefaultBrushes.slotMap[SculptTools.COLOR] as SculptBrush
     const saved = {
-      color: new Vector4(brush.color),
-      mode : brush.colorMixMode,
-      tool : brush.tool,
+      color   : new Vector4(brush.color),
+      mode    : brush.colorMixMode,
+      tool    : brush.tool,
       strength: brush.strength,
     }
     brush.tool = SculptTools.COLOR
@@ -193,12 +194,12 @@ async function colorMixTest(): Promise<ColorMixTestResult> {
     const allPainted = Object.values(modes).every((m) => m.painted > 0)
     const checks: Record<string, boolean> = {
       allPainted,
-      multiplyDarkensR: modes.MULTIPLY.r < modes.MIX.r - eps,
-      screenLightensR : modes.SCREEN.r > modes.MIX.r + eps,
+      multiplyDarkensR : modes.MULTIPLY.r < modes.MIX.r - eps,
+      screenLightensR  : modes.SCREEN.r > modes.MIX.r + eps,
       differenceLowestR: modes.DIFFERENCE.r < modes.MULTIPLY.r + eps,
-      overlayBetweenR : modes.OVERLAY.r > modes.MULTIPLY.r - eps && modes.OVERLAY.r < modes.MIX.r + eps,
-      darkenClampsG   : modes.DARKEN.g < modes.MIX.g - eps,
-      lightenRaisesB  : modes.LIGHTEN.b > modes.MIX.b + eps,
+      overlayBetweenR  : modes.OVERLAY.r > modes.MULTIPLY.r - eps && modes.OVERLAY.r < modes.MIX.r + eps,
+      darkenClampsG    : modes.DARKEN.g < modes.MIX.g - eps,
+      lightenRaisesB   : modes.LIGHTEN.b > modes.MIX.b + eps,
     }
     r.checks = checks
     r.ok = Object.values(checks).every(Boolean)

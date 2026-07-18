@@ -197,7 +197,6 @@ PaintSample {
     this.dp.mul(mul4)
     this.origp.mul(mul4)
 
-
     // s1 = (p * flip) * screenMatrix
     // s2 = s1 + one_pixel_offset
     // radius_scale = distance(unproject(s2), unproject(s1))

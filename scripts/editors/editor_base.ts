@@ -1623,8 +1623,9 @@ export class MaterialPanel extends Container<ViewContext> {
     // The active toolmode can contribute rows for this slot (box-modeling's
     // "Assign to Selected", sculpt's "Assign by Poly Group"). Duck-typed rather
     // than importing ToolMode — editor_base is below the view3d layer.
-    const toolmodeClass = (this.ctx.scene as unknown as {toolmode?: {constructor: unknown}})?.toolmode
-      ?.constructor as {buildMaterialPanel?(container: unknown, slot: number): void} | undefined
+    const toolmodeClass = (this.ctx.scene as unknown as {toolmode?: {constructor: unknown}})?.toolmode?.constructor as
+      | {buildMaterialPanel?(container: unknown, slot: number): void}
+      | undefined
     toolmodeClass?.buildMaterialPanel?.(this.subpanel, mati)
 
     const dataPrefix = `${datapath}.materials[${mati}].`

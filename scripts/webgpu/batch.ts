@@ -518,7 +518,7 @@ export class WebGPUBatchExecutor {
 
     return {
       version,
-      aabbVersion     : (batch as unknown as {aabbVersion?: number}).aabbVersion ?? -1,
+      aabbVersion: (batch as unknown as {aabbVersion?: number}).aabbVersion ?? -1,
       targetsKey,
       entries,
       engineBufs,
@@ -569,10 +569,7 @@ export class WebGPUBatchExecutor {
 
   /** Record the visible cached draws into a render bundle (compatible with
    * this executor's color/depth formats). Null when nothing is visible. */
-  private encodeBundle(
-    cache: BatchCache,
-    groupsByPipeline: Map<Pipeline, CommandBindGroup[]>
-  ): GPURenderBundle | null {
+  private encodeBundle(cache: BatchCache, groupsByPipeline: Map<Pipeline, CommandBindGroup[]>): GPURenderBundle | null {
     const enc = this.device.createRenderBundleEncoder({
       label             : 'WebGPUBatch.bundle',
       colorFormats      : this.colorTargets.map((t) => t.format),
@@ -636,8 +633,7 @@ export class WebGPUBatchExecutor {
   dispatch(batch: DrawBatch, pass: GPURenderPassEncoder, opts?: DispatchOptions): void {
     const key = this.batchKey(batch)
     const version = (batch as unknown as {version?: number}).version ?? -1
-    const targetsKey =
-      this.colorTargets.map((t) => t.format).join('+') + '|' + (this.opts.cullMode ?? 'none')
+    const targetsKey = this.colorTargets.map((t) => t.format).join('+') + '|' + (this.opts.cullMode ?? 'none')
 
     let cache = this.batchCaches.get(key)
     if (!cache || cache.version !== version || cache.targetsKey !== targetsKey) {

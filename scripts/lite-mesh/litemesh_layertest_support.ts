@@ -119,7 +119,7 @@ function layerTest(): LayerTestResult {
       runSculptcoreStroke({
         mesh,
         brush,
-        dabs             : [{p: [0, 0, R], normal: [0, 0, 1]}],
+        dabs: [{p: [0, 0, R], normal: [0, 0, 1]}],
         radius,
         brushTypeOverride: SculptBrushes.LAYERDRAW,
         attrLayerOverride: {attrIdx: 0, layerIndex: result.layerAttrIndex},

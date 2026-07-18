@@ -301,11 +301,11 @@ export class BrushStrokeDriver {
       normal,
       viewvec,
       hit,
-      pressure: input.pressure,
-      tiltX   : input.tiltX ?? 0,
-      tiltY   : input.tiltY ?? 0,
-      twist   : input.twist ?? 0,
-      invert  : input.invert,
+      pressure   : input.pressure,
+      tiltX      : input.tiltX ?? 0,
+      tiltY      : input.tiltY ?? 0,
+      twist      : input.twist ?? 0,
+      invert     : input.invert,
       useAltBrush: input.useAltBrush,
       params,
     }
@@ -401,7 +401,11 @@ export class BrushStrokeDriver {
     ps.dstrokeS = 0
     ps.curve = undefined
 
-    const worldVec: Vec = [cur.world[0] - anchor.world[0], cur.world[1] - anchor.world[1], cur.world[2] - anchor.world[2]]
+    const worldVec: Vec = [
+      cur.world[0] - anchor.world[0],
+      cur.world[1] - anchor.world[1],
+      cur.world[2] - anchor.world[2],
+    ]
     const localVec = this.toLocalDir(worldVec)
     ps.anchorVec[0] = localVec[0]
     ps.anchorVec[1] = localVec[1]
@@ -547,7 +551,10 @@ export class BrushStrokeDriver {
     const n = anchor.viewvec
     const denom = viewvec[0] * n[0] + viewvec[1] * n[1] + viewvec[2] * n[2]
     if (Math.abs(denom) > 1e-7) {
-      const d = (anchor.world[0] - origin[0]) * n[0] + (anchor.world[1] - origin[1]) * n[1] + (anchor.world[2] - origin[2]) * n[2]
+      const d =
+        (anchor.world[0] - origin[0]) * n[0] +
+        (anchor.world[1] - origin[1]) * n[1] +
+        (anchor.world[2] - origin[2]) * n[2]
       const s = d / denom
       return [origin[0] + viewvec[0] * s, origin[1] + viewvec[1] * s, origin[2] + viewvec[2] * s]
     }

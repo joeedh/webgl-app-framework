@@ -558,11 +558,11 @@ function idLayout(shaderLocation: number): GPUVertexBufferLayout {
  *   slot 4 → ID      (f32,  stride 4)
  */
 export const WGSL_VERTEX_SLOTS = Object.freeze({
-  LOC: 0,
+  LOC   : 0,
   NORMAL: 1,
-  UV: 2,
-  COLOR: 3,
-  ID: 4,
+  UV    : 2,
+  COLOR : 3,
+  ID    : 4,
 })
 
 /**

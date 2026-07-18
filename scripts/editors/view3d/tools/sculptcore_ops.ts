@@ -446,6 +446,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     let p: Vector3
     let normal: Vector3
     let isectFace = -1
+    let isect: ReturnType<mesh.rayCast> | undefined
+
     if (brush.strokeMethod === StrokeMethod.ANCHORED) {
       // Anchored: the driver already resolved the fixed dab position/normal
       // (ps.p / ps.vec, object-local — BrushStrokeDriver.emitAnchored) and,
@@ -455,7 +457,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       normal = new Vector3(ps.vec)
     } else {
       const origin = new Vector3(ps.vieworigin)
-      const isect = mesh.rayCast(origin, viewvec)
+      isect = mesh.rayCast(origin, viewvec)
       if (isect === undefined) {
         return
       }
@@ -481,7 +483,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     // Remember both radii from a primary dab that actually hit the surface;
     // brush.set_radius_mode converts through them so the on-screen brush size
     // doesn't jump when the unit changes. Mirror dabs share the primary's size.
-    if (mirrorIdx === 0 && isect !== undefined && dist > 0) {
+    if (brush.strokeMethod !== StrokeMethod.ANCHORED && mirrorIdx === 0 && isect !== undefined && dist > 0) {
       toolmode.lastWorldRadius = radius
       toolmode.lastScreenRadius = radius / dist
     }
@@ -494,7 +496,16 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     } else if (mesh.hasVdm && brush.tool === SculptTools.DRAW && SculptPaintOp.meshLog) {
       // VDM carrier routing (X3 stage 4): with a store attached, Draw dabs
       // splat texels (no vertex moves); undo rides the stroke's MeshLog step.
-      applyVdmSplatDab(wasm, mesh, SculptPaintOp.meshLog, p as unknown as ArrayLike<number>, normal as unknown as ArrayLike<number>, radius, ps.strength, ps.invert)
+      applyVdmSplatDab(
+        wasm,
+        mesh,
+        SculptPaintOp.meshLog,
+        p as unknown as ArrayLike<number>,
+        normal as unknown as ArrayLike<number>,
+        radius,
+        ps.strength,
+        ps.invert
+      )
       if (wasm.Vdm_lastSplatClamped() > 0 && !this._vdmClampNoted) {
         // Fold clamp hit its ceiling — on a (topo-locked) multires base the
         // remedy is another level (X1 prompt signal). Note once per stroke.
@@ -643,7 +654,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           wasm,
           mesh,
           wasmBrush,
-          meshLog       : SculptPaintOp.meshLog!,
+          meshLog: SculptPaintOp.meshLog!,
           brushType,
           modalRunning  : this.modalRunning,
           dyntopoEnabled: dtEnabled,
@@ -1311,8 +1322,8 @@ window._sculptcoreStrokeTester = {
     // offset getLocalMouse() will re-subtract (client rect when present, else pos).
     const size = view3d.size!
     const rect = view3d.getClientRects()[0]
-    const offX = rect ? rect.x : (view3d.pos?.[0] ?? 0)
-    const offY = rect ? rect.y : (view3d.pos?.[1] ?? 0)
+    const offX = rect ? rect.x : view3d.pos?.[0] ?? 0
+    const offY = rect ? rect.y : view3d.pos?.[1] ?? 0
 
     const samples: PaintSample[] = []
     const drain = () => {
@@ -1325,12 +1336,12 @@ window._sculptcoreStrokeTester = {
     for (let i = 0; i < points.length; i++) {
       const p = points[i]
       const input: StrokeInput = {
-        x          : offX + p[0] * size[0],
-        y          : offY + p[1] * size[1],
+        x: offX + p[0] * size[0],
+        y: offY + p[1] * size[1],
         pressure,
-        tiltX      : 0,
-        tiltY      : 0,
-        twist      : 0,
+        tiltX: 0,
+        tiltY: 0,
+        twist: 0,
         invert,
         useAltBrush: false,
         time       : i,

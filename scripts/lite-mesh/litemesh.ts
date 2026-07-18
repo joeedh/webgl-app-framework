@@ -41,7 +41,13 @@ import {WebGPUBatchExecutor, type CommandBindGroup} from '../webgpu/batch'
 import {UniformBindings} from '../webgpu/uniform_bindings'
 import {GpuTexture} from '../webgpu/texture'
 import {BufferUsage, TextureUsage} from '../webgpu/flags'
-import {stencilAmplify, tessFinalize, type StencilLevel, type TessTopoInputs, type TessVdmInputs} from '../webgpu/stencil_compute'
+import {
+  stencilAmplify,
+  tessFinalize,
+  type StencilLevel,
+  type TessTopoInputs,
+  type TessVdmInputs,
+} from '../webgpu/stencil_compute'
 import type {Pipeline} from '../webgpu/pipeline'
 import {wgslForSpatialShader} from './litemesh_wgsl'
 
@@ -612,11 +618,8 @@ export class LiteMesh extends SceneObjectData {
     const execLayerTool = (ctx: ViewContext, path: string, inputs: Record<string, unknown>, merge: boolean) => {
       const tool = ctx.api.createTool(ctx, `${path}()`, inputs)
       const head = ctx.toolstack.head
-      const headPath = head
-        ? (head.constructor as unknown as {tooldef(): {toolpath: string}}).tooldef().toolpath
-        : ''
-      const sameTarget =
-        merge && headPath === path && (head!.getInputs() as {layer?: number}).layer === inputs.layer
+      const headPath = head ? (head.constructor as unknown as {tooldef(): {toolpath: string}}).tooldef().toolpath : ''
+      const sameTarget = merge && headPath === path && (head!.getInputs() as {layer?: number}).layer === inputs.layer
       if (sameTarget) {
         ctx.toolstack.execOrRedo(ctx, tool)
       } else {
@@ -713,7 +716,10 @@ export class LiteMesh extends SceneObjectData {
           execLayerTool(ctx, 'litemesh.multires_set_level', {level}, true)
         }
       )
-    mstruct.int('multiresLevels', 'multiresLevels', 'Levels', 'Multires stack depth (0 = no stack)').noUnits().readOnly()
+    mstruct
+      .int('multiresLevels', 'multiresLevels', 'Levels', 'Multires stack depth (0 = no stack)')
+      .noUnits()
+      .readOnly()
     // X3 tessellated tier: draw the render level GPU-amplified (+ VDM applied
     // at the verts) while editing a coarser one. Pure view state - no undo.
     mstruct.bool(
@@ -1634,8 +1640,7 @@ export class LiteMesh extends SceneObjectData {
         const vdm = this._marshalTessVdm(vertCoords, gridSide)
 
         const fineCount = levels[levels.length - 1].fineCount
-        const {posOut, norOut} = await tessFinalize(
-          device, fineCount, pos.result, nor.result, tan.result, topo, vdm)
+        const {posOut, norOut} = await tessFinalize(device, fineCount, pos.result, nor.result, tan.result, topo, vdm)
 
         mr.levelTriIndicesOut(renderLevel, intV.vec as never)
         const tris = Uint32Array.from(intV.read() as ArrayLike<number>)
@@ -1648,12 +1653,12 @@ export class LiteMesh extends SceneObjectData {
 
         this._dropTessStateBuffers()
         this._tessState = {
-          level    : renderLevel,
+          level: renderLevel,
           meshRev,
           storeRev,
-          posAmp   : pos.result,
-          norAmp   : nor.result,
-          tanAmp   : tan.result,
+          posAmp: pos.result,
+          norAmp: nor.result,
+          tanAmp: tan.result,
           topo,
           fineCount,
           vertexBuf: posOut,
@@ -1663,7 +1668,7 @@ export class LiteMesh extends SceneObjectData {
         }
         window.redraw_viewport?.()
       } catch (err) {
-        this._tessLastError = String(err instanceof Error ? (err.stack ?? err.message) : err)
+        this._tessLastError = String(err instanceof Error ? err.stack ?? err.message : err)
         if (!this._tessWarned) {
           this._tessWarned = true
           console.error('litemesh: tessellated-display build failed', err)
@@ -1689,9 +1694,7 @@ export class LiteMesh extends SceneObjectData {
 
   /** The attached store's texel-content revision (-1 = no Ptex store). */
   private _tessStoreRev(): number {
-    return this._vdmStore && this._vdmIsPtex
-      ? (this._vdmStore as unknown as {contentRev(): number}).contentRev()
-      : -1
+    return this._vdmStore && this._vdmIsPtex ? (this._vdmStore as unknown as {contentRev(): number}).contentRev() : -1
   }
 
   /** Marshal the finalize kernel's Ptex inputs (undefined = no store: the
@@ -1734,8 +1737,7 @@ export class LiteMesh extends SceneObjectData {
       try {
         const gridSide = 1 << (st.level - 1)
         const vdm = this._marshalTessVdm(st.topo.vertCoords as Int32Array, gridSide)
-        const {posOut, norOut} = await tessFinalize(
-          device, st.fineCount, st.posAmp, st.norAmp, st.tanAmp, st.topo, vdm)
+        const {posOut, norOut} = await tessFinalize(device, st.fineCount, st.posAmp, st.norAmp, st.tanAmp, st.topo, vdm)
         st.vertexBuf.destroy()
         st.normalBuf.destroy()
         st.vertexBuf = posOut
@@ -1743,7 +1745,7 @@ export class LiteMesh extends SceneObjectData {
         st.storeRev = storeRev
         window.redraw_viewport?.()
       } catch (err) {
-        this._tessLastError = String(err instanceof Error ? (err.stack ?? err.message) : err)
+        this._tessLastError = String(err instanceof Error ? err.stack ?? err.message : err)
         if (!this._tessWarned) {
           this._tessWarned = true
           console.error('litemesh: tessellated re-finalize failed', err)
@@ -1788,8 +1790,8 @@ export class LiteMesh extends SceneObjectData {
               alpha: {srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add'},
             },
           })),
-          depthStencil: {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
-          primitive   : {topology: 'triangle-list', cullMode: 'none'},
+          depthStencil : {format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less-equal'},
+          primitive    : {topology: 'triangle-list', cullMode: 'none'},
         })
         this._tessPipelines.set(key, pipeline)
       }
@@ -2245,17 +2247,14 @@ export class LiteMesh extends SceneObjectData {
    * into JS. `domain` (0 vert / 1 edge / 2 face) must match the criterion's
    * domain. Caller owns selectionBeginStep/EndStep. Returns the count.
    */
-  selectSimilar(
-    log: IMeshLogSelect,
-    criterion: number,
-    seed: number,
-    threshold: number,
-    domain: number
-  ): number {
+  selectSimilar(log: IMeshLogSelect, criterion: number, seed: number, threshold: number, domain: number): number {
     const out = this._intVecOut()
-    ;(
-      this.mesh as unknown as {selectSimilar(c: number, s: number, t: number, o: never): void}
-    ).selectSimilar(criterion, seed, threshold, out.vec as never)
+    ;(this.mesh as unknown as {selectSimilar(c: number, s: number, t: number, o: never): void}).selectSimilar(
+      criterion,
+      seed,
+      threshold,
+      out.vec as never
+    )
 
     const n = out.read().length
     if (n === 0) {
@@ -2285,10 +2284,7 @@ export class LiteMesh extends SceneObjectData {
    */
   materialStats(perLeaf: boolean): {id: number; distinct: number; mask: number}[] {
     const out = this._intVecOut()
-    ;(this.spatial as unknown as {materialStats(p: boolean, o: never): void}).materialStats(
-      perLeaf,
-      out.vec as never
-    )
+    ;(this.spatial as unknown as {materialStats(p: boolean, o: never): void}).materialStats(perLeaf, out.vec as never)
 
     const arr = out.read()
     const res: {id: number; distinct: number; mask: number}[] = []
@@ -2308,7 +2304,9 @@ export class LiteMesh extends SceneObjectData {
     )
 
     const fsrc = this.wasm.getBoundVector(
-      (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string}}).findVectorClass('int32').buildFullName(),
+      (this.wasm.manager as {findVectorClass(n: string): {buildFullName(): string}})
+        .findVectorClass('int32')
+        .buildFullName(),
       vec as never
     ) as ArrayLike<number>
     const psrc = prev.read()
@@ -2362,10 +2360,7 @@ export class LiteMesh extends SceneObjectData {
     const out = this._intVecOut()
     for (const [slot, faces] of bySlot) {
       this.wasm.setBoundIntVector(out.vec as never, faces)
-      ;(this.mesh as unknown as {setFacesMaterial(f: never, s: number): void}).setFacesMaterial(
-        out.vec as never,
-        slot
-      )
+      ;(this.mesh as unknown as {setFacesMaterial(f: never, s: number): void}).setFacesMaterial(out.vec as never, slot)
     }
   }
 
@@ -2383,7 +2378,6 @@ export class LiteMesh extends SceneObjectData {
     ;(this.mesh as unknown as {facesInGroup(g: number, o: never): void}).facesInGroup(group, out.vec as never)
     return this._assignMaterial(out.vec, group === 0 ? 0 : slot)
   }
-
 
   /** Read a single edge's EDGE_SEAM bit (0/1). */
   edgeSeam(e: number): number {
@@ -2663,9 +2657,13 @@ export class LiteMesh extends SceneObjectData {
     const out = this._intVecOut()
     const o3 = this.wasm.float3([origin[0], origin[1], origin[2]])
     const d3 = this.wasm.float3([dir[0], dir[1], dir[2]])
-    ;(
-      log as {loopCutAtRay(m: unknown, t: unknown, o: unknown, d: unknown, v: unknown): void}
-    ).loopCutAtRay(this.mesh, this.spatial, o3, d3, out.vec)
+    ;(log as {loopCutAtRay(m: unknown, t: unknown, o: unknown, d: unknown, v: unknown): void}).loopCutAtRay(
+      this.mesh,
+      this.spatial,
+      o3,
+      d3,
+      out.vec
+    )
     return Array.from(out.read())
   }
 
@@ -2678,9 +2676,12 @@ export class LiteMesh extends SceneObjectData {
     const idxV = this._intVecOut()
     const baseV = this._floatVecOut()
     const tanV = this._floatVecOut()
-    ;(
-      log as {insetRegion(m: unknown, i: unknown, b: unknown, t: unknown): void}
-    ).insetRegion(this.mesh, idxV.vec, baseV.vec, tanV.vec)
+    ;(log as {insetRegion(m: unknown, i: unknown, b: unknown, t: unknown): void}).insetRegion(
+      this.mesh,
+      idxV.vec,
+      baseV.vec,
+      tanV.vec
+    )
     return {
       idxVec : idxV.vec,
       idx    : Array.from(idxV.read()),
@@ -2698,9 +2699,12 @@ export class LiteMesh extends SceneObjectData {
     const idxV = this._intVecOut()
     const baseV = this._floatVecOut()
     const tanV = this._floatVecOut()
-    ;(
-      log as {bevelVerts(m: unknown, i: unknown, b: unknown, t: unknown): void}
-    ).bevelVerts(this.mesh, idxV.vec, baseV.vec, tanV.vec)
+    ;(log as {bevelVerts(m: unknown, i: unknown, b: unknown, t: unknown): void}).bevelVerts(
+      this.mesh,
+      idxV.vec,
+      baseV.vec,
+      tanV.vec
+    )
     return {
       idxVec : idxV.vec,
       idx    : Array.from(idxV.read()),
@@ -3694,9 +3698,7 @@ export class LiteMesh extends SceneObjectData {
     if (this.multiresActive && this._multires) {
       store = wasm.VdmStore_new(64, 16)
       const links = this._vecOutBulk('int32')
-      ;(this._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(
-        links.vec as never
-      )
+      ;(this._multires as unknown as {vdmAdjacencyOut(out: never): void}).vdmAdjacencyOut(links.vec as never)
       const linkArr = links.read()
       const gridCount = (linkArr.length / 8) | 0
       if (gridCount <= 0) {
@@ -3704,7 +3706,9 @@ export class LiteMesh extends SceneObjectData {
         return false
       }
       ;(store as unknown as {configurePtex(g: number, r: number, l: never): void}).configurePtex(
-        gridCount, 0, links.vec as never
+        gridCount,
+        0,
+        links.vec as never
       )
     } else if (this.activeAttrLayerIndex(AttrUseFlags.UV) >= 0) {
       store = wasm.VdmStore_new(1024, 32)
@@ -4021,8 +4025,7 @@ export class LiteMesh extends SceneObjectData {
     const objDrawFlag = _object?.drawFlag ?? DrawFlags.NONE
     const drawSurface = (objDrawMode & (DrawModes.SOLID | DrawModes.TEXTURED)) !== 0
     const drawBounds = objDrawMode === DrawModes.BOUNDS
-    const wireOverlay =
-      drawWireframe || objDrawMode === DrawModes.WIRE || (objDrawFlag & DrawFlags.WIREFRAME) !== 0
+    const wireOverlay = drawWireframe || objDrawMode === DrawModes.WIRE || (objDrawFlag & DrawFlags.WIREFRAME) !== 0
     const xrayAll = xray || (objDrawFlag & DrawFlags.FORCE_XRAY) !== 0
     ;(this.spatial as unknown as {setDisplayMask?: (on: boolean) => void}).setDisplayMask?.(drawMask)
     const spatialFlushed = this.spatial.update(this.wasm.gpu)
@@ -4322,8 +4325,8 @@ export class LiteMesh extends SceneObjectData {
       // Node VBOs double as compute-scatter targets during a GPU brush stroke
       // (gpuGlobalBrushes.md M3/D4); copy-src serves the §9.6 scatter
       // self-check + buffer-signature debug reads.
-      bufferUsage  : ['vertex', 'storage', 'copy-src'],
-      colorTargets : [
+      bufferUsage        : ['vertex', 'storage', 'copy-src'],
+      colorTargets: [
         {
           format: surfaceFormat,
           blend: {
@@ -4332,7 +4335,7 @@ export class LiteMesh extends SceneObjectData {
           },
         },
       ],
-      depthStencil: {format: 'depth24plus', depthWriteEnabled, depthCompare},
+      depthStencil       : {format: 'depth24plus', depthWriteEnabled, depthCompare},
       bindGroupForCommand: (_cmd, pipeline) => {
         let bindings = bindingsCache.get(pipeline)
         if (!bindings) {

@@ -12,7 +12,7 @@ import {SculptTools} from '../../scripts/brush/brush_enums'
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 function sculptToolKeys(): string[] {
-  return Object.keys(SculptTools).filter(k => isNaN(Number(k)))
+  return Object.keys(SculptTools).filter((k) => isNaN(Number(k)))
 }
 
 function iconKeys(): Set<string> {
@@ -21,7 +21,7 @@ function iconKeys(): Set<string> {
   if (!m) {
     throw new Error('Icons map not found in icon_enum.js')
   }
-  return new Set([...m[1].matchAll(/^\s*([A-Z_][A-Z0-9_]*)\s*:/gm)].map(k => k[1]))
+  return new Set([...m[1].matchAll(/^\s*([A-Z_][A-Z0-9_]*)\s*:/gm)].map((k) => k[1]))
 }
 
 describe('SculptTools icons', () => {
@@ -30,7 +30,7 @@ describe('SculptTools icons', () => {
     expect(tools.length).toBeGreaterThan(20) // sanity: the enum parse worked
 
     const icons = iconKeys()
-    const missing = tools.filter(k => !icons.has('SCULPT_' + k))
+    const missing = tools.filter((k) => !icons.has('SCULPT_' + k))
     expect(missing).toEqual([])
   })
 })

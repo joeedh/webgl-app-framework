@@ -381,7 +381,6 @@ function updateSolidTexturedDrawShader(view3d: ViewLike, ob: SceneObjectLike): v
 }
 
 function drawSceneWebGpuOverlays(view3d: ViewLike): void {
-
   drawGridWebGpu(view3d)
   drawDrawLinesWebGpu(view3d)
 

@@ -52,12 +52,12 @@
         recs.push(rec)
       }
       return {
-        drawMs   : median(recs.map((r) => r.draw)),
-        gpuMs    : median(recs.map((r) => r.gpu)),
-        dispatch : median(recs.map((r) => r.dispatchMs)),
-        cmds     : median(recs.map((r) => r.dispatchCmds)),
-        drawn    : median(recs.map((r) => r.dispatchDrawn)),
-        encodes  : recs.reduce((s, r) => s + (r.bundleEncodes ?? 0), 0),
+        drawMs  : median(recs.map((r) => r.draw)),
+        gpuMs   : median(recs.map((r) => r.gpu)),
+        dispatch: median(recs.map((r) => r.dispatchMs)),
+        cmds    : median(recs.map((r) => r.dispatchCmds)),
+        drawn   : median(recs.map((r) => r.dispatchDrawn)),
+        encodes : recs.reduce((s, r) => s + (r.bundleEncodes ?? 0), 0),
       }
     }
 
@@ -109,10 +109,10 @@
         rebuildMs,
         frames,
         zoomed,
-        dabNativeAvg: ts.applyDabNative ? ts.applyDabNative.avg : null,
-        uqAvg       : ts.updateQueries ? ts.updateQueries.avg : null,
-        dirtyDraw   : dirtyFrame.draw,
-        dirtyUploadMB: (up.bytes / 1e6),
+        dabNativeAvg : ts.applyDabNative ? ts.applyDabNative.avg : null,
+        uqAvg        : ts.updateQueries ? ts.updateQueries.avg : null,
+        dirtyDraw    : dirtyFrame.draw,
+        dirtyUploadMB: up.bytes / 1e6,
         dirtyUploadMs: up.ms,
       })
     }

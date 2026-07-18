@@ -965,7 +965,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     // pins the cursor overlay there), so draw a line out to the live pointer
     // (this.mpos) -- the drag distance/direction the anchor->cursor vector
     // (radius or angle, per anchoredLiveMode) is otherwise invisible.
-    if (activeOp instanceof SculptPaintOp && activeOp.getStrokeMethod() === StrokeMethod.ANCHORED && activeOp.driver?.getAnchorScreen()) {
+    if (
+      activeOp instanceof SculptPaintOp &&
+      activeOp.getStrokeMethod() === StrokeMethod.ANCHORED &&
+      activeOp.driver?.getAnchorScreen()
+    ) {
       this._brush_lines.push(view3d.overdraw!.line([x, y], [this.mpos[0], this.mpos[1]], 'rgb(255,175,75)'))
     }
 

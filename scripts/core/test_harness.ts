@@ -314,23 +314,23 @@ function dumpScene(): unknown {
     // litemesh_attrtest_support's `__attrtestApply`, invoked via `--eval`). Lets
     // the attr-render integration test assert the requested-attr contract +
     // missing-slot advisory alongside the GPU-buffer evidence in `objects`.
-    attrtest     : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
+    attrtest       : (globalThis as {__attrtestResult?: unknown}).__attrtestResult,
     // Reflect the quad-remesh ToolOp driver (`__quadRemeshTest`): before/after/
     // undone/redone topology fingerprints, so the parity test asserts success +
     // undo/redo round-trip per backend alongside the remeshed GPU-buffer parity.
-    quadRemesh   : (globalThis as {__quadRemeshResult?: unknown}).__quadRemeshResult,
+    quadRemesh     : (globalThis as {__quadRemeshResult?: unknown}).__quadRemeshResult,
     // Reflect the shader-graph JSON round-trip driver (`__attrtestRoundtrip`),
     // proving nstructjs JSON is an adequate test-fixture format for
     // AttributeNode-carrying materials (M7 "test format" decision).
-    attrRoundtrip: (globalThis as {__attrtestRoundtripResult?: unknown}).__attrtestRoundtripResult,
+    attrRoundtrip  : (globalThis as {__attrtestRoundtripResult?: unknown}).__attrtestRoundtripResult,
     // Reflect the brush-behavior driver (`__brushTest`): scripted strokes at
     // the sphere poles, diffing GPU position/color buffers to assert invert,
     // draw-sharp boundedness, mask gating, brush.color, and accumulate flags.
-    brushtest    : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
+    brushtest      : (globalThis as {__brushTestResult?: unknown}).__brushTestResult,
     // Reflect the sculpt-layer driver (`__layerTest`): a LAYERDRAW stroke on a
     // fresh sculpt layer — displacement, post-stroke position checksum (the
     // wasm↔native bit-parity gate), and the one-undo residual.
-    layertest    : (globalThis as {__layerTestResult?: unknown}).__layerTestResult,
+    layertest      : (globalThis as {__layerTestResult?: unknown}).__layerTestResult,
     // Reflect the V2 edit-target driver (`__layerTargetTest`): ordinary
     // brushes sculpting into a targeted layer, fold + weight round-trips,
     // toolstack/MeshLog undo consistency, dyntopo + kelvinlet under a target.
@@ -338,32 +338,32 @@ function dumpScene(): unknown {
     // Reflect the VDM engine driver (`__vdmTest`): one vdm splat dab at the +Z
     // pole — texels touched, tile count, atlas checksum (the wasm↔native
     // bit-parity gate), layout ints, and the positions-unchanged proof.
-    vdmtest      : (globalThis as {__vdmTestResult?: unknown}).__vdmTestResult,
+    vdmtest        : (globalThis as {__vdmTestResult?: unknown}).__vdmTestResult,
     // Reflect the boundary-constraint driver (`__boundaryTest`): seam-marking
     // via ToolOp + strokes with/without dyntopo, asserting the polyline-graph
     // invariants (non-2-valence verts, components) and both undo stacks.
-    boundarytest : (globalThis as {__boundaryTestResult?: unknown}).__boundaryTestResult,
+    boundarytest   : (globalThis as {__boundaryTestResult?: unknown}).__boundaryTestResult,
     // Reflect the undo-memory driver (`__undoMemTest`): per-step MeshLog byte
     // accounting, calcUndoMem parity, redo-branch truncation, and the
     // toolstack limitMemory trim freeing C++ steps via onUndoDestroy/freeStep.
-    undomemtest  : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
+    undomemtest    : (globalThis as {__undoMemTestResult?: unknown}).__undoMemTestResult,
     // Reflect the autosave driver (`__autosaveTest`): random dyntopo strokes for
     // ~5s with two randomly-timed split-serialization autosaves, each read back
     // and validated (container framing + geometry-signature round-trip).
-    autosavetest : (globalThis as {__autosaveTestResult?: unknown}).__autosaveTestResult,
+    autosavetest   : (globalThis as {__autosaveTestResult?: unknown}).__autosaveTestResult,
     // Reflect the fuzz driver (`__fuzzTest`): random sculptcore strokes with
     // random dyntopo toggles, a replayable per-stroke log, and a non-finite scan
     // (hunts the intermittent dyntopo crash).
-    fuzztest     : (globalThis as {__fuzzTestResult?: unknown}).__fuzzTestResult,
+    fuzztest       : (globalThis as {__fuzzTestResult?: unknown}).__fuzzTestResult,
     // Reflect the GPU-brush parity driver (`__gpuBrushTest`): CPU-vs-GPU
     // kelvinlet stroke fingerprints, undo/redo fidelity, and shadow-verify
     // divergences (plans/gpuGlobalBrushes.md §8.2-8.4).
-    gpubrushtest : (globalThis as {__gpuBrushTestResult?: unknown}).__gpuBrushTestResult,
+    gpubrushtest   : (globalThis as {__gpuBrushTestResult?: unknown}).__gpuBrushTestResult,
     // Generic seam for ad-hoc `--eval` checks: whatever an eval expression
     // stores on globalThis.__evalTestResult lands in the dump (renderer
     // console output never reaches the harness stdout, so the dump is the
     // only way an eval can report back without a bespoke support module).
-    evalResult   : (globalThis as {__evalTestResult?: unknown}).__evalTestResult,
+    evalResult     : (globalThis as {__evalTestResult?: unknown}).__evalTestResult,
   }
 }
 

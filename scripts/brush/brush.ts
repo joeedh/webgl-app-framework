@@ -209,12 +209,10 @@ SculptBrush {
 
     bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
     bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(2.5).expRate(1.75)
-    bst
-      .enum('radiusMode', 'radiusMode', deleteTsEnumIntegers(BrushRadiusModes), 'Radius Unit')
-      .descriptions({
-        SCREEN: 'Radius is in screen pixels; the sculpted footprint changes as you zoom',
-        WORLD : 'Radius is in mesh units; the sculpted footprint stays fixed as you zoom',
-      })
+    bst.enum('radiusMode', 'radiusMode', deleteTsEnumIntegers(BrushRadiusModes), 'Radius Unit').descriptions({
+      SCREEN: 'Radius is in screen pixels; the sculpted footprint changes as you zoom',
+      WORLD : 'Radius is in mesh units; the sculpted footprint stays fixed as you zoom',
+    })
     bst.enum('tool', 'tool', deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     bst.float('autosmooth', 'autosmooth', 'Autosmooth').range(0.0, 2.0).noUnits()
@@ -230,18 +228,15 @@ SculptBrush {
     bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
-    bst.enum('colorMixMode', 'colorMixMode', deleteTsEnumIntegers(ColorMixModes), 'Color Mix').description(
-      'How the color brush blends onto the vertex color'
-    )
+    bst
+      .enum('colorMixMode', 'colorMixMode', deleteTsEnumIntegers(ColorMixModes), 'Color Mix')
+      .description('How the color brush blends onto the vertex color')
     bst.float('concaveFilter', 'concaveFilter', 'Concave Wash').range(0.0, 1.0).noUnits()
     bst.float('rake', 'rake', 'Rake').range(0.0, 1.0).noUnits()
     bst.float('normalfac', 'normalfac', 'Normal Fac').range(0.0, 1.0).noUnits()
     bst.float('pinch', 'pinch', 'Pinch').range(0.0, 1.0).noUnits()
 
-    bst
-      .float('cavityFactor', 'cavityFactor', 'Cavity Factor', 'Cavity automasking strength')
-      .range(0.0, 5.0)
-      .noUnits()
+    bst.float('cavityFactor', 'cavityFactor', 'Cavity Factor', 'Cavity automasking strength').range(0.0, 5.0).noUnits()
     bst
       .int('cavityBlurSteps', 'cavityBlurSteps', 'Cavity Blur', 'Cavity automask blur radius (rings)')
       .range(0, 8)
@@ -253,7 +248,12 @@ SculptBrush {
       .range(1, 8)
       .noUnits()
     bst
-      .int('enhanceInner', 'enhanceInner', 'Detail Inner', 'Inner depth: 0 = high-pass, >=1 = band-pass (rejects noise)')
+      .int(
+        'enhanceInner',
+        'enhanceInner',
+        'Detail Inner',
+        'Inner depth: 0 = high-pass, >=1 = band-pass (rejects noise)'
+      )
       .range(0, 6)
       .noUnits()
 

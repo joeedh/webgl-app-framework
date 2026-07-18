@@ -9,7 +9,7 @@ import {
   ToolPropertyCache,
   buildToolSysAPI,
   BoundConstructor,
-  CallbackThis
+  CallbackThis,
 } from '../path.ux/scripts/pathux.js'
 
 import * as editors from '../editors/all.js'

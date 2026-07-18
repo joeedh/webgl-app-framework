@@ -9,11 +9,14 @@ const DO_REPLAY = process.env.DO_REPLAY === '1'
 
 const browser = await chromium.launch({
   channel: 'chromium',
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
+  args   : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
 })
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.log('[pageerror]', String(e)))
-page.on('console', (m) => { const t = m.type(); if (t === 'error') console.log(`[${t}]`, m.text()) })
+page.on('console', (m) => {
+  const t = m.type()
+  if (t === 'error') console.log(`[${t}]`, m.text())
+})
 
 await page.goto(`${BASE}/?renderer=webgpu`)
 await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout: 60000})
@@ -21,8 +24,11 @@ await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout
 await page.evaluate(async (url) => {
   const buf = await fetch(url).then((r) => r.arrayBuffer())
   await window._appstate.loadFileAsync(buf, {
-    load_library: true, load_screen: false, load_settings: false,
-    reset_toolstack: true, reset_context: true,
+    load_library   : true,
+    load_screen    : false,
+    load_settings  : false,
+    reset_toolstack: true,
+    reset_context  : true,
   })
 }, WPROJ)
 console.log('loaded')

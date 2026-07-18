@@ -62,12 +62,12 @@ export interface MaterialFragTestResult {
 
 function summarize(stats: {id: number; distinct: number; mask: number}[]): Hist {
   const h: Hist = {
-    nodes: stats.length,
-    straddling: 0,
+    nodes       : stats.length,
+    straddling  : 0,
     straddleFrac: 0,
-    distinctSum: 0,
-    maxDistinct: 0,
-    histogram: {},
+    distinctSum : 0,
+    maxDistinct : 0,
+    histogram   : {},
   }
   for (const s of stats) {
     h.distinctSum += s.distinct
@@ -133,10 +133,10 @@ async function materialFragTest(opts?: {only?: string}): Promise<MaterialFragTes
       r.drawCommands =
         typeof raw?.length === 'number'
           ? raw.length
-          : ((mesh.wasm as unknown as {getBoundVector(n: string, v: never): ArrayLike<unknown>}).getBoundVector(
+          : (mesh.wasm as unknown as {getBoundVector(n: string, v: never): ArrayLike<unknown>}).getBoundVector(
               '',
               batch.commands as never
-            ).length)
+            ).length
     } catch (e) {
       r.drawCommands = -1
     }
@@ -173,7 +173,7 @@ async function materialFragTest(opts?: {only?: string}): Promise<MaterialFragTes
       const gpu = summarize(mesh.materialStats(false))
       const valid = gpu.nodes > 0 && leaf.nodes > 0
       r.scenarios.push({
-        name: sc.name,
+        name : sc.name,
         slots: sc.slots,
         leaf,
         gpu,

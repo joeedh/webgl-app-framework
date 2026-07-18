@@ -228,7 +228,13 @@ export class SceneObject<
     })
 
     ostruct
-      .enum('drawMode', 'drawMode', deleteTsEnumIntegers(DrawModes), 'Draw Mode', 'How the object is drawn in the viewport')
+      .enum(
+        'drawMode',
+        'drawMode',
+        deleteTsEnumIntegers(DrawModes),
+        'Draw Mode',
+        'How the object is drawn in the viewport'
+      )
       .on('change', function () {
         window.redraw_viewport(true)
       })

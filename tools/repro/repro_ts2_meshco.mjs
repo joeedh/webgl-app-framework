@@ -7,10 +7,15 @@ const PORT = process.env.E2E_PORT ?? 5099
 const BASE = `http://localhost:${PORT}`
 const WPROJ = '/examples/ts2.wproj'
 
-const browser = await chromium.launch({channel: 'chromium', args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist']})
+const browser = await chromium.launch({
+  channel: 'chromium',
+  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
+})
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.log('[pageerror]', String(e)))
-page.on('console', (m) => { if (m.type() === 'error') console.log('[error]', m.text()) })
+page.on('console', (m) => {
+  if (m.type() === 'error') console.log('[error]', m.text())
+})
 
 await page.goto(`${BASE}/?renderer=webgpu`)
 await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout: 60000})
@@ -33,15 +38,32 @@ await page.evaluate(() => {
     return m.size
   }
   window.__diffCo = (pa, pb) => {
-    const a = window.__snaps[pa], b = window.__snaps[pb]
+    const a = window.__snaps[pa],
+      b = window.__snaps[pb]
     if (!a || !b) return {error: 'missing'}
-    let onlyA = 0, onlyB = 0, diff = 0, worst = 0, worstIdx = -1, same = 0
+    let onlyA = 0,
+      onlyB = 0,
+      diff = 0,
+      worst = 0,
+      worstIdx = -1,
+      same = 0
     for (const [idx, ca] of a) {
       const cb = b.get(idx)
-      if (!cb) { onlyA++; continue }
-      const dx = ca[0] - cb[0], dy = ca[1] - cb[1], dz = ca[2] - cb[2]
+      if (!cb) {
+        onlyA++
+        continue
+      }
+      const dx = ca[0] - cb[0],
+        dy = ca[1] - cb[1],
+        dz = ca[2] - cb[2]
       const d = Math.sqrt(dx * dx + dy * dy + dz * dz)
-      if (d > 1e-6) { diff++; if (d > worst) { worst = d; worstIdx = idx } } else same++
+      if (d > 1e-6) {
+        diff++
+        if (d > worst) {
+          worst = d
+          worstIdx = idx
+        }
+      } else same++
     }
     for (const [idx] of b) if (!a.has(idx)) onlyB++
     return {sizeA: a.size, sizeB: b.size, onlyA, onlyB, diff, same, worst, worstIdx}
@@ -50,11 +72,23 @@ await page.evaluate(() => {
 
 await page.evaluate(async (url) => {
   const buf = await fetch(url).then((r) => r.arrayBuffer())
-  await window._appstate.loadFileAsync(buf, {load_library: true, load_screen: false, load_settings: false, reset_toolstack: true, reset_context: true})
+  await window._appstate.loadFileAsync(buf, {
+    load_library: true,
+    load_screen: false,
+    load_settings: false,
+    reset_toolstack: true,
+    reset_context: true,
+  })
 }, WPROJ)
-await page.evaluate(() => { window.__rafReal = window.requestAnimationFrame; window.requestAnimationFrame = () => 0 })
+await page.evaluate(() => {
+  window.__rafReal = window.requestAnimationFrame
+  window.requestAnimationFrame = () => 0
+})
 
-const len = await page.evaluate(async () => { await window._appstate.ctx.replay(() => true); return window._appstate.toolstack.length })
+const len = await page.evaluate(async () => {
+  await window._appstate.ctx.replay(() => true)
+  return window._appstate.toolstack.length
+})
 console.log('replayed, len', len)
 
 const res = await page.evaluate(() => {
@@ -73,8 +107,19 @@ console.log('P vs Q (undo+redo):    ', JSON.stringify(res.PvQ))
 console.log('\nVERDICT:')
 const d = res.PvQ
 if ((d.diff ?? 0) > 50 || (d.onlyA ?? 0) > 0 || (d.onlyB ?? 0) > 0)
-  console.log('  => REAL MESH-DATA CORRUPTION: vertex co differs after undo+redo (diff=' + d.diff + ', onlyA=' + d.onlyA + ', onlyB=' + d.onlyB + ', worst=' + (d.worst || 0).toFixed(5) + ' @v' + d.worstIdx + ')')
-else
-  console.log('  => mesh co IDENTICAL after undo+redo => corruption is STALE GPU BUFFERS, not mesh data')
+  console.log(
+    '  => REAL MESH-DATA CORRUPTION: vertex co differs after undo+redo (diff=' +
+      d.diff +
+      ', onlyA=' +
+      d.onlyA +
+      ', onlyB=' +
+      d.onlyB +
+      ', worst=' +
+      (d.worst || 0).toFixed(5) +
+      ' @v' +
+      d.worstIdx +
+      ')'
+  )
+else console.log('  => mesh co IDENTICAL after undo+redo => corruption is STALE GPU BUFFERS, not mesh data')
 
 await browser.close()

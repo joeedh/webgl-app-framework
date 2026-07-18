@@ -9,11 +9,14 @@ const WPROJ = '/examples/ts2.wproj'
 
 const browser = await chromium.launch({
   channel: 'chromium',
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
+  args   : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=default', '--ignore-gpu-blocklist'],
 })
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.log('[pageerror]', String(e)))
-page.on('console', (m) => { const t = m.type(); if (t === 'error') console.log(`[${t}]`, m.text()) })
+page.on('console', (m) => {
+  const t = m.type()
+  if (t === 'error') console.log(`[${t}]`, m.text())
+})
 
 await page.goto(`${BASE}/?renderer=webgpu`)
 await page.waitForFunction(() => !!window._appstate?.screen, undefined, {timeout: 60000})
@@ -62,8 +65,11 @@ const stat = async (label) => {
 const ts = await page.evaluate(async (url) => {
   const buf = await fetch(url).then((r) => r.arrayBuffer())
   await window._appstate.loadFileAsync(buf, {
-    load_library: true, load_screen: false, load_settings: false,
-    reset_toolstack: true, reset_context: true,
+    load_library   : true,
+    load_screen    : false,
+    load_settings  : false,
+    reset_toolstack: true,
+    reset_context  : true,
   })
   const ts = window._appstate.toolstack
   const ops = []
@@ -95,9 +101,14 @@ for (let i = 0; i < len; i++) {
     app.toolstack.undo()
     return {cur: ts.cur, op}
   })
-  if (info.done) { console.log('  (no more to undo)'); break }
+  if (info.done) {
+    console.log('  (no more to undo)')
+    break
+  }
   const s = await stat(`UNDO->${info.cur} (${info.op})`)
-  if (s.nan || s.big) { console.log('  *** CORRUPTION DETECTED ***'); }
+  if (s.nan || s.big) {
+    console.log('  *** CORRUPTION DETECTED ***')
+  }
 }
 
 // step redo back up
@@ -109,9 +120,14 @@ for (let i = 0; i < len; i++) {
     app.toolstack.redo()
     return {cur: ts.cur, op: ts[ts.cur]?.constructor?.name}
   })
-  if (info.done) { console.log('  (no more to redo)'); break }
+  if (info.done) {
+    console.log('  (no more to redo)')
+    break
+  }
   const s = await stat(`REDO->${info.cur} (${info.op})`)
-  if (s.nan || s.big) { console.log('  *** CORRUPTION DETECTED ***'); }
+  if (s.nan || s.big) {
+    console.log('  *** CORRUPTION DETECTED ***')
+  }
 }
 
 await browser.close()

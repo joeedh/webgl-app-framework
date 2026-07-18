@@ -69,7 +69,12 @@ export interface StencilLevel {
 const WG_SIZE = 64
 const MAX_WG_PER_DIM = 65535
 
-function makeBuf(device: GPUDevice, label: string, usage: GPUBufferUsageFlags, data: ArrayBufferView | number): GPUBuffer {
+function makeBuf(
+  device: GPUDevice,
+  label: string,
+  usage: GPUBufferUsageFlags,
+  data: ArrayBufferView | number
+): GPUBuffer {
   const size = typeof data === 'number' ? data : data.byteLength
   const buf = device.createBuffer({label, size: Math.max(16, (size + 3) & ~3), usage})
   if (typeof data !== 'number') {

@@ -544,6 +544,6 @@ registerDataAPI(AppSettings)
 // active app's settings re-read from disk. Target the live instance, not a
 // captured one, since AppSettings is swapped on file load.
 registerSyncTarget({
-  key: SETTINGS_KEY,
+  key   : SETTINGS_KEY,
   reload: () => (window as unknown as {_appstate?: {settings?: AppSettings}})._appstate?.settings?.syncFromDisk(),
 })

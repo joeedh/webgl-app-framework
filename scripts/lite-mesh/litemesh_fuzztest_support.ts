@@ -186,7 +186,7 @@ function fuzzTest(opts: {iters?: number; seed?: number; maxMs?: number} = {}): F
         tool,
         toolName: SculptTools[tool] ?? String(tool),
         p,
-        dabs    : dabCount,
+        dabs: dabCount,
         strength,
         radius,
         dyntopo,
@@ -217,7 +217,7 @@ function fuzzTest(opts: {iters?: number; seed?: number; maxMs?: number} = {}): F
     result.ok = true
   } catch (err) {
     result.crashedAt = result.ranStrokes
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   ;(globalThis as {__fuzzTestResult?: FuzzTestResult}).__fuzzTestResult = result
   return result

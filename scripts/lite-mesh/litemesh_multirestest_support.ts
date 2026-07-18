@@ -201,7 +201,7 @@ function multiresTest(): MultiresTestResult {
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__multiresTestResult = result
   return result
@@ -280,13 +280,25 @@ function multiresVdmTest(): MultiresVdmTestResult {
       mesh.attachVdmStore(store) // LiteMesh owns it now (freed on detach)
       try {
         result.texelsTouched = wasm.Mesh_vdmSplatDab(
-          mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 0.5, 0)
+          mesh.mesh,
+          mesh.spatial,
+          store,
+          0,
+          0,
+          R,
+          0,
+          0,
+          1,
+          radius,
+          1.0,
+          0.5,
+          0
+        )
         result.clampedDefault = wasm.Vdm_lastSplatClamped()
 
         // Near-zero α → the fold ceiling collapses; the clamp count is the
         // add-a-level prompt signal (no promotion exists on this base).
-        wasm.Mesh_vdmSplatDab(
-          mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 1e-8, 0)
+        wasm.Mesh_vdmSplatDab(mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 1e-8, 0)
         result.promptSignal = wasm.Vdm_lastSplatClamped()
 
         result.posChecksumAfter = fnv1a(dumpCoFlat(mesh))
@@ -328,7 +340,7 @@ function multiresVdmTest(): MultiresVdmTestResult {
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__multiresVdmTestResult = result
   return result
@@ -450,7 +462,9 @@ async function stencilAmplifyTest(): Promise<StencilAmplifyTestResult> {
       // bit-exact per the S5 gate), and amplified verts never enter the mesh.
       const js = new Float32Array(level.fineCount * 3)
       for (let i = 0; i < level.fineCount; i++) {
-        let px = 0, py = 0, pz = 0
+        let px = 0,
+          py = 0,
+          pz = 0
         const e = level.offsets[i + 1]
         for (let k = level.offsets[i]; k < e; k++) {
           const s = level.indices[k] * 3
@@ -492,14 +506,13 @@ async function stencilAmplifyTest(): Promise<StencilAmplifyTestResult> {
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__stencilAmplifyTestResult = result
   return result
 }
 
-;(globalThis as {__stencilAmplifyTest?: typeof stencilAmplifyTest}).__stencilAmplifyTest =
-  stencilAmplifyTest
+;(globalThis as {__stencilAmplifyTest?: typeof stencilAmplifyTest}).__stencilAmplifyTest = stencilAmplifyTest
 
 /** `__vdmSculptTest()` result — the X3 stage-4 interactive-VDM gate. */
 interface VdmSculptResult {
@@ -616,8 +629,8 @@ function vdmSculptTest(): VdmSculptResult {
     const pre = dumpCoFlat(mesh)
     runSculptcoreStroke({
       mesh,
-      brush: draw,
-      dabs : [{p: [0, 0, R], normal: [0, 0, 1]}],
+      brush : draw,
+      dabs  : [{p: [0, 0, R], normal: [0, 0, 1]}],
       radius: R * 0.5,
     })
     result.tilesAfterStroke = store.tileCount()
@@ -660,9 +673,7 @@ function vdmSculptTest(): VdmSculptResult {
     app.toolstack.undo()
     result.posAfterApplyUndo = fnv1a(dumpCoFlat(mesh))
     result.tilesAfterApplyUndo = store.tileCount()
-    result.blobChecksumAfterApplyUndo = mesh.hasVdm
-      ? fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!))
-      : -1
+    result.blobChecksumAfterApplyUndo = mesh.hasVdm ? fnv1aBytes(wasm.VdmStore_serializeBlob(mesh.vdmStore!)) : -1
 
     // X4 capture round-trip: redo the apply (detail -> geometry, store
     // empty), capture it back (geometry -> texels, surface drops EXACTLY
@@ -691,7 +702,7 @@ function vdmSculptTest(): VdmSculptResult {
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__evalTestResult = result
   return result
@@ -752,9 +763,7 @@ function vdmPersistTest(): VdmPersistResult {
 
     if (!mesh.multiresEnable(2)) throw new Error('multiresEnable failed')
     if (!mesh.vdmEnable()) throw new Error('vdmEnable failed')
-    wasm.Mesh_vdmSplatDab(
-      mesh.mesh, mesh.spatial, mesh.vdmStore!, 0, 0, R, 0, 0, 1, R * 0.5, 1.0, 0.5, 0
-    )
+    wasm.Mesh_vdmSplatDab(mesh.mesh, mesh.spatial, mesh.vdmStore!, 0, 0, R, 0, 0, 1, R * 0.5, 1.0, 0.5, 0)
     // A real level edit too, so the grids-store blob carries nonzero disp.
     let draw: SculptBrush | undefined
     for (const k in DefaultBrushes.brushes) {
@@ -786,23 +795,19 @@ function vdmPersistTest(): VdmPersistResult {
       result.loadedIsPtex = loaded.vdmIsPtex
       const lstore = loaded.vdmStore as unknown as {tileCount(): number} | undefined
       result.loadedTiles = lstore ? lstore.tileCount() : -1
-      result.loadedVdmChecksum = loaded.hasVdm
-        ? fnv1aBytes(wasm.VdmStore_serializeBlob(loaded.vdmStore!))
-        : -1
+      result.loadedVdmChecksum = loaded.hasVdm ? fnv1aBytes(wasm.VdmStore_serializeBlob(loaded.vdmStore!)) : -1
       const savedCo = dumpCoFlat(mesh)
       const loadedCo = dumpCoFlat(loaded)
       result.loadedPosChecksum = fnv1a(loadedCo)
       result.posResidual = maxResidual(savedCo, loadedCo)
-      result.loadedCageChecksum = loaded._multiresCage
-        ? fnv1aBytes(wasm.Mesh_serialize(loaded._multiresCage))
-        : -1
+      result.loadedCageChecksum = loaded._multiresCage ? fnv1aBytes(wasm.Mesh_serialize(loaded._multiresCage)) : -1
     } finally {
       loaded.destroy()
     }
 
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   g.__evalTestResult = result
   return result
@@ -921,7 +926,7 @@ function multiresLayerTest(): MultiresLayerTestResult {
     }
     result.ok = true
   } catch (err) {
-    result.error = String(err instanceof Error ? (err.stack ?? err.message) : err)
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
   }
   return result
 }

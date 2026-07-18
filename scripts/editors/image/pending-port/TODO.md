@@ -16,12 +16,12 @@ abstraction layer** is designed in a follow-up plan.
 
 ## What was here
 
-| File | Lines | Responsibility |
-|------|-------|----------------|
-| `ImageEditor.ts` | ~1790 | The old `ImageEditor` **and** the `UVEditor` UIBase component, `findnearestUV` picking, `DrawLine`, `ImageBlockOp`/`SetImageTypeOp`, the UV-tools sidebar, and the `window.redraw_uveditors` global. |
-| `uv_selectops.js` | ~335 | UV select ToolOps: `uveditor.toggle_select_all`, `uveditor.pick_select_linked`, `uveditor.select_one` (`UVSelMask`, `SelectOpBaseUV`). |
-| `uv_transformops.js` | ~550 | UV transform ToolOps: `uveditor.translate` / `scale` / `rotate` (modal, read mouse from `ctx.editors.imageEditor.uvEditor`). |
-| `uv_ops.js` | ~331 | UV misc ToolOps: `uveditor.project_uvs`, `uveditor.set_flag` / `clear_flag` / `toggle_flag` (`UVFlags.PIN`). |
+| File                 | Lines | Responsibility                                                                                                                                                                                       |
+| -------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ImageEditor.ts`     | ~1790 | The old `ImageEditor` **and** the `UVEditor` UIBase component, `findnearestUV` picking, `DrawLine`, `ImageBlockOp`/`SetImageTypeOp`, the UV-tools sidebar, and the `window.redraw_uveditors` global. |
+| `uv_selectops.js`    | ~335  | UV select ToolOps: `uveditor.toggle_select_all`, `uveditor.pick_select_linked`, `uveditor.select_one` (`UVSelMask`, `SelectOpBaseUV`).                                                               |
+| `uv_transformops.js` | ~550  | UV transform ToolOps: `uveditor.translate` / `scale` / `rotate` (modal, read mouse from `ctx.editors.imageEditor.uvEditor`).                                                                         |
+| `uv_ops.js`          | ~331  | UV misc ToolOps: `uveditor.project_uvs`, `uveditor.set_flag` / `clear_flag` / `toggle_flag` (`UVFlags.PIN`).                                                                                         |
 
 `ImageBus.ts` was **left at its original location** (`scripts/editors/image/ImageBus.ts`),
 not moved here: it is a cross-cutting bus token (`resetDrawLines` / `flagRedraw`

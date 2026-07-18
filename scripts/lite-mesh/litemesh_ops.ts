@@ -698,8 +698,7 @@ export class MultiresEnableOp extends MultiresOpBase<{levels: IntProperty}> {
 
   undoPre(ctx: ToolContext): void {
     const mesh = this._getMesh(ctx)
-    this._flattenBlob =
-      mesh && !mesh.multiresActive && mesh.mesh.sculptLayerCount() > 0 ? mesh.serialize() : undefined
+    this._flattenBlob = mesh && !mesh.multiresActive && mesh.mesh.sculptLayerCount() > 0 ? mesh.serialize() : undefined
   }
   calcUndoMem(): number {
     return this._flattenBlob?.length ?? 0

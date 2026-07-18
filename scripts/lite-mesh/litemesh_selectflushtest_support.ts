@@ -124,10 +124,7 @@ async function selectFlushTest(): Promise<SelectFlushTestResult> {
     }
 
     r.ok =
-      !!r.extrudeFromVerts?.worked &&
-      !!r.subdivideFromVerts?.worked &&
-      !!r.preferExplicit?.worked &&
-      !!r.union?.worked
+      !!r.extrudeFromVerts?.worked && !!r.subdivideFromVerts?.worked && !!r.preferExplicit?.worked && !!r.union?.worked
   } catch (e) {
     r.error = `${e}\n${e instanceof Error ? e.stack : ''}`
   }

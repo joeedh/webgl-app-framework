@@ -76,7 +76,16 @@ function diffDump(a: unknown, b: unknown, path = ''): string[] {
 function dumpBackend(nwExe: string, backend: 'wasm' | 'native', subdiv: number): unknown {
   return bootDump(
     nwExe,
-    ['--headless', '--no-devtools', '--backend', backend, '--gen-scene', 'litemesh-cube', '--scene-arg', `subdiv=${subdiv}`],
+    [
+      '--headless',
+      '--no-devtools',
+      '--backend',
+      backend,
+      '--gen-scene',
+      'litemesh-cube',
+      '--scene-arg',
+      `subdiv=${subdiv}`,
+    ],
     {tmpPrefix: 'scparity-', timeout: 60000}
   )
 }

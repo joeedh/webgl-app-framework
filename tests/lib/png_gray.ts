@@ -75,12 +75,23 @@ export function decodePngGray(png: Uint8Array): GrayImage {
       const upLeft = y > 0 && x >= bpp ? out[dst + x - bpp - stride] : 0
       let v: number
       switch (filter) {
-        case 0: v = rawV; break
-        case 1: v = rawV + left; break
-        case 2: v = rawV + up; break
-        case 3: v = rawV + ((left + up) >> 1); break
-        case 4: v = rawV + paeth(left, up, upLeft); break
-        default: throw new Error(`bad PNG filter ${filter}`)
+        case 0:
+          v = rawV
+          break
+        case 1:
+          v = rawV + left
+          break
+        case 2:
+          v = rawV + up
+          break
+        case 3:
+          v = rawV + ((left + up) >> 1)
+          break
+        case 4:
+          v = rawV + paeth(left, up, upLeft)
+          break
+        default:
+          throw new Error(`bad PNG filter ${filter}`)
       }
       out[dst + x] = v & 0xff
     }

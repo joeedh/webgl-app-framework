@@ -39,11 +39,7 @@ export function resolveNwjsExe(): string | undefined {
  * JSON. `appArgs` is everything the old tests passed after `main.js` (minus the
  * trailing `--dump <out> --exit`, which this adds). Throws if no dump is written.
  */
-export function bootDump(
-  nwExe: string,
-  appArgs: string[],
-  opts: {tmpPrefix?: string; timeout?: number} = {}
-): unknown {
+export function bootDump(nwExe: string, appArgs: string[], opts: {tmpPrefix?: string; timeout?: number} = {}): unknown {
   const out = Path.join(fs.mkdtempSync(Path.join(os.tmpdir(), opts.tmpPrefix ?? 'nwboot-')), 'dump.json')
   // --headless is a Chromium switch NW.js intercepts; the window-hide hint the
   // bootstrap reads is --apptest-headless. Translate so callers can pass either.

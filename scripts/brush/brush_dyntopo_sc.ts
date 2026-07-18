@@ -10,15 +10,15 @@ function feq(a: number, b: number) {
 // Property/flag key -> DynTopoOverridesSC enum-key (used by the tool-mode Proxy
 // to decide whether a key resolves from the brush override or the tool default).
 const apiKeyMap: {[k: string]: string} = {
-  edgeMode     : 'EDGE_MODE',
-  edgeSize     : 'EDGE_SIZE',
-  collapseRatio: 'COLLAPSE_RATIO',
-  grade        : 'GRADE',
-  mode         : 'MODE',
-  smoothLambda : 'SMOOTH_LAMBDA',
-  maxSplits    : 'MAX_SPLITS',
-  maxCollapses : 'MAX_COLLAPSES',
-  maxRounds    : 'MAX_ROUNDS',
+  edgeMode      : 'EDGE_MODE',
+  edgeSize      : 'EDGE_SIZE',
+  collapseRatio : 'COLLAPSE_RATIO',
+  grade         : 'GRADE',
+  mode          : 'MODE',
+  smoothLambda  : 'SMOOTH_LAMBDA',
+  maxSplits     : 'MAX_SPLITS',
+  maxCollapses  : 'MAX_COLLAPSES',
+  maxRounds     : 'MAX_ROUNDS',
   dynTopoSpacing: 'DYNTOPO_SPACING',
 }
 

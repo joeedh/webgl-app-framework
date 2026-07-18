@@ -16,7 +16,7 @@ import {applyTriangulation} from '../../../../addons/builtin/mesh/src/mesh_tess.
 import {MeshLog} from '../../../../addons/builtin/mesh/src/mesh_log.js'
 import type {GridBase} from '../../../../addons/builtin/mesh/src/mesh_grids.js'
 import type {ViewContext} from '../../../core/context.js'
-import { PaintSample } from './pbvh_paintsample.js';
+import {PaintSample} from './pbvh_paintsample.js'
 
 export function fillHoleFromVert(
   mesh: Mesh,

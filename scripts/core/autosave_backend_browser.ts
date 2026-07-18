@@ -74,9 +74,11 @@ class OpfsAutosaveBackend implements AutosaveBackend {
   readonly kind = 'opfs'
 
   private async dir(): Promise<OpfsDir> {
-    const root = (await (navigator as unknown as {
-      storage: {getDirectory(): Promise<OpfsRoot>}
-    }).storage.getDirectory()) as unknown as OpfsRoot
+    const root = (await (
+      navigator as unknown as {
+        storage: {getDirectory(): Promise<OpfsRoot>}
+      }
+    ).storage.getDirectory()) as unknown as OpfsRoot
     return root.getDirectoryHandle('autosave', {create: true})
   }
 
@@ -133,11 +135,11 @@ class OpfsAutosaveBackend implements AutosaveBackend {
     await this.writeJSON(dir, manName, man)
 
     const latest: AutosaveLatest = {
-      backupKey: target,
+      backupKey : target,
       sourcePath: opts.sourcePath,
       timestamp,
       appVersion: opts.appVersion,
-      bytes: bytes.byteLength,
+      bytes     : bytes.byteLength,
     }
     await this.writeJSON(dir, LATEST_NAME, latest)
     return latest
@@ -231,11 +233,11 @@ class IndexedDbAutosaveBackend implements AutosaveBackend {
     await this.put(manKey, man)
 
     const latest: AutosaveLatest = {
-      backupKey: blobKey,
+      backupKey : blobKey,
       sourcePath: opts.sourcePath,
       timestamp,
       appVersion: opts.appVersion,
-      bytes: bytes.byteLength,
+      bytes     : bytes.byteLength,
     }
     await this.put('latest', latest)
     return latest

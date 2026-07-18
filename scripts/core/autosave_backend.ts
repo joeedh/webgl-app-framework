@@ -170,7 +170,7 @@ class NwjsAutosaveBackend implements AutosaveBackend {
     const man = (await this.readJSON<RotationManifest>(manPath)) ?? {
       newestSlot: -1,
       maxBackups: opts.maxBackups,
-      slots: [],
+      slots     : [],
     }
 
     const slot = (man.newestSlot + 1) % Math.max(1, opts.maxBackups)
@@ -189,11 +189,11 @@ class NwjsAutosaveBackend implements AutosaveBackend {
     await this.writeJSON(manPath, man)
 
     const latest: AutosaveLatest = {
-      backupKey: target,
+      backupKey : target,
       sourcePath: opts.sourcePath,
       timestamp,
       appVersion: opts.appVersion,
-      bytes: bytes.byteLength,
+      bytes     : bytes.byteLength,
     }
     await this.writeJSON(this.latestFile(), latest)
     return latest

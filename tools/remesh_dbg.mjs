@@ -19,7 +19,7 @@ if (args.length === 0) {
   process.exit(2)
 }
 
-const sock = net.connect({ path: PIPE })
+const sock = net.connect({path: PIPE})
 let buf = ''
 let done = false
 

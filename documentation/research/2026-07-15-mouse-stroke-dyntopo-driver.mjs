@@ -38,8 +38,8 @@ await new Promise((res) => ws.addEventListener('open', res))
 
 async function evalJs(body) {
   const r = await send('Runtime.evaluate', {
-    expression: `(async()=>{ ${body} })()`,
-    awaitPromise: true,
+    expression   : `(async()=>{ ${body} })()`,
+    awaitPromise : true,
     returnByValue: true,
   })
   if (r.exceptionDetails) {
@@ -111,16 +111,18 @@ await evalJs(`
 const [px, py] = setup.pos
 const [wdt, hgt] = setup.size
 const cy = py + hgt * 0.45
-const x0 = px + wdt * 0.30
-const x1 = px + wdt * 0.70
+const x0 = px + wdt * 0.3
+const x1 = px + wdt * 0.7
 const MOVES = 120
 const MOVE_INTERVAL = 12
 
 async function mouse(type, x, y, extra = {}) {
   await send('Input.dispatchMouseEvent', {
-    type, x: Math.round(x), y: Math.round(y),
-    button: type === 'mouseMoved' ? 'none' : 'left',
-    buttons: type === 'mouseReleased' ? 0 : 1,
+    type,
+    x         : Math.round(x),
+    y         : Math.round(y),
+    button    : type === 'mouseMoved' ? 'none' : 'left',
+    buttons   : type === 'mouseReleased' ? 0 : 1,
     clickCount: type === 'mouseMoved' ? 0 : 1,
     ...extra,
   })

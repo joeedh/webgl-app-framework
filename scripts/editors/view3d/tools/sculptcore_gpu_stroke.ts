@@ -10,12 +10,7 @@
  * readbacks, undo requests, and the stroke-end apply can never interleave.
  */
 
-import {
-  GpuBrushData,
-  GpuBrushInfo,
-  IWasmInterface,
-  SculptHandle,
-} from '@sculptcore/api/api'
+import {GpuBrushData, GpuBrushInfo, IWasmInterface, SculptHandle} from '@sculptcore/api/api'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 
 import {GpuBrushStroke, GpuBrushStats, ScatterTables} from '../../../webgpu/brush_compute'
@@ -92,11 +87,11 @@ function ensureDebugSurface(): GpuBrushDebug {
           stats  : this.lastStats,
           session: c
             ? {
-                kernel     : c.stroke.kernel,
-                elemCount  : c.stroke.elemCount,
-                uniqueCount: c.wasm.GpuBrush_info(c.session, GpuBrushInfo.UNIQUE_COUNT),
-                nodeCount  : c.wasm.GpuBrush_info(c.session, GpuBrushInfo.NODE_COUNT),
-                dabGen     : c.wasm.GpuBrush_info(c.session, GpuBrushInfo.DAB_GEN),
+                kernel              : c.stroke.kernel,
+                elemCount           : c.stroke.elemCount,
+                uniqueCount         : c.wasm.GpuBrush_info(c.session, GpuBrushInfo.UNIQUE_COUNT),
+                nodeCount           : c.wasm.GpuBrush_info(c.session, GpuBrushInfo.NODE_COUNT),
+                dabGen              : c.wasm.GpuBrush_info(c.session, GpuBrushInfo.DAB_GEN),
                 lastBrushUniformsHex: hex(c.wasm.GpuBrush_data(c.session, GpuBrushData.BRUSH_UNIFORMS)),
                 lastCtxUniformsHex  : hex(c.wasm.GpuBrush_data(c.session, GpuBrushData.CTX_UNIFORMS)),
               }
@@ -205,10 +200,7 @@ export class GpuStrokeController {
       // Kernel-map gate (M2 kelvinlet, M4 grab). Other tools stay CPU until
       // their kernels are A/B-gated per gpuGlobalBrushes.md non-goals. Grab
       // soaks behind its own flag (M6 default decision).
-      if (
-        args.brushType !== (SculptBrushes.KELVINLET as number) &&
-        args.brushType !== (SculptBrushes.GRAB as number)
-      ) {
+      if (args.brushType !== (SculptBrushes.KELVINLET as number) && args.brushType !== (SculptBrushes.GRAB as number)) {
         return undefined
       }
       if (
@@ -242,7 +234,7 @@ export class GpuStrokeController {
         wasm: args.wasm,
         session,
         capture,
-        log : (msg) => console.warn(`[gpu-brush] ${msg}`),
+        log: (msg) => console.warn(`[gpu-brush] ${msg}`),
       })
       const ctl = new GpuStrokeController(args.wasm, args.mesh, session, stroke, shadowOn, debug)
       void stroke.begin().then((ok) => {
@@ -351,7 +343,7 @@ export class GpuStrokeController {
       }
       this.stroke.setScatter({mapBuf: cache.mapBuf, owners})
       if (missing > 0) {
-        console.warn(`[gpu-brush] scatter: ${missing} node VBO(s) not cached yet (will readback-render)`) 
+        console.warn(`[gpu-brush] scatter: ${missing} node VBO(s) not cached yet (will readback-render)`)
       }
     } catch (e) {
       console.warn('[gpu-brush] scatter setup failed; staying on readback:', e)

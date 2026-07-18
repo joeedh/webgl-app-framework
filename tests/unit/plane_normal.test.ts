@@ -5,12 +5,7 @@
  * surface normal otherwise. brush_enums.ts is dependency-free, so the real
  * module loads here (unlike brush_base.ts, which drags in path.ux).
  */
-import {
-  SculptTools,
-  PlaneNormalModes,
-  isPlaneFamilyTool,
-  resolvePlaneDabNormal,
-} from '../../scripts/brush/brush_enums'
+import {SculptTools, PlaneNormalModes, isPlaneFamilyTool, resolvePlaneDabNormal} from '../../scripts/brush/brush_enums'
 
 /** Minimal stand-in for path.ux Vector3 (copy/negate/normalize subset). */
 class Vec3 {

@@ -83,7 +83,7 @@ import {
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../../addons/builtin/mesh/src/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
 import type {ViewContext} from '../../../core/context.js'
-import { PaintSample } from './pbvh_paintsample.js';
+import {PaintSample} from './pbvh_paintsample.js'
 
 //grab data field definition
 const GEID = 0

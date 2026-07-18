@@ -159,9 +159,9 @@ function runMultiresTest(
   if (!dump.evalResult?.amp) throw new Error(`${backend} dump has no stencilAmplifyTest result`)
   if (!dump.evalResult?.layers) throw new Error(`${backend} dump has no multiresLayerTest result`)
   return {
-    base: dump.evalResult.base,
-    vdm: dump.evalResult.vdm,
-    amp: dump.evalResult.amp,
+    base  : dump.evalResult.base,
+    vdm   : dump.evalResult.vdm,
+    amp   : dump.evalResult.amp,
     layers: dump.evalResult.layers,
   }
 }

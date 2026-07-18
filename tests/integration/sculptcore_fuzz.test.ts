@@ -99,7 +99,14 @@ function runFuzz(electronExe: string, backend: 'wasm' | 'native'): FuzzTestResul
     // The process crashed (segfault / abort): if a partial dump exists use it,
     // else synthesize a failure so the assertion reports the crash.
     if (!fs.existsSync(out)) {
-      return {ok: false, error: `electron process died: ${String(err)}`, seed: SEED, iters: ITERS, ranStrokes: -1, log: []}
+      return {
+        ok: false,
+        error: `electron process died: ${String(err)}`,
+        seed: SEED,
+        iters: ITERS,
+        ranStrokes: -1,
+        log: [],
+      }
     }
   }
   if (!fs.existsSync(out)) throw new Error(`${backend} dump not written to ${out}`)

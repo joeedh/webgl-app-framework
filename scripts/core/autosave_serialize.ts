@@ -21,11 +21,7 @@ import {
   setDeferredBlobCollector,
   setDeferredBlobResolver,
 } from './serialize_cache'
-import {
-  type AutosaveBlob,
-  assembleAutosaveContainer,
-  parseAutosaveContainer,
-} from './autosave_format'
+import {type AutosaveBlob, assembleAutosaveContainer, parseAutosaveContainer} from './autosave_format'
 import {compressMeshBlob} from '../util/lz4'
 
 /** lz4-frame each raw `Mesh_serializeRaw` payload into a `SCULPT00` blob.

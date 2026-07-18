@@ -139,7 +139,21 @@ function vdmTest(): VdmTestResult {
 
     const store = wasm.VdmStore_new(512, 32)
     try {
-      result.texelsTouched = wasm.Mesh_vdmSplatDab(mesh.mesh, mesh.spatial, store, 0, 0, R, 0, 0, 1, radius, 1.0, 0.5, 0)
+      result.texelsTouched = wasm.Mesh_vdmSplatDab(
+        mesh.mesh,
+        mesh.spatial,
+        store,
+        0,
+        0,
+        R,
+        0,
+        0,
+        1,
+        radius,
+        1.0,
+        0.5,
+        0
+      )
       const sb = store as unknown as VdmStoreBound
       result.tileCount = sb.tileCount()
 
