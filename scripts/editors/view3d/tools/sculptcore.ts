@@ -13,6 +13,8 @@ import {
   util,
   Vector3,
   Vector4,
+  IconButton,
+  Button,
 } from '../../../path.ux/pathux'
 import {FeatureFlags} from '../../../core/feature-flag'
 import {ToolMode, type IToolModeDefine} from '../view3d_toolmode'
@@ -402,8 +404,21 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip.prop(path + '.flag[SHARED_SIZE]', PackFlags.HIDE_CHECK_MARKS)
     // Via the ToolOp, not the raw `radiusMode` datapath: switching the unit has
     // to rescale the stored radius or the brush changes size on the switch.
-    strip.tool('brush.set_radius_mode(mode=SCREEN)')
-    strip.tool('brush.set_radius_mode(mode=WORLD)')
+    const screenRadiusMode = strip.tool('brush.set_radius_mode(mode=SCREEN)')
+    const worldRadiusMode = strip.tool('brush.set_radius_mode(mode=WORLD)')
+
+    if (screenRadiusMode) {
+      if (!(screenRadiusMode instanceof IconButton)) {
+        screenRadiusMode.name = 'Screen'
+      }
+      screenRadiusMode.title = 'Set brush radius space to screen'
+    }
+    if (worldRadiusMode) {
+      if (!(worldRadiusMode instanceof IconButton)) {
+        worldRadiusMode.name = 'World'
+      }
+      worldRadiusMode.title = 'Set brush radius space to world'
+    }
 
     strip.prop(path + '.dynamics.strength.useDynamics')
     strip.prop(path + '.strength')

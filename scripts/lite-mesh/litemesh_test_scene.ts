@@ -60,6 +60,9 @@ import './litemesh_materialfragtest_support'
 import './litemesh_selectsimilartest_support'
 // Side-effect: registers globalThis.__colorMixTest for the color-brush mix-mode test.
 import './litemesh_colormixtest_support'
+// Side-effect: registers the example-scene builders (example-multires-sphere,
+// example-texture-cube) used to generate the shipped examples/tests/*.wproj files.
+import './litemesh_example_scenes'
 
 /**
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
