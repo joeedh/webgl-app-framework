@@ -98,6 +98,10 @@ export interface StrokeDriverOptions {
   strokeMethod?: StrokeMethod
   /** ANCHORED only: which scalar the anchor->cursor drag drives live. */
   anchoredLiveMode?: AnchoredLiveMode
+  /** `params.radius` is in world units (BrushRadiusModes.WORLD) rather than
+   * screen px. The driver converts at the point of use — spacing walks and the
+   * anchored live radius — so a world-unit brush never gets read as pixels. */
+  radiusIsWorld?: boolean
 }
 
 interface ControlPoint {
@@ -419,7 +423,8 @@ export class BrushStrokeDriver {
     } else {
       const dragPx = Math.sqrt(dx * dx + dy * dy)
       if (dragPx > 1e-5) {
-        ps.radius = dragPx
+        // ps.radius rides in the brush's own unit (see resolveWorldRadius).
+        ps.radius = this.opts.radiusIsWorld ? this.worldRadiusAt(anchor.world, dragPx) : dragPx
       }
     }
 
@@ -453,16 +458,19 @@ export class BrushStrokeDriver {
     const worldB = crToBezier(p0.world, p1.world, p2.world, p3.world, ALPHA)
 
     const spacing = p2.params.spacing
-    const radiusPx = p2.params.radius
+    const radius = p2.params.radius
 
     let drivingB: Cubic
     let spacingDist: number
     if (this.opts.spaceMode === StrokeSpaceMode.WORLD) {
       drivingB = worldB
-      const worldRadius = this.worldRadiusAt(evalCubic(worldB, 0.5), radiusPx)
+      const worldRadius = this.opts.radiusIsWorld ? radius : this.worldRadiusAt(evalCubic(worldB, 0.5), radius)
       spacingDist = Math.max(spacing * 2 * worldRadius, 1e-5)
     } else {
       drivingB = screenB
+      // A world-unit radius must resolve to px before driving the screen walk,
+      // or sub-pixel spacing floods the stroke with dabs.
+      const radiusPx = this.opts.radiusIsWorld ? this.screenRadiusAt(evalCubic(worldB, 0.5), radius) : radius
       spacingDist = Math.max(spacing * 2 * radiusPx, 1e-5)
     }
 
@@ -520,6 +528,12 @@ export class BrushStrokeDriver {
     const w = proj.project(p, this._rendermat)
     const gl = proj.glSize()
     return (radiusPx / Math.max(gl[0], gl[1])) * Math.abs(w)
+  }
+
+  /** Inverse of worldRadiusAt: world-unit radius -> screen px at a world point. */
+  private screenRadiusAt(worldP: Vec, worldRadius: number): number {
+    const worldPerPx = this.worldRadiusAt(worldP, 1)
+    return worldRadius / Math.max(worldPerPx, 1e-12)
   }
 
   /** World point -> object-local point via the batch's world->local snapshot

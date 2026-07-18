@@ -18,6 +18,7 @@ import {
 import type {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {
   BrushFlags,
+  BrushRadiusModes,
   DynTopoEdgeModeSC,
   DynTopoFlagsSC,
   SculptTools,
@@ -446,7 +447,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     let p: Vector3
     let normal: Vector3
     let isectFace = -1
-    let isect: ReturnType<mesh.rayCast> | undefined
+    let isect: ReturnType<LiteMesh['rayCast']> | undefined
 
     if (brush.strokeMethod === StrokeMethod.ANCHORED) {
       // Anchored: the driver already resolved the fixed dab position/normal
@@ -1316,6 +1317,7 @@ window._sculptcoreStrokeTester = {
       objectMatrix    : () => tool.getObjectMatrix(),
       strokeMethod    : tool.getStrokeMethod(),
       anchoredLiveMode: tool.getAnchoredLiveMode(),
+      radiusIsWorld   : resolvedBrush.radiusMode === BrushRadiusModes.WORLD,
     })
 
     // Normalized (0..1) viewport coords -> window/client coords, undoing the

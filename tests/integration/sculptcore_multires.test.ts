@@ -27,7 +27,8 @@ import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {bootDump, resolveNwjsExe, NWJS_APP_DIR} from './nwjs_boot'
-import {decodePngGray, meanAbsDiff, type GrayImage} from '../lib/png_gray'
+import {decodePngGray, meanAbsDiff} from '../lib/png_gray'
+import type {GrayImage} from '../lib/png_gray'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')

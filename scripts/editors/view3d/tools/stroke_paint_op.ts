@@ -12,7 +12,7 @@ import * as util from '../../../util/util.js'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {PaintSample} from './pbvh_paintsample.js'
 import {BrushProperty, PaintSampleProperty, PaintToolModeBase} from './pbvh_base.js'
-import {BrushFlags, SculptTools} from '../../../brush/index'
+import {BrushFlags, BrushRadiusModes, SculptTools} from '../../../brush/index'
 import {
   AnchoredLiveMode,
   BrushStrokeDriver,
@@ -191,6 +191,7 @@ export abstract class StrokeDriverOp<
       objectMatrix    : () => this.getObjectMatrix(),
       strokeMethod    : this.getStrokeMethod(),
       anchoredLiveMode: this.getAnchoredLiveMode(),
+      radiusIsWorld   : this.inputs.brush.getValue().radiusMode === BrushRadiusModes.WORLD,
     })
 
     if (this.timer !== undefined) {
