@@ -189,8 +189,10 @@ const FLAG_COMPRESSED = 2
 /** Header length before the lz4 payload: magic(8)+flags(1)+ver(3)+u32*3(12). */
 const MESH_HEADER_LEN = 24
 
-/** The mesh blob format version `serial::writeMesh` stamps (kMeshFormatVersion). */
-export const MESH_FORMAT_VERSION = 3
+/** The mesh blob format version `serial::writeMesh` stamps. Must match C++
+ * `serial::kMeshFormatVersion` (sculptcore/source/mesh/mesh_serialize.h); the
+ * cross-language check in tests/unit/lz4.test.ts fails the build on drift. */
+export const MESH_FORMAT_VERSION = 4
 
 function writeU32LE(b: Uint8Array, o: number, v: number): void {
   b[o] = v & 0xff

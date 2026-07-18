@@ -7,6 +7,9 @@
  * `LZ4_decompress_safe`) is exercised by the sculptcore serialize round-trip
  * integration test.
  */
+import {readFileSync} from 'fs'
+import {fileURLToPath} from 'url'
+import {dirname, resolve} from 'path'
 import {
   lz4Compress,
   lz4Decompress,
@@ -93,7 +96,6 @@ describe('mesh-blob container', () => {
     expect(blob[11]).toBe(1)
 
     const parts = splitMeshBlob(blob)
-    expect(parts.meshFormatVersion).toBe(MESH_FORMAT_VERSION)
     expect(parts.rawSize).toBe(n)
 
     const back = decompressMeshBlob(blob)
@@ -102,5 +104,23 @@ describe('mesh-blob container', () => {
 
   test('rejects a non-SCULPT00 blob', () => {
     expect(() => splitMeshBlob(new Uint8Array(24))).toThrow()
+  })
+})
+
+/* Cross-language drift guard: the TS blob writer stamps MESH_FORMAT_VERSION, but
+ * the C++ reader (serial::readMesh) validates against kMeshFormatVersion. If they
+ * drift, autosave blobs get mislabeled and migrate() runs the wrong upgrade path
+ * on already-current bytes (the v3-over-v4 out-of-bounds read this replaces).
+ * Parse the constant straight out of the C++ header so the two can never diverge
+ * unnoticed. */
+describe('mesh format version parity with C++', () => {
+  test('MESH_FORMAT_VERSION matches serial::kMeshFormatVersion', () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const header = resolve(here, '../../sculptcore/source/mesh/mesh_serialize.h')
+    const src = readFileSync(header, 'utf8')
+    const m = src.match(/kMeshFormatVersion\s*=\s*(\d+)/)
+    expect(m).not.toBeNull()
+    const cppVersion = Number(m![1])
+    expect(MESH_FORMAT_VERSION).toBe(cppVersion)
   })
 })
