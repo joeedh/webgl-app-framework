@@ -1385,6 +1385,30 @@ export class LiteMesh extends SceneObjectData {
     return changed
   }
 
+  /** Append one finer multires level (a smooth subdivision of the current
+   * finest surface, zero displacement), preserving all existing detail, and
+   * attach it as the active level. Returns the new depth (unchanged at the
+   * level cap or without a stack). */
+  multiresAddLevel(): number {
+    if (!this._multires) {
+      return 0
+    }
+    const n = this._multires.addLevel()
+    this._attachMultiresLevel()
+    return n
+  }
+
+  /** Pop the finest multires level — the undo/redo helper for multiresAddLevel.
+   * Returns the new depth. */
+  multiresRemoveTopLevel(): number {
+    if (!this._multires) {
+      return 0
+    }
+    const n = this._multires.removeTopLevel()
+    this._attachMultiresLevel()
+    return n
+  }
+
   /** Tear down the stack and re-adopt the parked cage as a plain mesh. The
    * stack's levels are discarded (the caller snapshots for undo). */
   multiresDelete(): boolean {

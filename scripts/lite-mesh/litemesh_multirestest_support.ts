@@ -933,4 +933,124 @@ function multiresLayerTest(): MultiresLayerTestResult {
 
 ;(globalThis as {__multiresLayerTest?: typeof multiresLayerTest}).__multiresLayerTest = multiresLayerTest
 
-export {multiresTest, multiresVdmTest, stencilAmplifyTest, vdmSculptTest, vdmPersistTest, multiresLayerTest}
+/** `__multiresAddLevelTest()` result — the litemesh.multires_add_level gate. */
+export interface MultiresAddLevelTestResult {
+  ok: boolean
+  error?: string
+  /** Stack depth + finest face count before the grow. */
+  levelsBefore?: number
+  facesBefore?: number
+  /** After the grow: depth (+1), active level (the new finest), face count. */
+  levelsAfter?: number
+  activeAfter?: number
+  facesAfter?: number
+  /** FNV-1a over the new finest-level positions (wasm↔native parity). */
+  postChecksum?: number
+  postFloatCount?: number
+  /** The pre-grow finest surface, and whether it survives the grow bit-exactly. */
+  preservedChecksum?: number
+  preservedMatches?: boolean
+  /** Toolstack undo of the op: restored depth + finest-surface checksum match. */
+  levelsAfterUndo?: number
+  undoChecksum?: number
+  undoMatches?: boolean
+  /** Toolstack redo re-grows; the finest surface reproduces the grow exactly. */
+  levelsAfterRedo?: number
+  redoChecksum?: number
+}
+
+/**
+ * Add-level gate: on a 3-level stack with a real DRAW dab folded into the
+ * finest level, growing one level through the `litemesh.multires_add_level`
+ * ToolOp (a) increments the depth and quadruples the finest face count,
+ * (b) preserves the pre-grow finest surface bit-exactly (lossless grow), and
+ * (c) round-trips through the real toolstack undo/redo. Checksums are the
+ * wasm↔native bit-parity gate.
+ */
+function multiresAddLevelTest(): MultiresAddLevelTestResult {
+  const result: MultiresAddLevelTestResult = {ok: false}
+  const g = globalThis as unknown as {
+    _appstate?: {
+      ctx: {object?: {data?: unknown}; api?: {execTool: (ctx: unknown, p: string) => void}}
+      toolstack: {undo: () => void; redo: () => void}
+    }
+  }
+  try {
+    const app = g._appstate
+    if (!app) throw new Error('no _appstate')
+    const ctx = app.ctx
+    const mesh = ctx.object?.data
+    if (!(mesh instanceof LiteMesh)) throw new Error('active object is not a LiteMesh')
+
+    FeatureFlags.set('sculptcore.multires', true)
+    if (!mesh.multiresEnable(3)) throw new Error('multiresEnable failed')
+
+    // A real DRAW dab on the finest level so the preserved detail is nonzero.
+    const brush = DefaultBrushes.slotMap[SculptTools.DRAW]
+    if (!brush) throw new Error('no default DRAW brush')
+    const base = dumpCoFlat(mesh)
+    let R = 0
+    for (let i = 2; i < base.length; i += 3) {
+      if (base[i] > R) R = base[i]
+    }
+    const saved = {strength: brush.strength, flag: brush.flag, autosmooth: brush.autosmooth}
+    try {
+      brush.autosmooth = 0
+      brush.flag &= ~BrushFlags.ACCUMULATE
+      brush.strength = 1
+      runSculptcoreStroke({mesh, brush, dabs: [{p: [0, 0, R], normal: [0, 0, 1]}], radius: R * 0.25})
+    } finally {
+      brush.strength = saved.strength
+      brush.flag = saved.flag
+      brush.autosmooth = saved.autosmooth
+    }
+
+    const preservedLevel = mesh.multiresLevel
+    result.preservedChecksum = fnv1a(dumpCoFlat(mesh))
+    result.levelsBefore = mesh.multiresLevels
+    result.facesBefore = mesh.mesh.f.count
+
+    // Grow one level through the real ToolOp.
+    ctx.api?.execTool(ctx, 'litemesh.multires_add_level()')
+    result.levelsAfter = mesh.multiresLevels
+    result.activeAfter = mesh.multiresLevel
+    result.facesAfter = mesh.mesh.f.count
+    const post = dumpCoFlat(mesh)
+    result.postChecksum = fnv1a(post)
+    result.postFloatCount = post.length
+
+    // The pre-grow finest level survives the grow bit-exactly.
+    mesh.multiresSetLevel(preservedLevel)
+    result.preservedMatches = fnv1a(dumpCoFlat(mesh)) === result.preservedChecksum
+    mesh.multiresSetLevel(mesh.multiresLevels)
+
+    // Toolstack undo/redo of the add-level op.
+    app.toolstack.undo()
+    result.levelsAfterUndo = mesh.multiresLevels
+    mesh.multiresSetLevel(preservedLevel)
+    result.undoChecksum = fnv1a(dumpCoFlat(mesh))
+    result.undoMatches = result.undoChecksum === result.preservedChecksum
+
+    app.toolstack.redo()
+    result.levelsAfterRedo = mesh.multiresLevels
+    result.redoChecksum = fnv1a(dumpCoFlat(mesh))
+
+    mesh.multiresDelete()
+    result.ok = true
+  } catch (err) {
+    result.error = String(err instanceof Error ? err.stack ?? err.message : err)
+  }
+  return result
+}
+
+;(globalThis as {__multiresAddLevelTest?: typeof multiresAddLevelTest}).__multiresAddLevelTest = multiresAddLevelTest
+
+export {
+  multiresTest,
+  multiresVdmTest,
+  stencilAmplifyTest,
+  vdmSculptTest,
+  vdmPersistTest,
+  multiresLayerTest,
+  multiresAddLevelTest,
+}

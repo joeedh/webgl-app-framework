@@ -116,6 +116,26 @@ interface MultiresLayerTestResult {
   layerCountAfterRestore?: number
 }
 
+/** `__multiresAddLevelTest()` result — the litemesh.multires_add_level gate. */
+interface MultiresAddLevelResult {
+  ok: boolean
+  error?: string
+  levelsBefore?: number
+  facesBefore?: number
+  levelsAfter?: number
+  activeAfter?: number
+  facesAfter?: number
+  postChecksum?: number
+  postFloatCount?: number
+  preservedChecksum?: number
+  preservedMatches?: boolean
+  levelsAfterUndo?: number
+  undoChecksum?: number
+  undoMatches?: boolean
+  levelsAfterRedo?: number
+  redoChecksum?: number
+}
+
 function runMultiresTest(
   nwExe: string,
   backend: 'wasm' | 'native'
@@ -124,6 +144,7 @@ function runMultiresTest(
   vdm: MultiresVdmTestResult
   amp: StencilAmplifyResult
   layers: MultiresLayerTestResult
+  addLevel: MultiresAddLevelResult
 } {
   const dump = bootDump(
     nwExe,
@@ -139,7 +160,7 @@ function runMultiresTest(
       '--scene-arg',
       'subdiv=6',
       '--eval',
-      'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest(), layers: __multiresLayerTest()}',
+      'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest(), layers: __multiresLayerTest(), addLevel: __multiresAddLevelTest()}',
       // Async driver: the harness awaits each eval's RESULT, so return the
       // promise chain (top-level await is not legal in an eval'd script).
       '--eval',
@@ -152,17 +173,20 @@ function runMultiresTest(
       vdm?: MultiresVdmTestResult
       amp?: StencilAmplifyResult
       layers?: MultiresLayerTestResult
+      addLevel?: MultiresAddLevelResult
     }
   }
   if (!dump.evalResult?.base) throw new Error(`${backend} dump has no multiresTest result`)
   if (!dump.evalResult?.vdm) throw new Error(`${backend} dump has no multiresVdmTest result`)
   if (!dump.evalResult?.amp) throw new Error(`${backend} dump has no stencilAmplifyTest result`)
   if (!dump.evalResult?.layers) throw new Error(`${backend} dump has no multiresLayerTest result`)
+  if (!dump.evalResult?.addLevel) throw new Error(`${backend} dump has no multiresAddLevelTest result`)
   return {
-    base  : dump.evalResult.base,
-    vdm   : dump.evalResult.vdm,
-    amp   : dump.evalResult.amp,
-    layers: dump.evalResult.layers,
+    base    : dump.evalResult.base,
+    vdm     : dump.evalResult.vdm,
+    amp     : dump.evalResult.amp,
+    layers  : dump.evalResult.layers,
+    addLevel: dump.evalResult.addLevel,
   }
 }
 
@@ -194,6 +218,7 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
   const vdmResults = new Map<'wasm' | 'native', MultiresVdmTestResult>()
   const ampResults = new Map<'wasm' | 'native', StencilAmplifyResult>()
   const layerResults = new Map<'wasm' | 'native', MultiresLayerTestResult>()
+  const addLevelResults = new Map<'wasm' | 'native', MultiresAddLevelResult>()
 
   beforeAll(() => {
     for (const backend of backends) {
@@ -202,6 +227,7 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
       vdmResults.set(backend, r.vdm)
       ampResults.set(backend, r.amp)
       layerResults.set(backend, r.layers)
+      addLevelResults.set(backend, r.addLevel)
     }
   }, 600000)
 
@@ -253,6 +279,46 @@ maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () 
   })
 
   const crossTest = haveNative ? test : test.skip
+
+  // --- multires_add_level: grow one level, lossless + undoable ---
+
+  test.each(eachBackend)('%s: add-level driver ran cleanly', (backend) => {
+    const r = addLevelResults.get(backend)!
+    if (!r.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[sculptcore-multires] ${backend} add-level driver error:\n${r.error}`)
+    }
+    expect(r.ok).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: the op grows the stack by one and quadruples the finest faces', (backend) => {
+    const r = addLevelResults.get(backend)!
+    expect(r.levelsBefore).toBe(3)
+    expect(r.levelsAfter).toBe(4)
+    expect(r.activeAfter).toBe(4)
+    expect(r.facesAfter).toBe(r.facesBefore! * 4)
+  })
+
+  test.each(eachBackend)('%s: the grow preserves the pre-grow finest surface bit-exactly', (backend) => {
+    expect(addLevelResults.get(backend)!.preservedMatches).toBe(true)
+  })
+
+  test.each(eachBackend)('%s: toolstack undo/redo of add-level round-trips exactly', (backend) => {
+    const r = addLevelResults.get(backend)!
+    expect(r.levelsAfterUndo).toBe(3)
+    expect(r.undoMatches).toBe(true)
+    expect(r.levelsAfterRedo).toBe(4)
+    expect(r.redoChecksum).toBe(r.postChecksum)
+  })
+
+  crossTest('add-level grow is checksum-identical across backends', () => {
+    const wasm = addLevelResults.get('wasm')!
+    const native = addLevelResults.get('native')!
+    expect(native.postFloatCount).toBe(wasm.postFloatCount)
+    expect(native.postChecksum).toBe(wasm.postChecksum)
+    expect(native.preservedChecksum).toBe(wasm.preservedChecksum)
+  })
+
   crossTest('level meshes and refit results are checksum-identical across backends', () => {
     const wasm = results.get('wasm')!
     const native = results.get('native')!

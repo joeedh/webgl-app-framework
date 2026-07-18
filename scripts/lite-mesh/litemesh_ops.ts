@@ -819,6 +819,53 @@ export class MultiresDownRefitOp extends MultiresOpBase {
 ToolOp.register(MultiresDownRefitOp)
 
 /**
+ * Append one finer multires level (a smooth Catmull-Clark subdivision of the
+ * current finest surface) to the active stack, preserving all existing detail
+ * and attaching the new finest level. Undo pops the freshly-added level —
+ * exact, because a newly added level carries zero displacement. Refused while a
+ * VDM store is attached: its Ptex texels are bound to the current finest-grid
+ * resolution, so growing the stack would desync them (delete VDM first).
+ */
+export class MultiresAddLevelOp extends MultiresOpBase {
+  _added = false
+
+  static tooldef() {
+    return {
+      toolpath: 'litemesh.multires_add_level',
+      uiname  : 'Add Multires Level',
+      inputs  : {},
+    }
+  }
+
+  undoPre(_ctx: ToolContext): void {}
+  calcUndoMem(): number {
+    return 0
+  }
+
+  exec(ctx: ToolContext) {
+    const mesh = this._getMesh(ctx)
+    this._added = false
+    if (!mesh?.multiresActive || mesh.hasVdm) {
+      return
+    }
+    const before = mesh.multiresLevels
+    this._added = mesh.multiresAddLevel() > before
+    mesh.regenBounds()
+    window.redraw_all?.()
+  }
+
+  undo(ctx: ToolContext): void {
+    const mesh = this._getMesh(ctx)
+    if (mesh?.multiresActive && this._added) {
+      mesh.multiresRemoveTopLevel()
+      mesh.regenBounds()
+      window.redraw_all?.()
+    }
+  }
+}
+ToolOp.register(MultiresAddLevelOp)
+
+/**
  * Delete the multires stack, re-adopting the untouched cage as a plain mesh.
  * The levels' displacement lives in the grids store, so undo rebuilds the
  * stack from the cage and restores a store-blob snapshot (topology-compatible
