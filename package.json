@@ -10,6 +10,7 @@
   "chromium-args": "--enable-features=SharedArrayBuffer,WebGPU --allow-running-insecure-content --ignore-gpu-blocklist --enable-unsafe-webgpu",
   "scripts": {
     "build": "node tools/esbuilder.js",
+    "build:release": "node tools/esbuilder.js --release",
     "setup-sculptcore": "cd sculptcore && node make.mjs install-emsdk && node make.mjs fetch-wgpu-native && node make.mjs install-tools",
     "configure-all": "cd sculptcore && node make.mjs configure && node make.mjs codegen",
     "build-all": "cd sculptcore && node make.mjs codegen && node make.mjs build && node make.mjs build native && node make.mjs build node --runtime nw && cd .. && node tools/esbuilder.js",

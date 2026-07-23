@@ -19,6 +19,9 @@
 - Install deps: `pnpm i`
 - Install language server: `pnpm install -g @vtsls/language-server typescript && pnpm install -g typescript-language-server && claude -p "/plugin install typescript-lsp@claude-plugins-official"`
 - Build: `pnpm build`
+- Release build (no source maps; what the Pages CI ships): `pnpm build:release`
+  plus `node sculptcore/make.mjs build wasm --release` —
+  see [documentation/releaseBuild.md](documentation/releaseBuild.md)
 - Typecheck: `pnpm typecheck`
 - Start web server: `pnpm serv`
 

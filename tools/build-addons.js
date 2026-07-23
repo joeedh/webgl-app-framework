@@ -9,6 +9,7 @@
  *   node tools/build-addons.js          # one-shot build
  *   node tools/build-addons.js --watch  # watch mode
  *   node tools/build-addons.js --include-fixtures  # also build tests/fixtures/addons/*
+ *   node tools/build-addons.js --release  # release build: no source maps
  *
  * Each addon is bundled as ESM with `splitting: true` and shared chunks in
  * `build/addons/_chunks/`. The bundling currently inlines `scripts/*` imports
@@ -60,6 +61,8 @@ function frameworkGlobalsStubPlugin() {
 const args = process.argv.slice(2)
 const WATCH = args.includes('--watch') || args.includes('-w')
 const INCLUDE_FIXTURES = args.includes('--include-fixtures')
+// Passed through by tools/esbuilder.js --release. See documentation/releaseBuild.md.
+const RELEASE = args.includes('--release')
 
 const BUILTIN_DIR = Path.join(REPO_ROOT, 'addons', 'builtin')
 const FIXTURE_DIR = Path.join(REPO_ROOT, 'tests', 'fixtures', 'addons')
@@ -100,7 +103,7 @@ function buildOptionsFor(entries) {
     outdir     : OUT_DIR,
     bundle     : true,
     target     : 'es2022',
-    sourcemap  : 'inline',
+    sourcemap  : RELEASE ? false : 'inline',
     minify     : false,
     treeShaking: false,
     logLevel   : 'info',

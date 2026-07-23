@@ -9,6 +9,25 @@ const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..')
 const MAIN_META_PATH = Path.join(REPO_ROOT, 'build', 'meta-main.json')
 
+// Release build mode (`pnpm build:release`, used by the Pages CI): no source
+// maps anywhere — this bundle plus, via buildAddons(), the addon bundles.
+// See documentation/releaseBuild.md.
+const RELEASE = process.argv.includes('--release')
+
+/* Sourcemap mode. --release wins (none emitted at all); otherwise
+ * ESBUILD_SOURCEMAP (inline | external | linked | both | none), defaulting to
+ * inline for local dev — one file, no extra fetch. */
+function resolveSourcemap() {
+  if (RELEASE) {
+    return false
+  }
+  const mode = process.env.ESBUILD_SOURCEMAP
+  if (!mode) {
+    return 'inline'
+  }
+  return mode === 'none' || mode === 'false' ? false : mode
+}
+
 let options = {
   entryPoints: [
     './scripts/entry_point.js',
@@ -32,11 +51,7 @@ let options = {
   outdir     : './build',
   bundle     : true,
   target     : 'es2022',
-  // Overridable for the Pages build (ESBUILD_SOURCEMAP=external) so the served
-  // entry_point.js isn't bloated by its ~20 MB inline map. Defaults to inline
-  // for local dev (single file, no extra fetch). Accepts any esbuild sourcemap
-  // mode: inline | external | linked | both.
-  sourcemap  : process.env.ESBUILD_SOURCEMAP || 'inline',
+  sourcemap  : resolveSourcemap(),
   minify     : false,
   treeShaking: false,
   logLevel   : 'info',
@@ -93,6 +108,7 @@ async function buildAddons(opts = {}) {
   const args = ['./tools/build-addons.js']
   if (opts.watch) args.push('--watch')
   if (opts.includeFixtures) args.push('--include-fixtures')
+  if (opts.release) args.push('--release')
   const {spawn} = await import('child_process')
   return new Promise((resolve, reject) => {
     const proc = spawn('node', args, {stdio: 'inherit'})
@@ -103,7 +119,7 @@ async function buildAddons(opts = {}) {
 
 const handlers = {
   async help() {
-    console.log('\nUsage: esbuilder --watch,-w --help\n')
+    console.log('\nUsage: esbuilder --watch,-w --release --help\n')
   },
   async build() {
     const result = await esbuild.build(options)
@@ -113,7 +129,7 @@ const handlers = {
       fs.mkdirSync(Path.dirname(MAIN_META_PATH), {recursive: true})
       fs.writeFileSync(MAIN_META_PATH, JSON.stringify(result.metafile))
     }
-    await buildAddons()
+    await buildAddons({release: RELEASE})
   },
 
   async watch() {

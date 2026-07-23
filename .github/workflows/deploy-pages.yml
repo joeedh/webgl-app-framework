@@ -58,7 +58,7 @@ jobs:
           path: |
             sculptcore/typescript/build/sculptcore-browser.wasm
             sculptcore/typescript/build/sculptcore-browser.js
-          key: sc-wasm-release-v1-${{ steps.sc.outputs.sha }}-${{ hashFiles('sculptcore/emsdkVersion.txt') }}
+          key: sc-wasm-release-v2-${{ steps.sc.outputs.sha }}-${{ hashFiles('sculptcore/emsdkVersion.txt') }}
 
       # emsdk is a ~2.4 GB git-cloned toolchain; cache it across runs so only the
       # first WASM build (or an emsdk version bump) pays the install cost.
@@ -83,33 +83,23 @@ jobs:
           SBRUSH_SKIP_NATIVE_CODEGEN: '1'
         run: |
           pnpm install --frozen-lockfile          # make.mjs deps (yargs, ...)
-          # Optimized, debug-info-free WASM for end users (vs the default
-          # RelWithDebInfo, which carries DWARF and is ~5x larger).
-          cat > local-build-options.mjs <<'EOF'
-          export default {
-            CMAKE_BUILD_TYPE: 'Release',
-            CMAKE_GENERATOR: 'Ninja',
-            WITH_ASAN: false,
-            WITH_MESHLOG_ABSEIL_HASHMAP: false,
-          }
-          EOF
           if [ ! -x emsdk/emsdk ]; then
             node make.mjs install-emsdk            # git-clones + installs pinned emsdk/cmake/ninja
           fi
+          # --release = CMAKE_BUILD_TYPE=Release: optimized, debug-info-free WASM
+          # for end users (the default RelWithDebInfo carries DWARF and is ~5x
+          # larger). See documentation/releaseBuild.md.
           # No wgpu-native and no native codegen: both are the native (NOT BUILD_WASM)
           # toolchain; the WASM build uses browser WebGPU + checked-in brush headers.
-          node make.mjs configure wasm             # picks up CMAKE_BUILD_TYPE=Release from local-build-options.mjs
-          node make.mjs build wasm                 # internally skips sbrushc (env above); emits sculptcore-browser.{wasm,js}
+          node make.mjs configure wasm --release
+          node make.mjs build wasm --release       # internally skips sbrushc (env above); emits sculptcore-browser.{wasm,js}
 
       # ---- App bundle + site assembly --------------------------------------
-      - name: Bundle app (esbuild)
-        env:
-          # External (not inline) sourcemaps: keeps the served entry_point.js
-          # small (~20 MB inline map moves into a separate .map, fetched only
-          # when devtools are open). esbuild 'external' emits the .map without a
-          # sourceMappingURL comment, so normal page loads never download it.
-          ESBUILD_SOURCEMAP: external
-        run: pnpm build # node tools/esbuilder.js -> ./build
+      # Release mode: no source maps at all, in the main bundle or the addon
+      # bundles (both used to carry a full inline map — ~20 MB on entry_point.js
+      # alone). See documentation/releaseBuild.md.
+      - name: Bundle app (esbuild, release)
+        run: pnpm build:release # node tools/esbuilder.js --release -> ./build
 
       - name: Assemble Pages site
         run: |
@@ -138,6 +128,22 @@ jobs:
           # so no <base> rewrite is needed. SPA-style 404 fallback (inherits the
           # coi-serviceworker injection from the patched index.html):
           cp _site/index.html _site/404.html
+
+      # Regression guard for the release build: a stray source map (or a bundle
+      # still pointing at one) means --release didn't reach one of the esbuild
+      # invocations. Fail loudly rather than shipping tens of MB of maps.
+      - name: Verify no source maps shipped
+        run: |
+          maps=$(find _site -name '*.map' -print)
+          if [ -n "$maps" ]; then
+            echo "release build shipped source maps:"; echo "$maps"; exit 1
+          fi
+          # Inline maps are unambiguous (`sourceMappingURL=data:`); a bare
+          # sourceMappingURL comment can legitimately appear inside vendored
+          # sources, and a real one is already covered by the *.map check.
+          if grep -rl 'sourceMappingURL=data:' _site/build --include='*.js' | head -n 5 | grep .; then
+            echo "release build left inline source maps (files above)"; exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
