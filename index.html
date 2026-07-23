@@ -40,6 +40,52 @@
           background-color: rgba(255, 255, 255, 0);
           opacity: 1.0;
       }
+
+      #loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 1000;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          background-color: rgb(48, 48, 48);
+          color: rgb(200, 200, 200);
+          font-family: sans-serif;
+          font-size: 14px;
+          /* never swallow input, even if a load error leaves this around */
+          pointer-events: none;
+          transition: opacity 0.25s ease-out;
+      }
+
+      #loading-overlay.hidden {
+          opacity: 0;
+      }
+
+      #loading-spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid rgba(255, 255, 255, 0.15);
+          border-top-color: rgb(120, 165, 220);
+          border-radius: 50%;
+          animation: loading-spin 0.9s linear infinite;
+      }
+
+      @keyframes loading-spin {
+          to {
+              transform: rotate(360deg);
+          }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+          #loading-spinner {
+              animation-duration: 2.5s;
+          }
+      }
   </style>
 
   <script type="module">
@@ -80,14 +126,68 @@
       }
     }
 
+    /* Loading overlay: shown from first paint until the app UI exists. */
+    const LOADING_TIMEOUT_MS = 60000
+
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('loading-overlay')
+      if (!overlay || overlay.classList.contains('hidden')) {
+        return
+      }
+
+      overlay.classList.add('hidden')
+      window.setTimeout(() => overlay.remove(), 500)
+    }
+
+    window.hideLoadingOverlay = hideLoadingOverlay
+
+    function loadingOverlayError(msg) {
+      const spinner = document.getElementById('loading-spinner')
+      const text = document.getElementById('loading-text')
+
+      if (spinner) {
+        spinner.style.display = 'none'
+      }
+      if (text) {
+        text.textContent = msg
+      } else {
+        hideLoadingOverlay()
+      }
+    }
+
+    /* appstate.init() runs on a timeout well after init() resolves, so poll for
+       the screen instead of hiding when the module promise settles. */
+    function waitForAppUI(deadline) {
+      if (window._appstate && window._appstate.screen) {
+        hideLoadingOverlay()
+        return
+      }
+
+      if (Date.now() > deadline) {
+        hideLoadingOverlay()
+        return
+      }
+
+      requestAnimationFrame(() => waitForAppUI(deadline))
+    }
+
     window.init = function () {
+      waitForAppUI(Date.now() + LOADING_TIMEOUT_MS)
+
       import("./build/entry_point.js").then(entry_point => {
         entry_point.init();
+      }).catch(err => {
+        console.error(err)
+        loadingOverlayError('Failed to load application; see the console for details.')
       });
     }
   </script>
 </head>
 <body onload="init()">
+<div id="loading-overlay">
+  <div id="loading-spinner"></div>
+  <div id="loading-text">Loading&hellip;</div>
+</div>
 <img id="iconsheet" style="display:none" src="assets/iconsheet.svg"></img>
 <div id="content">
   <canvas id="canvas2d">
