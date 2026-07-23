@@ -25,7 +25,7 @@ import {LiteMesh} from './litemesh'
 setDefaultSceneBuilder((ctx: ToolContext, lib: Library, scene: Scene) => {
   const wasm = getWasmImmediate()!
   // Spherified cube: dimen 50 subdivisions, size 4, fully spherified (sphere=1).
-  const lm = new LiteMesh(wasm.Mesh_createCube(100, 4.0, 1.0))
+  const lm = new LiteMesh(wasm.Mesh_createCube(165, 16.0, 1.0))
   lib.add(lm)
 
   const mat = makeDefaultMaterial()

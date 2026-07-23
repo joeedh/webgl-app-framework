@@ -542,6 +542,7 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.DRAW]
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
+  brush.strength = 0.25
 
   // Layer Draw (retired from the picker in sculptLayersV2; kept for tests):
   // same feel as Draw, no autosmooth — smoothing would write geometry the
@@ -786,6 +787,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush = bmap[SculptTools.DRAW]
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
   brush.rake = 0.0
+  brush.strength = 0.25
   brush.rakeCurvatureFactor = 1.0
 
   brush = bmap[SculptTools.CLAY]

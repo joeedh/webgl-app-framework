@@ -540,6 +540,8 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   constructor(manager: any) {
     super(manager)
 
+    this.tool = SculptTools.DRAW
+    
     this._apiDynTopo = new Proxy(this.dynTopo, {
       get: (target: any, key: string | symbol): any => {
         const brush = this.getBrush()
