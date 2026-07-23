@@ -590,13 +590,18 @@ export function makeDefaultBrushes() {
   brushes['Comb'] = brush
 
   brush = bmap[SculptTools.FILL]
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.planeNormalMode = PlaneNormalModes.VIEW
+  brush.planeoff = 0.0
   brush.autosmooth = 0.5
   brush.strength = 0.5
-  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SQRT)
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
 
   brush = bmap[SculptTools.SCRAPE]
   brush.autosmooth = 0.2
-  brush.strength = 0.5
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.planeNormalMode = PlaneNormalModes.VIEW
+  brush.strength = 0.2
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SQRT)
 
   brush = bmap[SculptTools.INFLATE]
@@ -646,7 +651,6 @@ export function makeDefaultBrushes() {
   brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR
   brush.dynTopo.edgeCount = 550
   brush.dynTopo.decimateFactor = 0.05
-
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.SHARP]
@@ -734,6 +738,7 @@ export function makeDefaultBrushes() {
   brush.smoothProj = 0.85
 
   brush = bmap[SculptTools.KELVINLET]
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
@@ -831,13 +836,19 @@ export function makeDefaultBrushes_MediumRes() {
   brushes[brush.name] = brush
 
   brush = bmap[SculptTools.FILL]
-  brush.autosmooth = 0.5
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.planeNormalMode = PlaneNormalModes.VIEW
+  brush.planeoff = 0.2
+  brush.autosmooth = 0.75
   brush.strength = 0.5
-  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SQRT)
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
 
   brush = bmap[SculptTools.SCRAPE]
   brush.autosmooth = 0.2
-  brush.strength = 0.5
+  brush.spacing = 0.125
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.planeNormalMode = PlaneNormalModes.VIEW
+  brush.strength = 0.2
   brush.rake = 0.0
   brush.rakeCurvatureFactor = 1.0
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SQRT)
@@ -905,6 +916,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.CONSTANT)
 
   brush = bmap[SculptTools.GRAB]
+  brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
   brush.autosmooth = 0.0
   brush.rake = 0.0
   brush.radius = 100
