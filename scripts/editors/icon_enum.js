@@ -151,5 +151,6 @@ export let Icons = {
   SELECTION_OVERLAY      : 143,
   SCULPT_FEATURE_ALIGN   : 144,
   SCULPT_ENHANCE         : 145,
+  SHARED_BACKFACE_CULL   : 146,
 }
 setIconMap(Icons)

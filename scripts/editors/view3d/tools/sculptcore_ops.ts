@@ -259,6 +259,17 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     }
   }
 
+  /** Backface culling in force: the tool mode's scene-wide toggle when the brush
+   * defers to it (BrushFlags.SHARED_CULL_BACKFACES), else the brush's own flag.
+   * Falls back to the brush alone when replayed without a sculptcore toolmode. */
+  resolveCullBackfaces(ctx: ToolContext, brush: SculptBrush): boolean {
+    const toolmode = ctx.toolmode as SculptCorePaintMode | undefined
+    if (toolmode?.resolveCullBackfaces) {
+      return toolmode.resolveCullBackfaces(brush)
+    }
+    return !!(brush.flag & BrushFlags.CULL_BACKFACES)
+  }
+
   getBrush(ctx: ToolContext, ps: PaintSample): IGetBrushRet {
     const brush = this.inputs.brush.getValue()
     // Non-accumulate is the default (ACCUMULATE bit CLEAR). The executor ignores
@@ -273,7 +284,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       wasmBrush: this.wasmBrush,
       wasmExec : this.executor,
       nonAccum,
-      strokeGen: this.curStrokeGen,
+      strokeGen    : this.curStrokeGen,
+      cullBackfaces: this.resolveCullBackfaces(ctx, brush),
     })
 
     this.wasmBrush = result.wasmBrush
@@ -645,6 +657,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         wasmBrush.strokeDirHostSet = false
       }
 
+      // View-normal automasking reads the eye->surface ray in object space.
+      // `viewvec` is already this image's own ray (ps was mirrored above), so
+      // each symmetry image masks against its own silhouette.
+      const vd = (wasmBrush.viewDir as unknown as {vec: number[]}).vec
+      vd[0] = viewvec[0]
+      vd[1] = viewvec[1]
+      vd[2] = viewvec[2]
+
       // GPU stroke branch (plans/gpuGlobalBrushes.md §5): eligibility is
       // decided once, on the stroke's first primary dab (D5) — never
       // mid-stroke. In shadow-verify mode the CPU dab below stays
@@ -657,9 +677,11 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           wasmBrush,
           meshLog: SculptPaintOp.meshLog!,
           brushType,
-          modalRunning  : this.modalRunning,
-          dyntopoEnabled: dtEnabled,
-          autosmooth    : brush.autosmooth,
+          modalRunning     : this.modalRunning,
+          dyntopoEnabled   : dtEnabled,
+          autosmooth       : brush.autosmooth,
+          viewNormalMasking: !!(brush.flag & BrushFlags.AUTOMASK_VIEW_NORMAL),
+          symmetryActive   : this.getSymmetryAxes(ctx) !== 0,
         })
       }
       if (this.gpu) {
@@ -889,6 +911,21 @@ function applyVdmSplatDab(
   )
 }
 
+/** Point a driver stroke's view-normal mask at `viewDir`, reflected by a
+ * SymAxisMap multiplier for a mirror image. A headless driver has no camera, so
+ * an omitted ray turns the mask off for the stroke rather than masking against
+ * some arbitrary default direction. */
+function applyDriverViewDir(wasmBrush: WasmBrush, viewDir: number[] | undefined, mul: Vector3 | undefined): void {
+  if (viewDir === undefined) {
+    wasmBrush.automask_view_normal = false
+    return
+  }
+  const vd = (wasmBrush.viewDir as unknown as {vec: number[]}).vec
+  for (let i = 0; i < 3; i++) {
+    vd[i] = (viewDir[i] ?? 0) * (mul?.[i] ?? 1)
+  }
+}
+
 export function runSculptcoreStroke(opts: {
   mesh: LiteMesh
   brush: SculptBrush
@@ -903,6 +940,10 @@ export function runSculptcoreStroke(opts: {
    * exactly like `SculptPaintOp.applyDab`. The test scene is object-local at the
    * origin, so the world-space dabs here are already in mirror space. */
   symmetryAxes?: number
+  /** Object-space eye->surface ray for view-normal automasking, mirrored per
+   * symmetry image. Omitted (the usual case for a headless driver, which has no
+   * camera) = the mask is forced off for the stroke. */
+  viewDir?: number[]
   /** Test seam: run this sculptcore kernel instead of the tool's mapped one
    * (e.g. LAYERDRAW, whose LAYER_DRAW tool is hidden from the sculpt picker). */
   brushTypeOverride?: SculptBrushes
@@ -955,6 +996,10 @@ export function runSculptcoreStroke(opts: {
   wasmExec.meshLog = meshLog
   wasmExec.beginStep(dtEnabled)
 
+  // The GPU packs its automask at beginStroke, so the primary image's view ray
+  // has to be in place before tryBegin (the loop re-sets it per image).
+  applyDriverViewDir(wasmBrush, opts.viewDir, undefined)
+
   // GPU stroke branch (plans/gpuGlobalBrushes.md): world-space dabs marshal
   // identically on both paths (no per-dab raycast), so this driver is the
   // deterministic §8.2 parity gate. Headless drivers must OPT IN via
@@ -967,9 +1012,11 @@ export function runSculptcoreStroke(opts: {
     wasmBrush,
     meshLog,
     brushType,
-    modalRunning  : false,
-    dyntopoEnabled: dtEnabled,
-    autosmooth    : brush.autosmooth,
+    modalRunning     : false,
+    dyntopoEnabled   : dtEnabled,
+    autosmooth       : brush.autosmooth,
+    viewNormalMasking: opts.viewDir !== undefined && !!(brush.flag & BrushFlags.AUTOMASK_VIEW_NORMAL),
+    symmetryActive   : (opts.symmetryAxes ?? 0) !== 0,
   })
 
   // Expand each input dab into its primary image plus SymAxisMap mirror images
@@ -1017,6 +1064,8 @@ export function runSculptcoreStroke(opts: {
       wasmBrush.writeProps()
       wasmExec.meshLog = meshLog
       pushBrushDeviceInputs(wasmBrush, new PaintSample())
+
+      applyDriverViewDir(wasmBrush, opts.viewDir, img.image === 0 ? undefined : muls[img.image - 1])
 
       // Dyntopo config before the deform (mirrors SculptPaintOp). Undefined = off.
       const dt = brush.dynTopoSC

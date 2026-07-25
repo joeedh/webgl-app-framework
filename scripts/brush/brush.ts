@@ -78,6 +78,8 @@ SculptBrush {
   cavityFactor : float;
   cavityBlurSteps : int;
   cavityCurve : Curve1D;
+  viewNormalLimit : float;
+  viewNormalFalloff : float;
   enhanceRings : int;
   enhanceInner : int;
   radiusMode : int;
@@ -85,7 +87,9 @@ SculptBrush {
 }`
   )
 
-  flag = BrushFlags.SHARED_SIZE
+  // View-normal masking is on by default (silhouette tearing is a defect, not a
+  // stylistic choice); backface culling stays opt-in and follows the tool mode.
+  flag = BrushFlags.SHARED_SIZE | BrushFlags.AUTOMASK_VIEW_NORMAL | BrushFlags.SHARED_CULL_BACKFACES
 
   /** Unit `radius` is in; see BrushRadiusModes and resolveWorldRadius. */
   radiusMode = BrushRadiusModes.SCREEN
@@ -100,6 +104,12 @@ SculptBrush {
   cavityFactor = 1.0
   cavityBlurSteps = 2
   cavityCurve = new Curve1D()
+
+  // View-normal automasking angles, in degrees (sculptcore stores radians).
+  // Full strength until `viewNormalLimit - viewNormalFalloff` off head-on, then
+  // a linear ramp to zero at the limit. Enabled via BrushFlags.AUTOMASK_VIEW_NORMAL.
+  viewNormalLimit = 90.0
+  viewNormalFalloff = 25.0
 
   // Enhance-details brush: outer smoothing depth (feature scale) and inner depth
   // (0 = high-pass / classic unsharp, >=1 = difference-of-smooths band-pass).
@@ -174,10 +184,18 @@ SculptBrush {
     DynTopoSettings.defineAPI(api)
     DynTopoSettingsSC.defineAPI(api)
 
-    bst.flags('flag', 'flag', deleteTsEnumIntegers(BrushFlags), 'Flag').icons({
-      SHARED_SIZE: Icons.SHARED_BRUSH_SIZE,
-      SQUARE     : Icons.SQUARE_BRUSH,
-    })
+    bst
+      .flags('flag', 'flag', deleteTsEnumIntegers(BrushFlags), 'Flag')
+      .icons({
+        SHARED_SIZE          : Icons.SHARED_BRUSH_SIZE,
+        SQUARE               : Icons.SQUARE_BRUSH,
+        SHARED_CULL_BACKFACES: Icons.SHARED_BACKFACE_CULL,
+      })
+      .descriptions({
+        AUTOMASK_VIEW_NORMAL : 'Fade the brush out where the surface turns edge-on to the view',
+        CULL_BACKFACES       : 'Skip geometry facing away from the view',
+        SHARED_CULL_BACKFACES: 'Use the tool mode’s backface-culling setting instead of this brush’s',
+      })
 
     bst
       .float('smoothRadiusMul', 'smoothRadiusMul', 'Smooth Radius')
@@ -242,6 +260,19 @@ SculptBrush {
       .range(0, 8)
       .noUnits()
     bst.curve1d('cavityCurve', 'cavityCurve', 'Cavity Curve')
+
+    bst
+      .float('viewNormalLimit', 'viewNormalLimit', 'View Limit', 'Angle off head-on at which the brush fades out')
+      .range(0.0, 90.0)
+      .step(1.0)
+      .baseUnit('degree')
+      .displayUnit('degree')
+    bst
+      .float('viewNormalFalloff', 'viewNormalFalloff', 'View Falloff', 'Width of the ramp leading up to the limit')
+      .range(0.0, 90.0)
+      .step(1.0)
+      .baseUnit('degree')
+      .displayUnit('degree')
 
     bst
       .int('enhanceRings', 'enhanceRings', 'Detail Scale', 'Enhance-details outer smoothing depth (feature scale)')
@@ -334,6 +365,8 @@ SculptBrush {
     r = r && feq(this.cavityFactor, b.cavityFactor)
     r = r && this.cavityBlurSteps === b.cavityBlurSteps
     r = r && this.cavityCurve.equals(b.cavityCurve)
+    r = r && feq(this.viewNormalLimit, b.viewNormalLimit)
+    r = r && feq(this.viewNormalFalloff, b.viewNormalFalloff)
     r = r && this.enhanceRings === b.enhanceRings
     r = r && this.enhanceInner === b.enhanceInner
     const cavMask = BrushFlags.AUTOMASK_CAVITY | BrushFlags.AUTOMASK_CAVITY_INVERT
@@ -400,6 +433,8 @@ SculptBrush {
     d.add(this.cavityFactor)
     d.add(this.cavityBlurSteps)
     this.cavityCurve.calcHashKey(d)
+    d.add(this.viewNormalLimit)
+    d.add(this.viewNormalFalloff)
     d.add(this.enhanceRings)
     d.add(this.enhanceInner)
     d.add(this.normalfac)
@@ -445,6 +480,8 @@ SculptBrush {
     b.cavityFactor = this.cavityFactor
     b.cavityBlurSteps = this.cavityBlurSteps
     b.cavityCurve = this.cavityCurve.copy()
+    b.viewNormalLimit = this.viewNormalLimit
+    b.viewNormalFalloff = this.viewNormalFalloff
     b.enhanceRings = this.enhanceRings
     b.enhanceInner = this.enhanceInner
     b.autosmooth = this.autosmooth

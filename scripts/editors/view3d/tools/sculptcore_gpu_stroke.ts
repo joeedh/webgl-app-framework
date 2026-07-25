@@ -159,6 +159,12 @@ export interface GpuStrokeBeginArgs {
   modalRunning: boolean
   dyntopoEnabled: boolean
   autosmooth: number
+  /** View-normal automasking is on for this stroke. The GPU packs the automask
+   * once for the whole mesh from the primary dab's view ray, so it can't serve
+   * mirror images that each carry their own reflected ray. */
+  viewNormalMasking: boolean
+  /** Symmetry is mirroring this stroke (more than the primary image). */
+  symmetryActive: boolean
 }
 
 export class GpuStrokeController {
@@ -195,6 +201,12 @@ export class GpuStrokeController {
         return undefined
       }
       if (args.dyntopoEnabled || args.autosmooth > 0) {
+        return undefined
+      }
+      // The packed automask is stroke-static, so a mirrored stroke would mask
+      // every image against the primary's view ray. Stay on the CPU, which
+      // stamps each image's region with its own.
+      if (args.viewNormalMasking && args.symmetryActive) {
         return undefined
       }
       // Kernel-map gate (M2 kelvinlet, M4 grab). Other tools stay CPU until

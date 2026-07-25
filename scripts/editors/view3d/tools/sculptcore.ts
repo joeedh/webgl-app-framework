@@ -58,6 +58,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
    * overlay's seam/sharp edges, but only visible while that overlay is on. */
   drawPolyGroupEdges = false
 
+  /** Scene-wide backface culling for view-normal automasking. Brushes with
+   * BrushFlags.SHARED_CULL_BACKFACES read this instead of their own
+   * BrushFlags.CULL_BACKFACES; see resolveCullBackfaces. */
+  sceneCullBackfaces = false
+
   /** Accumulated dyntopo op counts for the current/last stroke (debug HUD). */
   dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
 
@@ -100,6 +105,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     `
         SculptCorePaintMode {
           dynTopoSC : DynTopoSettingsSC;
+          sceneCullBackfaces : bool;
         }
     `
   )
@@ -260,6 +266,21 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     cav.prop(path + '.brush.flag[AUTOMASK_CAVITY_CURVE]')
     cav.prop(path + '.brush.cavityCurve')
     cav.closed = true
+
+    // View-normal masking. The cull toggle is the scene/brush proxy; the icon
+    // button beside it picks which of the two the proxy is reading.
+    const vnm = col.panel('View Normal Masking')
+    vnm.prop(path + '.brush.flag[AUTOMASK_VIEW_NORMAL]')
+    const cullRow = vnm.row()
+    strip = cullRow.strip()
+    strip.useIcons(false)
+    strip.prop(`scene.tools.${name}.cullBackfaces`)
+    strip = cullRow.strip()
+    strip.useIcons(true)
+    strip.prop(path + '.brush.flag[SHARED_CULL_BACKFACES]', PackFlags.HIDE_CHECK_MARKS)
+    vnm.prop(path + '.brush.viewNormalLimit')
+    vnm.prop(path + '.brush.viewNormalFalloff')
+    vnm.closed = true
 
     // Enhance-details brush params (only used by the Enhance tool).
     const enh = col.panel('Enhance Details')
@@ -450,6 +471,13 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     st.float('sharedBrushRadius', 'sharedBrushRadius', 'Shared Radius').noUnits().range(0, 450).decimalPlaces(2)
     st.float('_brushSizeHelper', 'brushRadius', 'Radius').noUnits().range(0, 450).step(1.0).decimalPlaces(2)
+
+    st.bool('sceneCullBackfaces', 'sceneCullBackfaces', 'Scene Cull Backfaces').description(
+      'Scene-wide backface culling, used by brushes that defer to the tool mode'
+    )
+    st.bool('_cullBackfacesHelper', 'cullBackfaces', 'Cull Backfaces').description(
+      'Skip geometry facing away from the view instead of fading it in with the front side'
+    )
 
     function onchange(this: any): void {
       const pbvh = this.dataref
@@ -768,6 +796,40 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       this.setSharedRadius(val, brush.radiusMode)
     } else {
       brush.radius = val
+    }
+  }
+
+  /** Backface culling actually in force for `brush`: the tool mode's scene-wide
+   * toggle when the brush defers to it, else the brush's own flag. */
+  resolveCullBackfaces(brush: SculptBrush): boolean {
+    if (brush.flag & BrushFlags.SHARED_CULL_BACKFACES) {
+      return this.sceneCullBackfaces
+    }
+    return !!(brush.flag & BrushFlags.CULL_BACKFACES)
+  }
+
+  get _cullBackfacesHelper(): boolean {
+    const brush = this.getBrush()
+
+    if (!brush) {
+      return this.sceneCullBackfaces
+    }
+
+    return this.resolveCullBackfaces(brush)
+  }
+
+  set _cullBackfacesHelper(val: boolean) {
+    const brush = this.getBrush()
+
+    if (!brush || brush.flag & BrushFlags.SHARED_CULL_BACKFACES) {
+      this.sceneCullBackfaces = val
+      return
+    }
+
+    if (val) {
+      brush.flag |= BrushFlags.CULL_BACKFACES
+    } else {
+      brush.flag &= ~BrushFlags.CULL_BACKFACES
     }
   }
 

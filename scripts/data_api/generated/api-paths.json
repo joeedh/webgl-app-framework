@@ -4137,7 +4137,10 @@
         "ACCUMULATE",
         "AUTOMASK_CAVITY",
         "AUTOMASK_CAVITY_INVERT",
-        "AUTOMASK_CAVITY_CURVE"
+        "AUTOMASK_CAVITY_CURVE",
+        "AUTOMASK_VIEW_NORMAL",
+        "CULL_BACKFACES",
+        "SHARED_CULL_BACKFACES"
       ]
     },
     "scene.tools.sculptcore.brush.graph_flag": {
@@ -4709,6 +4712,36 @@
         "FACE_SET_DRAW"
       ]
     },
+    "scene.tools.sculptcore.brush.viewNormalFalloff": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "View Falloff",
+      "description": "Width of the ramp leading up to the limit",
+      "range": [
+        0,
+        90
+      ],
+      "unit": "degree",
+      "decimalPlaces": 4,
+      "step": 1
+    },
+    "scene.tools.sculptcore.brush.viewNormalLimit": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "View Limit",
+      "description": "Angle off head-on at which the brush fades out",
+      "range": [
+        0,
+        90
+      ],
+      "unit": "degree",
+      "decimalPlaces": 4,
+      "step": 1
+    },
     "scene.tools.sculptcore.brushRadius": {
       "kind": "prop",
       "ownerStruct": "SculptCorePaintMode",
@@ -4721,6 +4754,16 @@
       ],
       "decimalPlaces": 2,
       "step": 1
+    },
+    "scene.tools.sculptcore.cullBackfaces": {
+      "kind": "prop",
+      "ownerStruct": "SculptCorePaintMode",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Cull Backfaces",
+      "description": "Skip geometry facing away from the view instead of fading it in with the front side",
+      "decimalPlaces": 4,
+      "step": 0.05
     },
     "scene.tools.sculptcore.drawBVH": {
       "kind": "prop",
@@ -5018,6 +5061,16 @@
       "indexed": false,
       "propType": "BoolProperty",
       "uiname": "Reproject UVs & colors",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
+    "scene.tools.sculptcore.sceneCullBackfaces": {
+      "kind": "prop",
+      "ownerStruct": "SculptCorePaintMode",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Scene Cull Backfaces",
+      "description": "Scene-wide backface culling, used by brushes that defer to the tool mode",
       "decimalPlaces": 4,
       "step": 0.05
     },

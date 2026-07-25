@@ -98,6 +98,18 @@ export enum BrushFlags {
   AUTOMASK_CAVITY_INVERT = 8192,
   /* Reshape the cavity factor through `cavityCurve` instead of the linear remap. */
   AUTOMASK_CAVITY_CURVE = 16384,
+  /* View-normal automasking: fade geometry whose normal turns edge-on to the
+     camera, which is where a dab otherwise tears the silhouette. See
+     documentation/plans/2026-07-25-1138-view-normal-automasking.md. */
+  AUTOMASK_VIEW_NORMAL = 32768,
+  /* Also drop geometry facing away from the view instead of fading it
+     symmetrically with the front-facing side. The brush-local value; whether it
+     or the tool mode's scene-wide toggle is the one that counts is decided by
+     SHARED_CULL_BACKFACES. */
+  CULL_BACKFACES = 65536,
+  /* Read backface culling from the tool mode's scene-wide toggle rather than
+     this brush's own CULL_BACKFACES (the SHARED_SIZE pattern, for culling). */
+  SHARED_CULL_BACKFACES = 131072,
 }
 
 export enum DynTopoModes {

@@ -472,7 +472,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.enhanceRings` | prop | IntProperty | Detail Scale | range 1..8 |
 | `scene.tools.sculptcore.brush.falloff` | prop | Curve1DProperty | Falloff |  |
 | `scene.tools.sculptcore.brush.falloff2` | prop | Curve1DProperty | Falloff |  |
-| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE, AUTOMASK_CAVITY, AUTOMASK_CAVITY_INVERT, AUTOMASK_CAVITY_CURVE} |
+| `scene.tools.sculptcore.brush.flag` | prop | FlagProperty | Flag | enum {SELECT, SHARED_SIZE, DYNTOPO, INVERT_CONCAVE_FILTER, MULTIGRID_SMOOTH, PLANAR_SMOOTH, CURVE_RAKE_ONLY_POS_X, INVERT, LINE_FALLOFF, SQUARE, USE_LINE_CURVE, ACCUMULATE, AUTOMASK_CAVITY, AUTOMASK_CAVITY_INVERT, AUTOMASK_CAVITY_CURVE, AUTOMASK_VIEW_NORMAL, CULL_BACKFACES, SHARED_CULL_BACKFACES} |
 | `scene.tools.sculptcore.brush.graph_flag` | prop | FlagProperty | Graph Flags | enum {1, 2, 4, 8, 16, 32, 64, 128, 256, 384, SELECT, UPDATE, SORT_TAG, CYCLE_TAG, DISABLED, ZOMBIE, SAVE_PROXY, FORCE_SOCKET_INHERIT, FORCE_FLAG_INHERIT, FORCE_INHERIT} |
 | `scene.tools.sculptcore.brush.graph_id` | prop | IntProperty | Graph ID |  |
 | `scene.tools.sculptcore.brush.inputs` | list |  |  |  |
@@ -515,7 +515,10 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.texUser.texture.power` | prop | FloatProperty | Exp | range 0.001..100 |
 | `scene.tools.sculptcore.brush.texUser.texture.scale` | prop | FloatProperty | Scale | range 0.001..2000 |
 | `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, FEATURE_ALIGN, LAYER_DRAW, ENHANCE, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
+| `scene.tools.sculptcore.brush.viewNormalFalloff` | prop | FloatProperty | View Falloff | range 0..90; unit degree |
+| `scene.tools.sculptcore.brush.viewNormalLimit` | prop | FloatProperty | View Limit | range 0..90; unit degree |
 | `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
+| `scene.tools.sculptcore.cullBackfaces` | prop | BoolProperty | Cull Backfaces |  |
 | `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |
 | `scene.tools.sculptcore.drawColPatches` | prop | BoolProperty | Draw Color Patches |  |
 | `scene.tools.sculptcore.drawFeatureOverlay` | prop | BoolProperty | Feature Overlay |  |
@@ -541,6 +544,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.gpuBrushStatsLabel` | prop | StringProperty | GPU Brush Stats |  |
 | `scene.tools.sculptcore.inheritDynTopo` | prop | BoolProperty | Inherit Everything |  |
 | `scene.tools.sculptcore.reprojectCustomData` | prop | BoolProperty | Reproject UVs & colors |  |
+| `scene.tools.sculptcore.sceneCullBackfaces` | prop | BoolProperty | Scene Cull Backfaces |  |
 | `scene.tools.sculptcore.sharedBrushRadius` | prop | FloatProperty | Shared Radius | range 0..450 |
 | `scene.tools.sculptcore.symmetryAxes` | prop | FlagProperty | Symmetry Axes | enum {X, Y, Z} |
 | `scene.tools.sculptcore.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, GRAB, MASK_PAINT, WING_SCRAPE, PINCH, COLOR, POLYGROUP, KELVINLET, FEATURE_ALIGN, ENHANCE, PAINT_SMOOTH} |

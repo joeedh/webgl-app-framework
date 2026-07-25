@@ -366,6 +366,7 @@ export function builSculptcoreBrush({
   mesh,
   nonAccum = false,
   strokeGen = 0,
+  cullBackfaces,
 }: {
   wasm: IWasmInterface
   brush: SculptBrush
@@ -379,6 +380,10 @@ export function builSculptcoreBrush({
    * global) brushes, which are never accumulable. */
   nonAccum?: boolean
   strokeGen?: number
+  /** Backface culling in force for this stroke, already resolved through
+   * BrushFlags.SHARED_CULL_BACKFACES by the tool mode. Omitted = use the
+   * brush's own CULL_BACKFACES flag. */
+  cullBackfaces?: boolean
 }) {
   let freshBrush = false
   if (wasmBrush === undefined) {
@@ -416,6 +421,13 @@ export function builSculptcoreBrush({
   // Enhance-details params (read by the host pre-pass in enhance.h).
   wasmBrush.enhance_rings = brush.enhanceRings
   wasmBrush.enhance_inner = brush.enhanceInner
+  // View-normal automasking: fades verts whose normal turns edge-on to the view
+  // (automask.h). The angles are degrees in TS, radians in the engine; viewDir
+  // itself is set per dab by the caller.
+  wasmBrush.automask_view_normal = !!(brush.flag & BrushFlags.AUTOMASK_VIEW_NORMAL)
+  wasmBrush.cull_backfaces = cullBackfaces ?? !!(brush.flag & BrushFlags.CULL_BACKFACES)
+  wasmBrush.view_normal_limit = brush.viewNormalLimit * (Math.PI / 180)
+  wasmBrush.view_normal_falloff = brush.viewNormalFalloff * (Math.PI / 180)
   wasmBrush.cavity_use_curve = !!(brush.flag & BrushFlags.AUTOMASK_CAVITY_CURVE)
   if (wasmBrush.cavity_use_curve) {
     let ct = 0
