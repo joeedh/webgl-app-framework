@@ -683,6 +683,9 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
   brush.autosmooth = 0.8
+  // Grab-class default: no view-normal masking — it fades the very geometry
+  // being dragged as it rotates toward the silhouette mid-grab.
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE
   brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR
@@ -712,6 +715,7 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.GRAB]
   brush.autosmooth = 0.0
   brush.rake = 0.0
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL // grab-class (see SNAKE note)
   brush.radius = 100
   brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
@@ -778,6 +782,7 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
   brush.autosmooth = 0.0
   brush.rake = 0.0
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL // grab-class (see SNAKE note)
   brush.radius = 100
   brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
@@ -924,6 +929,9 @@ export function makeDefaultBrushes_MediumRes() {
   brush = bmap[SculptTools.SNAKE]
   brush.strength = 0.5
   brush.autosmooth = 0.8
+  // Grab-class default: no view-normal masking — it fades the very geometry
+  // being dragged as it rotates toward the silhouette mid-grab.
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE
   brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR
@@ -956,6 +964,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTHER)
   brush.autosmooth = 0.0
   brush.rake = 0.0
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL // grab-class (see SNAKE note)
   brush.radius = 100
   brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE
@@ -1026,6 +1035,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush = bmap[SculptTools.KELVINLET]
   brush.autosmooth = 0.0
   brush.rake = 0.0
+  brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL // grab-class (see SNAKE note)
   brush.radius = 100
   brush.strokeMethod = StrokeMethod.ANCHORED
   brush.flag &= ~BrushFlags.SHARED_SIZE

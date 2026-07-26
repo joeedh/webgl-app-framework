@@ -365,6 +365,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       col.toolPanel('litemesh.quad_remesh')
     }
 
+    const dbg = col.panel('Debug')
+    dbg.useIcons(false)
+    dbg.prop('object.data.saveTempAttrs')
+
     //panel
     container.flushUpdate()
   }

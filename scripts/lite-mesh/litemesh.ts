@@ -467,6 +467,7 @@ export class LiteMesh extends SceneObjectData {
       _mrData           : arraybuffer(byte) | this.serializeMultires();
       _mrLevels         : int | this.multiresLevels;
       _mrActiveLevel    : int | this.multiresLevel;
+      saveTempAttrs     : bool;
     }
     `
   )
@@ -541,6 +542,13 @@ export class LiteMesh extends SceneObjectData {
     mstruct.bool('showBuiltinAttrs', 'showBuiltinAttrs', 'Show builtin attributes').on('change', function () {
       window.redraw_all?.()
     })
+
+    mstruct.bool(
+      'saveTempAttrs',
+      'saveTempAttrs',
+      'Save Temp Attributes',
+      'Debug: saved files include ALL attribute layers, even the transient (TEMP) ones normally dropped'
+    )
 
     // Category (AttrUse) of the attr selected in the ListBox. The setter rejects
     // roles invalid for the attr's type/domain (validCategories), so offering the
@@ -900,6 +908,15 @@ export class LiteMesh extends SceneObjectData {
         data = resolved
       }
       this.mesh = this.wasm.Mesh_deserialize(data)
+      // A saveTempAttrs file carries stroke-transient stamps whose generation
+      // counters reset with the session — stale stamps would alias fresh
+      // strokes (reused mask factors / orig positions / meshlog capture
+      // elision). The file keeps them for offline analysis; the live session
+      // must not consume them.
+      const nTemp = (this.mesh as unknown as {dropTempAttrs(): number}).dropTempAttrs()
+      if (nTemp > 0) {
+        console.log(`litemesh: dropped ${nTemp} loaded TEMP attribute layer(s)`)
+      }
       // Repair any structural corruption baked into the saved file before the
       // spatial tree is built or any op runs on it (#37). Cheap (returns 0
       // without rebuilding) on a healthy mesh.
@@ -1038,6 +1055,12 @@ export class LiteMesh extends SceneObjectData {
    * sculpt op; the detailed per-error lines go to the console. Capped to keep
    * the file small. */
   repairLog: string[] = []
+
+  /** Debug/repro saves: serialize the engine mesh with ALL attribute layers,
+   * including the TEMP ones a normal save drops (brush orig/automask stamps,
+   * spatial ownership, boundary overlays). Bypasses the blob caches — TEMP
+   * layers change without bumping meshRevision. */
+  saveTempAttrs = false
 
   // Renderable through the material pipeline: in SHOW_RENDER mode the
   // RealtimeEngine BasePass only pushes setRequestedAttrs/setDrawShader to
@@ -1884,6 +1907,12 @@ export class LiteMesh extends SceneObjectData {
     // views are derived (stack topology + grids store, saved via _mrData).
     // Serializing the level view here is exactly the old flatten-on-save bug.
     const persistMesh = this._multiresCage ?? this.mesh
+    persistMesh.serialize_temp = this.saveTempAttrs
+    if (this.saveTempAttrs) {
+      // Debug/repro path: TEMP layers change without bumping meshRevision, so
+      // neither blob cache nor the deferred collector can be trusted here.
+      return this.wasm.Mesh_serialize(persistMesh)
+    }
     // M3 split path: hand the collector either a cached compressed blob or a
     // fresh uncompressed raw payload (the worker lz4-frames it off-thread), and
     // embed only an 8-byte placeholder inline. See autosave_serialize.ts.

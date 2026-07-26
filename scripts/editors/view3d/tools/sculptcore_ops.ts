@@ -101,6 +101,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
   prevPrimaryDabCenter?: Vector3
   curStrokeDir?: Vector3
 
+  /** View-normal mask ray, pinned at the stroke's first primary dab (mirror
+   * images reflect it). The per-dab viewvec drifts with the cursor under
+   * perspective; because mask factors stamp first-touch in leaf-sized blocks,
+   * a drifting ray tears along spatial-node boundaries. Pinning also matches
+   * the GPU pack, which is stroke-static by construction. */
+  strokeViewDir?: Vector3
+
   /** GPU stroke controller (plans/gpuGlobalBrushes.md §5); undefined = CPU
    * path. Decided once per stroke on the first primary dab (D5). */
   gpu?: GpuStrokeController
@@ -180,6 +187,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.prevDabLocal = []
     this.prevPrimaryDabCenter = undefined
     this.curStrokeDir = undefined
+    this.strokeViewDir = undefined
     this.dabSeed = 1
     this.lastDynTopoS = -Infinity
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
@@ -657,13 +665,26 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
         wasmBrush.strokeDirHostSet = false
       }
 
-      // View-normal automasking reads the eye->surface ray in object space.
-      // `viewvec` is already this image's own ray (ps was mirrored above), so
-      // each symmetry image masks against its own silhouette.
+      // View-normal automasking reads the eye->surface ray in object space,
+      // pinned per stroke (see strokeViewDir); each mirror image reflects the
+      // pinned primary ray so it masks against its own silhouette (symmetric
+      // strokes mask symmetrically). Safe because the view factor is DYNAMIC —
+      // evaluated in strength() per dab with this image's ray — never cached
+      // per vertex. (The old per-stroke factor cache initialized whole spatial
+      // leaves from whichever image reached them first, mixing opposed rays in
+      // leaf-sized blocks: the ntest.wproj node-boundary tearing.)
+      if (this.strokeViewDir === undefined) {
+        // The first dab of a stroke is always the primary image.
+        this.strokeViewDir = new Vector3(viewvec)
+      }
+      let maskRay: Vector3 = this.strokeViewDir
+      if (mirrorIdx > 0 && mirrorFlips !== undefined) {
+        maskRay = new Vector3(maskRay).mul(mirrorFlips)
+      }
       const vd = (wasmBrush.viewDir as unknown as {vec: number[]}).vec
-      vd[0] = viewvec[0]
-      vd[1] = viewvec[1]
-      vd[2] = viewvec[2]
+      vd[0] = maskRay[0]
+      vd[1] = maskRay[1]
+      vd[2] = maskRay[2]
 
       // GPU stroke branch (plans/gpuGlobalBrushes.md §5): eligibility is
       // decided once, on the stroke's first primary dab (D5) — never
@@ -677,11 +698,9 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           wasmBrush,
           meshLog: SculptPaintOp.meshLog!,
           brushType,
-          modalRunning     : this.modalRunning,
-          dyntopoEnabled   : dtEnabled,
-          autosmooth       : brush.autosmooth,
-          viewNormalMasking: !!(brush.flag & BrushFlags.AUTOMASK_VIEW_NORMAL),
-          symmetryActive   : this.getSymmetryAxes(ctx) !== 0,
+          modalRunning  : this.modalRunning,
+          dyntopoEnabled: dtEnabled,
+          autosmooth    : brush.autosmooth,
         })
       }
       if (this.gpu) {
@@ -912,9 +931,10 @@ function applyVdmSplatDab(
 }
 
 /** Point a driver stroke's view-normal mask at `viewDir`, reflected by a
- * SymAxisMap multiplier for a mirror image. A headless driver has no camera, so
- * an omitted ray turns the mask off for the stroke rather than masking against
- * some arbitrary default direction. */
+ * SymAxisMap multiplier for a mirror image (per-image rays are safe: the view
+ * factor is evaluated dynamically per dab, never cached — see the applyDab
+ * note). A headless driver has no camera, so an omitted ray turns the mask off
+ * for the stroke rather than masking against some arbitrary default. */
 function applyDriverViewDir(wasmBrush: WasmBrush, viewDir: number[] | undefined, mul: Vector3 | undefined): void {
   if (viewDir === undefined) {
     wasmBrush.automask_view_normal = false
@@ -940,9 +960,9 @@ export function runSculptcoreStroke(opts: {
    * exactly like `SculptPaintOp.applyDab`. The test scene is object-local at the
    * origin, so the world-space dabs here are already in mirror space. */
   symmetryAxes?: number
-  /** Object-space eye->surface ray for view-normal automasking, mirrored per
-   * symmetry image. Omitted (the usual case for a headless driver, which has no
-   * camera) = the mask is forced off for the stroke. */
+  /** Object-space eye->surface ray for view-normal automasking; the same ray
+   * serves every symmetry image (camera-relative mask). Omitted (the usual case
+   * for a headless driver, which has no camera) = the mask is forced off. */
   viewDir?: number[]
   /** Test seam: run this sculptcore kernel instead of the tool's mapped one
    * (e.g. LAYERDRAW, whose LAYER_DRAW tool is hidden from the sculpt picker). */
@@ -996,8 +1016,8 @@ export function runSculptcoreStroke(opts: {
   wasmExec.meshLog = meshLog
   wasmExec.beginStep(dtEnabled)
 
-  // The GPU packs its automask at beginStroke, so the primary image's view ray
-  // has to be in place before tryBegin (the loop re-sets it per image).
+  // Prime the primary image's view ray before tryBegin; the loop re-sets it
+  // per image (the kernel reads it per dab from the ctx uniforms).
   applyDriverViewDir(wasmBrush, opts.viewDir, undefined)
 
   // GPU stroke branch (plans/gpuGlobalBrushes.md): world-space dabs marshal
@@ -1012,11 +1032,9 @@ export function runSculptcoreStroke(opts: {
     wasmBrush,
     meshLog,
     brushType,
-    modalRunning     : false,
-    dyntopoEnabled   : dtEnabled,
-    autosmooth       : brush.autosmooth,
-    viewNormalMasking: opts.viewDir !== undefined && !!(brush.flag & BrushFlags.AUTOMASK_VIEW_NORMAL),
-    symmetryActive   : (opts.symmetryAxes ?? 0) !== 0,
+    modalRunning  : false,
+    dyntopoEnabled: dtEnabled,
+    autosmooth    : brush.autosmooth,
   })
 
   // Expand each input dab into its primary image plus SymAxisMap mirror images
