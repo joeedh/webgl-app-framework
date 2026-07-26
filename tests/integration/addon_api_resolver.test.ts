@@ -26,6 +26,7 @@ import {execSync} from 'node:child_process'
 import fs from 'node:fs'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isDefaultBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..', '..')
@@ -57,7 +58,10 @@ interface MockAddonAPI {
   exports: {[name: string]: Record<string, unknown>}
 }
 
-describe('addon_api_plugin (runtime resolver)', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('addon_api_plugin (runtime resolver)', () => {
   beforeAll(() => {
     if (!fs.existsSync(BUILT_ENTRY)) {
       execSync('node tools/build-addons.js --include-fixtures', {

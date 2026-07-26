@@ -127,12 +127,15 @@ export async function transpileAddonSources(
     name: 'addon-vfs',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setup(build: any) {
-      build.onResolve({filter: /.*/}, (args: {path: string; importer: string; resolveDir: string}) => {
-        // Entry stdin sets resolveDir to '/'. Relative imports resolve against
-        // the importer's directory; bare specifiers are external (we don't
-        // pull anything off npm at install time).
+      build.onResolve({filter: /.*/}, (args: {path: string; importer: string; namespace: string}) => {
+        // Relative imports resolve against the importer's directory; bare
+        // specifiers are external (we don't pull anything off npm at install
+        // time). Only vfs-namespace importers carry a POSIX vfs path — the
+        // stdin entry's importer is a real absolute path esbuild derived from
+        // resolveDir (backslashed on Windows), so use the known entry dir.
         if (args.path.startsWith('.')) {
-          const importerDir = args.importer ? args.importer.replace(/[^/]+$/, '') : args.resolveDir.replace(/^\//, '')
+          const importerDir =
+            args.namespace === VFS_NAMESPACE ? args.importer.replace(/[^/]+$/, '') : entryPath.replace(/[^/]+$/, '')
           const resolved = normalizeJoin(importerDir, args.path)
           // Look up with and without ts/js extension variations.
           for (const candidate of expandExtensionGuesses(resolved)) {

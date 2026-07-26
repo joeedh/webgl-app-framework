@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {bootDump, resolveNwjsExe} from './nwjs_boot'
+import {isCrossBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -93,7 +94,9 @@ function dumpBackend(nwExe: string, backend: 'wasm' | 'native', subdiv: number):
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle && haveNative
+// Compares the two backends head-to-head, so it belongs to the native pass of
+// the split run (see ./split).
+const canRun = !!nwExe && haveBundle && haveNative && isCrossBackendPass(haveNative)
 
 // Use a small cube — fast to build and dump, still exercises the full pipeline
 // (Mesh_createCube → SpatialTree → GPUManager.update → vertex buffers).

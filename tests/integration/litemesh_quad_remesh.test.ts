@@ -30,6 +30,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isolatedProfileArgs} from './nwjs_boot'
+import {isCrossBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -120,6 +122,7 @@ function dumpBackend(nwExe: string, backend: 'wasm' | 'native'): Record<string, 
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -147,7 +150,9 @@ function dumpBackend(nwExe: string, backend: 'wasm' | 'native'): Record<string, 
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle && haveNative
+// Compares the two backends head-to-head, so it belongs to the native pass of
+// the split run (see ./split).
+const canRun = !!nwExe && haveBundle && haveNative && isCrossBackendPass(haveNative)
 
 const maybe = canRun ? describe : describe.skip
 

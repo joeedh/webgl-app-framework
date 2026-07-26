@@ -18,6 +18,7 @@ import {execSync} from 'node:child_process'
 import fs from 'node:fs'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isDefaultBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -25,7 +26,10 @@ const OUT_DIR = Path.join(REPO_ROOT, 'build', 'addons')
 const TEST_ADDON_BUILT_ENTRY = Path.join(OUT_DIR, 'test_addon', 'src', 'main.js')
 const INDEX_PATH = Path.join(OUT_DIR, 'index.json')
 
-describe('tools/build-addons.js', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('tools/build-addons.js', () => {
   beforeAll(() => {
     // Clean output then build the fixture addon. Slow-ish (~few seconds for
     // esbuild's first invocation) but acceptable for a CI smoke test.

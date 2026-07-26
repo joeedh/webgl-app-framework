@@ -12,6 +12,7 @@
  */
 
 import * as nstructjs from 'nstructjs'
+import {isDefaultBackendPass} from './split'
 
 class TrivialStruct {
   x = 0
@@ -32,7 +33,10 @@ TrivialStruct {
 }
 nstructjs.register(TrivialStruct)
 
-describe('test infrastructure', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('test infrastructure', () => {
   test('jsdom is the test environment', () => {
     expect(typeof window).toBe('object')
     expect(typeof document).toBe('object')

@@ -33,7 +33,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {resolveNwjsExe, NWJS_APP_DIR, REPO_ROOT} from './nwjs_boot'
+import {resolveNwjsExe, NWJS_APP_DIR, REPO_ROOT, isolatedProfileArgs} from './nwjs_boot'
+import {isCrossBackendPass} from './split'
 import {decodePngGray, meanAbsDiff, ncc, diffImage, type GrayImage} from '../lib/png_gray'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -71,6 +72,7 @@ function runRender(nwExe: string, backend: 'wasm' | 'native', mode: Mode): Rende
     nwExe,
     [
       NWJS_APP_DIR,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -98,7 +100,9 @@ function runRender(nwExe: string, backend: 'wasm' | 'native', mode: Mode): Rende
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle
+// Its parity test boots the native backend alongside the default wasm one, so
+// the suite belongs to the native pass of the split run (see ./split).
+const canRun = !!nwExe && haveBundle && isCrossBackendPass(haveNative)
 
 if (!canRun) {
   const why = [

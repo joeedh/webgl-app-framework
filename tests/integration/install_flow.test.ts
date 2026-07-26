@@ -32,6 +32,7 @@ import {fileURLToPath} from 'node:url'
 
 import {installFromBlob, AddonInstallError} from '../../scripts/addon/install'
 import {InMemoryAddonStorage} from '../../scripts/addon/storage'
+import {isDefaultBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..', '..')
@@ -59,7 +60,10 @@ async function makeZipBlob(files: IFiles): Promise<Uint8Array> {
 
 const BUILT_ENTRY_PATH = Path.join(REPO_ROOT, 'build/addons/test_addon/src/main.js')
 
-describe('installFromBlob', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('installFromBlob', () => {
   beforeAll(() => {
     // Reuse the build output produced by tests/integration/addon_build.test.ts
     // if it's already there; otherwise build it now. esbuild is fast.

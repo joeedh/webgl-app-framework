@@ -30,6 +30,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isolatedProfileArgs} from './nwjs_boot'
+import {isCrossBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -147,6 +149,7 @@ function runAttrScene(
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -186,6 +189,7 @@ function runRoundtripScene(nwExe: string, requests: {name: string; category: num
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -216,7 +220,9 @@ const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
 // The core path (request → codegen → buffers) is fully exercised on WASM; native
 // is only needed for the parity sub-test, which self-skips independently below.
-const canRun = !!nwExe && haveBundle
+// Its parity test boots the native backend alongside the default wasm one, so
+// the suite belongs to the native pass of the split run (see ./split).
+const canRun = !!nwExe && haveBundle && isCrossBackendPass(haveNative)
 
 if (!canRun) {
   const why = [

@@ -29,6 +29,7 @@
  */
 
 import * as nstructjs from 'nstructjs'
+import {isDefaultBackendPass} from './split'
 
 type AnyManager = any
 
@@ -87,7 +88,10 @@ function makeFullManager(): AnyManager {
   return m
 }
 
-describe('unknown graph node/socket preservation seam', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('unknown graph node/socket preservation seam', () => {
   test('parse_structs flags its dummy so onUnknownClass can fire without scrubbing', () => {
     const full = makeFullManager()
     const src = new SubSock()

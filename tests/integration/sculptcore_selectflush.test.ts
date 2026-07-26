@@ -19,6 +19,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isolatedProfileArgs} from './nwjs_boot'
+import {backendTable, selectedBackends} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -61,6 +63,7 @@ function runSelectFlushTest(nwExe: string, backend: 'wasm' | 'native'): SelectFl
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -86,7 +89,8 @@ function runSelectFlushTest(nwExe: string, backend: 'wasm' | 'native'): SelectFl
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle
+const backends = selectedBackends(haveNative)
+const canRun = !!nwExe && haveBundle && backends.length > 0
 
 if (!canRun) {
   const why = [
@@ -102,10 +106,9 @@ if (!canRun) {
   console.warn('[sculptcore-selectflush] native leg skipped: addon missing (run make.mjs build node)')
 }
 
-const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']
 const maybe = canRun ? describe : describe.skip
 
-maybe.each(backends.map((b) => [b] as const))('selectFlush derivation (%s)', (backend) => {
+maybe.each(backendTable(backends))('selectFlush derivation (%s)', (backend) => {
   let r: SelectFlushTestResult
 
   beforeAll(() => {

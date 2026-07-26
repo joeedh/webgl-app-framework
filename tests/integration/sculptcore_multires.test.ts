@@ -26,7 +26,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {bootDump, resolveNwjsExe, NWJS_APP_DIR} from './nwjs_boot'
+import {bootDump, resolveNwjsExe, NWJS_APP_DIR, isolatedProfileArgs} from './nwjs_boot'
+import {backendTable, crossBackends} from './split'
 import {decodePngGray, meanAbsDiff} from '../lib/png_gray'
 import type {GrayImage} from '../lib/png_gray'
 
@@ -159,7 +160,7 @@ function runMultiresTest(
       // Small cage: 3 levels of CC refinement multiply the face count 64x, so
       // keep the cube coarse (levels drive the density, not the cage).
       '--scene-arg',
-      'subdiv=6',
+      'subdiv=3',
       '--eval',
       'globalThis.__evalTestResult = {base: __multiresTest(), vdm: __multiresVdmTest(), layers: __multiresLayerTest(), addLevel: __multiresAddLevelTest()}',
       // Async driver: the harness awaits each eval's RESULT, so return the
@@ -194,7 +195,10 @@ function runMultiresTest(
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle
+// Cross-backend suite: it checksums wasm against native in one process, so the
+// split run gives it entirely to the native pass (see ./split).
+const backends = crossBackends(haveNative)
+const canRun = !!nwExe && haveBundle && backends.length > 0
 
 if (!canRun) {
   const why = [
@@ -210,9 +214,8 @@ if (!canRun) {
   console.warn('[sculptcore-multires] native leg + cross-compare skipped: addon missing (run make.mjs build node)')
 }
 
-const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']
 const maybe = canRun ? describe : describe.skip
-const eachBackend = backends.map((b) => [b] as const)
+const eachBackend = backendTable(backends)
 
 maybe('sculptcore multires subsurf (level switch / writeback / down-refit)', () => {
   const results = new Map<'wasm' | 'native', MultiresTestResult>()
@@ -492,6 +495,7 @@ function runPtexRender(
     nwExe,
     [
       NWJS_APP_DIR,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -499,7 +503,7 @@ function runPtexRender(
       '--gen-scene',
       'litemesh-cube',
       '--scene-arg',
-      'subdiv=6',
+      'subdiv=3',
       `--eval=__vdmRenderTest('${mode}')`,
       '--dump',
       dumpPath,
@@ -688,7 +692,7 @@ function runVdmSculpt(nwExe: string, backend: 'wasm' | 'native'): VdmSculptResul
       '--gen-scene',
       'litemesh-cube',
       '--scene-arg',
-      'subdiv=6',
+      'subdiv=3',
       '--eval',
       '__vdmSculptTest()',
     ],
@@ -824,7 +828,7 @@ function runVdmPersist(nwExe: string, backend: 'wasm' | 'native'): VdmPersistRes
       '--gen-scene',
       'litemesh-cube',
       '--scene-arg',
-      'subdiv=6',
+      'subdiv=3',
       '--eval',
       '__vdmPersistTest()',
     ],

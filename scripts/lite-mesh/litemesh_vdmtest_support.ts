@@ -15,7 +15,7 @@
  */
 
 import {LiteMesh} from './litemesh'
-import {readGpuBuffer} from './litemesh_brushtest_support'
+import {livePoleExtent, readGpuBuffer} from './litemesh_brushtest_support'
 
 interface VdmTestResult {
   ok: boolean
@@ -128,10 +128,9 @@ function vdmTest(): VdmTestResult {
     // can't alias into the before/after diff.
     const before = readGpuBuffer(mesh, 'position')
     if (!before) throw new Error('pre-splat position buffer unreadable')
-    let R = 0
-    for (let i = 0; i < before.length; i += 3) {
-      if (before[i + 2] > R) R = before[i + 2]
-    }
+    // Live verts, not `before`: the leaf VBOs' slack slots carry stale
+    // coordinates outside the mesh, which would put the splat dab off-surface.
+    const R = livePoleExtent(mesh, 2)
     result.poleZ = R
     const radius = R * 0.35
     result.radius = radius

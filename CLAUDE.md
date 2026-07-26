@@ -63,6 +63,13 @@ Run `npx tsgo --noEmit`, **not** `tsc`. `pnpm typecheck` wraps this and runs
 - Update snapshots with `pnpm test -u`
 - Run eslint with `pnpm eslint --fix [path]` it will
   lint code and fix some problems
+- The NW.js integration suites are their own workspace package
+  (`tests/integration`), run as two sequential jest invocations — one per
+  sculptcore backend (`SC_TEST_BACKEND=wasm`, then `native`). Which pass a
+  suite belongs to is decided in `tests/integration/split.ts`.
+- The wall-clock-dominating suites listed in `tests/integration/slow.mjs` are
+  **excluded** from `pnpm test`; run them with `pnpm test:slow` (much less
+  often — they're ~90% of the total runtime).
 
 ## PR instructions
 

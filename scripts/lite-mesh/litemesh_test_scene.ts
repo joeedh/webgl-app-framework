@@ -68,7 +68,7 @@ import './litemesh_example_scenes'
  * Builds a single LiteMesh object (a sculptcore cube) plus a light.
  *
  * Scene args:
- *   subdiv=<n>   cube subdivision count (default 120)
+ *   subdiv=<n>   cube subdivision count (default 60)
  *   size=<f>     cube half-extent / size passed to Mesh_createCube (default 4 —
  *                large enough that the mesh fills the viewport under the default
  *                camera; the built-in LiteMesh() cube is size 1, which renders
@@ -77,7 +77,7 @@ import './litemesh_example_scenes'
  *   light=0      omit the light
  */
 function buildLiteMeshCube(_ctx: ToolContext, lib: Library, scene: Scene, args: TestSceneArgs): void {
-  const subdiv = args.subdiv && Number.isFinite(parseInt(args.subdiv, 10)) ? parseInt(args.subdiv, 10) : 120
+  const subdiv = args.subdiv && Number.isFinite(parseInt(args.subdiv, 10)) ? parseInt(args.subdiv, 10) : 60
   const size = args.size && Number.isFinite(parseFloat(args.size)) ? parseFloat(args.size) : 6.0
   const sphere = args.sphere !== undefined && Number.isFinite(parseFloat(args.sphere)) ? parseFloat(args.sphere) : 1.0
 

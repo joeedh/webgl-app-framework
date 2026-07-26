@@ -11,8 +11,8 @@
  * The driver runs in a single `--eval` and reports through the generic
  * `globalThis.__evalTestResult` seam (reflected into `--dump` as `evalResult`),
  * so it needs no bespoke support module. It asserts: a center stroke emits dabs,
- * records a non-empty undo step, and measurably changes the mesh bounds; undo
- * restores those bounds and redo reproduces the change.
+ * records a non-empty undo step, and measurably moves the surface; undo restores
+ * the pre-stroke positions and redo reproduces the post-stroke ones.
  *
  * Prerequisites (else self-skips, logged): a resolvable NW.js and the app bundle
  * (`pnpm build`). The native leg additionally needs the N-API addon
@@ -24,6 +24,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isolatedProfileArgs} from './nwjs_boot'
+import {backendTable, selectedBackends} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -37,18 +39,28 @@ interface StrokeTesterResult {
   dabs?: number
   /** MeshLog bytes recorded for the stroke's step (>0 ⇒ it mutated geometry) */
   stepMem?: number
-  /** bounding-box diagonal sum before / after stroke / after undo / after redo */
-  sizeBefore?: number
-  sizeAfter?: number
-  sizeUndone?: number
-  sizeRedone?: number
+  /** live vertex count before / after the stroke (dyntopo off ⇒ equal) */
+  vertsBefore?: number
+  vertsAfter?: number
+  /** largest per-vertex displacement the stroke produced (must be > 0) */
+  moved?: number
+  /** live verts the stroke displaced by more than 1e-6 */
+  vertsMoved?: number
+  /** largest residual vs. the pre-stroke positions after undo (must be ~0) */
+  undoResidual?: number
+  /** largest residual vs. the post-stroke positions after redo (must be ~0) */
+  redoResidual?: number
 }
 
 /**
  * Self-contained `--eval` driver (runs in the renderer global scope, where
  * `_appstate` / `window` live). Switches to the sculpt tool mode, frames the
  * mesh, runs a short center clay stroke through `_sculptcoreStrokeTester`, and
- * records bounds + undo-step size before/after/undo/redo on __evalTestResult.
+ * records live-vertex displacement + undo-step size on __evalTestResult.
+ *
+ * The metric is a per-vertex displacement, NOT the bounding box: a clay dab
+ * builds up inside the hull, whose extremes sit outside the dab, so the bounds
+ * are exactly unchanged by a perfectly healthy stroke.
  */
 const DRIVER = `(function () {
   var r = {ok: false}
@@ -59,11 +71,26 @@ const DRIVER = `(function () {
     var mesh = t.mesh
     if (!mesh) throw new Error('active object is not a LiteMesh')
     t.frameMeshInCamera()
-    var diag = function () {
-      var bb = mesh.getBoundingBox()
-      return Math.abs(bb[1][0] - bb[0][0]) + Math.abs(bb[1][1] - bb[0][1]) + Math.abs(bb[1][2] - bb[0][2])
+    // Keyed on vertex index so the comparison survives any reordering.
+    var snap = function () {
+      var d = mesh.dumpVertCo()
+      var m = new Map()
+      for (var i = 0; i < d.idx.length; i++) m.set(d.idx[i], d.co[i])
+      return m
     }
-    r.sizeBefore = diag()
+    var moves = function (a, b) {
+      var max = 0, n = 0
+      b.forEach(function (co, idx) {
+        var p = a.get(idx)
+        if (!p) return
+        var d = Math.hypot(co[0] - p[0], co[1] - p[1], co[2] - p[2])
+        if (d > max) max = d
+        if (d > 1e-6) n++
+      })
+      return {max: max, count: n}
+    }
+    var before = snap()
+    r.vertsBefore = before.size
     var res = t.runStroke({
       points: [[0.42, 0.5], [0.5, 0.5], [0.58, 0.5]],
       radius: 150,
@@ -71,11 +98,15 @@ const DRIVER = `(function () {
     })
     r.dabs = res.dabs
     r.stepMem = t.meshLog ? t.meshLog.stepMemSize(res.tool.logStepId) : 0
-    r.sizeAfter = diag()
+    var after = snap()
+    r.vertsAfter = after.size
+    var m = moves(before, after)
+    r.moved = m.max
+    r.vertsMoved = m.count
     t.undo()
-    r.sizeUndone = diag()
+    r.undoResidual = moves(before, snap()).max
     t.redo()
-    r.sizeRedone = diag()
+    r.redoResidual = moves(after, snap()).max
     r.ok = true
   } catch (e) {
     r.error = String((e && e.stack) || e)
@@ -106,6 +137,7 @@ function runStrokeTester(nwExe: string, backend: 'wasm' | 'native'): StrokeTeste
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -131,7 +163,8 @@ function runStrokeTester(nwExe: string, backend: 'wasm' | 'native'): StrokeTeste
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle
+const backends = selectedBackends(haveNative)
+const canRun = !!nwExe && haveBundle && backends.length > 0
 
 if (!canRun) {
   const why = [
@@ -147,10 +180,9 @@ if (!canRun) {
   console.warn('[sculptcore-stroke-tester] native leg skipped: addon missing (run make.mjs build node)')
 }
 
-const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']
 const maybe = canRun ? describe : describe.skip
 
-maybe.each(backends.map((b) => [b] as const))('_sculptcoreStrokeTester (%s)', (backend) => {
+maybe.each(backendTable(backends))('_sculptcoreStrokeTester (%s)', (backend) => {
   let r: StrokeTesterResult
 
   beforeAll(() => {
@@ -173,18 +205,16 @@ maybe.each(backends.map((b) => [b] as const))('_sculptcoreStrokeTester (%s)', (b
     expect(r.stepMem ?? 0).toBeGreaterThan(0)
   })
 
-  test('stroke measurably changed the mesh bounds', () => {
-    const delta = Math.abs((r.sizeAfter ?? 0) - (r.sizeBefore ?? 0))
-    expect(delta).toBeGreaterThan(1e-4)
+  test('stroke measurably displaced the surface', () => {
+    expect(r.moved ?? 0).toBeGreaterThan(1e-4)
+    expect(r.vertsMoved ?? 0).toBeGreaterThan(0)
   })
 
-  test('undo restores the bounds and redo reproduces the change', () => {
-    const before = r.sizeBefore ?? 0
-    const after = r.sizeAfter ?? 0
-    const delta = Math.abs(after - before)
-    // undo returns to the pre-stroke bounds...
-    expect(Math.abs((r.sizeUndone ?? 0) - before)).toBeLessThan(delta * 0.05)
-    // ...and redo reproduces the post-stroke bounds.
-    expect(Math.abs((r.sizeRedone ?? 0) - after)).toBeLessThan(delta * 0.05)
+  test('undo restores the surface and redo reproduces the change', () => {
+    const moved = r.moved ?? 0
+    // undo returns every vertex to its pre-stroke position...
+    expect(r.undoResidual ?? Infinity).toBeLessThan(moved * 0.05)
+    // ...and redo reproduces the post-stroke ones.
+    expect(r.redoResidual ?? Infinity).toBeLessThan(moved * 0.05)
   })
 })

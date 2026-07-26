@@ -9,6 +9,7 @@ packages:
   - scripts
   - scripts/path.ux
   - tests
+  - tests/integration
   - vendor/nstructjs
   - scripts/mathl
 

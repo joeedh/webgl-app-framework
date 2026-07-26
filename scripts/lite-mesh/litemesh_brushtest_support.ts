@@ -285,6 +285,22 @@ function dumpLiveCo(lm: LiteMesh): Float32Array {
 }
 
 /**
+ * Largest live-vertex coordinate along `axis` — the scene's pole distance, used
+ * to place scripted dabs on the surface. Reads the live verts, never the leaf
+ * VBOs: their slack slots hold stale coordinates far outside the mesh, and a
+ * pole distance taken from those puts every dab off the surface (silently
+ * measuring "no displacement" for brushes that work fine).
+ */
+export function livePoleExtent(lm: LiteMesh, axis = 2): number {
+  const co = dumpLiveCo(lm)
+  let r = 0
+  for (let i = axis; i < co.length; i += 3) {
+    if (co[i] > r) r = co[i]
+  }
+  return r
+}
+
+/**
  * Run a single off-center DRAW dab (optionally mirrored by `symmetryAxes`,
  * forwarded to `runSculptcoreStroke`) and return the position buffers before and
  * after. Non-accumulating, full strength; restores the brush afterward.
@@ -416,13 +432,13 @@ function brushTest(): BrushTestResult {
     }
 
     // The litemesh-cube scene is a spherified cube of half-extent `size` —
-    // recover the actual pole distance from the position buffer.
+    // recover the actual pole distance from the LIVE vertices. The GPU position
+    // buffer must not be used: its per-leaf slack slots hold stale coordinates
+    // well outside the mesh, which inflates the pole distance and pushes every
+    // scripted dab off the surface (same reason posMissFrac reads dumpVertCo).
     const pos0 = readGpuBuffer(mesh, 'position')
     if (!pos0) throw new Error('position buffer unreadable')
-    let R = 0
-    for (let i = 0; i < pos0.length; i += 3) {
-      if (pos0[i + 2] > R) R = pos0[i + 2]
-    }
+    const R = livePoleExtent(mesh, 2)
     const radius = R * 0.25
     result.radius = radius
 

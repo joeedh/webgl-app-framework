@@ -24,7 +24,8 @@ import {execFileSync} from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
-import {NWJS_APP_DIR, REPO_ROOT, resolveNwjsExe} from './nwjs_boot'
+import {NWJS_APP_DIR, REPO_ROOT, resolveNwjsExe, isolatedProfileArgs} from './nwjs_boot'
+import {selectedBackends} from './split'
 
 const BUNDLE = Path.join(REPO_ROOT, 'build', 'entry_point.js')
 const NATIVE_ADDON = Path.join(REPO_ROOT, 'sculptcore', 'build', 'native-node', 'sculptcore_node.node')
@@ -32,7 +33,8 @@ const NATIVE_ADDON = Path.join(REPO_ROOT, 'sculptcore', 'build', 'native-node', 
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle && haveNative
+// Native-addon-only, so it runs in the native pass of the split run.
+const canRun = !!nwExe && haveBundle && haveNative && selectedBackends(haveNative).includes('native')
 
 const maybe = canRun ? describe : describe.skip
 
@@ -65,7 +67,17 @@ maybe('native testPrint stdout', () => {
       `globalThis.__nativeManager.addon.testPrint()`
     execFileSync(
       nwExe!,
-      [NWJS_APP_DIR, '--apptest-headless', '--no-devtools', '--backend', 'native', '--eval', expr, '--exit'],
+      [
+        NWJS_APP_DIR,
+        ...isolatedProfileArgs(),
+        '--apptest-headless',
+        '--no-devtools',
+        '--backend',
+        'native',
+        '--eval',
+        expr,
+        '--exit',
+      ],
       {cwd: REPO_ROOT, encoding: 'utf-8', stdio: 'pipe', timeout: 60000}
     )
     captured = fs.existsSync(tmp) ? fs.readFileSync(tmp, 'utf-8') : ''

@@ -21,7 +21,7 @@ import {FeatureFlags} from '../core/feature-flag'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {runSculptcoreStroke, SculptPaintOp} from '../editors/view3d/tools/sculptcore_ops'
 import {LiteMesh} from './litemesh'
-import {readGpuBuffer} from './litemesh_brushtest_support'
+import {livePoleExtent, readGpuBuffer} from './litemesh_brushtest_support'
 
 interface LayerTestResult {
   ok: boolean
@@ -83,13 +83,11 @@ function layerTest(): LayerTestResult {
     const brush = DefaultBrushes.slotMap[SculptTools.DRAW]
     if (!brush) throw new Error('no default DRAW brush')
 
-    // Recover the sphere's +Z pole distance from the position buffer.
+    // Recover the sphere's +Z pole distance from the live verts (not the leaf
+    // VBOs — their slack slots would inflate it and push the dabs off-surface).
     const pos0 = readGpuBuffer(mesh, 'position')
     if (!pos0) throw new Error('position buffer unreadable')
-    let R = 0
-    for (let i = 0; i < pos0.length; i += 3) {
-      if (pos0[i + 2] > R) R = pos0[i + 2]
-    }
+    const R = livePoleExtent(mesh, 2)
     const radius = R * 0.25
     result.radius = radius
 

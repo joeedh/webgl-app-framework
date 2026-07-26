@@ -24,6 +24,7 @@ import fs from 'node:fs'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {bootDump, resolveNwjsExe} from './nwjs_boot'
+import {backendTable, crossBackends} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -76,7 +77,10 @@ function runVdmTest(nwExe: string, backend: 'wasm' | 'native'): VdmTestResult {
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
 const haveNative = fs.existsSync(NATIVE_ADDON)
-const canRun = !!nwExe && haveBundle
+// Cross-backend suite: it checksums wasm against native in one process, so the
+// split run gives it entirely to the native pass (see ./split).
+const backends = crossBackends(haveNative)
+const canRun = !!nwExe && haveBundle && backends.length > 0
 
 if (!canRun) {
   const why = [
@@ -92,9 +96,8 @@ if (!canRun) {
   console.warn('[sculptcore-vdm] native leg + cross-compare skipped: addon missing (run make.mjs build node)')
 }
 
-const backends: Array<'wasm' | 'native'> = haveNative ? ['wasm', 'native'] : ['wasm']
 const maybe = canRun ? describe : describe.skip
-const eachBackend = backends.map((b) => [b] as const)
+const eachBackend = backendTable(backends)
 
 maybe('sculptcore VDM splat (VdmStore)', () => {
   const results = new Map<'wasm' | 'native', VdmTestResult>()

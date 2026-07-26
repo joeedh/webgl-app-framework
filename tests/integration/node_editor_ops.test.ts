@@ -32,6 +32,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isolatedProfileArgs} from './nwjs_boot'
+import {isDefaultBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '../..')
@@ -82,6 +84,7 @@ function runHarness(nwExe: string, {evals = [], runTools = []}: {evals?: string[
     nwExe,
     [
       REPO_ROOT,
+      ...isolatedProfileArgs(),
       '--apptest-headless',
       '--no-devtools',
       '--backend',
@@ -113,7 +116,9 @@ function runOps(nwExe: string, extraTools: string[]): DumpMaterial {
 
 const nwExe = resolveNwjsExe()
 const haveBundle = fs.existsSync(BUNDLE)
-const canRun = !!nwExe && haveBundle
+// Backend-agnostic (boots the app's default = wasm), so it runs once, in the
+// wasm pass of the split run (see ./split).
+const canRun = !!nwExe && haveBundle && isDefaultBackendPass()
 
 const maybe = canRun ? describe : describe.skip
 

@@ -20,6 +20,7 @@
     "gen:paths": "node tools/gen-datapaths.mjs",
     "typecheck": "node tools/gen-datapaths.mjs && turbo typecheck",
     "test": "turbo test",
+    "test:slow": "pnpm --filter @webgl-app-framework/tests-integration test:slow",
     "watch-typecheck": "npx tsgo --watch",
     "nwjs": "node nwjs/launch.mjs --backend native",
     "serv": "node tools/serv.js",

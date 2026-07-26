@@ -24,6 +24,7 @@ import {execSync} from 'node:child_process'
 import fs from 'node:fs'
 import Path from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {isDefaultBackendPass} from './split'
 
 const __filename = fileURLToPath(import.meta.url)
 const REPO_ROOT = Path.resolve(Path.dirname(__filename), '..', '..')
@@ -32,7 +33,10 @@ const TOOLS_TS = Path.join(REPO_ROOT, 'scripts/editors/view3d/tools/tools.ts')
 const OLD_ADDON_REGISTER_TS = Path.join(REPO_ROOT, 'scripts/editors/view3d/tools/addon_register.ts')
 const INDEX_JSON = Path.join(REPO_ROOT, 'build/addons/index.json')
 
-describe('tetmesh as a real per-addon bundle', () => {
+// No NW.js boot, so no backend: runs once, in the wasm pass (see ./split).
+const describeOnce = isDefaultBackendPass() ? describe : describe.skip
+
+describeOnce('tetmesh as a real per-addon bundle', () => {
   beforeAll(() => {
     if (!fs.existsSync(TETMESH_BUNDLE)) {
       execSync('node tools/build-addons.js --include-fixtures', {

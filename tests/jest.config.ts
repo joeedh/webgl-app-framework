@@ -20,10 +20,21 @@ const config: Config = {
 
   moduleFileExtensions: ['ts', 'tsx', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'],
 
+  // The integration suites each boot a real NW.js app; letting jest scale
+  // workers to the core count spawns far too many at once.
+  maxWorkers: 6,
+
   testMatch: ['<rootDir>/**/*.test.ts', '<rootDir>/**/*.test.tsx'],
 
-  // Don't try to load helpers as tests
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/lib/', '<rootDir>/fixtures/'],
+  // Don't try to load helpers as tests. integration/ is its own workspace
+  // package (@webgl-app-framework/tests-integration) that runs its suites once
+  // per sculptcore backend — see integration/run-split.mjs.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/lib/',
+    '<rootDir>/fixtures/',
+    '<rootDir>/integration/',
+  ],
 
   // Per-file setup: polyfills jsdom-missing browser globals (URL.createObjectURL etc.)
   setupFiles: ['<rootDir>/lib/jest-setup.ts'],

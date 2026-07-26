@@ -35,6 +35,32 @@ export function resolveNwjsExe(): string | undefined {
 }
 
 /**
+ * Chromium switches giving one launch a throwaway profile of its own. NW.js is
+ * single-instance *per `--user-data-dir`*: without this, concurrent launches
+ * (jest workers) hand their argv to the first-started instance and exit having
+ * written no dump. Pass these right after the app dir at every launch site.
+ */
+export function isolatedProfileArgs(): string[] {
+  // A Chromium profile is ~hundreds of MB, so retire this worker's previous one
+  // first: launches are synchronous, so at most one is live per worker at a time.
+  for (const old of profileDirs.splice(0)) fs.rmSync(old, {recursive: true, force: true})
+  const dir = fs.mkdtempSync(Path.join(os.tmpdir(), 'nwprof-'))
+  profileDirs.push(dir)
+  return [`--user-data-dir=${dir}`]
+}
+
+const profileDirs: string[] = []
+process.on('exit', () => {
+  for (const dir of profileDirs.splice(0)) {
+    try {
+      fs.rmSync(dir, {recursive: true, force: true})
+    } catch {
+      /* best-effort: the OS temp sweeper gets the rest */
+    }
+  }
+})
+
+/**
  * Boot NW.js headlessly with the given app args and return the parsed `--dump`
  * JSON. `appArgs` is everything the old tests passed after `main.js` (minus the
  * trailing `--dump <out> --exit`, which this adds). Throws if no dump is written.
@@ -44,7 +70,7 @@ export function bootDump(nwExe: string, appArgs: string[], opts: {tmpPrefix?: st
   // --headless is a Chromium switch NW.js intercepts; the window-hide hint the
   // bootstrap reads is --apptest-headless. Translate so callers can pass either.
   const args = appArgs.map((a) => (a === '--headless' ? '--apptest-headless' : a))
-  execFileSync(nwExe, [NWJS_APP_DIR, ...args, '--dump', out, '--exit'], {
+  execFileSync(nwExe, [NWJS_APP_DIR, ...isolatedProfileArgs(), ...args, '--dump', out, '--exit'], {
     cwd     : REPO_ROOT,
     encoding: 'utf-8',
     stdio   : 'pipe',

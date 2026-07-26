@@ -449,6 +449,8 @@ importers:
         specifier: ^5.1.3
         version: 5.1.3
 
+  tests/integration: {}
+
   vendor/nstructjs:
     dependencies:
       acorn:

@@ -1,0 +1,11 @@
+{
+  "name": "@webgl-app-framework/tests-integration",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NW.js-driven integration suites, run as one jest invocation per sculptcore backend",
+  "scripts": {
+    "test": "node ./run-split.mjs",
+    "test:slow": "node ./run-split.mjs --slow"
+  }
+}
