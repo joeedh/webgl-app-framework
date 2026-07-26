@@ -8,6 +8,7 @@ import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 import {FalloffKind} from '@sculptcore/api/sculptcore/gpu/FalloffKind'
+import {FeatureFlags} from '../../../core/feature-flag'
 
 /** Mirror of C++ enum DeviceType (prop_dynamics.h). */
 const DeviceType = {
@@ -468,6 +469,10 @@ export function builSculptcoreBrush({
   // dab — cheap, and keeps a reused executor in sync with the active stroke.
   wasmExec.setNonAccum(nonAccum)
   wasmExec.setStrokeGen(strokeGen)
+  // Displacement base A/B (plans/2026-07-26-0909-brush-displacement-base-
+  // attribute.md): derive the base as `co - .brush.disp.vec` instead of the
+  // frozen `.brush.orig.co` snapshot, so it advects with dyntopo remeshing.
+  wasmExec.setDispBase(FeatureFlags.get('sculptcore.brush_disp_base') as boolean)
 
   // Pen-dynamics stack only needs (re)building when the brush is fresh — its
   // channels/curves are fixed for the stroke. Runs after the executor exists so
