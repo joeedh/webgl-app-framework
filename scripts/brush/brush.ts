@@ -686,6 +686,10 @@ export function makeDefaultBrushes() {
   // Grab-class default: no view-normal masking — it fades the very geometry
   // being dragged as it rotates toward the silhouette mid-grab.
   brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL
+  // grabTo is the step since the last dab, so a dab has no stroke-start base to
+  // replay from; the kernel is @incremental and the engine ignores non-accumulate
+  // for it either way. Set here so the UI shows what actually happens.
+  brush.flag |= BrushFlags.ACCUMULATE
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE
   brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR
@@ -932,6 +936,10 @@ export function makeDefaultBrushes_MediumRes() {
   // Grab-class default: no view-normal masking — it fades the very geometry
   // being dragged as it rotates toward the silhouette mid-grab.
   brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL
+  // grabTo is the step since the last dab, so a dab has no stroke-start base to
+  // replay from; the kernel is @incremental and the engine ignores non-accumulate
+  // for it either way. Set here so the UI shows what actually happens.
+  brush.flag |= BrushFlags.ACCUMULATE
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE
   brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR

@@ -444,8 +444,39 @@ gather target `grabFrom + grabTo` would become the world origin).
 Verification: **115/115** ctest. `npx tsgo --noEmit` the same 11 pre-existing
 errors.
 
+### Wave 6 — `@incremental`: snakehook always accumulates — **DONE**
+
+The user reported snakehook "always needs accumulate on, but it's not by default".
+It is not a preset problem: `grabTo` is the step *since the last dab*, so a dab has
+no stroke-start base to be replayed from. Under `AccumOrig` (Additive) the falloff
+is re-evaluated at the frozen base while the per-dab delta keeps arriving, so every
+dab re-applies the full step to the same verts and it compounds. Measured with the
+attribute removed: `maxMove = 10.18` against `radius = 0.12`, ~85× the brush radius.
+
+No existing tag says this — `@paint` means "writes an attribute", `@unbounded`
+means "anchored field". So a fourth brush-level attribute, `@incremental`, threaded
+through `ir.h` / `parser.cc` / `emit_cpp.cc` / `emit_wgsl.cc`. It emits
+`def.accumulable = false`, and `brush_executor.h:526` gates the whole non-accumulate
+path on `accumulable`, so the executor ignores `nonAccum` structurally rather than
+by convention — the flag cannot be toggled into the broken state on either backend.
+The regenerated snakehook WGSL loses binding 25 (`sb_disp`), the `sb_base` read, and
+the entire nonaccum write-back branch.
+
+Both SNAKE presets in `scripts/brush/brush.ts` also set `BrushFlags.ACCUMULATE`, so
+the UI shows what actually happens; the flag is inert for this kernel either way.
+
+`test_snakehook` now runs its stroke twice, accumulate and not, and asserts the two
+agree — the gate is the negative control above, not the equality alone.
+
+Verification: **115/115** ctest, `pnpm test` 7/7 (integration 14 suites / 131 tests
+native, 16 / 103 wasm), `npx tsgo --noEmit` the same 11 pre-existing errors.
+
 ## Open
 
+- `@unbounded` is still lumped in with `@paint` as non-accumulate-ineligible for
+  "for now" reasons, while `@incremental` is ineligible for a *structural* reason.
+  Those are different claims sharing one `accumulable` bit; the unbounded half is
+  the one worth revisiting (clause 3 of the Wave 3 gate).
 - The engine's snakehook path is provably unchanged across Waves 1–4 (the kernel
   diff is `strength(v.co) * (1.0 - v.mask)` → `strength(v.co) * masks()`, which is
   the same product), and `test_snakehook` passes at HEAD. So if a snakehook
