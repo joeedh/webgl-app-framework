@@ -112,6 +112,11 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
    * path. Decided once per stroke on the first primary dab (D5). */
   gpu?: GpuStrokeController
   gpuDecided = false
+  /** Monotonic high-water mark of the node-filter radius over the stroke. A
+   * from-orig grab/kelvinlet dab only writes verts inside the filter, so if the
+   * region ever shrinks (drag reversal) the verts it dropped keep their last
+   * displaced value and leave a stale ring. Never let it go down. */
+  maxFilterRadius = 0
   /** Resolves when the GPU stroke's async finalization (final readback +
    * endStep) lands; undo/redo arriving mid-await chain onto it. */
   gpuCompletion?: Promise<void>
@@ -193,6 +198,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     this.curStrokeGen = ++SculptPaintOp.nextStrokeGen
     this.gpu = undefined
     this.gpuDecided = false
+    this.maxFilterRadius = 0
     // Snapshot the live symmetry axes as an op input so a later exec replay
     // (which may see a different ctx.toolmode) mirrors the same way (A.4).
     this.inputs.symmetryAxes.setValue((ctx.toolmode as SculptCorePaintMode | undefined)?.symmetryAxes ?? 0)
@@ -630,12 +636,25 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           gt[0] = ps.anchorVec[0]
           gt[1] = ps.anchorVec[1]
           gt[2] = ps.anchorVec[2]
-          filterRadius = radius + ps.anchorVec.vectorLength()
+          // Kelvinlet's field is `@unbounded` — it has no distance falloff of
+          // its own, only the C1 window the kernel applies over
+          // [0.8R, R], R = radius * unboundedExtent. Filter to that same R or
+          // the field is still live where the node set stops and the leaf
+          // boundary tears. Plus the drag, since the region must also cover
+          // where the verts move *to*.
+          const fieldRadius =
+            brush.tool === SculptTools.KELVINLET ? radius * wasmBrush.unboundedExtent : radius
+          filterRadius = fieldRadius + ps.anchorVec.vectorLength()
           // Symmetry: the primary image re-bases every touched vert from orig
           // (Absolute); mirror images add their pull onto it (Add) so shared verts
           // sum instead of the last pass overwriting.
           wasmExec.setGrabAccumAdd(mirrorIdx > 0)
         }
+        // Never let the region shrink mid-stroke (drag reversal): a from-orig
+        // dab only writes verts inside the filter, so any vert it drops keeps
+        // its previous displacement and leaves a stale ring behind.
+        this.maxFilterRadius = Math.max(this.maxFilterRadius, filterRadius)
+        filterRadius = this.maxFilterRadius
       }
 
       // Stroke tangent for the oriented Box falloff + wing-scrape, mirror-aware:
@@ -1045,6 +1064,8 @@ export function runSculptcoreStroke(opts: {
   const muls = sym ? SymAxisMap[sym] : []
   const prevByImage: (Vector3 | undefined)[] = []
   const anchorByImage: (number[] | undefined)[] = []
+  // Node-filter high-water mark for the stroke; see SculptPaintOp.maxFilterRadius.
+  let maxFilterRadius = 0
 
   let dynParams: DynTopoParams | undefined = undefined
   let dabIdx = 0
@@ -1122,9 +1143,15 @@ export function runSculptcoreStroke(opts: {
           gt[1] = img.p[1] - a[1]
           gt[2] = img.p[2] - a[2]
           dabCenter = a
-          filterRadius = radius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
+          // @unbounded kelvinlet filters to its window cutoff R, not the brush
+          // radius (see the interactive op).
+          const fieldRadius =
+            brush.tool === SculptTools.KELVINLET ? radius * wasmBrush.unboundedExtent : radius
+          filterRadius = fieldRadius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
           wasmExec.setGrabAccumAdd(img.image > 0)
         }
+        maxFilterRadius = Math.max(maxFilterRadius, filterRadius)
+        filterRadius = maxFilterRadius
       }
 
       // VDM carrier routing (X3 stage 4) — mirrors the interactive op: Draw
