@@ -212,13 +212,6 @@ const featureFlags = [
     value      : false,
   },
   {
-    key        : 'sculptcore.brush_disp_base',
-    uiName     : 'Brush Displacement Base',
-    description: 'Derive the from-base brush position as co - accumulated displacement (advects with dyntopo) instead of a frozen stroke-start snapshot',
-    type       : 'bool',
-    value      : true,
-  },
-  {
     key        : 'sculptcore.backface_cull',
     uiName     : 'Backface Culling',
     description: 'Cull back-facing triangles when drawing the sculpt surface (needs consistent winding)',

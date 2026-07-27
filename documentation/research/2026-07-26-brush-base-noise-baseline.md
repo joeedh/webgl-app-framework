@@ -251,9 +251,10 @@ Final dab, `dispbase=1` with resampling, vs the M0 table above:
 M3 deletes `shiftOrig` unconditionally (plan §10: rollback past M3 is a revert).
 With `dispbase=0` the legacy path now has no dyntopo coherence at all, and it is
 much worse than M0: grid live rms 0.0226 → **0.159**, base rms → 0 (a pristine
-but misaligned snapshot). **The `sculptcore.brush_disp_base` flag still defaults
-off**, so this branch must not ship until M5 flips it on. Not a defect of the
-change — it is the cost the plan accepted — but it is a hard merge blocker.
+but misaligned snapshot). Not a defect of the change — it is the cost the plan
+accepted. **Resolved at M6:** the legacy path, the `dispbase` toggle, and the
+`sculptcore.brush_disp_base` flag were all deleted, so the derived base is the
+only path and there is nothing left to ship in the worse configuration.
 
 ## Open items carried forward
 

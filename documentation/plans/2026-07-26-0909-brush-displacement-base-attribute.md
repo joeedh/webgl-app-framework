@@ -207,6 +207,9 @@ CPU.
 
 ### 4.5 A/B switch
 
+> **Removed at M6.** The toggle and both `.brush.orig.co` / `.brush.orig.gen`
+> are gone; the derived base is the only path. Kept below for the record.
+
 Land behind a runtime toggle so the old path stays measurable for a release:
 
 - engine: `CommandExecutor::setDispBase(bool)` alongside `setNonAccum`;
@@ -302,8 +305,9 @@ kernel being idempotent per dab, and grab under dyntopo now *advects* its pull
 target with the relaxed surface, which is a real (intended) behaviour change.
 
 **M6 — cleanup.**
-Delete `.brush.orig.co` / `.brush.orig.gen` and the toggle once the flag has
-been default-on through a release; refresh `nonAccumMode.md` §5,
+Delete `.brush.orig.co` / `.brush.orig.gen` and the toggle (done — ahead of the
+soak, at the user's request; `.brush.orig.no` re-keyed onto `.brush.disp.gen`);
+refresh `nonAccumMode.md` §1/§5,
 `sculptcore/documentation/dynamic-topology.md`, `documentation/gpuBrushes.md`;
 strip every `CLAUDENOTE:` comment added along the way, promoting the ones worth
 keeping to permanent ≤3-line comments.
@@ -444,7 +448,7 @@ roughness, the fidelity guard held, and no regression with dyntopo off.
 
 ## 10. Rollback
 
-M1-M2 are behind `setDispBase` / `sculptcore.brush_disp_base`; flipping it off
-restores the old CPU path verbatim. M3 deletes the dyntopo replay, so rollback
-past M3 is a revert, not a flag flip — which is why M3 is gated on a measured
+M1-M2 were behind `setDispBase` / `sculptcore.brush_disp_base` (both removed at
+M6 — rollback is now a revert throughout). M3 deletes the dyntopo replay, so
+rollback past M3 was always a revert, not a flag flip — which is why M3 is gated on a measured
 noise improvement rather than on "tests still pass".
