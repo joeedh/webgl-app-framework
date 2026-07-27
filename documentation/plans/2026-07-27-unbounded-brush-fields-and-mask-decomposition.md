@@ -285,6 +285,7 @@ length, including drag-reversal" has only been argued from the code — the fiel
 is C1-zero at `R` and the host filters to `R + drag` with a monotonic latch — not
 observed on a stroke. It needs a headless or CDP stroke check
 (`documentation/debugStrokeGuide.md`, `nwjs/cdp.mjs`) before this is called done.
+*(Closed for the single-dab case in Wave 4; drag-reversal still open.)*
 
 One consequence worth stating plainly: for kelvinlet the node-filter radius grows
 from `radius` to `radius * unboundedExtent` (default 8), so the per-dab region is
@@ -363,6 +364,53 @@ byte-identical to the deleted `isGrabBrush()` list (checked: only
 kelvinlet honors the non-accumulate flag" has no test at all, because no
 `PATH`-mode kelvinlet exists yet to point one at; it is the wave's forward-
 looking half and stays unexercised until the first variant lands.
+
+### Wave 4 — close the seam gate; move the filter floor into the engine — **DONE**
+
+Not in the original plan. Wave 2's `filterRadius = R` wiring went into the TS
+host only, and going to write the missing seam test surfaced that **every C++
+host still passed `brush.radius`** — `script.cc` (4 sites), `interactive.cc` (2).
+So `debug_app` kelvinlet strokes were torn the whole time, and any test written
+against the harness would have measured the tear rather than the fix.
+
+#### Result (2026-07-27)
+
+Sizing the filter is now the executor's floor, not each host's duty. Codegen
+emits `def.unbounded` from `@unbounded`; `CommandExecutor::filterRadiusFloor`
+turns that into `radius * unboundedExtent` (memoized on the tool — building a
+command def per dab to read one flag is wasteful), and both `applyDab` overloads
+raise the caller's radius to it. Hosts keep owning the radius, which is what the
+grab widening needs; the floor only ever raises it, and is 0 for every kernel
+that is not `@unbounded`. TS's own widening in `sculptcore_ops.ts` is now
+belt-and-braces rather than the only thing standing between kelvinlet and a tear.
+
+`test_unbounded_seam.cc` closes the single-dab half of the Wave 2 gate. Point the
+kelvinlet force along the surface normal and on the flat `+Z` face the kernel's
+`dot(grabTo, r)` term vanishes, so `|disp|` becomes a strictly decreasing
+function of radial distance — which makes "a vertex displaced more than one
+closer to the center" an exact tear detector with no tolerance to tune. It runs
+the same dab twice, once through the floor and once filtering by hand at
+`brush.radius`, so it also demonstrates the metric catches what it guards:
+
+| | worst inversion (fraction of peak) |
+|---|---|
+| floored (`R = radius · 8`) | 0.000002 |
+| unfloored (`radius`) | 0.574616 |
+
+A first attempt binned by radius and compared within-bin spread; that reported
+0.10 vs 0.60 — a real separation, but the 0.10 was bin-width quantization on a
+steep field, not a seam, and it would have needed a hand-tuned threshold. The
+monotonicity form has none.
+
+Verification: **114/114** ctest (113 + the new one). `sbrush-verify` 0
+`cpp vs wgsl`, the same 22 stale goldens. `npx tsgo --noEmit` the same 11
+pre-existing errors.
+
+**Drag-reversal is still not covered.** The test is one dab; the monotonic
+latch it would exercise (`maxFilterRadius`) lives in TS, not in the engine, so a
+ctest cannot reach it — that half needs the integration suite or a CDP stroke.
+And the per-dab cost of the ~64× region is still unmeasured, now on every C++
+host too.
 
 ## Open
 
