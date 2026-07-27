@@ -161,3 +161,107 @@ Re-run these six fixtures with `set_brush dispbase=1` and require:
 - The plan cites two `shiftOrig` call sites (`dyntopo.h:1019` collapse-survivor
   and `:1107` smooth). At this HEAD there is only **one**, the tangential-smooth
   Jacobi write at `dyntopo.h:1105`. M3 must account for that.
+
+---
+
+# M3 result (2026-07-26)
+
+## The plan's premise was wrong, and the metric caught it
+
+§1 of the plan attributes the base noise to "dyntopo tangential slide replayed
+via `shiftOrig`", and M3 removes that replay. Measured after the deletion, with
+`dispbase=1`, the base roughness was **unchanged**:
+
+| dab | M0 (`shiftOrig`) | M3 as specified (disp, smooth leaves it alone) |
+|---|---|---|
+| 0 | 0 | 0 |
+| 2 | 0.02542 | 0.02542 |
+| 4 | 0.05302 | 0.05582 |
+| 8 | 0.07170 | 0.07363 |
+| 14 | 0.08057 | 0.08063 |
+| 23 | **0.08955** | **0.08783** |
+
+Not a near-miss — the same curve, dab for dab, including the same
+accumulate-with-dabs signature. The reason is algebraic:
+
+- old path: smooth moves `co` by `δ`, `shiftOrig` does `orig += δ`;
+- new path: smooth moves `co` by `δ` and leaves `disp` alone, so
+  `base = co - disp` moves by `δ`.
+
+**They are the same operation.** Deleting `shiftOrig` cannot improve the base,
+because advecting the base with the untouched `disp` field reproduces it
+exactly. The two models differ only where the survivor position is *not* the
+interpolant of its sources (collapses, non-midpoint splits) — worth ~2%.
+
+Control: `smooth=0` gives base rms **0** on both paths, and the two dyntopo-off
+rows are bit-identical. So dyntopo's tangential smooth is the sole source, and
+both models handled it identically.
+
+## The actual defect: the slide's normal component
+
+`smoothTangent` projects the slide onto the tangent plane of the **live**
+surface (`delta -= n*delta.dot(n)`). On a displaced surface that plane is tilted,
+so a slide along the live flank has a nonzero component along the *base*
+surface's normal. Adding the full `δ` to the base (either model) therefore walks
+the base off the stroke-start surface — accumulating once per dab, which is
+exactly the signature §9.1 was designed to detect.
+
+The base should slide *along* the base surface, not by the live delta. Fix: when
+the smooth slides a vert, resample the displacement field at the vert's new
+location instead of leaving `disp` alone — same area weights and the same
+effective blend factor already used for the position:
+
+```
+disp[v] += (areaWeightedRingMean(disp) - disp[v]) * blend
+```
+
+This is a ~25-line change in `smoothTangent` + its Jacobi writeback, plus
+`DynTopoParams::dispGen` (the stroke stamp) — smaller than the `shiftOrig`
+machinery it replaces, and it is the piece that makes §2's invariant hold under
+a tangential slide.
+
+## Gate: PASS
+
+Final dab, `dispbase=1` with resampling, vs the M0 table above:
+
+| fixture | dyntopo | smooth | **base** rms M0 → M3 | live rms M0 → M3 | maxDisp | Σz·A |
+|---|---|---|---|---|---|---|
+| grid (primary) | on | **on** | 0.08955 → **0.00542** (16.5×) | 0.02255 → 0.02242 | 0.2421 → 0.2371 | 0.08289 → 0.08293 |
+| grid | on | off | 0 → 0 | 0.01859 → 0.01859 | 0.2375 → 0.2375 | 0.08319 → 0.08319 |
+| grid | off | — | 0 → 0 | 0.08950 → 0.08950 | 0.1577 → 0.1577 | 0.03176 → 0.03176 |
+| sphere | on | **on** | 0.08644 → **0.00951** (9.1×) | 0.02035 → 0.01990 | 1.1695 → 1.1732 | 0.58009 → 0.58205 |
+| sphere | on | off | 0.00917 → 0.00923 | 0.01765 → 0.01752 | 1.1718 → 1.1729 | 0.57291 → 0.57123 |
+| sphere | off | — | 0.03263 → 0.03263 | 0.05807 → 0.05807 | 1.0159 → 1.0159 | 0.17457 → 0.17457 |
+
+- **Base roughness**: 16.5× on the grid, 9.1× on the sphere. The sphere lands at
+  0.00951 against its own `smooth=0` floor of 0.00923 — i.e. the smooth-induced
+  component is essentially eliminated, not merely reduced.
+- **Per-dab**: the accumulate-with-dabs signature is gone. Base rms is flat at
+  0.0039 → 0.0054 across 23 dabs (M0: 0.025 → 0.090, monotonic).
+- **Fidelity guard held**: grid `Σz·A` +0.05%, `maxDisp` −2.1%; sphere both
+  +0.3%. Well inside "a few percent".
+- **No regression with dyntopo off**: both rows bit-identical.
+- **Stroke (live) roughness**: −0.6% grid, −2.2% sphere. Small, and honestly so —
+  live rms was already near its `smooth=0` floor (0.0226 vs 0.0186), so there
+  was little headroom. The gate's "and stroke roughness" clause is met only
+  weakly; the base-set result is what carries M3.
+
+## Consequence for the legacy path
+
+M3 deletes `shiftOrig` unconditionally (plan §10: rollback past M3 is a revert).
+With `dispbase=0` the legacy path now has no dyntopo coherence at all, and it is
+much worse than M0: grid live rms 0.0226 → **0.159**, base rms → 0 (a pristine
+but misaligned snapshot). **The `sculptcore.brush_disp_base` flag still defaults
+off**, so this branch must not ship until M5 flips it on. Not a defect of the
+change — it is the cost the plan accepted — but it is a hard merge blocker.
+
+## Open items carried forward
+
+- `.brush.disp.vec` / `.gen` now have a `mergeDispField` CUSTOM merge policy
+  (`attr_merge.cc`), mirroring `mergeOrigSnapshot`'s gen guard: both stamped →
+  lerp, one stamped → lerp against zero, neither → clear. Without it a split
+  child could inherit a nonzero lerped displacement under a stale gen.
+- The `#37` orig pre-pass (`brush_executor.h`) **survives** — plan §7 Q1. The
+  disp path does not need it (`defaultMerge` and `mergeDispField` both read
+  sources through `safe_get`, so an unmaterialized page is already safe), but
+  the legacy `.brush.orig.*` path still does. It goes away with M6, not M3.

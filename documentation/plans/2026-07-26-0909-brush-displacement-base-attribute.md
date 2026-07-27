@@ -269,6 +269,22 @@ Remove `nonAccumGen`, `shiftOrig`, both call sites, the executor plumbing, and
 `test_spatial_boundary_normals`, `test_edge_split`, plus the new noise metric
 (§9). This is the phase that pays for the plan — measure before/after here.
 
+> **Done 2026-07-26, with a correction to §1's premise.** Measured after the
+> deletions, base roughness was *identical* to the M0 baseline dab-for-dab:
+> `shiftOrig` (`orig += δ`) and disp-advection (`disp` untouched ⇒
+> `base = co - disp` moves by `δ`) are the same operation, so deleting the
+> replay cannot by itself improve the base. The real defect is that
+> `smoothTangent` projects the slide onto the *live* surface's tangent plane,
+> which on a displaced surface has a component along the *base* surface's
+> normal. M3 therefore also **resamples** `disp` at the vert's post-slide
+> location (same area weights and blend factor as the position), which needs
+> the stroke stamp back as `DynTopoParams::dispGen` — ~25 lines, smaller than
+> the `shiftOrig` machinery removed. Gate passes: base rms 16.5× better on the
+> grid, 9.1× on the sphere (landing at its `smooth=0` floor), the
+> accumulate-with-dabs signature gone, fidelity within 0.3%, dyntopo-off rows
+> bit-identical. Full numbers:
+> `documentation/research/2026-07-26-brush-base-noise-baseline.md`.
+
 **M4 — GPU.**
 `compute_layout.h`, `emit_wgsl.cc`, both native hosts, `brush_compute.ts`,
 `replay.mjs`; regenerate `brushWgsl.ts`. Gate: `sbrush-verify` (C++ vs WGSL A/B,
@@ -317,7 +333,10 @@ test_edge_split.cc, webgpu/replay.mjs}` + one new noise-metric test.
 relaxation. See §4.6; it lands in M5, not as a follow-up.)
 
 1. **Does the dyntopo orig pre-pass survive?** §4.3. Decide from M3
-   measurements, not from reasoning.
+   measurements, not from reasoning. — **Answered (M3): yes, but only for the
+   legacy path.** The disp path does not need it (`defaultMerge` and the new
+   `mergeDispField` both read sources through `safe_get`, so an unmaterialized
+   page is already safe); `.brush.orig.*` still does. It goes away with M6.
 2. **Should `disp` outlive the stroke?** It is exactly the per-stroke sculpt
    delta, which is what the sculpt-layers V2 fold wants. Tempting, but layers
    have their own store and `TEMP | NOCOPY` is what keeps this off the meshlog
