@@ -216,7 +216,7 @@ const featureFlags = [
     uiName     : 'Brush Displacement Base',
     description: 'Derive the from-base brush position as co - accumulated displacement (advects with dyntopo) instead of a frozen stroke-start snapshot',
     type       : 'bool',
-    value      : false,
+    value      : true,
   },
   {
     key        : 'sculptcore.backface_cull',
