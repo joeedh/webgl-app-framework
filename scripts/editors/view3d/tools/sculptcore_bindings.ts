@@ -5,7 +5,7 @@ import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/ind
 import {StructType} from '@litestl/typescript-runtime'
 import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
-import {SculptTools, BrushFlags, isPlaneFamilyTool} from '../../../brush/brush_base'
+import {SculptTools, BrushFlags, StrokeMethod, isPlaneFamilyTool} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
 import {FalloffKind} from '@sculptcore/api/sculptcore/gpu/FalloffKind'
 import {FeatureFlags} from '../../../core/feature-flag'
@@ -468,6 +468,11 @@ export function builSculptcoreBrush({
   // position, derived as `co - .brush.disp.vec` under strokeGen). Pushed each
   // dab — cheap, and keeps a reused executor in sync with the active stroke.
   wasmExec.setNonAccum(nonAccum)
+  // Whether a `@grabmode` kernel (grab / kelvinlet) takes the from-orig fixed-
+  // region policy is a property of the stroke, not the kernel: the same field
+  // dragged along a path accumulates like any other brush. Anchored is the one
+  // mode with a stroke-start origin to deform from.
+  wasmExec.setAnchoredGrab(brush.strokeMethod === StrokeMethod.ANCHORED)
   wasmExec.setStrokeGen(strokeGen)
 
   // Pen-dynamics stack only needs (re)building when the brush is fresh — its

@@ -292,16 +292,77 @@ up to ~64× the area it was. That is the *correct* region — the field really i
 live out there — but `unboundedExtent` is the perf knob if it bites, and the
 per-dab cost has not been measured.
 
-### Wave 3 — accumulability + `strokeMethod`-derived `grabMode`
+### Wave 3 — accumulability + stroke-derived `grabMode` — **DONE**
 
 Drop `!isGlobal` from both emitters, delete `@global` from the parser, derive
-`grabMode` from `strokeMethod`, unify the three tool lists.
+`grabMode` from the stroke rather than a tool list, unify the three tool lists.
 
 Gate: grab and kelvinlet stroke identically to today; snakehook unchanged; a
 `PATH`-mode kelvinlet variant honors the non-accumulate flag.
 
-Wave 3 is independently testable and removes two of the three duplicate tool
-lists before any kelvinlet variant exists — worth landing even if Wave 2 slips.
+#### Result (2026-07-27)
+
+`@global` is gone end to end — parser, `ir.h`, both emitters, `pose.sbrush` (its
+last user), `GpuKernelInfo::isGlobal`, `GPUBRUSH_INFO_IS_GLOBAL`, and the
+`GpuBrushInfo.IS_GLOBAL` TS mirror. The C-API enumerator was deleted rather than
+renumbered, leaving 7 as a documented hole so nothing downstream shifts.
+`accumulable` is now `!isPaint && !isUnbounded`; the only live consequence is
+that `pose` becomes non-accumulate-eligible, which is correct (it is a pure
+function of base + cage) and unobservable today since POSE has no entry in
+`TOOL_TO_SCULPTBRUSH`.
+
+**`grabMode` is a conjunction, not a derivation.** The plan said "derive
+`grabMode` from `strokeMethod`", but the engine has no stroke-method concept and
+should not grow one — `StrokeMethod` is a TS enum about input handling. Instead
+the decision is split along the seam that already exists:
+
+```
+def.grabMode = def.grabModeCapable   // codegen, from @grabmode — CAN it grab?
+             && exec.anchoredGrab    // host-set per stroke — DOES this stroke?
+```
+
+`@grabmode` tags exactly `grab` and `kelvinlet`, which is precisely the old
+`isGrabBrush()` membership, so the engine's hardcoded tool list is deleted with
+no behavior change. `anchoredGrab` **defaults true**, so every host that never
+sets it (debug_app, the 113 ctests, `sbrush-verify`) keeps today's behavior
+exactly; only `sculptcore_bindings.ts` opts in, with
+`setAnchoredGrab(brush.strokeMethod === StrokeMethod.ANCHORED)`. A `PATH`-mode
+kelvinlet therefore falls through to the ordinary `nonAccum && accumulable`
+policy — the variant support this wave was for.
+
+**The three tool lists did not unify, because they are three different
+questions.** Only the first was duplicated policy:
+
+| Site | Question | Disposition |
+|---|---|---|
+| `brush_executor.h` `isGrabBrush()` | does this stroke deform from orig? | **deleted** — `@grabmode && anchoredGrab` |
+| `sculptcore_bindings.ts` `isGrabTool()` | does the bridge set `grabFrom`/`grabTo`? | **kept**, incl. SNAKE — snakehook genuinely needs a drag vector |
+| `pbvh_base.ts:1222` | raw event feed + invert suppression | **kept** — `PaintOpBase.feedTask`, the *legacy* PBVH path; `SculptPaintOp extends StrokeDriverOp` and never reaches it, which is why it has no KELVINLET entry |
+
+Collapsing the latter two would have been a behavior change dressed up as a
+cleanup. The genuinely duplicated `kGpuKernels[].grabMode` row still mirrors the
+`@grabmode` DSL tag by hand; that one is a real (small) duplication left in
+place, since the GPU table is also where per-tool kernel *variants* will be
+expressed.
+
+Verification: 113/113 ctest. `sbrush-verify` 0 `cpp vs wgsl` mismatches, the
+same 22 stale goldens. `npx tsgo --noEmit` the same 11 pre-existing errors.
+`pnpm test` unchanged from the Wave 1/2 baseline — app 17 suites / 130 tests and
+mathl 2/2 green, integration native 14 suites / 131 tests / 0 failed, wasm 15
+passed with the one pre-existing `§8.2/§8.4 world-space dab parity` failure at
+the same `worldParityMaxDiff` of 1.1542959213256836.
+`test_gpu_brush_seam.cc` asserted `IS_GLOBAL == 1` on kelvinlet; that assertion
+now checks `ACCUMULABLE == 0`, which is the property it was actually standing in
+for.
+
+**Two thirds of the gate are verified by construction, not by a test.** "Grab
+and kelvinlet stroke identically to today" rests on `@grabmode` membership being
+byte-identical to the deleted `isGrabBrush()` list (checked: only
+`grab.brush.gen.h` and `kelvinlet.brush.gen.h` emit `grabModeCapable`) plus
+`anchoredGrab` defaulting true — not on a stroke comparison. "A `PATH`-mode
+kelvinlet honors the non-accumulate flag" has no test at all, because no
+`PATH`-mode kelvinlet exists yet to point one at; it is the wave's forward-
+looking half and stays unexercised until the first variant lands.
 
 ## Open
 
