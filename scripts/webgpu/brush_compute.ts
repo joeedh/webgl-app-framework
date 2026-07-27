@@ -341,11 +341,11 @@ export class GpuBrushStroke {
       return false
     }
     this.bindings = parsed
-    // The dispatcher fills bindings 0-13 + 22/23/24; a kernel wanting an attr
+    // The dispatcher fills bindings 0-13 + 22/23/24/25; a kernel wanting an attr
     // slot (>=14, other than those) needs marshaling this class doesn't do
     // yet — fail loudly at begin, not silently at draw.
     for (const b of this.bindings) {
-      if (b.binding >= 14 && b.binding !== 22 && b.binding !== 23 && b.binding !== 24) {
+      if (b.binding >= 14 && (b.binding < 22 || b.binding > 25)) {
         this.log(`kernel '${this.kernel}' wants unsupported binding ${b.binding}`)
         return false
       }
@@ -368,9 +368,10 @@ export class GpuBrushStroke {
       compute: {module, entryPoint: 'main'},
     })
 
-    // Stroke-static geometry. co/no expand to stride-16; orig-co (binding 22)
-    // is simply a second upload of the initial co (plan §4); the dab stamps
-    // (binding 23) zero-fill (a fresh GPUBuffer is spec-zeroed).
+    // Stroke-static geometry. co/no expand to stride-16; grab's orig-co
+    // (binding 22) is simply a second upload of the initial co (plan §4). The
+    // dab stamps (23) and the accumulated displacement (25) both start at zero,
+    // which a fresh GPUBuffer already is.
     const co = new Float32Array(this.data(GpuBrushData.CO).slice().buffer)
     const no = new Float32Array(this.data(GpuBrushData.NO).slice().buffer)
     const mask = this.data(GpuBrushData.MASK).slice()
@@ -384,6 +385,9 @@ export class GpuBrushStroke {
     }
     if (this.has(23)) {
       this.upload(23, new Uint8Array(this.elemCount * 4), BufferUsage.STORAGE | BufferUsage.COPY_DST)
+    }
+    if (this.has(25)) {
+      this.upload(25, new Uint8Array(this.elemCount * VEC3_STRIDE), BufferUsage.STORAGE | BufferUsage.COPY_DST)
     }
     // Cavity automask (binding 24): one f32 per vertex, identity 1.0 from the
     // C-API when cavity masking is off (so GPU strength == CPU strength).
