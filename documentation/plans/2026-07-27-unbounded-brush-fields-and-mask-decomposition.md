@@ -412,8 +412,45 @@ ctest cannot reach it — that half needs the integration suite or a CDP stroke.
 And the per-dab cost of the ~64× region is still unmeasured, now on every C++
 host too.
 
+### Wave 5 — the latch was over-scoped; snakehook regression — **DONE**
+
+Wave 2 put the `maxFilterRadius` high-water latch under `isGrabTool(...)`, which
+includes SNAKE. Its rationale is specific to a from-orig grab — a dab writes only
+verts inside the filter, so a shrinking region strands the ones it drops. Wave 3
+made that condition explicit and checkable: `grabMode = grabModeCapable &&
+anchoredGrab`, and snakehook is not `@grabmode`. Its dabs are incremental, so a
+shrinking region is harmless.
+
+The latch was not harmless, though, because `filterRadius` is also the dyntopo
+dab radius passed to `applyDab`, and snakehook's preset enables dyntopo with
+COLLAPSE. In the default SCREEN radius mode the object-space radius is
+`ps.radius * dist`, resolved per dab from the *live raycast hit* — so as
+snakehook hooks geometry toward the camera `dist` shrinks and the radius with
+it, while the latch holds the region at the stroke's maximum. COLLAPSE then ran
+across a region much wider than the dab with an `l_min` derived from the current,
+smaller radius: verts collapsing well outside the brush.
+
+Fix: move the latch inside the from-orig branch at both sites (`SculptPaintOp`
+and `runSculptcoreStroke`). Snakehook keeps its per-dab region; grab/kelvinlet
+keep the drag-reversal guard.
+
+Also closed the coverage gap that let this through: snakehook was the only sculpt
+tool missing from `set_brush_tool` in `source/debug/script.cc`, so it could not be
+driven headlessly at all. Added it, plus `tests/test_snakehook.cc` — a 10-dab
+stroke asserting the region hooks along the drag and that nothing walks toward the
+origin (the failure signature if the grab vectors are ever lost, since the kernel's
+gather target `grabFrom + grabTo` would become the world origin).
+
+Verification: **115/115** ctest. `npx tsgo --noEmit` the same 11 pre-existing
+errors.
+
 ## Open
 
+- The engine's snakehook path is provably unchanged across Waves 1–4 (the kernel
+  diff is `strength(v.co) * (1.0 - v.mask)` → `strength(v.co) * masks()`, which is
+  the same product), and `test_snakehook` passes at HEAD. So if a snakehook
+  symptom survives this fix, it is not in the kernel — look at the interactive
+  op, which neither ctest nor the integration suite drives.
 - Whether `invert` belongs on an unbounded field at all. Negating a grab is
   meaningful, but `pbvh_base.ts:1226` currently suppresses Ctrl-invert for grab
   tools (`ps.invert = e.ctrlKey && !isGrabTool`, and that list *does* include

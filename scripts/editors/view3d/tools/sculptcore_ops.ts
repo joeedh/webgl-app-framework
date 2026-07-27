@@ -620,6 +620,10 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           // Snakehook (strokeMethod=Path): dab tracks the live raycast surface
           // each dab; grabFrom = current center, grabTo = step since last dab.
           this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, p, this.prevDabLocal[mirrorIdx])
+          // No high-water latch here: snakehook is not a from-orig grab (the
+          // kernel is not @grabmode, so grabMode stays false), its dabs are
+          // incremental, and this radius also sizes the dyntopo dab — pinning
+          // it at the stroke's widest collapses edges well outside the dab.
         } else {
           // Grab / kelvinlet (strokeMethod=Anchored): deform a region FIXED at
           // the stroke anchor, from each vert's orig position (#35). grabFrom =
@@ -649,12 +653,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           // (Absolute); mirror images add their pull onto it (Add) so shared verts
           // sum instead of the last pass overwriting.
           wasmExec.setGrabAccumAdd(mirrorIdx > 0)
+          // Never let the region shrink mid-stroke (drag reversal): a from-orig
+          // dab only writes verts inside the filter, so any vert it drops keeps
+          // its previous displacement and leaves a stale ring behind.
+          this.maxFilterRadius = Math.max(this.maxFilterRadius, filterRadius)
+          filterRadius = this.maxFilterRadius
         }
-        // Never let the region shrink mid-stroke (drag reversal): a from-orig
-        // dab only writes verts inside the filter, so any vert it drops keeps
-        // its previous displacement and leaves a stale ring behind.
-        this.maxFilterRadius = Math.max(this.maxFilterRadius, filterRadius)
-        filterRadius = this.maxFilterRadius
       }
 
       // Stroke tangent for the oriented Box falloff + wing-scrape, mirror-aware:
@@ -1149,9 +1153,11 @@ export function runSculptcoreStroke(opts: {
             brush.tool === SculptTools.KELVINLET ? radius * wasmBrush.unboundedExtent : radius
           filterRadius = fieldRadius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
           wasmExec.setGrabAccumAdd(img.image > 0)
+          // From-orig grabs only; snakehook must keep its per-dab region (see
+          // the interactive op).
+          maxFilterRadius = Math.max(maxFilterRadius, filterRadius)
+          filterRadius = maxFilterRadius
         }
-        maxFilterRadius = Math.max(maxFilterRadius, filterRadius)
-        filterRadius = maxFilterRadius
       }
 
       // VDM carrier routing (X3 stage 4) — mirrors the interactive op: Draw
