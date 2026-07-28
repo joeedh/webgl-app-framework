@@ -24,6 +24,7 @@ const ALPHA = 0.5
 const SLICE_HALF = 0.15
 
 export interface StrokeInput {
+  /** LOCAL view3d px — the caller has already applied getLocalMouse(). */
   x: number
   y: number
   /** 0..1; caller normalizes (mouse => 1, pen/touch => e.pressure) */
@@ -38,6 +39,13 @@ export interface StrokeInput {
   /** ms; informational only (not used for spacing) */
   time: number
   pointerType?: string
+  /** Brush params with pressure dynamics already applied by the caller
+   * (StrokeDriverOp.makeParamProvider) — both the TS and the C++ driver
+   * consume the same fully-resolved input. */
+  radius: number
+  strength: number
+  spacing: number
+  color: Vector4
 }
 
 export enum StrokeSpaceMode {
@@ -50,12 +58,14 @@ export interface IStrokeProjection {
   project(co: Vector4, rendermat?: Matrix4): number
   unproject(co: Vector4, irendermat?: Matrix4): number
   getViewVec(localX: number, localY: number): Vector3
-  getLocalMouse(x: number, y: number): Vector2
   cameraPos(): Vector3
   rendermat(): Matrix4
   /** device px; used to convert a screen-px radius to world units */
   glSize(): Vector2
   size(): Vector2
+  /** camera near plane; only the C++ driver needs it (it ports getViewVec
+   * itself rather than calling back across the binding). */
+  camNear(): number
 }
 
 /** World-space ray hit. origin/dir and p/normal are all world space. */
@@ -75,9 +85,26 @@ export interface StrokeParams {
 /** Lifts feedTask's getchannel(): pressure -> dynamics-resolved params. */
 export type StrokeParamProvider = (pressure: number) => StrokeParams
 
+/** The stroke-sampler surface shared by the TS and the C++-backed driver
+ * (stroke_driver_native.ts), so StrokeDriverOp can hold either behind the
+ * `sculptcore.cpp_stroke_driver` flag. */
+export interface IBrushStrokeDriver {
+  push(input: StrokeInput): void
+  /** Signal pointer-up; the next poll() flushes the trailing segment. */
+  end(): void
+  reset(): void
+  /** The dabs that became ready since the last call. */
+  poll(): PaintSample[]
+  /** true once end() has been called AND the trailing segment is drained */
+  readonly finished: boolean
+  getAnchorScreen(): Vec | undefined
+  getPreviewScreen(): Vec | undefined
+  /** Release engine-side resources; absent on the pure-TS driver. */
+  destroy?(): void
+}
+
 export interface StrokeDriverOptions {
   projection: IStrokeProjection
-  getParams: StrokeParamProvider
   spaceMode: StrokeSpaceMode
   /** required for WORLD mode; optional for SCREEN */
   rayCast?: StrokeRayCast
@@ -119,7 +146,7 @@ interface ControlPoint {
   params: StrokeParams
 }
 
-export class BrushStrokeDriver {
+export class BrushStrokeDriver implements IBrushStrokeDriver {
   opts: StrokeDriverOptions
 
   private inQueue: StrokeInput[] = []
@@ -249,15 +276,19 @@ export class BrushStrokeDriver {
   private ingest(input: StrokeInput): void {
     const proj = this.opts.projection
 
-    const sp = proj.getLocalMouse(input.x, input.y)
-    const screen: Vec = [sp[0], sp[1]]
+    const screen: Vec = [input.x, input.y]
 
     const vv = proj.getViewVec(screen[0], screen[1])
     const viewvec: Vec = [vv[0], vv[1], vv[2]]
     const originV3 = proj.cameraPos()
     const origin: Vec = [originV3[0], originV3[1], originV3[2]]
 
-    const params = this.opts.getParams(input.pressure)
+    const params: StrokeParams = {
+      radius  : input.radius,
+      strength: input.strength,
+      spacing : input.spacing,
+      color   : input.color,
+    }
     const method = this.opts.strokeMethod ?? StrokeMethod.PATH
 
     let world: Vec

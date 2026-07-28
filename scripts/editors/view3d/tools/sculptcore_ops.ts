@@ -3,7 +3,7 @@ import type {ToolContext, ViewContext} from '../../../core/context'
 import {LiteMesh, LiteMeshDisplayMode} from '../../../lite-mesh/index'
 import {Matrix4, ToolOp, Vector2, Vector3, Vector4} from '../../../path.ux/pathux'
 import {StrokeDriverOp} from './stroke_paint_op'
-import {AnchoredLiveMode, BrushStrokeDriver, IStrokeHit, StrokeInput, StrokeRayCast} from './stroke_driver'
+import {AnchoredLiveMode, IStrokeHit, StrokeInput, StrokeRayCast, StrokeSpaceMode} from './stroke_driver'
 import type {SculptCorePaintMode} from './sculptcore'
 import {getWasmImmediate} from '@sculptcore/api/api'
 import {DefaultBrushes, type SculptBrush} from '../../../brush/index'
@@ -18,7 +18,6 @@ import {
 import type {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {
   BrushFlags,
-  BrushRadiusModes,
   DynTopoEdgeModeSC,
   DynTopoFlagsSC,
   SculptTools,
@@ -348,6 +347,13 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     return new Matrix4(ob.outputs.matrix.getValue())
   }
 
+  /** The C++ driver raycasts this tree itself (it has the object matrix), so
+   * makeRayCast's world<->local round trip is only for the TS driver. */
+  getSpatialTree(): unknown | undefined {
+    const mesh = this.modal_ctx?.object?.data
+    return mesh instanceof LiteMesh ? mesh.spatial : undefined
+  }
+
   /** World-space ray cast for the stroke driver's control points: world
    * origin/dir -> object-local -> mesh.rayCast -> hit back in world space. */
   makeRayCast(): StrokeRayCast {
@@ -610,7 +616,7 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
 
       // Grab-style brushes (grab/snakehook/kelvinlet) pull the region in the
       // stroke-movement direction (see applyGrabDabState).
-      let dabCenter: number[] | Vector3 = p
+      const dabCenter: number[] | Vector3 = p
       // Node-filter radius. Grab/kelvinlet widen it by the cumulative drag below
       // (the falloff still uses the brush radius via wasmBrush.radius), so the
       // deformed region's leaves stay in the filter and can't shrink + tear (#35).
@@ -1253,8 +1259,47 @@ export interface SculptcoreStrokeTester {
     dyntopo?: StrokeTesterDyntopo
     brush?: SculptBrush
   }): SculptcoreStrokeRunResult
+  sampleStroke(opts: {
+    points: ArrayLike<number>[]
+    useCpp: boolean
+    radius?: number
+    pressure?: number
+    sculptTool?: SculptTools
+    brushSettings?: Partial<SculptBrush>
+    brush?: SculptBrush
+    /** StrokeSpaceMode override; the sculpt op is always SCREEN otherwise. */
+    spaceMode?: number
+  }): StrokeDabDump[]
   undo(): void
   redo(): void
+}
+
+/** One emitted dab, flattened to plain numbers so it survives `--dump` JSON.
+ * Used by `tests/integration/stroke_driver_parity.test.ts` to diff the TS and
+ * C++ samplers field by field. */
+export interface StrokeDabDump {
+  p: number[]
+  dp: number[]
+  screenP: number[]
+  dScreenP: number[]
+  vec: number[]
+  viewvec: number[]
+  vieworigin: number[]
+  viewPlane: number[]
+  anchorVec: number[]
+  strokeS: number
+  dstrokeS: number
+  angle: number
+  futureAngle: number
+  strength: number
+  radius: number
+  w: number
+  pressure: number
+  liveAngle: number
+  isInterp: boolean
+  invert: boolean
+  hit: boolean
+  useAltBrush: boolean
 }
 
 declare global {
@@ -1409,23 +1454,13 @@ window._sculptcoreStrokeTester = {
     // build samples below; we still run the op non-modally (see is_modal=false).
     tool.modal_ctx = ctx
 
-    const driver = new BrushStrokeDriver({
-      projection      : tool.makeProjection(),
-      getParams       : tool.makeParamProvider(),
-      spaceMode       : tool.getSpaceMode(),
-      rayCast         : tool.makeRayCast(),
-      objectMatrix    : () => tool.getObjectMatrix(),
-      strokeMethod    : tool.getStrokeMethod(),
-      anchoredLiveMode: tool.getAnchoredLiveMode(),
-      radiusIsWorld   : resolvedBrush.radiusMode === BrushRadiusModes.WORLD,
-    })
+    // Same flag-driven pick as the interactive path (modalStart).
+    const driver = tool.makeDriver()
+    const getParams = tool.makeParamProvider()
 
-    // Normalized (0..1) viewport coords -> window/client coords, undoing the
-    // offset getLocalMouse() will re-subtract (client rect when present, else pos).
+    // Normalized (0..1) viewport coords -> LOCAL view3d px, which is what both
+    // drivers take (StrokeInput.x/y).
     const size = view3d.size!
-    const rect = view3d.getClientRects()[0]
-    const offX = rect ? rect.x : view3d.pos?.[0] ?? 0
-    const offY = rect ? rect.y : view3d.pos?.[1] ?? 0
 
     const samples: PaintSample[] = []
     const drain = () => {
@@ -1438,8 +1473,9 @@ window._sculptcoreStrokeTester = {
     for (let i = 0; i < points.length; i++) {
       const p = points[i]
       const input: StrokeInput = {
-        x: offX + p[0] * size[0],
-        y: offY + p[1] * size[1],
+        ...getParams(pressure),
+        x: p[0] * size[0],
+        y: p[1] * size[1],
         pressure,
         tiltX: 0,
         tiltY: 0,
@@ -1454,6 +1490,7 @@ window._sculptcoreStrokeTester = {
     }
     driver.end()
     drain()
+    driver.destroy?.()
 
     tool.inputs.samples.setValue(samples)
 
@@ -1485,6 +1522,88 @@ window._sculptcoreStrokeTester = {
     return {tool, dabs: samples.length, redrawPromise: window.redraw_viewport_p(true)}
   },
 
+  /**
+   * Sample a stroke through one sampler and return the raw dabs *without*
+   * applying them — the parity gate for the C++ driver. `useCpp` picks
+   * `NativeStrokeDriver` (sculptcore) over the TS `BrushStrokeDriver`,
+   * bypassing the `sculptcore.cpp_stroke_driver` flag so one boot can run both.
+   */
+  sampleStroke({
+    points,
+    useCpp,
+    radius,
+    pressure = 1,
+    sculptTool,
+    brushSettings,
+    brush,
+    spaceMode,
+  }: {
+    points: ArrayLike<number>[]
+    useCpp: boolean
+    radius?: number
+    pressure?: number
+    sculptTool?: SculptTools
+    brushSettings?: Partial<SculptBrush>
+    brush?: SculptBrush
+    spaceMode?: number
+  }): StrokeDabDump[] {
+    const ctx = this.ctx
+    const view3d = ctx.view3d as View3D | undefined
+    if (!view3d) {
+      throw new Error('_sculptcoreStrokeTester.sampleStroke: no active view3d')
+    }
+    if (!this.mesh) {
+      throw new Error('_sculptcoreStrokeTester.sampleStroke: active object is not a LiteMesh')
+    }
+
+    const resolvedBrush: SculptBrush = brush ?? this.getBrush({sculptTool, brushSettings})
+    if (radius !== undefined) {
+      resolvedBrush.radius = radius
+    }
+
+    const tool = new SculptPaintOp()
+    tool.inputs.brush.setValue(resolvedBrush)
+    tool.modal_ctx = ctx
+    if (spaceMode !== undefined) {
+      tool.getSpaceMode = () => spaceMode as StrokeSpaceMode
+    }
+
+    const driver = tool.makeDriver(useCpp)
+    const getParams = tool.makeParamProvider()
+    const size = view3d.size!
+    const invert = (resolvedBrush.flag & BrushFlags.INVERT) !== 0
+
+    const dabs: StrokeDabDump[] = []
+    const drain = () => {
+      for (const ps of driver.poll()) {
+        dabs.push(dumpDab(ps))
+      }
+    }
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]
+      driver.push({
+        ...getParams(pressure),
+        x: p[0] * size[0],
+        y: p[1] * size[1],
+        pressure,
+        tiltX: 0,
+        tiltY: 0,
+        twist: 0,
+        invert,
+        useAltBrush: false,
+        time       : i,
+        pointerType: 'mouse',
+      })
+      drain()
+    }
+    driver.end()
+    drain()
+    driver.destroy?.()
+
+    return dabs
+  },
+
   /** Undo the last stroke through the toolstack (the real ctrl-Z path). */
   undo(): void {
     this.ctx.toolstack.undo()
@@ -1494,6 +1613,34 @@ window._sculptcoreStrokeTester = {
   redo(): void {
     this.ctx.toolstack.redo()
   },
+}
+
+/** Flatten a PaintSample to plain arrays/numbers so it survives `--dump` JSON. */
+function dumpDab(ps: PaintSample): StrokeDabDump {
+  return {
+    p          : [ps.p[0], ps.p[1], ps.p[2], ps.p[3]],
+    dp         : [ps.dp[0], ps.dp[1], ps.dp[2], ps.dp[3]],
+    screenP    : [ps.screenP[0], ps.screenP[1]],
+    dScreenP   : [ps.dScreenP[0], ps.dScreenP[1]],
+    vec        : [ps.vec[0], ps.vec[1], ps.vec[2]],
+    viewvec    : [ps.viewvec[0], ps.viewvec[1], ps.viewvec[2]],
+    vieworigin : [ps.vieworigin[0], ps.vieworigin[1], ps.vieworigin[2]],
+    viewPlane  : [ps.viewPlane[0], ps.viewPlane[1], ps.viewPlane[2]],
+    anchorVec  : [ps.anchorVec[0], ps.anchorVec[1], ps.anchorVec[2]],
+    strokeS    : ps.strokeS,
+    dstrokeS   : ps.dstrokeS,
+    angle      : ps.angle,
+    futureAngle: ps.futureAngle,
+    strength   : ps.strength,
+    radius     : ps.radius,
+    w          : ps.w,
+    pressure   : ps.pressure,
+    liveAngle  : ps.liveAngle,
+    isInterp   : ps.isInterp,
+    invert     : ps.invert,
+    hit        : ps.hit,
+    useAltBrush: ps.useAltBrush,
+  }
 }
 
 // Headless/CDP-friendly entry point:

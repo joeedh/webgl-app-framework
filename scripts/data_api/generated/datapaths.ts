@@ -390,6 +390,7 @@ export type GeneratedDataPath =
   | "settings.featureFlags"
   | "settings.featureFlags.sculptcore_auto_defrag"
   | "settings.featureFlags.sculptcore_backface_cull"
+  | "settings.featureFlags.sculptcore_cpp_stroke_driver"
   | "settings.featureFlags.sculptcore_gpu_brush"
   | "settings.featureFlags.sculptcore_gpu_brush_grab"
   | "settings.featureFlags.sculptcore_gpu_brush_verify"
@@ -1200,6 +1201,7 @@ declare module "@framework/pathux" {
     "settings.featureFlags": true;
     "settings.featureFlags.sculptcore_auto_defrag": true;
     "settings.featureFlags.sculptcore_backface_cull": true;
+    "settings.featureFlags.sculptcore_cpp_stroke_driver": true;
     "settings.featureFlags.sculptcore_gpu_brush": true;
     "settings.featureFlags.sculptcore_gpu_brush_grab": true;
     "settings.featureFlags.sculptcore_gpu_brush_verify": true;

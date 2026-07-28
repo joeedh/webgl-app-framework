@@ -5311,6 +5311,16 @@
       "decimalPlaces": 4,
       "step": 0.05
     },
+    "settings.featureFlags.sculptcore_cpp_stroke_driver": {
+      "kind": "prop",
+      "ownerStruct": "FeatureFlagManager",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "C++ Stroke Driver",
+      "description": "Sample sculpt strokes with the sculptcore C++ sampler instead of the TS one",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "settings.featureFlags.sculptcore_gpu_brush": {
       "kind": "prop",
       "ownerStruct": "FeatureFlagManager",

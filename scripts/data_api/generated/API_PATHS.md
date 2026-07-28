@@ -580,6 +580,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `settings.featureFlags` | struct |  |  |  |
 | `settings.featureFlags.sculptcore_auto_defrag` | prop | BoolProperty | sculptcore.auto_defrag |  |
 | `settings.featureFlags.sculptcore_backface_cull` | prop | BoolProperty | Backface Culling |  |
+| `settings.featureFlags.sculptcore_cpp_stroke_driver` | prop | BoolProperty | C++ Stroke Driver |  |
 | `settings.featureFlags.sculptcore_gpu_brush` | prop | BoolProperty | GPU Brushes |  |
 | `settings.featureFlags.sculptcore_gpu_brush_grab` | prop | BoolProperty | GPU Grab Brush |  |
 | `settings.featureFlags.sculptcore_gpu_brush_verify` | prop | BoolProperty | GPU Brush Shadow-Verify |  |

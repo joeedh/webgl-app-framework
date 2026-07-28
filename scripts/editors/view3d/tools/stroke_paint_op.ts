@@ -16,6 +16,7 @@ import {BrushFlags, BrushRadiusModes, SculptTools} from '../../../brush/index'
 import {
   AnchoredLiveMode,
   BrushStrokeDriver,
+  IBrushStrokeDriver,
   IStrokeProjection,
   StrokeInput,
   StrokeMethod,
@@ -24,6 +25,9 @@ import {
   StrokeRayCast,
   StrokeSpaceMode,
 } from './stroke_driver.js'
+import {NativeStrokeDriver} from './stroke_driver_native.js'
+import {FeatureFlags} from '../../../core/feature-flag'
+import {getWasmImmediate} from '@sculptcore/api/api'
 
 import {
   Curve1DProperty,
@@ -52,7 +56,9 @@ export abstract class StrokeDriverOp<
   ToolContext,
   ViewContext
 > {
-  driver: BrushStrokeDriver | undefined
+  driver: IBrushStrokeDriver | undefined
+  /** Pressure->params resolver, built once per stroke in modalStart. */
+  paramProvider: StrokeParamProvider | undefined
   mfinished = false
   timer: number | undefined
   /** most recent raw pointer event; supplies modifiers/pressure to applyDab */
@@ -131,10 +137,16 @@ export abstract class StrokeDriverOp<
     // Poly-group "extend" is on ctrl (shift smooths instead, see sculptcore
     // on_mousedown); every other brush uses shift for its alt path.
     const isPolyGroup = this.inputs.brush.getValue().tool === SculptTools.POLYGROUP
+    const pressure = this.getPressure(e)
+    // Both drivers take LOCAL view3d px and already-resolved params, so the
+    // parity test can feed them the same StrokeInput.
+    const local = this.modal_ctx!.view3d.getLocalMouse(e.x, e.y)
+    const params = (this.paramProvider ?? this.makeParamProvider())(pressure)
     return {
-      x          : e.x,
-      y          : e.y,
-      pressure   : this.getPressure(e),
+      ...params,
+      x: local[0],
+      y: local[1],
+      pressure,
       tiltX      : e.tiltX,
       tiltY      : e.tiltY,
       twist      : twistE.twist ?? 0.0,
@@ -168,31 +180,61 @@ export abstract class StrokeDriverOp<
   makeProjection(): IStrokeProjection {
     const view3d = this.modal_ctx!.view3d
     return {
-      project      : (co, mat) => view3d.project(co, mat),
-      unproject    : (co, imat) => view3d.unproject(co, imat),
-      getViewVec   : (x, y) => view3d.getViewVec(x, y),
-      getLocalMouse: (x, y) => view3d.getLocalMouse(x, y),
-      cameraPos    : () => view3d.activeCamera.pos,
-      rendermat    : () => view3d.activeCamera.rendermat,
-      glSize       : () => view3d.glSize,
-      size         : () => view3d.size!,
+      project   : (co, mat) => view3d.project(co, mat),
+      unproject : (co, imat) => view3d.unproject(co, imat),
+      getViewVec: (x, y) => view3d.getViewVec(x, y),
+      cameraPos : () => view3d.activeCamera.pos,
+      rendermat : () => view3d.activeCamera.rendermat,
+      glSize    : () => view3d.glSize,
+      size      : () => view3d.size!,
+      camNear   : () => view3d.activeCamera.near,
     }
+  }
+
+  /** Bound `sculptcore::spatial::SpatialTree` for the geometry under the
+   * stroke. Undefined (the default) means the C++ driver has nothing to
+   * raycast, so the TS driver is used regardless of the feature flag. */
+  getSpatialTree(): unknown | undefined {
+    return undefined
+  }
+
+  /** Pick the C++ sampler when `sculptcore.cpp_stroke_driver` is on and the
+   * subclass can hand it a spatial tree; otherwise the TS one. */
+  makeDriver(useCpp: boolean = FeatureFlags.get('sculptcore.cpp_stroke_driver')): IBrushStrokeDriver {
+    const radiusIsWorld = this.inputs.brush.getValue().radiusMode === BrushRadiusModes.WORLD
+    const wasm = getWasmImmediate()
+    const spatial = wasm && useCpp ? this.getSpatialTree() : undefined
+
+    if (wasm && spatial !== undefined) {
+      return new NativeStrokeDriver({
+        wasm,
+        spatial,
+        projection      : this.makeProjection(),
+        spaceMode       : this.getSpaceMode(),
+        objectMatrix    : () => this.getObjectMatrix(),
+        strokeMethod    : this.getStrokeMethod(),
+        anchoredLiveMode: this.getAnchoredLiveMode(),
+        radiusIsWorld,
+      })
+    }
+
+    return new BrushStrokeDriver({
+      projection      : this.makeProjection(),
+      spaceMode       : this.getSpaceMode(),
+      rayCast         : this.makeRayCast(),
+      objectMatrix    : () => this.getObjectMatrix(),
+      strokeMethod    : this.getStrokeMethod(),
+      anchoredLiveMode: this.getAnchoredLiveMode(),
+      radiusIsWorld,
+    })
   }
 
   modalStart(ctx: ViewContext): any {
     this.mfinished = false
     this.lastEvent = undefined
 
-    this.driver = new BrushStrokeDriver({
-      projection      : this.makeProjection(),
-      getParams       : this.makeParamProvider(),
-      spaceMode       : this.getSpaceMode(),
-      rayCast         : this.makeRayCast(),
-      objectMatrix    : () => this.getObjectMatrix(),
-      strokeMethod    : this.getStrokeMethod(),
-      anchoredLiveMode: this.getAnchoredLiveMode(),
-      radiusIsWorld   : this.inputs.brush.getValue().radiusMode === BrushRadiusModes.WORLD,
-    })
+    this.paramProvider = this.makeParamProvider()
+    this.driver = this.makeDriver()
 
     if (this.timer !== undefined) {
       window.clearInterval(this.timer)
@@ -259,6 +301,7 @@ export abstract class StrokeDriverOp<
 
   modalEnd(was_cancelled: boolean): any {
     this.mfinished = true
+    this.driver?.destroy?.()
 
     if (this.timer !== undefined) {
       window.clearInterval(this.timer)

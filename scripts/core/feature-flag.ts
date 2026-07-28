@@ -212,6 +212,13 @@ const featureFlags = [
     value      : false,
   },
   {
+    key        : 'sculptcore.cpp_stroke_driver',
+    uiName     : 'C++ Stroke Driver',
+    description: 'Sample sculpt strokes with the sculptcore C++ sampler instead of the TS one',
+    type       : 'bool',
+    value      : false,
+  },
+  {
     key        : 'sculptcore.backface_cull',
     uiName     : 'Backface Culling',
     description: 'Cull back-facing triangles when drawing the sculpt surface (needs consistent winding)',
