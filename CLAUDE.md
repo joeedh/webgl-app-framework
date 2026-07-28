@@ -239,6 +239,21 @@ GPU offload is optional). See
 [sculptcore/documentation/dynamic-topology.md](sculptcore/documentation/dynamic-topology.md)
 and [sculptcore/documentation/plans/dyntopo-m7-cascade.md](sculptcore/documentation/plans/dyntopo-m7-cascade.md).
 
+## Sculpt stroke driver
+
+Sculpt strokes are host-driven: sculptcore owns no camera, spacing, symmetry or
+stroke method — it exposes one dab primitive. `BrushStrokeDriver`
+(`scripts/editors/view3d/tools/stroke_driver.ts`) turns pointer input into
+evenly-spaced samples; `SculptPaintOp` (`sculptcore_ops.ts`) mirrors each sample
+and drives the engine. Per-kernel policy (grab discipline, `@unbounded` field,
+invert suppression, which attr layers to retarget) is **queried from sculptcore**
+via `resolveDabPolicy` in `sculptcore_bindings.ts` — never hardcode a tool-name
+conditional; adding a brush should not require a host edit. See
+[documentation/strokeDriverReport.md](documentation/strokeDriverReport.md) (TS
+architecture) and
+[sculptcore/documentation/strokeDriverGuide.md](sculptcore/documentation/strokeDriverGuide.md)
+(the engine-facing contract + conformance checklist).
+
 ## GPU brushes
 
 When dyntopo is off, the kelvinlet (and, behind soak flag `sculptcore.gpu_brush_grab`,

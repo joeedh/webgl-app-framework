@@ -68,7 +68,8 @@ extra uniforms (below).
   autosmooth's BSMOOTH entry does to pin `false`). Bool props go through
   `prop_coerce.h`, which dispatches `Prop::BOOL`/`BoolProp` like the numeric
   types — it didn't originally, which silently reset `invert` to its default
-  before every dab. Smooth-family tools ignore invert (`isSmoothTool`).
+  before every dab. Smooth-family tools ignore invert: the host suppresses it
+  for any kernel whose queried `BrushDefFlags.relaxesBase` (`@relaxation`) is set.
 - **Mask** gates vertex displacement: every displacing kernel scales by
   `(1.0 - v.mask)`. With no mask painted this is an exact `×1.0`, so unmasked
   results are bit-identical. MASK_PAINT paints the mask; inverted MASK_PAINT
@@ -98,8 +99,9 @@ and sharp edges are flagged with the interactive marking tools — see
 boundaries marked it reduces to a plain Laplacian, so it's a transparent drop-in
 for the old smooth brush. Consumers must run `boundary::recomputeDirty` first;
 the executor's `refreshBoundaryClassForBSmooth` does this on the first command of
-a step when `m->boundaryDirty`. Because smoothing diverges when inverted,
-`isSmoothTool` excludes the SMOOTH tool from invert.
+a step when `m->boundaryDirty`. Because smoothing diverges when inverted, the
+smooth kernels are tagged `@relaxation` and the host drops invert for them
+(`resolveToolDabPolicy(...).ignoresInvert`).
 
 ## Composite brushes / autosmooth (`BrushProgram`)
 
@@ -179,7 +181,8 @@ Grab-style brushes displace the region under the dab in the stroke-movement
 direction. They read two bound `Brush` members from `ctx.brush` — `grabFrom`
 (force application point) and `grabTo` (displacement vector) — that TS sets per
 dab before `execProgram` (these brushes take **no** TS-passed normal for the
-force). `isGrabTool` (`sculptcore_bindings.ts`) gates this; `applyGrabDabState`
+force). The queried policy gates this — `resolveDabPolicy(...).isGrab`, i.e. the
+kernel is `@incremental` or `@grabmode` (`sculptcore_bindings.ts`); `applyGrabDabState`
 (`sculptcore_ops.ts`) writes `grabFrom = dab center` and `grabTo = dab − prevDab`
 (zero on the first dab, so the brush is a no-op until it moves). The interactive
 op (`applyDab`) and the headless driver (`runSculptcoreStroke`) share that
