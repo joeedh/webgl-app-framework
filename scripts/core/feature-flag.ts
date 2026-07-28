@@ -216,7 +216,7 @@ const featureFlags = [
     uiName     : 'C++ Stroke Driver',
     description: 'Sample sculpt strokes with the sculptcore C++ sampler instead of the TS one',
     type       : 'bool',
-    value      : false,
+    value      : true,
   },
   {
     key        : 'sculptcore.backface_cull',
