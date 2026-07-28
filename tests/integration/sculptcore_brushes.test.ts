@@ -51,6 +51,7 @@ interface BrushTestResult {
   autosmoothOff?: StrokeMetrics
   autosmoothOn?: StrokeMetrics
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
+  colorLayerTarget?: {layerA: number; layerB: number; activeIdx: number; changedA: number; changedB: number}
   accumulateDefaults?: Record<string, boolean>
   symMirrorX?: {movedPos: number; movedNeg: number; maxDisp: number; invalid?: string}
   symOctants?: {octantsCovered: number; movedCount: number; invalid?: string}
@@ -241,6 +242,22 @@ maybe.each(backendTable(backends))('sculptcore brush behavior (%s)', (backend) =
     // green-dominant mean over the painted verts.
     expect(r.color!.meanG).toBeGreaterThan(r.color!.meanR)
     expect(r.color!.meanG).toBeGreaterThan(r.color!.meanB)
+  })
+
+  // Regression gate for the attr-manifest bridge: the color kernel's `color`
+  // handle is `@use(color)`, so the host resolves it to whichever layer is
+  // active for that category. The pre-manifest bridge hardcoded attr slot 0 at
+  // layer index 0, which silently painted the FIRST color layer instead.
+  test('color paint targets the ACTIVE color layer, not layer 0', () => {
+    const t = r.colorLayerTarget
+    expect(t).toBeDefined()
+    // Two distinct layers, and the later one is the active target.
+    expect(t!.layerB).not.toBe(t!.layerA)
+    expect(t!.activeIdx).toBe(t!.layerB)
+    // -1 would mean a layer was unreadable, which would void the comparison.
+    expect(t!.changedA).toBeGreaterThanOrEqual(0)
+    expect(t!.changedB).toBeGreaterThan(0)
+    expect(t!.changedA).toBe(0)
   })
 
   test('symmetric X stroke mirrors the dab across the X plane (Part A)', () => {

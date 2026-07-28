@@ -7,6 +7,7 @@ import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import type {View3D} from '../view3d.js'
 import {PaintSample} from './pbvh_paintsample.js'
+import {resolveToolDabPolicy} from './sculptcore_bindings'
 import {PropFlags} from '../../../path.ux/scripts/pathux.js'
 
 import {
@@ -1219,7 +1220,9 @@ export abstract class PaintOpBase<
     const viewvec = view3d.getViewVec(local[0], local[1])
     const origin = view3d.activeCamera.pos.copy()
     const brush = this.inputs.brush.getValue()
-    const isGrabTool = brush.tool === SculptTools.GRAB || brush.tool === SculptTools.SNAKE
+    // Grab-class kernels (@grabmode / @incremental) drive grabFrom/grabTo from
+    // raw pointer movement, so they take unsmoothed events and ignore invert.
+    const isGrabTool = resolveToolDabPolicy(brush.tool).isGrab
 
     ps.screenP.load(view3d.getLocalMouse(p.co[0], p.co[1]))
     ps.viewPlane.load(viewvec).normalize()

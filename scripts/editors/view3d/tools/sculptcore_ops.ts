@@ -13,7 +13,7 @@ import {
   buildBrushProgram,
   pushBrushDeviceInputs,
   configureDynTopoParams,
-  isGrabTool,
+  resolveDabPolicy,
 } from './sculptcore_bindings'
 import type {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {
@@ -615,15 +615,17 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // (the falloff still uses the brush radius via wasmBrush.radius), so the
       // deformed region's leaves stay in the filter and can't shrink + tear (#35).
       let filterRadius = radius
-      if (isGrabTool(brush.tool)) {
-        if (brush.tool === SculptTools.SNAKE) {
-          // Snakehook (strokeMethod=Path): dab tracks the live raycast surface
-          // each dab; grabFrom = current center, grabTo = step since last dab.
+      const dabPolicy = resolveDabPolicy(brushType)
+      if (dabPolicy.isGrab) {
+        if (dabPolicy.incrementalGrab) {
+          // `@incremental` (snakehook, strokeMethod=Path): dab tracks the live
+          // raycast surface each dab; grabFrom = current center, grabTo = step
+          // since last dab.
           this.prevDabLocal[mirrorIdx] = applyGrabDabState(wasmBrush, p, this.prevDabLocal[mirrorIdx])
-          // No high-water latch here: snakehook is not a from-orig grab (the
-          // kernel is not @grabmode, so grabMode stays false), its dabs are
-          // incremental, and this radius also sizes the dyntopo dab — pinning
-          // it at the stroke's widest collapses edges well outside the dab.
+          // No high-water latch here: an incremental kernel is not a from-orig
+          // grab (grabMode stays false), and this radius also sizes the dyntopo
+          // dab — pinning it at the stroke's widest collapses edges well outside
+          // the dab.
         } else {
           // Grab / kelvinlet (strokeMethod=Anchored): deform a region FIXED at
           // the stroke anchor, from each vert's orig position (#35). grabFrom =
@@ -640,14 +642,12 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           gt[0] = ps.anchorVec[0]
           gt[1] = ps.anchorVec[1]
           gt[2] = ps.anchorVec[2]
-          // Kelvinlet's field is `@unbounded` — it has no distance falloff of
-          // its own, only the C1 window the kernel applies over
-          // [0.8R, R], R = radius * unboundedExtent. Filter to that same R or
-          // the field is still live where the node set stops and the leaf
-          // boundary tears. Plus the drag, since the region must also cover
-          // where the verts move *to*.
-          const fieldRadius =
-            brush.tool === SculptTools.KELVINLET ? radius * wasmBrush.unboundedExtent : radius
+          // An `@unbounded` field (kelvinlet) has no distance falloff of its own,
+          // only the C1 window the kernel applies over [0.8R, R],
+          // R = radius * unboundedExtent. Filter to that same R or the field is
+          // still live where the node set stops and the leaf boundary tears. Plus
+          // the drag, since the region must also cover where the verts move *to*.
+          const fieldRadius = dabPolicy.unbounded ? radius * wasmBrush.unboundedExtent : radius
           filterRadius = fieldRadius + ps.anchorVec.vectorLength()
           // Symmetry: the primary image re-bases every touched vert from orig
           // (Absolute); mirror images add their pull onto it (Add) so shared verts
@@ -1130,11 +1130,12 @@ export function runSculptcoreStroke(opts: {
       // add their pull onto it (Add).
       let dabCenter: number[] = img.p
       let filterRadius = radius
-      if (isGrabTool(brush.tool)) {
+      const dabPolicy = resolveDabPolicy(brushType)
+      if (dabPolicy.isGrab) {
         if (anchorByImage[img.image] === undefined) {
           anchorByImage[img.image] = [img.p[0], img.p[1], img.p[2]]
         }
-        if (brush.tool === SculptTools.SNAKE) {
+        if (dabPolicy.incrementalGrab) {
           prevByImage[img.image] = applyGrabDabState(wasmBrush, img.p, prevByImage[img.image])
         } else {
           const a = anchorByImage[img.image]!
@@ -1147,10 +1148,9 @@ export function runSculptcoreStroke(opts: {
           gt[1] = img.p[1] - a[1]
           gt[2] = img.p[2] - a[2]
           dabCenter = a
-          // @unbounded kelvinlet filters to its window cutoff R, not the brush
+          // An @unbounded kernel filters to its window cutoff R, not the brush
           // radius (see the interactive op).
-          const fieldRadius =
-            brush.tool === SculptTools.KELVINLET ? radius * wasmBrush.unboundedExtent : radius
+          const fieldRadius = dabPolicy.unbounded ? radius * wasmBrush.unboundedExtent : radius
           filterRadius = fieldRadius + new Vector3(img.p).sub(new Vector3(a)).vectorLength()
           wasmExec.setGrabAccumAdd(img.image > 0)
           // From-orig grabs only; snakehook must keep its per-dab region (see

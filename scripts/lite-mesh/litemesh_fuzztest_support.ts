@@ -19,7 +19,7 @@ import {SculptTools} from '../brush/brush_base'
 import {DynTopoFlagsSC} from '../brush/brush_base'
 import {DefaultBrushes, type SculptBrush} from '../brush/index'
 import {runSculptcoreStroke} from '../editors/view3d/tools/sculptcore_ops'
-import {TOOL_TO_SCULPTBRUSH, isGrabTool} from '../editors/view3d/tools/sculptcore_bindings'
+import {TOOL_TO_SCULPTBRUSH, resolveToolDabPolicy} from '../editors/view3d/tools/sculptcore_bindings'
 import {LiteMesh} from './litemesh'
 
 /** One logged stroke — enough to replay the run deterministically. */
@@ -159,7 +159,7 @@ function fuzzTest(opts: {iters?: number; seed?: number; maxMs?: number} = {}): F
       // Grab-style brushes need moving dabs (grabTo is the per-dab delta); march
       // a tangent direction across the surface near the anchor.
       const dabs: {p: number[]; normal: number[]}[] = []
-      if (isGrabTool(tool)) {
+      if (resolveToolDabPolicy(tool).isGrab) {
         // Build a tangent perpendicular to the normal.
         let tx = -ny,
           ty = nx,

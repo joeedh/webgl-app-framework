@@ -1,9 +1,9 @@
-import {CommandExecutor, Brush as WasmBrush, BrushProgram, DynTopoParams} from '@sculptcore/api'
+import {CommandExecutor, Brush as WasmBrush, BrushProgram, BrushMetadata, DynTopoParams} from '@sculptcore/api'
 import {FalloffShape} from '@sculptcore/api/sculptcore/gpu/FalloffShape'
-import {IWasmInterface} from '@sculptcore/api/api'
+import {IWasmInterface, getWasmImmediate} from '@sculptcore/api/api'
 import {SculptBrush, DynTopoSettingsSC, DynTopoFlagsSC} from '../../../brush/index'
 import {StructType} from '@litestl/typescript-runtime'
-import {LiteMesh, AttrUseFlags} from '../../../lite-mesh/index'
+import {LiteMesh} from '../../../lite-mesh/index'
 import {SculptBrushes} from '@sculptcore/api/sculptcore/brush/SculptBrushes'
 import {SculptTools, BrushFlags, StrokeMethod, isPlaneFamilyTool} from '../../../brush/brush_base'
 import {PaintSample} from './pbvh_paintsample'
@@ -165,25 +165,108 @@ export const TOOL_TO_SCULPTBRUSH: Partial<Record<SculptTools, SculptBrushes>> = 
   [SculptTools.ENHANCE]      : SculptBrushes.ENHANCE,
 }
 
-/** Grab-style global brushes whose per-dab `grabFrom`/`grabTo` the bridge sets
- * (force application point + stroke-movement displacement). See applyDab. */
-export function isGrabTool(tool: SculptTools): boolean {
-  return tool === SculptTools.KELVINLET || tool === SculptTools.GRAB || tool === SculptTools.SNAKE
-}
-
 /** Resolve a TS sculpt tool to its sculptcore kernel, or undefined if none. */
 export function toolToSculptBrush(tool: SculptTools): SculptBrushes | undefined {
   return TOOL_TO_SCULPTBRUSH[tool]
 }
 
-/** Smooth-family tools ignore invert (inverted Laplacian smoothing diverges). */
-export function isSmoothTool(tool: SculptTools): boolean {
-  return (
-    tool === SculptTools.SMOOTH ||
-    tool === SculptTools.BSMOOTH ||
-    tool === SculptTools.PAINT_SMOOTH ||
-    tool === SculptTools.FEATURE_ALIGN
-  )
+/** One retargetable `attr` handle of a kernel: its manifest index (what
+ * `BrushProgram.setCommandAttrLayer` addresses) and the `mesh::AttrUse` category
+ * whose active layer the host should point it at. */
+export interface DabAttrTarget {
+  attrIdx: number
+  use: number
+}
+
+/**
+ * Everything a host needs to shape a dab for one kernel, all of it emitted by
+ * that kernel's sbrush annotations — so adding a brush never adds a TS
+ * conditional. See sculptcore/documentation/plans/brushMetadataToTS-2026-07-28.md.
+ */
+export interface DabPolicy {
+  /** `@incremental`: grabFrom = the live dab center, grabTo = the step since the
+   * last dab. Region tracks the cursor (snakehook). */
+  incrementalGrab: boolean
+  /** `@grabmode`: an anchored stroke deforms a region FIXED at the stroke anchor
+   * from each vert's orig position, with a cumulative grabTo and a latched
+   * (never-shrinking) node-filter radius. */
+  anchoredGrab: boolean
+  /** Either grab shape — the tool drives grabFrom/grabTo and takes raw
+   * (non-interpolated) pointer events. */
+  isGrab: boolean
+  /** `@unbounded`: the field carries no falloff of its own, so the node filter
+   * must reach `radius * unboundedExtent`, not `radius`. */
+  unbounded: boolean
+  /** `@relaxation`: inverting a relax-toward-the-mean kernel diverges. */
+  ignoresInvert: boolean
+  /** Retargetable attr handles, in manifest order. */
+  attrs: DabAttrTarget[]
+}
+
+/** Stroke-independent metadata query object, built once on first use. */
+let brushMetadata: BrushMetadata | undefined
+const dabPolicyCache = new Map<SculptBrushes, DabPolicy>()
+
+/**
+ * The kernel policy for `brushType`, memoized — it is fixed for the life of the
+ * process (codegen output), so a stroke can call this per dab.
+ */
+export function resolveDabPolicy(brushType: SculptBrushes): DabPolicy {
+  const cached = dabPolicyCache.get(brushType)
+  if (cached !== undefined) {
+    return cached
+  }
+  const policy: DabPolicy = {
+    incrementalGrab: false,
+    anchoredGrab   : false,
+    isGrab         : false,
+    unbounded      : false,
+    ignoresInvert  : false,
+    attrs          : [],
+  }
+  const wasm = getWasmImmediate()
+  if (wasm === undefined) {
+    // Pre-init (no engine yet): don't memoize a all-false answer.
+    return policy
+  }
+  if (brushMetadata === undefined) {
+    brushMetadata = wasm.manager.construct('sculptcore::brush::BrushMetadata') as BrushMetadata
+  }
+  const flags = brushMetadata.queryBrushFlags(brushType)
+  if (flags) {
+    policy.incrementalGrab = flags.incremental
+    policy.anchoredGrab = flags.grabModeCapable
+    policy.isGrab = flags.incremental || flags.grabModeCapable
+    policy.unbounded = flags.unbounded
+    policy.ignoresInvert = flags.relaxesBase
+  }
+  const count = brushMetadata.queryAttrManifest(brushType)
+  for (let attrIdx = 0; attrIdx < count; attrIdx++) {
+    const entry = brushMetadata.queriedAttrEntry(attrIdx)
+    // A fixed layer name is an engine-internal binding, not retargetable.
+    if (!entry || entry.use === 0 || entry.boundName !== '') {
+      continue
+    }
+    policy.attrs.push({attrIdx, use: entry.use})
+  }
+  dabPolicyCache.set(brushType, policy)
+  return policy
+}
+
+/** The policy for a TS tool; all-false when the tool has no sculptcore kernel. */
+export function resolveToolDabPolicy(tool: SculptTools): DabPolicy {
+  const brushType = TOOL_TO_SCULPTBRUSH[tool]
+  if (brushType === undefined) {
+    return {
+      incrementalGrab: false,
+      anchoredGrab   : false,
+      isGrab         : false,
+      unbounded      : false,
+      ignoresInvert  : false,
+      attrs          : [],
+    }
+  }
+  return resolveDabPolicy(brushType)
 }
 
 /**
@@ -198,16 +281,6 @@ export function isSmoothTool(tool: SculptTools): boolean {
  * node set, so BSMOOTH re-snapshots `co_prev` after the main pass and smooths
  * the deformed result.
  */
-/** The painted attr's category for a paint tool, else 0 (no attr handle). */
-function toolAttrCategory(tool: SculptTools): number {
-  // PAINT_SMOOTH (the color-smooth brush) paints the same color layer as COLOR.
-  if (tool === SculptTools.COLOR || tool === SculptTools.PAINT_SMOOTH) return AttrUseFlags.COLOR
-  if (tool === SculptTools.POLYGROUP) return AttrUseFlags.POLYGROUP
-  // LAYER_DRAW writes the active sculpt layer's delta attr (`slayer` handle).
-  if (tool === SculptTools.LAYER_DRAW) return AttrUseFlags.SCULPT_LAYER
-  return 0
-}
-
 export function buildBrushProgram(
   prog: BrushProgram,
   mainBrushType: SculptBrushes,
@@ -216,6 +289,21 @@ export function buildBrushProgram(
   mesh?: LiteMesh
 ): void {
   prog.clear()
+
+  // Point each retargetable `attr` handle the kernel declares (its `@use(...)`
+  // category) at the mesh layer active for that category. -1 (no active layer)
+  // leaves the codegen default ensure-by-name binding in place.
+  const bindAttrLayers = (cmdIdx: number): void => {
+    if (!mesh) {
+      return
+    }
+    for (const target of resolveDabPolicy(mainBrushType).attrs) {
+      const layer = mesh.activeAttrLayerIndex(target.use)
+      if (layer >= 0) {
+        prog.setCommandAttrLayer(cmdIdx, target.attrIdx, layer)
+      }
+    }
+  }
 
   // The dedicated Smooth tools (geometry BSMOOTH, color COLORSMOOTH) iterate the
   // blend step up to 4× with strength (strength 0 → 0 passes, 2.0 → 4 passes).
@@ -227,33 +315,17 @@ export function buildBrushProgram(
   if (mainBrushType === SculptBrushes.BSMOOTH || mainBrushType === SculptBrushes.COLORSMOOTH) {
     const iters = Math.max(0, Math.min(4, Math.round(brush.strength * 2)))
     const passStrength = Math.min(brush.strength, 1.0)
-    // COLORSMOOTH averages the active color layer; bind it like the color brush.
-    const category = toolAttrCategory(brush.tool)
-    const layer = category !== 0 && mesh ? mesh.activeAttrLayerIndex(category) : -1
     for (let j = 0; j < iters; j++) {
       const idx = prog.addCommand(mainBrushType)
       prog.setCommandFloat(idx, BrushProp.STRENGTH, passStrength)
       prog.setCommandInvert(idx, false)
-      if (category !== 0 && layer >= 0) {
-        prog.setCommandAttrLayer(idx, 0, layer)
-      }
+      bindAttrLayers(idx)
     }
     return
   }
 
   const mainIdx = prog.addCommand(mainBrushType)
-
-  // Brush bridge (Wave 2b): for paint tools, point the kernel's single declared
-  // attr handle (attrIdx 0 — `color` / `group`) at the user-selected active
-  // layer for that category. -1 (no active layer chosen) leaves the codegen
-  // default ensure-by-name binding in place.
-  const category = toolAttrCategory(brush.tool)
-  if (category !== 0 && mesh) {
-    const layer = mesh.activeAttrLayerIndex(category)
-    if (layer >= 0) {
-      prog.setCommandAttrLayer(mainIdx, 0, layer)
-    }
-  }
+  bindAttrLayers(mainIdx)
 
   if (brush.autosmooth > 0 && radius > 0) {
     const smoothStrength = brush.autosmooth
@@ -398,7 +470,7 @@ export function builSculptcoreBrush({
 
   // sync properties
   const planeFamily = isPlaneFamilyTool(brush.tool)
-  const effInvert = invert && !isSmoothTool(brush.tool)
+  const effInvert = invert && !resolveToolDabPolicy(brush.tool).ignoresInvert
   wasmBrush.strength = brush.strength
   wasmBrush.radius = radius
   // Plane brushes invert by flipping the plane (below), not by negating

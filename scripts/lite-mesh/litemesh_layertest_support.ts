@@ -212,7 +212,7 @@ function dumpCoFlat(mesh: LiteMesh): Float32Array {
 
 /**
  * V5 gate: one LAYER_DRAW stroke through the REAL tool mapping — brush.tool =
- * SculptTools.LAYER_DRAW routed via TOOL_TO_SCULPTBRUSH / toolAttrCategory /
+ * SculptTools.LAYER_DRAW routed via TOOL_TO_SCULPTBRUSH / resolveDabPolicy /
  * activeAttrLayerIndex (no brushTypeOverride / attrLayerOverride seams) — plus
  * a settings-mutator round-trip (weight halved + restored, layer disabled +
  * re-enabled) exercising the Mesh_layerSet* wraps on both backends, then one

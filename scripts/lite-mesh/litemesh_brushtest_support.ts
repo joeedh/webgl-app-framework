@@ -69,6 +69,9 @@ interface BrushTestResult {
   autosmoothOn?: StrokeMetrics
   /** Color paint at +Z (after the draw): per-channel means over painted verts. */
   color?: {paintedCount: number; meanR: number; meanG: number; meanB: number; invalid?: string}
+  /** Two COLOR layers, second active: only the active layer may change
+   * (changedB > 0, changedA === 0). -1 means the layer was unreadable. */
+  colorLayerTarget?: {layerA: number; layerB: number; activeIdx: number; changedA: number; changedB: number}
   /** ACCUMULATE default flag per tool (smooth/bsmooth/paint-smooth/inflate/clay). */
   accumulateDefaults?: Record<string, boolean>
   /** Symmetric X DRAW dab off-center: both X-sides move, roughly balanced. */
@@ -562,6 +565,60 @@ function brushTest(): BrushTestResult {
         meanR       : painted ? sr / painted : 0,
         meanG       : painted ? sg / painted : 0,
         meanB       : painted ? sb / painted : 0,
+      }
+    }
+
+    // Attr retargeting: with two COLOR layers, a paint stroke must land on the
+    // ACTIVE one only. The kernel's `color` handle is `@use(color)`, so the
+    // bridge resolves it through resolveDabPolicy(...).attrs ->
+    // activeAttrLayerIndex(COLOR) — never a hardcoded layer 0.
+    {
+      const layerA = mesh.addAttr(AttrDomain.VERTEX, AttrType.Float4, AttrUseFlags.COLOR)
+      const layerB = mesh.addAttr(AttrDomain.VERTEX, AttrType.Float4, AttrUseFlags.COLOR)
+      // addAttr activates each layer as it lands, so B is the active target.
+      const activeIdx = mesh.activeAttrLayerIndex(AttrUseFlags.COLOR)
+      // The GPU color stream is filled from the display attr; point it at one
+      // layer at a time to read them independently (setDisplayColorAttr flags
+      // every leaf, and readGpuBuffer's spatial.update refills them).
+      const readLayer = (idx: number): Float32Array | undefined => {
+        mesh.spatial.setDisplayColorAttr(idx)
+        return readGpuBuffer(mesh, 'color')
+      }
+      const aBefore = readLayer(layerA)
+      const bBefore = readLayer(layerB)
+
+      const savedTargetColor = new Vector4(colorBrush.color)
+      colorBrush.color.loadXYZW(0.9, 0.2, 0.2, 1.0)
+      mesh.spatial.setDisplayColorAttr(activeIdx)
+      strokeAndMeasure(mesh, colorBrush, SculptTools.COLOR, [0, -R, 0], [0, -1, 0], radius, {
+        strength: 1,
+        dabs   : 3,
+      })
+      colorBrush.color.load(savedTargetColor)
+
+      const aAfter = readLayer(layerA)
+      const bAfter = readLayer(layerB)
+      mesh.spatial.setDisplayColorAttr(activeIdx)
+
+      const changedCount = (before: Float32Array | undefined, after: Float32Array | undefined): number => {
+        if (!before || !after || before.length !== after.length) return -1
+        let n = 0
+        for (let i = 0; i < after.length; i += 4) {
+          const d =
+            Math.abs(after[i] - before[i]) +
+            Math.abs(after[i + 1] - before[i + 1]) +
+            Math.abs(after[i + 2] - before[i + 2])
+          if (d > 0.05) n++
+        }
+        return n
+      }
+
+      result.colorLayerTarget = {
+        layerA,
+        layerB,
+        activeIdx,
+        changedA: changedCount(aBefore, aAfter),
+        changedB: changedCount(bBefore, bAfter),
       }
     }
 
