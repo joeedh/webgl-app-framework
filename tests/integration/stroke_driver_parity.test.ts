@@ -59,6 +59,13 @@ interface ParityResult {
   ok: boolean
   error?: string
   cases?: CaseResult[]
+  postDestroy?: {
+    driver: string
+    anchor?: number[]
+    preview?: number[]
+    polled: number
+    finished: boolean
+  }
 }
 
 /** A steady S-curve drag; long enough that PATH emits many evenly-spaced dabs
@@ -126,6 +133,23 @@ const DRIVER = `(function () {
         cpp : t.sampleStroke(Object.assign({useCpp: true, radius: 100}, opts)),
       })
     }
+    // A destroyed NativeStrokeDriver must stay inert. The brush-cursor overlay
+    // reads toolstack.head.driver after modalEnd (sculptcore.ts drawBrush), and
+    // on the native backend calling a disposed bound object handed C++ a null
+    // 'this' -> renderer segfault.
+    var probe = t.runStroke({points: [[0.5, 0.5], [0.52, 0.5]], radius: 20, sculptTool: 9})
+    t.undo()
+    var op = new (probe.tool.constructor)()
+    op.inputs.brush.setValue(t.getBrush({sculptTool: 9}))
+    op.modal_ctx = ctx
+    var d = op.makeDriver(true)
+    r.postDestroy = {driver: d.constructor.name}
+    d.destroy()
+    d.destroy() // idempotent
+    r.postDestroy.anchor = d.getAnchorScreen()
+    r.postDestroy.preview = d.getPreviewScreen()
+    r.postDestroy.polled = d.poll().length
+    r.postDestroy.finished = d.finished
     r.ok = true
   } catch (e) {
     r.error = String((e && e.stack) || e)
@@ -235,6 +259,15 @@ maybe.each(backendTable(backends))('TS vs C++ stroke sampler parity (%s)', (back
     }
     expect(r.ok).toBe(true)
     expect(r.cases!.length).toBe(CASES.length)
+  })
+
+  test('a destroyed driver stays inert', () => {
+    const d = r.postDestroy!
+    expect(d.driver).toBe('NativeStrokeDriver')
+    expect(d.anchor).toBeUndefined()
+    expect(d.preview).toBeUndefined()
+    expect(d.polled).toBe(0)
+    expect(d.finished).toBe(true)
   })
 
   test.each(CASES.map(([name]) => name))('%s: both samplers emit dabs', (name) => {

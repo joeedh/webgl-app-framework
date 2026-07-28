@@ -46,6 +46,9 @@ export class NativeStrokeDriver implements IBrushStrokeDriver {
   private driver: WasmStrokeDriver
   private ended = false
   private done = false
+  /** Once disposed the bound object's pointer is null; every entry point below
+   * has to no-op rather than call into C++ with a null `this`. */
+  private destroyed = false
   private _tmpMat = new Matrix4()
 
   constructor(opts: NativeStrokeDriverOptions) {
@@ -63,16 +66,22 @@ export class NativeStrokeDriver implements IBrushStrokeDriver {
   }
 
   get finished(): boolean {
-    return this.done
+    return this.done || this.destroyed
   }
 
-  /** Release the bound object (WASM only; native GC-finalizes its wrapper). */
+  /** Release the bound object (WASM only; native GC-finalizes its wrapper).
+   * Idempotent — modalEnd can run more than once per stroke. */
   destroy(): void {
+    if (this.destroyed) {
+      return
+    }
+    this.destroyed = true
+    this.done = true
     ;(this.driver as unknown as {[Symbol.dispose]?: () => void})[Symbol.dispose]?.()
   }
 
   push(input: StrokeInput): void {
-    if (this.ended) {
+    if (this.ended || this.destroyed) {
       return
     }
     this.driver.pushColor(input.color[0], input.color[1], input.color[2], input.color[3])
@@ -96,6 +105,9 @@ export class NativeStrokeDriver implements IBrushStrokeDriver {
   }
 
   reset(): void {
+    if (this.destroyed) {
+      return
+    }
     this.driver.reset()
     this.ended = false
     this.done = false
@@ -103,7 +115,7 @@ export class NativeStrokeDriver implements IBrushStrokeDriver {
 
   poll(): PaintSample[] {
     const out: PaintSample[] = []
-    if (this.done) {
+    if (this.done || this.destroyed) {
       return out
     }
 
@@ -127,14 +139,14 @@ export class NativeStrokeDriver implements IBrushStrokeDriver {
   }
 
   getAnchorScreen(): Vec | undefined {
-    if (!this.driver.hasAnchorScreen()) {
+    if (this.destroyed || !this.driver.hasAnchorScreen()) {
       return undefined
     }
     return [this.driver.anchorScreenX(), this.driver.anchorScreenY()]
   }
 
   getPreviewScreen(): Vec | undefined {
-    if (!this.driver.hasPreviewScreen()) {
+    if (this.destroyed || !this.driver.hasPreviewScreen()) {
       return undefined
     }
     return [this.driver.previewScreenX(), this.driver.previewScreenY()]
