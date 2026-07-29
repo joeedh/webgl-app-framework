@@ -344,6 +344,7 @@ export type GeneratedDataPath =
   | "scene.tools.sculptcore.brush.tool"
   | "scene.tools.sculptcore.brush.viewNormalFalloff"
   | "scene.tools.sculptcore.brush.viewNormalLimit"
+  | "scene.tools.sculptcore.brush.wingAngle"
   | "scene.tools.sculptcore.brushRadius"
   | "scene.tools.sculptcore.cullBackfaces"
   | "scene.tools.sculptcore.drawBVH"
@@ -1155,6 +1156,7 @@ declare module "@framework/pathux" {
     "scene.tools.sculptcore.brush.tool": true;
     "scene.tools.sculptcore.brush.viewNormalFalloff": true;
     "scene.tools.sculptcore.brush.viewNormalLimit": true;
+    "scene.tools.sculptcore.brush.wingAngle": true;
     "scene.tools.sculptcore.brushRadius": true;
     "scene.tools.sculptcore.cullBackfaces": true;
     "scene.tools.sculptcore.drawBVH": true;

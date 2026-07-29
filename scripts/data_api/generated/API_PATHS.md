@@ -491,7 +491,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.sharp` | prop | FloatProperty | Sharpening | range 0..1 |
 | `scene.tools.sculptcore.brush.smoothProj` | prop | FloatProperty | Projection | range 0..0.97 |
 | `scene.tools.sculptcore.brush.smoothRadiusMul` | prop | FloatProperty | Smooth Radius | range 0.125..15 |
-| `scene.tools.sculptcore.brush.spacing` | prop | FloatProperty | Spacing | range 0.01..12 |
+| `scene.tools.sculptcore.brush.spacing` | prop | FloatProperty | Spacing | range 0.02..2 |
 | `scene.tools.sculptcore.brush.spacingMode` | prop | EnumProperty | Spacing Mode | enum {NONE, EVEN} |
 | `scene.tools.sculptcore.brush.strength` | prop | FloatProperty | Strength | range 0.001..2 |
 | `scene.tools.sculptcore.brush.strokeMethod` | prop | EnumProperty | Stroke Method | enum {PATH, ANCHORED, DRAG_DOT} |
@@ -517,6 +517,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.sculptcore.brush.tool` | prop | EnumProperty | Tool | enum {CLAY, FILL, SCRAPE, SMOOTH, DRAW, SHARP, INFLATE, SNAKE, TOPOLOGY, GRAB, HOLE_FILLER, MASK_PAINT, WING_SCRAPE, PINCH, DIRECTIONAL_FAIR, SLIDE_RELAX, BVH_DEFORM, COLOR, POLYGROUP, BSMOOTH, KELVINLET, FEATURE_ALIGN, LAYER_DRAW, ENHANCE, PAINT, PAINT_SMOOTH, COLOR_BOUNDARY, TEXTURE_PAINT, FACE_SET_DRAW} |
 | `scene.tools.sculptcore.brush.viewNormalFalloff` | prop | FloatProperty | View Falloff | range 0..90; unit degree |
 | `scene.tools.sculptcore.brush.viewNormalLimit` | prop | FloatProperty | View Limit | range 0..90; unit degree |
+| `scene.tools.sculptcore.brush.wingAngle` | prop | FloatProperty | Wing Angle | range 0..80; unit degree |
 | `scene.tools.sculptcore.brushRadius` | prop | FloatProperty | Radius | range 0..450 |
 | `scene.tools.sculptcore.cullBackfaces` | prop | BoolProperty | Cull Backfaces |  |
 | `scene.tools.sculptcore.drawBVH` | prop | BoolProperty | Draw BVH |  |

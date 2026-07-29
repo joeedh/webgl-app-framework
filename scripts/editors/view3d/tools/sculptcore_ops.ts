@@ -653,6 +653,8 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
           // R = radius * unboundedExtent. Filter to that same R or the field is
           // still live where the node set stops and the leaf boundary tears. Plus
           // the drag, since the region must also cover where the verts move *to*.
+          // This sizes the GPU dab and the preview snapshot; the CPU executor
+          // pins its own (drag-independent) region — CommandExecutor::grabFilterNodes.
           const fieldRadius = dabPolicy.unbounded ? radius * wasmBrush.unboundedExtent : radius
           filterRadius = fieldRadius + ps.anchorVec.vectorLength()
           // Symmetry: the primary image re-bases every touched vert from orig
@@ -672,7 +674,20 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
       // image reflects it (host owns it so sculptcore won't re-derive a corrupt one).
       let strokeDir: Vector3 | undefined
       if (mirrorIdx === 0) {
-        if (this.prevPrimaryDabCenter !== undefined) {
+        if (brush.strokeMethod === StrokeMethod.ANCHORED) {
+          // An anchored dab is pinned at the anchor, so consecutive centers never
+          // yield a direction. Orient off the live anchor->cursor drag instead,
+          // flattened into the surface tangent plane — that is what "the brush
+          // angle follows the cursor" means here, and it holds in both
+          // AnchoredLiveMode.RADIUS and .ANGLE.
+          const d = new Vector3(ps.anchorVec)
+          const n = new Vector3(normal).normalize()
+          d.addFac(n, -d.dot(n))
+          if (d.dot(d) > 1e-14) {
+            d.normalize()
+            this.curStrokeDir = d
+          }
+        } else if (this.prevPrimaryDabCenter !== undefined) {
           const d = new Vector3(p).sub(this.prevPrimaryDabCenter)
           if (d.dot(d) > 1e-14) {
             d.normalize()

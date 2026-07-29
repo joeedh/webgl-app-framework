@@ -4290,11 +4290,12 @@
       "indexed": false,
       "propType": "FloatProperty",
       "uiname": "Radius",
+      "description": "Press F to set brush radius interactively",
       "range": [
         0.1,
         350
       ],
-      "decimalPlaces": 4,
+      "decimalPlaces": 2,
       "step": 2.5
     },
     "scene.tools.sculptcore.brush.radiusMode": {
@@ -4384,11 +4385,11 @@
       "propType": "FloatProperty",
       "uiname": "Spacing",
       "range": [
-        0.01,
-        12
+        0.02,
+        2
       ],
-      "decimalPlaces": 4,
-      "step": 0.1
+      "decimalPlaces": 2,
+      "step": 0.01
     },
     "scene.tools.sculptcore.brush.spacingMode": {
       "kind": "prop",
@@ -4414,7 +4415,7 @@
         2
       ],
       "decimalPlaces": 4,
-      "step": 0.015
+      "step": 0.05
     },
     "scene.tools.sculptcore.brush.strokeMethod": {
       "kind": "prop",
@@ -4742,18 +4743,34 @@
       "decimalPlaces": 4,
       "step": 1
     },
+    "scene.tools.sculptcore.brush.wingAngle": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "FloatProperty",
+      "uiname": "Wing Angle",
+      "description": "Half-angle between the two Wing Scrape planes",
+      "range": [
+        0,
+        80
+      ],
+      "unit": "degree",
+      "decimalPlaces": 4,
+      "step": 1
+    },
     "scene.tools.sculptcore.brushRadius": {
       "kind": "prop",
       "ownerStruct": "SculptCorePaintMode",
       "indexed": false,
       "propType": "FloatProperty",
       "uiname": "Radius",
+      "description": "Press F to set brush radius interactively",
       "range": [
         0,
         450
       ],
       "decimalPlaces": 2,
-      "step": 1
+      "step": 2
     },
     "scene.tools.sculptcore.cullBackfaces": {
       "kind": "prop",

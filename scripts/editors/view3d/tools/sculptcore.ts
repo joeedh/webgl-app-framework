@@ -11,6 +11,7 @@ import {
   PanelContents,
   UIBase,
   util,
+  Vector2,
   Vector3,
   Vector4,
   IconButton,
@@ -40,7 +41,12 @@ import {BrushRadiusModes, DynTopoSettings, DynTopoSettingsSC, SculptBrush} from 
 import type {ViewContext} from '../../../core/context'
 import {DataBlockBrowser} from '../../editor_base'
 import {SculptPaintOp} from './sculptcore_ops'
-import {TOOL_TO_SCULPTBRUSH} from './sculptcore_bindings'
+import {TOOL_TO_SCULPTBRUSH, wingApexOffset} from './sculptcore_bindings'
+
+/* Shift-smooth over a poly-group brush relaxes the group boundaries in the
+ * surface, so projection sits just below 1 — a sliver of normal-direction
+ * smoothing keeps the relaxed boundary from crawling off the surface. */
+const POLYGROUP_SMOOTH_PROJECTION = 0.9
 
 export class SculptCorePaintMode extends PaintToolModeBase {
   _apiDynTopo: any
@@ -65,6 +71,11 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
   /** Accumulated dyntopo op counts for the current/last stroke (debug HUD). */
   dynTopoStats = {splits: 0, collapses: 0, flips: 0, rounds: 0, budgetHit: false}
+
+  /** Last screen-space pointer direction, used to orient the Wing Scrape plane
+   * preview between dabs (the engine's strokeDir only exists mid-stroke). */
+  private wingScreenDir = new Vector2([1, 0])
+  private wingPrevMpos: Vector2 | undefined
 
   /** Reset the per-stroke dyntopo stats accumulator (call at stroke start). */
   resetDynTopoStats(): void {
@@ -299,6 +310,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     col.tool(`brush.swap_colors(dataPath='${path}.brush')`)
 
     col.prop(path + '.brush.planeoff')
+    col.prop(path + '.brush.wingAngle')
     col.prop(path + '.brush.planeNormalMode')
     col.prop(path + '.brush.normalfac')
 
@@ -963,7 +975,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
       // Shift smooths. For the poly-group brush, ctrl is the "extend" modifier
       // (sample the existing group under the cursor; see useAltBrush in
-      // stroke_paint_op), and shift smooths at full surface projection.
+      // stroke_paint_op), and shift smooths at near-full surface projection.
       const wasPolyGroup = brush.tool === SculptTools.POLYGROUP
       if (e.shiftKey) {
         brush = this.getBrush(smoothtool)
@@ -979,7 +991,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       brush.dynTopoSC.loadDefaults(this.dynTopoSC)
       brush.radius = radius
       if (wasPolyGroup && e.shiftKey) {
-        brush.smoothProj = 1.0
+        brush.smoothProj = POLYGROUP_SMOOTH_PROJECTION
       }
 
       this.ctx.api.execTool(this.ctx, 'sculptcore.paint()', {
@@ -1004,6 +1016,22 @@ export class SculptCorePaintMode extends PaintToolModeBase {
 
     this.mpos[0] = e.x
     this.mpos[1] = e.y
+
+    // Track the pointer direction for the Wing Scrape preview. The threshold
+    // keeps a jittering (effectively stationary) cursor from spinning the wings.
+    if (this.wingPrevMpos === undefined) {
+      this.wingPrevMpos = new Vector2(this.mpos)
+    } else {
+      const dx = e.x - this.wingPrevMpos[0]
+      const dy = e.y - this.wingPrevMpos[1]
+      if (dx * dx + dy * dy > 2.25) {
+        this.wingScreenDir[0] = dx
+        this.wingScreenDir[1] = dy
+        this.wingScreenDir.normalize()
+        this.wingPrevMpos[0] = e.x
+        this.wingPrevMpos[1] = e.y
+      }
+    }
 
     if (this.ctx?.view3d) {
       this.drawBrush(this.ctx.view3d)
@@ -1077,6 +1105,143 @@ export class SculptCorePaintMode extends PaintToolModeBase {
         this._brush_lines.push(view3d.overdraw!.circle([preview[0], preview[1]], r, 'rgb(120,200,255)'))
       }
     }
+
+    if (brush.tool === SculptTools.WING_SCRAPE) {
+      this.drawWingPlanes(view3d, brush, x, y, r)
+    }
+  }
+
+  /** Wing Scrape live preview: the two wing planes the next dab would scrape
+   * onto, drawn as screen-projected quad outlines meeting at their apex ridge.
+   * Mirrors wingscrape.sbrush exactly — apex sunk `planeoff * radius` below the
+   * surface point, normals = surface normal rotated ±wingAngle about the stroke
+   * tangent. Silently skipped on a raycast miss. */
+  private drawWingPlanes(view3d: View3D, brush: SculptBrush, x: number, y: number, screenRadius: number): void {
+    const ctx = this.ctx
+    if (!ctx?.object || !view3d.overdraw) {
+      return
+    }
+    const mesh = ctx.object.data as LiteMesh
+    const obmatrix = ctx.object.outputs.matrix.getValue()
+
+    // Object-local <-> screen, so the hit point and its normal need no
+    // transform (same construction as sampleColorUnderCursor).
+    const mat = new Matrix4(view3d.activeCamera.rendermat)
+    mat.multiply(obmatrix)
+    const imat = new Matrix4(mat)
+    imat.invert()
+
+    const m = view3d.getLocalMouse(x, y)
+    const d = 0.9999
+    const near = new Vector4([m[0], m[1], -d, 1.0])
+    view3d.unproject(near, imat)
+    const far = new Vector4([m[0], m[1], d, 1.0])
+    view3d.unproject(far, imat)
+    const origin = new Vector3(near)
+    const dir = new Vector3(far)
+    dir.sub(origin)
+    const isect = mesh.rayCast(origin, dir)
+    if (isect === undefined) {
+      return
+    }
+
+    const p = new Vector3(isect.p)
+    const n = new Vector3(isect.normal)
+    n.normalize()
+
+    // Local units per screen pixel at the hit point, so a SCREEN-unit radius
+    // and the screen-space stroke direction both resolve into local space.
+    const s0 = new Vector3(p)
+    view3d.project(s0, mat)
+    const s1 = new Vector3(s0)
+    s1[0] += 1
+    view3d.unproject(s1, imat)
+    const perPixel = s1.vectorDistance(p)
+    if (!(perPixel > 0)) {
+      return
+    }
+    const radius = brush.radiusMode === BrushRadiusModes.WORLD ? brush.radius : screenRadius * perPixel
+
+    // Stroke tangent: the last pointer direction, pushed back into the surface
+    // tangent plane. Degenerate (view looking straight down the tangent) drops
+    // the preview rather than drawing a collapsed V.
+    const sd = new Vector3(s0)
+    sd[0] += this.wingScreenDir[0]
+    sd[1] += this.wingScreenDir[1]
+    view3d.unproject(sd, imat)
+    const t = new Vector3(sd)
+    t.sub(p)
+    t.addFac(n, -t.dot(n))
+    if (t.dot(t) < 1e-12) {
+      return
+    }
+    t.normalize()
+
+    const theta = brush.wingAngle * (Math.PI / 180.0)
+    const c = Math.cos(theta)
+    const sn = Math.sin(theta)
+    const kxv = new Vector3(t)
+    kxv.cross(n)
+    const kv = t.dot(n)
+    const wingNormal = (sign: number): Vector3 => {
+      const wn = new Vector3(n)
+      wn.mulScalar(c)
+      wn.addFac(kxv, sign * sn)
+      wn.addFac(t, kv * (1.0 - c))
+      wn.normalize()
+      return wn
+    }
+    const wnA = wingNormal(1)
+    const wnB = wingNormal(-1)
+
+    // Apex line: sunk below the surface by the same offset the kernel uses.
+    const planeoff = wingApexOffset(brush)
+    const apex = new Vector3(p)
+    apex.addFac(n, planeoff * radius)
+    const lat = new Vector3(n)
+    lat.cross(t)
+    lat.normalize()
+
+    // In-plane "across" axis of each wing, oriented onto its own lateral side.
+    const across = (wn: Vector3, sign: number): Vector3 => {
+      const a = new Vector3(wn)
+      a.cross(t)
+      a.normalize()
+      if (a.dot(lat) * sign < 0) {
+        a.negate()
+      }
+      return a
+    }
+    const aA = across(wnA, 1)
+    const aB = across(wnB, -1)
+
+    const toScreen = (v: Vector3): number[] => {
+      const q = new Vector3(v)
+      view3d.project(q, mat)
+      return [q[0], q[1]]
+    }
+    const seg = (a: Vector3, b: Vector3, color: string): void => {
+      this._brush_lines.push(view3d.overdraw!.line(toScreen(a), toScreen(b), color))
+    }
+    const corner = (alongFac: number, acrossAxis: Vector3, acrossFac: number): Vector3 => {
+      const v = new Vector3(apex)
+      v.addFac(t, alongFac * radius)
+      v.addFac(acrossAxis, acrossFac * radius)
+      return v
+    }
+
+    const wingColor = 'rgb(120,200,255)'
+    for (const a of [aA, aB]) {
+      const c0 = corner(-1, a, 0)
+      const c1 = corner(1, a, 0)
+      const c2 = corner(1, a, 1)
+      const c3 = corner(-1, a, 1)
+      seg(c1, c2, wingColor)
+      seg(c2, c3, wingColor)
+      seg(c3, c0, wingColor)
+    }
+    // The shared apex ridge, brighter — this is the line the V bottoms out on.
+    seg(corner(-1, aA, 0), corner(1, aA, 0), 'rgb(255,175,75)')
   }
 
   /** The cursor ring is drawn in screen space, so a WORLD-unit radius has to be

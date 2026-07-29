@@ -118,8 +118,8 @@ export interface StrokeDriverOptions {
   objectMatrix?: () => Matrix4 | undefined
   /** Default StrokeMethod.PATH (unchanged arc-length walk). ANCHORED fixes the
    * dab origin on the first input and re-emits at the anchor on every later
-   * input, carrying the anchor->cursor vector (ps.anchorVec) and, per
-   * anchoredLiveMode, a live radius (ps.radius) or angle (ps.liveAngle).
+   * input, carrying the anchor->cursor vector (ps.anchorVec) and its angle
+   * (ps.liveAngle), plus a live radius (ps.radius) in AnchoredLiveMode.RADIUS.
    * DRAG_DOT follows the cursor, emitting one dab per input. Neither mode
    * arc-length-walks or spacing-gates — one input event is one dab. */
   strokeMethod?: StrokeMethod
@@ -426,9 +426,9 @@ export class BrushStrokeDriver implements IBrushStrokeDriver {
   }
 
   /** StrokeMethod.ANCHORED: a dab centered on `anchor`, carrying the live
-   * anchor->cur vector (ps.anchorVec) and, per anchoredLiveMode, a live
-   * radius (ps.radius) or angle (ps.liveAngle) derived from the screen-space
-   * drag. Not arc-length walked — one input is one dab. */
+   * anchor->cur vector (ps.anchorVec) and the cursor angle (ps.liveAngle);
+   * anchoredLiveMode additionally maps the screen-space drag length onto the
+   * radius. Not arc-length walked — one input is one dab. */
   private emitAnchored(anchor: ControlPoint, cur: ControlPoint): void {
     const ps = this.makeSample(anchor.world, anchor.screen, anchor, anchor, 0, anchor.normal, anchor.hit)
     ps.isInterp = false
@@ -449,9 +449,11 @@ export class BrushStrokeDriver implements IBrushStrokeDriver {
     const dx = cur.screen[0] - anchor.screen[0]
     const dy = cur.screen[1] - anchor.screen[1]
 
-    if ((this.opts.anchoredLiveMode ?? AnchoredLiveMode.RADIUS) === AnchoredLiveMode.ANGLE) {
-      ps.liveAngle = Math.atan2(dy, dx)
-    } else {
+    // The brush angle tracks the cursor in *both* live modes; the mode only
+    // decides whether the drag length also drives the radius.
+    ps.liveAngle = Math.atan2(dy, dx)
+
+    if ((this.opts.anchoredLiveMode ?? AnchoredLiveMode.RADIUS) !== AnchoredLiveMode.ANGLE) {
       const dragPx = Math.sqrt(dx * dx + dy * dy)
       if (dragPx > 1e-5) {
         // ps.radius rides in the brush's own unit (see resolveWorldRadius).

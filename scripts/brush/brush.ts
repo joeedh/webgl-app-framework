@@ -84,6 +84,7 @@ SculptBrush {
   enhanceInner : int;
   radiusMode : int;
   colorMixMode : int;
+  wingAngle  : float;
 }`
   )
 
@@ -142,6 +143,10 @@ SculptBrush {
   planeNormalMode = PlaneNormalModes.VIEW
   rake = 0.0
   pinch = 0.0
+
+  /** Wing Scrape: half-angle between the two wing planes, in degrees
+   * (sculptcore stores radians). 0 degrades to a plain flat scrape. */
+  wingAngle = 20.0
 
   normalfac = 0.5
 
@@ -250,6 +255,12 @@ SculptBrush {
     bst.float('autosmoothInflate', 'autosmoothInflate', 'Inflation').range(0.0, 1.0).noUnits()
 
     bst.float('planeoff', 'planeoff', 'planeoff').range(-3.5, 3.5).noUnits()
+    bst
+      .float('wingAngle', 'wingAngle', 'Wing Angle', 'Half-angle between the two Wing Scrape planes')
+      .range(0.0, 80.0)
+      .step(1.0)
+      .baseUnit('degree')
+      .displayUnit('degree')
     bst
       .enum('planeNormalMode', 'planeNormalMode', deleteTsEnumIntegers(PlaneNormalModes), 'Plane Normal')
       .descriptions({
@@ -406,6 +417,7 @@ SculptBrush {
     r = r && this.bgcolor.vectorDistanceSqr(b.bgcolor) < 0.00001
 
     r = r && feq(this.concaveFilter, b.concaveFilter)
+    r = r && feq(this.wingAngle, b.wingAngle)
 
     r = r && this.texUser.equals(b.texUser)
     //r = r && this.dynamics.equals(b.dynamics);
@@ -450,6 +462,7 @@ SculptBrush {
     d.add(this.pinch)
     d.add(this.planeoff)
     d.add(this.planeNormalMode)
+    d.add(this.wingAngle)
     d.add(this.rake)
     d.add(this.pinch)
     d.add(this.cavityFactor)
@@ -518,6 +531,7 @@ SculptBrush {
     b.colorMixMode = this.colorMixMode
     b.planeoff = this.planeoff
     b.planeNormalMode = this.planeNormalMode
+    b.wingAngle = this.wingAngle
 
     b.color.load(this.color)
     b.bgcolor.load(this.bgcolor)
@@ -788,6 +802,9 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.WING_SCRAPE]
   brush.autosmooth = 0.0
   brush.pinch = 0.0
+  // A scrape variant, so it inherits Scrape's accumulating, low-strength feel.
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.strength = 0.2
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.PINCH]
@@ -1045,6 +1062,9 @@ export function makeDefaultBrushes_MediumRes() {
   brush.rake = 0.0
   brush.rakeCurvatureFactor = 1.0
   brush.pinch = 0.0
+  // A scrape variant, so it inherits Scrape's accumulating, low-strength feel.
+  brush.flag |= BrushFlags.ACCUMULATE
+  brush.strength = 0.2
   brush.falloff.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.SMOOTH)
 
   brush = bmap[SculptTools.PINCH]

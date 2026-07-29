@@ -336,6 +336,13 @@ export function buildBrushProgram(
   }
 }
 
+/** Depth of the Wing Scrape apex ridge below the surface point, in units of
+ * brush radius — Scrape's plane offset. Shared with the viewport preview so it
+ * can't drift from the kernel. */
+export function wingApexOffset(brush: SculptBrush): number {
+  return -0.05 + brush.planeoff * 0.1
+}
+
 /**
  * Configure the plane-family + wing + falloff uniforms on `wasmBrush` for the
  * active TS tool. Clay/Scrape/Fill share one kernel, selected by `planeoff`
@@ -369,8 +376,13 @@ export function configureToolUniforms(wasmBrush: WasmBrush, brush: SculptBrush):
       wasmBrush.planeSide = 1.0
       break
     case SculptTools.WING_SCRAPE:
-      // Half-angle of the two stroke-following wing planes.
-      wasmBrush.wingAngle = 0.3
+      // Half-angle of the two stroke-following wing planes (brush prop is in
+      // degrees, the kernel's Rodrigues rotation wants radians).
+      wasmBrush.wingAngle = brush.wingAngle * (Math.PI / 180.0)
+      // The wings' shared apex line sinks below the surface exactly like
+      // Scrape's plane — without it nothing on a flat face is above a wing.
+      wasmBrush.planeoff = wingApexOffset(brush)
+      wasmBrush.planeSide = -1.0
       break
     case SculptTools.COLOR: {
       // Paint color — a bound float4, written elementwise through its `vec` view.
