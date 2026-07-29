@@ -225,8 +225,21 @@ SculptBrush {
 
     bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
 
-    bst.float('strength', 'strength', 'Strength').range(0.001, 2.0).noUnits().step(0.015)
-    bst.float('radius', 'radius', 'Radius').range(0.1, 350.0).noUnits().step(2.5).expRate(1.75)
+    bst
+      .float('strength', 'strength', 'Strength')
+      .range(0.001, 2.0)
+      .noUnits()
+      .step(0.05)
+      .simpleSlider()
+      .sliderDisplayExp(0.5)
+    bst
+      .float('radius', 'radius', 'Radius')
+      .range(0.1, 350.0)
+      .noUnits()
+      .step(2.5)
+      .expRate(2.75)
+      .decimalPlaces(2)
+      .description('Press F to set brush radius interactively')
     bst.enum('radiusMode', 'radiusMode', deleteTsEnumIntegers(BrushRadiusModes), 'Radius Unit').descriptions({
       SCREEN: 'Radius is in screen pixels; the sculpted footprint changes as you zoom',
       WORLD : 'Radius is in mesh units; the sculpted footprint stays fixed as you zoom',
@@ -243,7 +256,16 @@ SculptBrush {
         VIEW   : 'Project onto a plane facing the viewport camera',
         SURFACE: 'Project onto the surface-normal plane at the brush center',
       })
-    bst.float('spacing', 'spacing', 'Spacing').range(0.01, 12.0).noUnits()
+    bst
+      .float('spacing', 'spacing', 'Spacing')
+      .range(0.02, 2.0)
+      .noUnits()
+      .decimalPlaces(2)
+      .expRate(2.5)
+      .step(0.01)
+      .slideSpeed(3.0)
+      .simpleSlider()
+      .sliderDisplayExp(1.0 / 4.0)
     bst.color4('color', 'color', 'Primary Color')
     bst.color4('bgcolor', 'bgcolor', 'Secondary Color')
     bst
@@ -681,8 +703,9 @@ export function makeDefaultBrushes() {
   // rather than a fixed anchor plane, so it stays on the default Path stroke
   // method instead of Anchored (see stroke_driver.ts / sculptcore_ops.ts).
   brush = bmap[SculptTools.SNAKE]
-  brush.strength = 0.5
-  brush.autosmooth = 0.8
+  brush.strength = 1.0
+  brush.autosmooth = 0.0
+  brush.spacing = 0.075
   // Grab-class default: no view-normal masking — it fades the very geometry
   // being dragged as it rotates toward the silhouette mid-grab.
   brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL
@@ -931,8 +954,9 @@ export function makeDefaultBrushes_MediumRes() {
   // rather than a fixed anchor plane, so it stays on the default Path stroke
   // method instead of Anchored (see stroke_driver.ts / sculptcore_ops.ts).
   brush = bmap[SculptTools.SNAKE]
-  brush.strength = 0.5
-  brush.autosmooth = 0.8
+  brush.strength = 1.0
+  brush.autosmooth = 0.0
+  brush.spacing = 0.075
   // Grab-class default: no view-normal masking — it fades the very geometry
   // being dragged as it rotates toward the silhouette mid-grab.
   brush.flag &= ~BrushFlags.AUTOMASK_VIEW_NORMAL

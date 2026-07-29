@@ -474,7 +474,12 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     })
 
     st.float('sharedBrushRadius', 'sharedBrushRadius', 'Shared Radius').noUnits().range(0, 450).decimalPlaces(2)
-    st.float('_brushSizeHelper', 'brushRadius', 'Radius').noUnits().range(0, 450).step(1.0).decimalPlaces(2)
+    st.float('_brushSizeHelper', 'brushRadius', 'Radius')
+      .noUnits()
+      .range(0, 450)
+      .step(2.0)
+      .decimalPlaces(2)
+      .description('Press F to set brush radius interactively')
 
     st.bool('sceneCullBackfaces', 'sceneCullBackfaces', 'Scene Cull Backfaces').description(
       'Scene-wide backface culling, used by brushes that defer to the tool mode'
@@ -573,7 +578,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     super(manager)
 
     this.tool = SculptTools.DRAW
-    
+
     this._apiDynTopo = new Proxy(this.dynTopo, {
       get: (target: any, key: string | symbol): any => {
         const brush = this.getBrush()
