@@ -1114,7 +1114,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
   /** Wing Scrape live preview: the two wing planes the next dab would scrape
    * onto, drawn as screen-projected quad outlines meeting at their apex ridge.
    * Mirrors wingscrape.sbrush exactly — apex sunk `planeoff * radius` below the
-   * surface point, normals = surface normal rotated ±wingAngle about the stroke
+   * surface point, normals = surface normal rotated ∓wingAngle about the stroke
    * tangent. Silently skipped on a raycast miss. */
   private drawWingPlanes(view3d: View3D, brush: SculptBrush, x: number, y: number, screenRadius: number): void {
     const ctx = this.ctx
@@ -1191,8 +1191,10 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       wn.normalize()
       return wn
     }
-    const wnA = wingNormal(1)
-    const wnB = wingNormal(-1)
+    // Signs as in wingscrape.sbrush: each wing leans toward its own lateral
+    // side, so the pair tents up over the stroke instead of forming a valley.
+    const wnA = wingNormal(-1)
+    const wnB = wingNormal(1)
 
     // Apex line: sunk below the surface by the same offset the kernel uses.
     const planeoff = wingApexOffset(brush)
@@ -1240,7 +1242,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
       seg(c2, c3, wingColor)
       seg(c3, c0, wingColor)
     }
-    // The shared apex ridge, brighter — this is the line the V bottoms out on.
+    // The shared apex ridge, brighter — the crease the two wings meet at.
     seg(corner(-1, aA, 0), corner(1, aA, 0), 'rgb(255,175,75)')
   }
 
