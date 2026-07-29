@@ -230,6 +230,7 @@ export type GeneratedDataPath =
   | "scene.tools.pan.type"
   | "scene.tools.sculptcore"
   | "scene.tools.sculptcore.brush"
+  | "scene.tools.sculptcore.brush.anchoredDragRadius"
   | "scene.tools.sculptcore.brush.anchoredLiveMode"
   | "scene.tools.sculptcore.brush.autosmooth"
   | "scene.tools.sculptcore.brush.autosmoothInflate"
@@ -1042,6 +1043,7 @@ declare module "@framework/pathux" {
     "scene.tools.pan.type": true;
     "scene.tools.sculptcore": true;
     "scene.tools.sculptcore.brush": true;
+    "scene.tools.sculptcore.brush.anchoredDragRadius": true;
     "scene.tools.sculptcore.brush.anchoredLiveMode": true;
     "scene.tools.sculptcore.brush.autosmooth": true;
     "scene.tools.sculptcore.brush.autosmoothInflate": true;

@@ -403,6 +403,7 @@ methods, and `<prop path="...">` xmlpage tags. `[n]` marks a list index.
 | `scene.tools.pan.type` | prop | StringProperty | Type |  |
 | `scene.tools.sculptcore` | struct |  |  |  |
 | `scene.tools.sculptcore.brush` | struct |  |  |  |
+| `scene.tools.sculptcore.brush.anchoredDragRadius` | prop | BoolProperty | Drag Sets Size |  |
 | `scene.tools.sculptcore.brush.anchoredLiveMode` | prop | EnumProperty | Anchored Live | enum {RADIUS, ANGLE} |
 | `scene.tools.sculptcore.brush.autosmooth` | prop | FloatProperty | Autosmooth | range 0..2 |
 | `scene.tools.sculptcore.brush.autosmoothInflate` | prop | FloatProperty | Inflation | range 0..1 |

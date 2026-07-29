@@ -65,9 +65,10 @@ export enum StrokeMethod {
 }
 
 /* For StrokeMethod.ANCHORED, which scalar the drag vector's length/angle
- * drives live: RADIUS scales the brush radius by drag distance (e.g. Grab),
- * ANGLE maps the drag vector's screen-space angle onto a rotation (e.g. a
- * twist-style tool). Per-brush configurable rather than a fixed mapping. */
+ * drives live: RADIUS scales the brush radius by drag distance, ANGLE maps the
+ * drag vector's screen-space angle onto a rotation (e.g. a twist-style tool).
+ * Only consulted when the brush sets `anchoredDragRadius`; otherwise the drag
+ * drives the angle alone and the brush keeps its own radius. */
 export enum AnchoredLiveMode {
   RADIUS = 0,
   ANGLE = 1,

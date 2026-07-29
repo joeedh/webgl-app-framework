@@ -73,6 +73,7 @@ SculptBrush {
   spacingMode: int;
   strokeMethod : int;
   anchoredLiveMode : int;
+  anchoredDragRadius : bool;
   sharp      : float;
   smoothRadiusMul : float;
   cavityFactor : float;
@@ -121,6 +122,12 @@ SculptBrush {
   spacingMode = BrushSpacingModes.EVEN
   strokeMethod = StrokeMethod.PATH
   anchoredLiveMode = AnchoredLiveMode.RADIUS
+
+  /** Opt-in: let the anchor->cursor drag drive `anchoredLiveMode`'s scalar. Off
+   * means an Anchored stroke keeps the brush's own radius for the whole drag,
+   * which is what the grab-class brushes (Grab, Kelvinlet) want — their radius
+   * is the deformation's falloff width, not a size the drag should set. */
+  anchoredDragRadius = false
 
   texUser = new ProceduralTexUser()
 
@@ -217,7 +224,7 @@ SculptBrush {
 
     bst.enum('strokeMethod', 'strokeMethod', deleteTsEnumIntegers(StrokeMethod), 'Stroke Method').descriptions({
       PATH    : 'Sample dabs along the drawn path',
-      ANCHORED: 'Fix the origin on mouse-down; drag derives a live radius or angle',
+      ANCHORED: 'Fix the origin on mouse-down; the drag pulls from there',
       DRAG_DOT: 'Follow the cursor, previewing one dab at a time',
     })
 
@@ -227,6 +234,10 @@ SculptBrush {
         RADIUS: 'Drag distance scales the brush radius',
         ANGLE : 'Drag angle drives a live rotation',
       })
+
+    bst
+      .bool('anchoredDragRadius', 'anchoredDragRadius', 'Drag Sets Size')
+      .description('Anchored strokes: let the drag drive the live scalar above instead of keeping the brush radius')
 
     bst.float('sharp', 'sharp', 'Sharpening').range(0.0, 1.0).noUnits().step(0.015)
 
@@ -392,6 +403,7 @@ SculptBrush {
     r = r && this.spacingMode === b.spacingMode
     r = r && this.strokeMethod === b.strokeMethod
     r = r && this.anchoredLiveMode === b.anchoredLiveMode
+    r = r && this.anchoredDragRadius === b.anchoredDragRadius
     r = r && feq(this.tool, b.tool)
     r = r && feq(this.rake, b.rake)
     r = r && feq(this.pinch, b.pinch)
@@ -448,6 +460,7 @@ SculptBrush {
     d.add(this.spacingMode)
     d.add(this.strokeMethod)
     d.add(this.anchoredLiveMode)
+    d.add(this.anchoredDragRadius ? 1 : 0)
     d.add(this.flag)
     d.add(this.tool)
 
@@ -506,6 +519,7 @@ SculptBrush {
     b.spacingMode = this.spacingMode
     b.strokeMethod = this.strokeMethod
     b.anchoredLiveMode = this.anchoredLiveMode
+    b.anchoredDragRadius = this.anchoredDragRadius
     b.spacing = this.spacing
 
     b.smoothProj = this.smoothProj

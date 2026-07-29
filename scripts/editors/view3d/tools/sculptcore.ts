@@ -174,6 +174,7 @@ export class SculptCorePaintMode extends PaintToolModeBase {
     strip = settings.row().strip()
     strip.useIcons(false)
     strip.label('Anchored Live')
+    strip.prop(path + '.brush.anchoredDragRadius')
     strip.prop(path + '.brush.anchoredLiveMode')
 
     function doChannel(chName: string, settingsPanel: PanelContents<ViewContext> = settings) {

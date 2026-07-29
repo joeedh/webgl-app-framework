@@ -3302,6 +3302,16 @@
       "indexed": false,
       "dynamic": false
     },
+    "scene.tools.sculptcore.brush.anchoredDragRadius": {
+      "kind": "prop",
+      "ownerStruct": "SculptBrush",
+      "indexed": false,
+      "propType": "BoolProperty",
+      "uiname": "Drag Sets Size",
+      "description": "Anchored strokes: let the drag drive the live scalar above instead of keeping the brush radius",
+      "decimalPlaces": 4,
+      "step": 0.05
+    },
     "scene.tools.sculptcore.brush.anchoredLiveMode": {
       "kind": "prop",
       "ownerStruct": "SculptBrush",

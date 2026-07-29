@@ -316,8 +316,14 @@ export class SculptPaintOp extends StrokeDriverOp<{}, {}> {
     return this.inputs.brush.getValue().strokeMethod
   }
 
+  /** Anchored strokes only drive a live scalar off the drag when the brush opts
+   * in (`anchoredDragRadius`). Off = Angle: the drag still sets the brush angle
+   * / stroke direction, but the radius stays the brush's own — the grab-class
+   * default, since for Grab/Kelvinlet the radius IS the deformation width (and,
+   * for the kelvinlet kernel, its regularization epsilon). */
   getAnchoredLiveMode(): AnchoredLiveMode {
-    return this.inputs.brush.getValue().anchoredLiveMode
+    const brush = this.inputs.brush.getValue()
+    return brush.anchoredDragRadius ? brush.anchoredLiveMode : AnchoredLiveMode.ANGLE
   }
 
   /** Lazily-constructed, reused-per-dab composite brush program (autosmooth). */
